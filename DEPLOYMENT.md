@@ -18,6 +18,26 @@ Two Node processes and a PHP runtime:
 The `Webserver/` folder is served publicly: `Webserver/http-db-bridge/views/*`
 renders the HTML pages and `Webserver/http-db-bridge/public/` provides the CSS/JS.
 
+## Live preview mode (site not finished yet)
+
+While the build is in progress the full site is withheld and only a single
+self-contained preview page is public at **`/preview`**. Every other page
+redirects there, APIs return a clean `503`, and the preview page itself has **no
+navigation links**, so visitors cannot reach the unfinished site or see progress.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `LUCKYBLOX_PREVIEW_MODE` | `on` | `off` opens the full site to the public |
+| `LUCKYBLOX_PREVIEW_STAGE` | `In development` | Label shown on the preview page |
+
+What stays reachable during preview (so the server and launcher clients keep
+working): `/health`, `/preview`, `/api/preview-status`, `/css/*`, `/assets/*`,
+`/ClientSettings`, `/AppSettings.xml`, `/v1/*`, `/Login/*`, `/game/*`,
+`/api/launch-game`, `/legacy-nav.js`.
+
+**When you finish the site:** set `LUCKYBLOX_PREVIEW_MODE=off` in the Render
+dashboard. No code change needed and the preview page stops being served.
+
 ## Network configuration (all environment-driven)
 
 | Variable | Default | Purpose |

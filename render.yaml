@@ -20,6 +20,12 @@ services:
         value: "3001"
       - key: LUCKYBLOX_GAME_HOST
         value: 0.0.0.0
+      # Only /preview is public until the site is finished. Set to "off" to open
+      # the full site.
+      - key: LUCKYBLOX_PREVIEW_MODE
+        value: "on"
+      - key: LUCKYBLOX_PREVIEW_STAGE
+        value: In development
       # PORT is provided by Render; do not hardcode it here.
       - key: LUCKBLOX_SECRET
         generateValue: true

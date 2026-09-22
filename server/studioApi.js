@@ -482,6 +482,26 @@ function installStudioApiRoutes(app) {
       return;
     }
 
+    // No file on disk. If we still know about the asset, return its metadata so
+    // the client can display/queue it instead of treating it as missing. Only
+    // 404 when the id is genuinely unknown.
+    if (assetRecord) {
+      res.json({
+        ok: true,
+        assetId: Number(assetRecord.id) || null,
+        name: assetRecord.name || 'Asset',
+        assetType: assetRecord.assetType || assetRecord.kind || 'Model',
+        currentVersionId: Number(assetRecord.currentVersionId || assetRecord.id) || null,
+        description: assetRecord.description || '',
+        creatorId: Number(assetRecord.creatorId || 1),
+        creatorName: assetRecord.creatorName || 'LuckyBlox Studio',
+        version: Number(assetRecord.version || 1),
+        hasFile: false,
+        updatedAt: assetRecord.updatedAt || new Date().toISOString(),
+      });
+      return;
+    }
+
     res.status(404).json({ ok: false, message: `Asset ${id} not found.` });
   });
 

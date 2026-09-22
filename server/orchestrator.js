@@ -241,10 +241,92 @@ function removePlayerFromServer(userId, serverJobId) {
   return server;
 }
 
+/**
+ * Roblox-style server listing for a place. Each entry describes one running
+ * job the way a client expects to see it when it asks "where can I join?".
+ */
+function listServersForPlace(placeId) {
+  const target = Number(placeId || 1818);
+  return activeGameServers
+    .filter((server) => Number(server.placeId) === target)
+    .map((server) => ({
+      id: server.serverJobId,
+      jobId: server.serverJobId,
+      maxPlayers: Number(server.maxPlayers || 20),
+      playing: Array.isArray(server.currentPlayers) ? server.currentPlayers.length : 0,
+      playerTokens: Array.isArray(server.currentPlayers) ? server.currentPlayers.slice() : [],
+      players: Array.isArray(server.currentPlayers) ? server.currentPlayers.slice() : [],
+      port: Number(server.port),
+      status: server.status || 'running',
+      ping: 0,
+      fps: 60,
+    }));
+}
+
+/**
+ * Full status for a single job, or null when it has gone away. Clients poll
+ * this after joining so a dead job is detected instead of hanging.
+ */
+function getJobStatus(serverJobId) {
+  const server = activeGameServers.find((candidate) => candidate.serverJobId === serverJobId);
+  if (!server) {
+    return null;
+  }
+
+  const players = Array.isArray(server.currentPlayers) ? server.currentPlayers : [];
+  return {
+    ok: true,
+    jobId: server.serverJobId,
+    placeId: Number(server.placeId),
+    port: Number(server.port),
+    status: server.status || 'running',
+    playerCount: players.length,
+    maxPlayers: Number(server.maxPlayers || 20),
+    players: players.slice(),
+    startedAt: server.startedAt,
+    uptimeSeconds: server.startedAt
+      ? Math.max(0, Math.round((Date.now() - new Date(server.startedAt).getTime()) / 1000))
+      : 0,
+  };
+}
+
+/**
+ * Create (or reuse) a job for a place and bind a user to it. This is the single
+ * server-side entry point the launch flow uses, so the ticket, the job id and
+ * the port handed to the client are always consistent with each other.
+ */
+function createJoinJob(userId, placeId) {
+  const allocation = allocatePlayerToServer(userId, placeId);
+  const status = getJobStatus(allocation.serverJobId);
+
+  return {
+    ok: true,
+    jobId: allocation.serverJobId,
+    serverJobId: allocation.serverJobId,
+    placeId: Number(allocation.placeId),
+    port: Number(allocation.port),
+    playerCount: Number(allocation.playerCount || 0),
+    maxPlayers: status ? status.maxPlayers : 20,
+    created: Boolean(allocation.created),
+    serverHost: GAME_LISTEN_HOST,
+  };
+}
+
+/** Total players across every running job — used by the preview page. */
+function getTotalPlayerCount() {
+  return activeGameServers.reduce((sum, server) => {
+    return sum + (Array.isArray(server.currentPlayers) ? server.currentPlayers.length : 0);
+  }, 0);
+}
+
 module.exports = {
   activeGameServers,
   serverRuntimeState,
   allocatePlayerToServer,
+  createJoinJob,
+  getJobStatus,
+  getTotalPlayerCount,
+  listServersForPlace,
   removePlayerFromServer,
   removeServerByJobId,
   registerServerRecord,

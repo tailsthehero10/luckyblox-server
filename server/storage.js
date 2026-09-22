@@ -1,0 +1,139 @@
+'use strict';
+
+/**
+ * LuckyBlox persistence layer.
+ *
+ * Problem this solves: on a platform without a persistent disk (e.g. Render
+ * free tier) every redeploy wipes the container filesystem, so user accounts,
+ * friends and currency silently disappear. That makes the site look "fake".
+ *
+ * This module centralises where data lives and makes it survive restarts:
+ *
+ *   LUCKYBLOX_DATA_DIR  -> explicit data directory (point this at a mounted
+ *                          Render Disk, e.g. /var/data)
+ *   RENDER_DISK_PATH    -> Render Disk mount path, used as a fallback
+ *
+ * Resolution order:
+ *   1. LUCKYBLOX_DATA_DIR                      (explicit, always wins)
+ *   2. RENDER_DISK_PATH/luckblox-data          (Render Disk)
+ *   3. <repo>/Webserver/http-db-bridge/data    (bundled defaults, ephemeral)
+ *
+ * On first boot against an empty persistent dir, the shipped defaults are
+ * seeded in, so a fresh deployment has real starter accounts.
+ */
+
+const fs = require('fs');
+const path = require('path');
+const runtime = require('./runtimeConfig');
+
+const repoRoot = runtime.rootDir;
+const bundledDataDir = path.join(repoRoot, 'Webserver', 'http-db-bridge', 'data');
+
+function resolveDataDir() {
+  const explicit = process.env.LUCKYBLOX_DATA_DIR;
+  if (explicit && explicit.trim()) {
+    return path.resolve(explicit.trim());
+  }
+
+  const renderDisk = process.env.RENDER_DISK_PATH;
+  if (renderDisk && renderDisk.trim()) {
+    return path.join(path.resolve(renderDisk.trim()), 'luckblox-data');
+  }
+
+  return bundledDataDir;
+}
+
+const dataDir = resolveDataDir();
+
+/** True when data is being written somewhere that survives a redeploy. */
+const isPersistent = dataDir !== bundledDataDir;
+
+function ensureDataDir() {
+  try {
+    fs.mkdirSync(dataDir, { recursive: true });
+  } catch (error) {
+    console.error(`[luckyblox] could not create data dir ${dataDir}: ${error.message}`);
+  }
+}
+
+ensureDataDir();
+
+/**
+ * Absolute path for a data file. If a persistent dir is in use and the file is
+ * missing there, the bundled default (if any) is copied in first so the app
+ * boots with real starter data instead of empty state.
+ */
+function dataPath(fileName) {
+  const target = path.join(dataDir, fileName);
+  const fallback = path.join(bundledDataDir, fileName);
+
+  if (isPersistent && !fs.existsSync(target) && fs.existsSync(fallback)) {
+    try {
+      fs.copyFileSync(fallback, target);
+      console.log(`[luckyblox] seeded ${fileName} from bundled defaults`);
+    } catch (error) {
+      console.error(`[luckyblox] seed failed for ${fileName}: ${error.message}`);
+    }
+  }
+
+  return target;
+}
+
+function readJson(fileName, fallback) {
+  const filePath = dataPath(fileName);
+  try {
+    if (!fs.existsSync(filePath)) {
+      return fallback;
+    }
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return parsed && typeof parsed === 'object' ? parsed : fallback;
+  } catch (error) {
+    console.error(`[luckyblox] readJson ${fileName} failed: ${error.message}`);
+    return fallback;
+  }
+}
+
+/**
+ * Write JSON atomically: write to a temp file then rename, so a crash mid-write
+ * cannot corrupt the stored data.
+ */
+function writeJson(fileName, data) {
+  const filePath = dataPath(fileName);
+  const tmpPath = `${filePath}.tmp-${process.pid}`;
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
+    fs.renameSync(tmpPath, filePath);
+    return true;
+  } catch (error) {
+    console.error(`[luckyblox] writeJson ${fileName} failed: ${error.message}`);
+    try {
+      fs.unlinkSync(tmpPath);
+    } catch (cleanupError) {
+      /* ignore */
+    }
+    return false;
+  }
+}
+
+/** Human-readable summary of where data is stored (logged at boot). */
+function describeStorage() {
+  return {
+    dataDir,
+    persistent: isPersistent,
+    note: isPersistent
+      ? 'Data is stored on a persistent volume and will survive redeploys.'
+      : 'Data is stored in the container filesystem and WILL BE LOST on redeploy. '
+      + 'Set LUCKYBLOX_DATA_DIR (or attach a Render Disk) to persist accounts.',
+  };
+}
+
+module.exports = {
+  dataDir,
+  bundledDataDir,
+  isPersistent,
+  ensureDataDir,
+  dataPath,
+  readJson,
+  writeJson,
+  describeStorage,
+};

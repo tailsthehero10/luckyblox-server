@@ -8,7 +8,18 @@ const { getRobloxProfileTemplateItems } = require('./robloxTemplateSource');
 const { getStudioBuildInfo, getStudioUpdateManifest } = require('./studioBuildInfo');
 const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'server', 'studioApi.js'));
 const { installTeamCreateRoutes } = require(path.join(__dirname, '..', '..', 'server', 'teamCreate.js'));
-const { allocatePlayerToServer, activeGameServers, removePlayerFromServer, removeServerByJobId, getServerForPlace, spawnDedicatedServer } = require(path.join(__dirname, '..', '..', 'server', 'orchestrator.js'));
+const {
+  allocatePlayerToServer,
+  activeGameServers,
+  createJoinJob,
+  getJobStatus,
+  getTotalPlayerCount,
+  listServersForPlace,
+  removePlayerFromServer,
+  removeServerByJobId,
+  getServerForPlace,
+  spawnDedicatedServer,
+} = require(path.join(__dirname, '..', '..', 'server', 'orchestrator.js'));
 
 const {
   bindHost,
@@ -32,10 +43,17 @@ const HOST = bindHost;
 // (the Render hostname in the cloud, localhost on the desktop).
 const publicOrigin = publicBaseUrl || `http://${publicHostname}`;
 const releaseRoot = path.resolve(__dirname, '..', '..');
-const dataDir = path.join(__dirname, 'data');
-const usersPath = path.join(dataDir, 'users.json');
-const gamesPath = path.join(dataDir, 'games.json');
-const assetsPath = path.join(dataDir, 'assets.json');
+const storage = require(path.join(releaseRoot, 'server', 'storage.js'));
+const security = require(path.join(releaseRoot, 'server', 'security.js'));
+
+// All persisted data goes through the storage layer, which honours
+// LUCKYBLOX_DATA_DIR / RENDER_DISK_PATH so accounts survive redeploys.
+const dataDir = storage.dataDir;
+const usersPath = storage.dataPath('users.json');
+const gamesPath = storage.dataPath('games.json');
+const assetsPath = storage.dataPath('assets.json');
+const placesPath = storage.dataPath('places.json');
+const audit = security.createAuditLogger(path.join(dataDir, 'security-audit.log'));
 const uploadsRoot = path.join(releaseRoot, 'Uploads');
 const mapsRoot = path.join(releaseRoot, 'Maps');
 const secretKey = process.env.LUCKBLOX_SECRET || 'luckblox-local-dev-secret';
@@ -70,20 +88,68 @@ function parseCookieHeader(cookieHeader = '') {
   return cookieMap;
 }
 
-function createSessionForUser(userId) {
+function createSessionForUser(userId, req) {
   const user = getUser(userId);
-  const sessionId = `lb_${crypto.randomBytes(20).toString('hex')}`;
-  const expiresAt = Date.now() + 1000 * 60 * 60 * 12;
+  const sessionId = security.generateSessionId();
+  const ttlMs = 1000 * 60 * 60 * 12; // 12 hours
+  const expiresAt = Date.now() + ttlMs;
+  const csrfToken = security.createCsrfToken(sessionId, secretKey);
 
   activeSessions.set(sessionId, {
     sessionId,
     userId: String(user.userId || userId || 1),
     username: user.username || 'LocalPlayer',
+    csrfToken,
+    ip: req ? security.clientIp(req) : 'unknown',
+    userAgent: req ? String(req.headers['user-agent'] || '').slice(0, 200) : '',
     expiresAt,
     createdAt: Date.now(),
   });
 
-  return { sessionId, expiresAt };
+  persistSessions();
+  return { sessionId, expiresAt, csrfToken };
+}
+
+// --- Session persistence -----------------------------------------------------
+// Sessions are mirrored to disk so a container restart does not silently log
+// every user out (which looked like broken/fake auth on Render).
+const sessionsPath = storage.dataPath('sessions.json');
+
+function persistSessions() {
+  const now = Date.now();
+  const serialisable = {};
+  for (const [id, session] of activeSessions.entries()) {
+    if (Number(session.expiresAt) > now) {
+      serialisable[id] = session;
+    }
+  }
+  try {
+    storage.writeJson('sessions.json', serialisable);
+  } catch (error) {
+    /* sessions are best-effort; never break a request over this */
+  }
+}
+
+function loadSessions() {
+  const stored = storage.readJson('sessions.json', {});
+  const now = Date.now();
+  let loaded = 0;
+  for (const [id, session] of Object.entries(stored || {})) {
+    if (session && Number(session.expiresAt) > now) {
+      activeSessions.set(id, session);
+      loaded += 1;
+    }
+  }
+  if (loaded > 0) {
+    console.log(`[luckyblox] restored ${loaded} active session(s)`);
+  }
+}
+
+function destroySession(sessionId) {
+  if (sessionId) {
+    activeSessions.delete(sessionId);
+    persistSessions();
+  }
 }
 
 function resolveSessionUser(req) {
@@ -106,16 +172,19 @@ function resolveSessionUser(req) {
   return getUser(session.userId || 1);
 }
 
-function applySessionCookie(res, userId) {
-  const { sessionId, expiresAt } = createSessionForUser(userId);
+function applySessionCookie(res, userId, req) {
+  const { sessionId, expiresAt, csrfToken } = createSessionForUser(userId, req);
+  // secure cookies require HTTPS; enable automatically in the cloud so the
+  // session cookie is never sent in cleartext. Locally it stays off for http.
+  const isSecure = publicBaseUrl.startsWith('https://') || Boolean(process.env.RENDER);
   res.cookie('luckblox_session', sessionId, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: false,
+    secure: isSecure,
     maxAge: Math.max(1, expiresAt - Date.now()),
     path: '/',
   });
-  return sessionId;
+  return { sessionId, csrfToken };
 }
 
 app.use((req, res, next) => {
@@ -127,27 +196,96 @@ app.use((req, res, next) => {
     req.sessionUser = null;
     req.sessionUserId = null;
   }
+
+  // Expose the CSRF token of the *current* session to views. Sign-in and
+  // sign-up forms need a token even before a session exists, so we mint a fresh
+  // anonymous session id + token for guests.
+  const cookieMap = parseCookieHeader(req.headers.cookie || '');
+  let sessionId = cookieMap.luckblox_session;
+  const session = sessionId ? activeSessions.get(sessionId) : null;
+
+  if (!session) {
+    sessionId = security.generateSessionId();
+    const csrfToken = security.createCsrfToken(sessionId, secretKey);
+    const isSecure = publicBaseUrl.startsWith('https://') || Boolean(process.env.RENDER);
+    res.cookie('luckblox_session', sessionId, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: isSecure,
+      maxAge: 1000 * 60 * 60 * 12,
+      path: '/',
+    });
+    req.csrfToken = csrfToken;
+  } else {
+    req.csrfToken = session.csrfToken || security.createCsrfToken(sessionId, secretKey);
+  }
+
   res.locals.basePath = req.headers['x-base-path'] || '';
+  res.locals.csrfToken = req.csrfToken;
+  res.locals.currentUser = req.sessionUser;
+  res.locals.isOwner = isOwnerUser(req.sessionUser);
   next();
 });
 
-function hashPassword(password, salt) {
-  const s = salt || crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, s, 100000, 64, 'sha512').toString('hex');
-  return { hash, salt: s };
+/**
+ * CSRF protection for state-changing requests (POST/PUT/PATCH/DELETE).
+ * Checks the `_csrf` body field or the `x-csrf-token` header against the
+ * session's token. Skipped for pure JSON API clients that present a valid
+ * auth ticket instead (those are authenticated separately).
+ */
+function requireCsrf(req, res, next) {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    return next();
+  }
+
+  const cookieMap = parseCookieHeader(req.headers.cookie || '');
+  const sessionId = cookieMap.luckblox_session;
+  const token = (req.body && req.body._csrf) || req.headers['x-csrf-token'];
+
+  if (!sessionId || !security.verifyCsrfToken(String(token || ''), sessionId, secretKey)) {
+    audit('csrf_rejected', { path: req.path, ip: security.clientIp(req) });
+    if (req.path.startsWith('/api/')) {
+      return res.status(403).json({ ok: false, error: 'csrf-token-invalid', message: 'Security token missing or expired. Reload and try again.' });
+    }
+    return res.status(403).send('Security token invalid. Please reload the page and try again.');
+  }
+
+  return next();
 }
 
-function verifyPassword(password, hash, salt) {
-  const test = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
-  return crypto.timingSafeEqual(Buffer.from(test), Buffer.from(hash));
+// Use the hardened, versioned hashing from the security module instead of the
+// local duplicates (the old local copy used fewer PBKDF2 iterations).
+const hashPassword = security.hashPassword;
+const verifyPassword = security.verifyPassword;
+
+/**
+ * The account that owns the deployment. ID 1 is the owner, matching
+ * tailsthehero10 on the live site. Ownership grants creator/admin abilities.
+ */
+const OWNER_USER_ID = String(process.env.LUCKYBLOX_OWNER_ID || '1');
+const OWNER_USERNAME = String(process.env.LUCKYBLOX_OWNER_USERNAME || 'tailsthehero10').toLowerCase();
+
+function isOwnerUser(user) {
+  if (!user) {
+    return false;
+  }
+  const idMatch = String(user.userId || user.id || '') === OWNER_USER_ID;
+  const nameMatch = String(user.username || '').toLowerCase() === OWNER_USERNAME;
+  return idMatch || nameMatch;
 }
 
 function upgradePassword(user) {
-  if (!user || !user.password || user.password.length < 64 || user.password.startsWith('$pbkdf2$')) return;
-  const { hash, salt } = hashPassword(user.password);
+  if (!user || !user.password) return;
+  // Only upgrade when the stored value is a legacy plaintext/short hash. An
+  // already-hashed password must never be re-hashed (that would lock the user
+  // out because the plaintext is no longer available).
+  if (user.passwordSalt && user.passwordVersion >= security.HASH_VERSION) return;
+  if (!user.passwordSalt && user.password.length >= 64) return; // already a hash, just unsalted-prefixed
+
+  const { hash, salt, version } = hashPassword(user.password);
   user.password = hash;
   user.passwordSalt = salt;
-  user.passwordVersion = 2;
+  user.passwordVersion = version;
   const users = getUsers();
   users[user.userId || user.id] = user;
   writeJson(usersPath, users);
@@ -179,6 +317,10 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
+// Restore any sessions that were persisted before the last restart, so a
+// redeploy does not silently sign everyone out.
+loadSessions();
+
 if (!fs.existsSync(uploadsRoot)) {
   fs.mkdirSync(uploadsRoot, { recursive: true });
 }
@@ -202,7 +344,21 @@ function readJson(filePath, fallback) {
 }
 
 function writeJson(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  // Atomic write: temp file + rename, so an interrupted write (container
+  // restart mid-save) cannot leave a half-written, corrupt data file.
+  const tmpPath = `${filePath}.tmp-${process.pid}`;
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
+    fs.renameSync(tmpPath, filePath);
+  } catch (error) {
+    console.error(`[luckyblox] writeJson failed for ${filePath}: ${error.message}`);
+    try {
+      fs.unlinkSync(tmpPath);
+    } catch (cleanupError) {
+      /* ignore */
+    }
+    throw error;
+  }
 }
 
 function createDefaultAssets() {
@@ -978,6 +1134,123 @@ app.get('/api/studio/config', (req, res) => {
   res.json({ ok: true, ...getStudioBuildInfo(), manifest: getStudioUpdateManifest() });
 });
 
+// ---------------------------------------------------------------------------
+// Live preview mode
+// ---------------------------------------------------------------------------
+// While the site is being finished we do not want the full product exposed.
+// Preview mode keeps a single, self-contained page live so the deployment can
+// be seen working, while every other page (and navigation) is withheld.
+//
+//   LUCKYBLOX_PREVIEW_MODE=on   -> force preview on
+//   LUCKYBLOX_PREVIEW_MODE=off  -> force preview off (site is finished/public)
+//   unset                       -> defaults to ON until explicitly finished
+//
+// Turn it off by setting LUCKYBLOX_PREVIEW_MODE=off in the environment when the
+// build is done — no code change needed, and the preview page disappears.
+const PREVIEW_MODE = String(process.env.LUCKYBLOX_PREVIEW_MODE || 'on').toLowerCase() !== 'off';
+const PREVIEW_STAGE = String(process.env.LUCKYBLOX_PREVIEW_STAGE || 'In development');
+const PREVIEW_TEASERS = [
+  'Account system',
+  'Friends & presence',
+  'Robux & currency',
+  'Experience catalog',
+  'Creator hub',
+  'Server job IDs',
+  'Asset pipeline',
+  'Studio tooling',
+];
+
+// Paths that must keep working even while preview mode is on, because the
+// running server and the launcher clients depend on them.
+const PREVIEW_ALLOWLIST = [
+  /^\/health$/,
+  /^\/api\/preview-status$/,
+  /^\/preview$/,
+  /^\/css\//,
+  /^\/assets\//,
+  /^\/asset\//i,
+  /^\/v1\/asset/i,
+  /^\/v1\/assets\//,
+  /^\/ClientSettings/,
+  /^\/AppSettings\.xml$/,
+  /^\/v1\//,
+  /^\/Login\//,
+  /^\/game\//,
+  /^\/api\/launch-game$/,
+  /^\/api\/servers$/,
+  /^\/api\/jobs\//,
+  /^\/studio\//,
+  /^\/legacy-nav\.js$/,
+];
+
+function isPreviewAllowed(reqPath) {
+  return PREVIEW_ALLOWLIST.some((rx) => rx.test(reqPath));
+}
+
+/** Real status for the preview page — computed from live server state. */
+function getPreviewStatus() {
+  let players = 0;
+  for (const server of activeGameServers) {
+    players += Array.isArray(server.currentPlayers) ? server.currentPlayers.length : 0;
+  }
+
+  let games = 0;
+  try {
+    games = Object.keys(getGames()).length;
+  } catch (error) {
+    games = 0;
+  }
+
+  return {
+    ok: true,
+    preview: true,
+    stage: PREVIEW_STAGE,
+    players,
+    games,
+    uptimeSeconds: Math.round(process.uptime()),
+    at: new Date().toISOString(),
+  };
+}
+
+app.get('/api/preview-status', (req, res) => {
+  res.json(getPreviewStatus());
+});
+
+app.get('/preview', (req, res) => {
+  res.render('preview', {
+    title: 'LuckyBlox — Live Preview',
+    stage: PREVIEW_STAGE,
+    teasers: PREVIEW_TEASERS,
+  });
+});
+
+// Gate: while preview mode is on, send every non-allowlisted page to /preview.
+// Applied before any real content route so nothing leaks through.
+app.use((req, res, next) => {
+  if (!PREVIEW_MODE) {
+    return next();
+  }
+
+  if (isPreviewAllowed(req.path)) {
+    return next();
+  }
+
+  // API and client-protocol requests get a clean JSON refusal rather than HTML.
+  const wantsJson = req.path.startsWith('/api/')
+    || req.path.startsWith('/v1/')
+    || (req.headers.accept || '').includes('application/json');
+
+  if (wantsJson) {
+    return res.status(503).json({
+      ok: false,
+      error: 'preview-mode',
+      message: 'LuckyBlox is still being finished. Public access opens soon.',
+    });
+  }
+
+  return res.redirect('/preview');
+});
+
 app.get('/', (req, res) => {
   const user = getUser(req.query.userId || 1);
   const games = Object.values(getGames());
@@ -1056,10 +1329,8 @@ app.get('/signup', (req, res) => {
 
 app.get('/logout', (req, res) => {
   const cookieMap = parseCookieHeader(req.headers.cookie || '');
-  const sessionId = cookieMap.luckblox_session;
-  if (sessionId) {
-    activeSessions.delete(sessionId);
-  }
+  destroySession(cookieMap.luckblox_session);
+  audit('signout', { ip: security.clientIp(req), sessionId: cookieMap.luckblox_session || null });
   res.clearCookie('luckblox_session');
   const redirect = req.query.redirect || '/signin';
   res.redirect(redirect);
@@ -1067,73 +1338,76 @@ app.get('/logout', (req, res) => {
 
 app.post('/logout', (req, res) => {
   const cookieMap = parseCookieHeader(req.headers.cookie || '');
-  const sessionId = cookieMap.luckblox_session;
-  if (sessionId) {
-    activeSessions.delete(sessionId);
-  }
+  destroySession(cookieMap.luckblox_session);
+  audit('signout', { ip: security.clientIp(req), sessionId: cookieMap.luckblox_session || null });
   res.clearCookie('luckblox_session');
   res.redirect(req.query.redirect || '/signin');
 });
 
-app.post('/signup', (req, res) => {
+// Friendly alias so /signout works the way users expect.
+app.get('/signout', (req, res) => res.redirect('/logout' + (req.query.redirect ? `?redirect=${encodeURIComponent(req.query.redirect)}` : '')));
+
+app.post('/signup', requireCsrf, (req, res) => {
+  const ip = security.clientIp(req);
   const username = String(req.body.username || '').trim();
-  const password = String(req.body.password || '').trim();
-  const confirmPassword = String(req.body.confirmPassword || '').trim();
+  const password = String(req.body.password || '');
+  const confirmPassword = String(req.body.confirmPassword || '');
   const displayName = String(req.body.displayName || username || '').trim();
 
-  if (!username || username.length < 3) {
-    return res.status(400).render('signup', {
-      title: 'Create account - LuckyBlox',
-      errorMessage: 'Username must be at least 3 characters.',
-      username,
-      basePath: res.locals.basePath || '',
-    });
+  const renderError = (status, message) => res.status(status).render('signup', {
+    title: 'Create account - LuckyBlox',
+    errorMessage: message,
+    username,
+    basePath: res.locals.basePath || '',
+  });
+
+  // Rate limit account creation per IP: 5 per hour.
+  const rl = security.rateLimit(`signup:${ip}`, 5, 60 * 60 * 1000);
+  if (!rl.allowed) {
+    audit('signup_rate_limited', { ip, username });
+    return renderError(429, `Too many accounts created from this network. Try again in ${Math.ceil(rl.retryAfterMs / 60000)} minute(s).`);
   }
 
-  if (!password || password.length < 4) {
-    return res.status(400).render('signup', {
-      title: 'Create account - LuckyBlox',
-      errorMessage: 'Password must be at least 4 characters.',
-      username,
-      basePath: res.locals.basePath || '',
-    });
+  const usernameCheck = security.checkUsernamePolicy(username);
+  if (!usernameCheck.ok) {
+    return renderError(400, usernameCheck.errors[0]);
   }
 
   if (password !== confirmPassword) {
-    return res.status(400).render('signup', {
-      title: 'Create account - LuckyBlox',
-      errorMessage: 'Passwords do not match.',
-      username,
-      basePath: res.locals.basePath || '',
-    });
+    return renderError(400, 'Passwords do not match.');
+  }
+
+  const policy = security.checkPasswordPolicy(password);
+  if (!policy.ok) {
+    return renderError(400, policy.errors[0]);
   }
 
   const users = getUsers();
   const exists = Object.values(users).some((user) => String(user.username || user.displayName || '').toLowerCase() === username.toLowerCase());
   if (exists) {
-    return res.status(409).render('signup', {
-      title: 'Create account - LuckyBlox',
-      errorMessage: 'That username is already taken.',
-      username,
-      basePath: res.locals.basePath || '',
-    });
+    return renderError(409, 'That username is already taken.');
   }
 
   const nextId = Math.max(1, ...Object.values(users).map((user) => Number(user.userId || user.id || 1))) + 1;
-  const { hash, salt } = hashPassword(password);
+  const { hash, salt, version } = hashPassword(password);
   const created = {
     userId: String(nextId),
     username,
     displayName: displayName || username,
     password: hash,
     passwordSalt: salt,
-    passwordVersion: 2,
+    passwordVersion: version,
+    role: 'player',
     bio: 'New LuckyBlox creator account.',
     joinDate: new Date().toISOString(),
-    membershipStatus: 'Premium',
+    membershipStatus: 'None',
+    robux: 100,
+    currencies: { coins: 250, tickets: 10 },
     inventory: ['1001', '1002', '1003', '1004'],
     currentlyWearing: ['1001', '1002', '1003'],
-    stats: { friends: 0, created: 1, plays: 0, followers: 0 },
+    stats: { friends: 0, created: 1, plays: 0, followers: 0, badges: 0, gameVisits: 0 },
+    friends: [],
+    badges: [],
     avatar: {
       bodyColors: {
         headColorId: 1002,
@@ -1149,7 +1423,8 @@ app.post('/signup', (req, res) => {
 
   users[String(nextId)] = created;
   writeJson(usersPath, users);
-  applySessionCookie(res, nextId);
+  applySessionCookie(res, nextId, req);
+  audit('signup_success', { ip, userId: String(nextId), username });
   const redirect = req.body.redirect || req.query.redirect || '/dev';
   const bp = res.locals.basePath || '';
   return res.redirect(`${bp}${redirect}?welcome=1`);
@@ -1209,49 +1484,79 @@ app.post('/luckblox.site.tk/signup', (req, res) => {
   return res.json({ ok: true, userId: String(nextId), username, displayName: created.displayName });
 });
 
-app.post('/signin', (req, res) => {
+app.post('/signin', requireCsrf, (req, res) => {
+  const ip = security.clientIp(req);
   const username = String(req.body.username || req.body.userName || '').trim();
-  const password = String(req.body.password || '').trim();
+  const password = String(req.body.password || '');
+
+  const renderError = (status, message) => res.status(status).render('signin', {
+    title: 'Sign in - LuckyBlox',
+    errorMessage: message,
+    redirect: req.body.redirect || '',
+    username,
+    hintMessage: '',
+    basePath: res.locals.basePath || '',
+  });
+
+  // Rate limit sign-in attempts per IP (20 / 15 min) and per username (10 / 15 min).
+  const ipLimit = security.rateLimit(`signin:ip:${ip}`, 20, 15 * 60 * 1000);
+  if (!ipLimit.allowed) {
+    audit('signin_rate_limited_ip', { ip, username });
+    return renderError(429, `Too many sign-in attempts. Try again in ${Math.ceil(ipLimit.retryAfterMs / 60000)} minute(s).`);
+  }
+  const userLimit = security.rateLimit(`signin:user:${username.toLowerCase()}`, 10, 15 * 60 * 1000);
+  if (!userLimit.allowed) {
+    audit('signin_rate_limited_user', { ip, username });
+    return renderError(429, 'Too many attempts for this account. Please wait a few minutes.');
+  }
+
+  // Account lockout after repeated failures.
+  const lock = security.getLockoutState(username);
+  if (lock.locked) {
+    audit('signin_locked_out', { ip, username });
+    return renderError(423, `This account is temporarily locked. Try again in ${Math.ceil(lock.retryAfterMs / 60000)} minute(s).`);
+  }
+
   const user = getUserByUsername(username);
 
   if (!user) {
-    return res.status(401).render('signin', {
-      title: 'Sign in - LuckyBlox',
-      errorMessage: 'We could not find that account. Try creating one first.',
-      redirect: '',
-      username,
-      hintMessage: '',
-      basePath: res.locals.basePath || '',
-    });
+    security.registerFailedLogin(username);
+    audit('signin_user_not_found', { ip, username });
+    return renderError(401, 'We could not find that account. Try creating one first.');
   }
 
-  if (user.passwordVersion === 2 && user.password && user.passwordSalt) {
-    if (!verifyPassword(password, user.password, user.passwordSalt)) {
-      return res.status(401).render('signin', {
-        title: 'Sign in - LuckyBlox',
-        errorMessage: 'That password is incorrect.',
-        redirect: '',
-        username,
-        hintMessage: '',
-        basePath: res.locals.basePath || '',
-      });
-    }
-  } else if (user.password && user.password !== password) {
-    return res.status(401).render('signin', {
-      title: 'Sign in - LuckyBlox',
-      errorMessage: 'That password is incorrect.',
-      redirect: '',
-      username,
-      hintMessage: '',
-      basePath: res.locals.basePath || '',
-    });
+  // Support the current v3 hash, the legacy v2 hash, and very old plaintext.
+  let valid = false;
+  if (user.passwordSalt && user.password) {
+    valid = verifyPassword(password, user.password, user.passwordSalt);
+  } else if (user.password) {
+    valid = String(user.password) === password;
   }
 
-  if (user.passwordVersion !== 2) {
+  if (!valid) {
+    const state = security.registerFailedLogin(username);
+    audit('signin_bad_password', { ip, username, failures: state.failures });
+    return renderError(401, 'That password is incorrect.');
+  }
+
+  // Successful login: upgrade old hashes, clear limits, start a fresh session.
+  if (user.passwordVersion !== security.HASH_VERSION) {
     upgradePassword(user);
   }
+  security.clearLockout(username);
+  security.clearRateLimit(`signin:user:${username.toLowerCase()}`);
 
-  applySessionCookie(res, user.userId || user.id || 1);
+  const { csrfToken } = applySessionCookie(res, user.userId || user.id || 1, req);
+  audit('signin_success', { ip, userId: String(user.userId || user.id), username });
+
+  // If this sign-in came from a Studio handshake, link the account to it so the
+  // 2022M Studio client picks up the session automatically.
+  const studioNonce = String(req.body.studio || req.query.studio || '');
+  if (studioNonce) {
+    completeStudioHandshake(studioNonce, user.userId || user.id || 1);
+    audit('studio_handshake_linked', { ip, userId: String(user.userId || user.id), nonce: studioNonce });
+  }
+
   const redirect = req.body.redirect || req.query.redirect || '/dev';
   const bp = res.locals.basePath || '';
   return res.redirect(`${bp}${redirect}?signedin=1`);
@@ -1462,6 +1767,104 @@ app.get('/badges', (req, res) => {
   });
 });
 
+/**
+ * Owner-only gate. Any route wrapped with this only runs for the deployment
+ * owner (ID 1 / tailsthehero10). Everyone else gets 403 — enforced server-side,
+ * not just hidden in the UI.
+ */
+function requireOwner(req, res, next) {
+  const user = req.sessionUser;
+  if (!user) {
+    return res.status(401).json({ ok: false, error: 'auth-required', message: 'Sign in first.' });
+  }
+  if (!isOwnerUser(user)) {
+    audit('owner_route_denied', {
+      ip: security.clientIp(req),
+      userId: String(user.userId || user.id),
+      path: req.path,
+    });
+    return res.status(403).json({ ok: false, error: 'owner-only', message: 'This area is restricted to the server owner.' });
+  }
+  return next();
+}
+
+/**
+ * Owner diagnostics. Real server state: active jobs, uptime, storage mode,
+ * security posture. This is the one place where the owner can see the internals.
+ */
+app.get('/api/admin/overview', requireOwner, (req, res) => {
+  const store = storage.describeStorage();
+  const users = getUsers();
+
+  res.json({
+    ok: true,
+    owner: {
+      userId: String(req.sessionUser.userId || req.sessionUser.id),
+      username: req.sessionUser.username,
+    },
+    server: {
+      uptimeSeconds: Math.round(process.uptime()),
+      nodeVersion: process.version,
+      platform: process.platform,
+      pid: process.pid,
+      publicBaseUrl,
+      previewMode: PREVIEW_MODE,
+      previewStage: PREVIEW_STAGE,
+    },
+    storage: store,
+    counts: {
+      users: Object.keys(users).length,
+      sessions: activeSessions.size,
+      tickets: activeTickets.size,
+      jobs: activeGameServers.length,
+      players: getTotalPlayerCount(),
+      games: Object.keys(getGames()).length,
+      assets: Object.keys(getAssets()).length,
+    },
+    jobs: activeGameServers.map((server) => ({
+      jobId: server.serverJobId,
+      placeId: Number(server.placeId),
+      port: Number(server.port),
+      playerCount: Array.isArray(server.currentPlayers) ? server.currentPlayers.length : 0,
+      maxPlayers: Number(server.maxPlayers || 20),
+      status: server.status || 'running',
+      startedAt: server.startedAt,
+    })),
+  });
+});
+
+/** Owner-only: revoke every active session (useful after a suspected leak). */
+app.post('/api/admin/revoke-sessions', requireOwner, (req, res) => {
+  const count = activeSessions.size;
+  activeSessions.clear();
+  persistSessions();
+  audit('owner_revoked_all_sessions', { count, by: String(req.sessionUser.userId) });
+  res.json({ ok: true, revoked: count });
+});
+
+/** Owner-only: grant or update a user's role. */
+app.post('/api/admin/set-role', requireOwner, (req, res) => {
+  const targetId = String(req.body.userId || req.body.userid || '');
+  const role = String(req.body.role || '').toLowerCase();
+  const allowed = ['player', 'creator', 'moderator', 'owner'];
+
+  if (!targetId || !allowed.includes(role)) {
+    return res.status(400).json({ ok: false, error: 'invalid-request', message: `Role must be one of: ${allowed.join(', ')}.` });
+  }
+
+  const users = getUsers();
+  if (!users[targetId]) {
+    return res.status(404).json({ ok: false, error: 'user-not-found' });
+  }
+
+  users[targetId].role = role;
+  users[targetId].updatedAt = new Date().toISOString();
+  writeJson(usersPath, users);
+  audit('owner_set_role', { targetId, role, by: String(req.sessionUser.userId) });
+
+  res.json({ ok: true, userId: targetId, role });
+});
+
 app.get('/studio', (req, res) => {
   const user = getUser(req.query.userId || 1);
   const places = Object.values(getGames()).map((game) => ({
@@ -1474,6 +1877,64 @@ app.get('/studio', (req, res) => {
     title: 'LuckyBlox Studio',
     user,
     places,
+  });
+});
+
+/**
+ * Creator Hub — the LuckyBlox equivalent of create.roblox.com. Shows the real
+ * experiences and assets belonging to the signed-in account, plus live counts.
+ * Guests can view it but publishing actions prompt them to sign in.
+ */
+app.get('/develop', (req, res) => {
+  const sessionUser = req.sessionUser;
+  const userId = sessionUser ? (sessionUser.userId || sessionUser.id || 1) : (req.query.userId || 1);
+  const user = getUser(userId);
+  const isOwner = isOwnerUser(user);
+  const signedIn = Boolean(sessionUser);
+
+  // Real places from the store, annotated with their own game stats.
+  const placesRecords = readJson(placesPath, {});
+  const allGames = getGames();
+  const places = Object.values(placesRecords)
+    .filter((entry) => entry && typeof entry === 'object')
+    .map((entry) => {
+      const placeId = Number(entry.placeId || entry.universeId || 1818);
+      const game = allGames[String(placeId)] || {};
+      return {
+        placeId,
+        name: entry.name || game.title || `Place ${placeId}`,
+        description: entry.description || game.description || '',
+        visibility: String(entry.visibility || 'Public'),
+        visits: Number(game.playerCount || game.visits || 0),
+        authorId: Number(entry.authorId || 1),
+      };
+    })
+    // Own experiences first; the owner sees everything.
+    .filter((place) => isOwner || !signedIn || place.authorId === Number(userId));
+
+  const assets = Object.values(getAssets()).map((asset) => ({
+    id: Number(asset.id || asset.assetId) || 0,
+    name: asset.name || 'Asset',
+    assetType: asset.assetType || asset.className || 'Model',
+    price: Number(asset.price || 0),
+    creatorName: asset.creatorName || 'LuckyBlox Studio',
+  }));
+
+  const stats = {
+    places: places.length,
+    publicPlaces: places.filter((p) => p.visibility === 'Public').length,
+    assets: assets.length,
+    visits: places.reduce((sum, p) => sum + Number(p.visits || 0), 0),
+  };
+
+  res.render('develop', {
+    title: 'Create - LuckyBlox',
+    user,
+    isOwner,
+    signedIn,
+    places: places.slice(0, 40),
+    assets: assets.slice(0, 40),
+    stats,
   });
 });
 
@@ -1548,6 +2009,128 @@ app.get('/2021/Login/Negotiate.ashx', (req, res) => {
 
 app.post('/2021/Login/Negotiate.ashx', (req, res) => {
   res.status(200).send('');
+});
+
+// ---------------------------------------------------------------------------
+// Studio (2022M) authentication
+// ---------------------------------------------------------------------------
+// Studio performs a real login handshake before it will load a place. These
+// endpoints mirror what the client asks for, and they are backed by the same
+// account store + session system as the website, so signing in from Studio is
+// the same account you sign in with on the site.
+
+/**
+ * Studio asks for the auth URL it should open. We point it at our own site's
+ * sign-in page and pass a one-time nonce so the resulting session is bound to
+ * this Studio instance.
+ */
+app.get('/v1/studio/auth-url', (req, res) => {
+  const nonce = security.generateSessionId();
+  const studioSessions = getStudioHandshakes();
+  studioSessions[nonce] = {
+    nonce,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 10 * 60 * 1000,
+    client: 'studio-2022M',
+    userId: null,
+  };
+  writeJson(studioHandshakePath, studioSessions);
+
+  res.json({
+    ok: true,
+    nonce,
+    authUrl: `${publicOrigin}/signin?studio=${encodeURIComponent(nonce)}`,
+    expiresAt: new Date(studioSessions[nonce].expiresAt).toISOString(),
+  });
+});
+
+/**
+ * Studio exchange: given the nonce from the auth URL, return the account that
+ * signed in and a real auth ticket Studio can use to load places.
+ */
+app.get('/v1/studio/authenticate', (req, res) => {
+  const nonce = String(req.query.nonce || '');
+  const studioSessions = getStudioHandshakes();
+  const handshake = studioSessions[nonce];
+
+  if (!handshake || Number(handshake.expiresAt) < Date.now()) {
+    if (handshake) {
+      delete studioSessions[nonce];
+      writeJson(studioHandshakePath, studioSessions);
+    }
+    return res.status(401).json({ ok: false, error: 'studio-handshake-invalid', message: 'Sign in again from Studio.' });
+  }
+
+  if (!handshake.userId) {
+    return res.status(202).json({ ok: false, error: 'awaiting-signin', message: 'Waiting for sign-in to complete.' });
+  }
+
+  const user = getUser(handshake.userId);
+  const placeId = 1818;
+  const ticket = createAuthTicket(user.userId, placeId, {
+    port: gamePort,
+    serverJobId: `studio-${crypto.randomUUID()}`,
+  });
+
+  audit('studio_authenticated', {
+    ip: security.clientIp(req),
+    userId: String(user.userId),
+    nonce,
+  });
+
+  return res.json({
+    ok: true,
+    userId: Number(user.userId),
+    username: user.username,
+    displayName: user.username,
+    membership: user.membershipStatus || user.membership || 'None',
+    authTicket: ticket.ticket,
+    expiresAt: new Date(ticket.expiresAt).toISOString(),
+    isOwner: isOwnerUser(user),
+  });
+});
+
+/**
+ * Links a signed-in web session to a pending Studio handshake. Called by the
+ * sign-in POST when `studio=<nonce>` is present, so Studio picks up the login.
+ */
+function completeStudioHandshake(nonce, userId) {
+  if (!nonce) {
+    return false;
+  }
+  const studioSessions = getStudioHandshakes();
+  const handshake = studioSessions[nonce];
+  if (!handshake || Number(handshake.expiresAt) < Date.now()) {
+    return false;
+  }
+  handshake.userId = String(userId);
+  handshake.completedAt = Date.now();
+  writeJson(studioHandshakePath, studioSessions);
+  return true;
+}
+
+/** Studio's own sign-in POST (used by the in-client login form if shown). */
+app.post('/v1/studio/signin', requireCsrf, (req, res) => {
+  const ip = security.clientIp(req);
+  const username = String(req.body.username || '').trim();
+  const password = String(req.body.password || '');
+
+  const ipLimit = security.rateLimit(`studio-signin:${ip}`, 20, 15 * 60 * 1000);
+  if (!ipLimit.allowed) {
+    return res.status(429).json({ ok: false, error: 'rate-limited', message: 'Too many attempts.' });
+  }
+
+  const user = getUserByUsername(username);
+  if (!user || !user.password || !user.passwordSalt || !verifyPassword(password, user.password, user.passwordSalt)) {
+    audit('studio_signin_failed', { ip, username });
+    return res.status(401).json({ ok: false, error: 'invalid-credentials', message: 'Incorrect username or password.' });
+  }
+
+  const nonce = String(req.body.nonce || '');
+  completeStudioHandshake(nonce, user.userId);
+  audit('studio_signin_success', { ip, userId: String(user.userId), username });
+
+  return res.json({ ok: true, userId: Number(user.userId), username: user.username, isOwner: isOwnerUser(user) });
 });
 
 app.get('/game/placelauncher.ashx', (req, res) => {
@@ -1703,17 +2286,108 @@ app.get('/api/games/:placeId', (req, res) => {
 });
 
 app.get('/api/servers', (req, res) => {
+  const placeId = Number(req.query.placeId || req.query.placeid || 0);
+
+  // When a placeId is given, return just that place's jobs in Roblox-style shape.
+  if (placeId) {
+    const servers = listServersForPlace(placeId);
+    return res.json({ ok: true, placeId, servers, total: servers.length });
+  }
+
   const servers = activeGameServers.map((server) => ({
     serverJobId: server.serverJobId,
+    jobId: server.serverJobId,
     placeId: Number(server.placeId || 1818),
     port: Number(server.port || gamePort),
     currentPlayers: Array.isArray(server.currentPlayers) ? server.currentPlayers : [],
+    playerCount: Array.isArray(server.currentPlayers) ? server.currentPlayers.length : 0,
     maxPlayers: Number(server.maxPlayers || 20),
     status: server.status || 'running',
     startedAt: server.startedAt || new Date().toISOString(),
   }));
 
-  res.json({ ok: true, servers });
+  res.json({ ok: true, servers, total: servers.length, totalPlayers: getTotalPlayerCount() });
+});
+
+/**
+ * Roblox-style game-server listing. Clients ask this when populating the
+ * "servers" list for an experience before joining one.
+ */
+app.get('/v1/games/:placeId/servers/Public', (req, res) => {
+  const placeId = Number(req.params.placeId || req.query.placeId || 1818);
+  const servers = listServersForPlace(placeId);
+  const game = getGameEntry(placeId);
+
+  res.json({
+    ok: true,
+    placeId,
+    universeId: placeId,
+    name: game.title || 'LuckyBlox Arena',
+    data: servers.map((server) => ({
+      id: server.jobId,
+      jobId: server.jobId,
+      maxPlayers: server.maxPlayers,
+      playing: server.playing,
+      playerTokens: server.playerTokens,
+      players: server.players,
+      ping: server.ping,
+      fps: server.fps,
+    })),
+    total: servers.length,
+  });
+});
+
+/**
+ * Resolve the join script for a place. This is the endpoint the legacy clients
+ * call to learn WHERE to connect (host, port, jobId) before they hand off to
+ * the join script itself. Returns a real job bound to the caller.
+ */
+app.get('/v1/join-script', (req, res) => {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const userId = Number(req.query.userId || req.query.userid || (sessionUser ? sessionUser.userId : 1)) || 1;
+  const placeId = Number(req.query.placeId || req.query.placeid || 1818);
+
+  try {
+    const job = createJoinJob(userId, placeId);
+    const ticket = createAuthTicket(userId, placeId, {
+      port: job.port,
+      serverJobId: job.jobId,
+    });
+
+    const joinScriptUrl = `${publicOrigin}/game/Join.ashx?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket.ticket)}&serverPort=${job.port}&jobId=${encodeURIComponent(job.jobId)}`;
+
+    audit('join_script_issued', {
+      ip: security.clientIp(req),
+      userId: String(userId),
+      placeId,
+      jobId: job.jobId,
+    });
+
+    return res.json({
+      ok: true,
+      status: 2,
+      jobId: job.jobId,
+      serverJobId: job.jobId,
+      placeId,
+      userId: String(userId),
+      ip: gameServerHost,
+      port: job.port,
+      serverPort: job.port,
+      maxPlayers: job.maxPlayers,
+      joinScriptUrl,
+      authenticationUrl: `${publicOrigin}/Login/Negotiate.ashx`,
+      authenticationTicket: ticket.ticket,
+      clientTicket: ticket.ticket,
+      expiresAt: new Date(ticket.expiresAt).toISOString(),
+      message: null,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: 'join-script-failed',
+      message: error && error.message ? error.message : 'Could not build a join script.',
+    });
+  }
 });
 
 app.post('/api/avatar/wear', (req, res) => {
@@ -1865,23 +2539,39 @@ app.post('/api/launch-game', (req, res) => {
   const placeId = Number(req.body.placeId || req.body.placeid || req.query.placeId || 1818);
 
   try {
-    const allocation = allocatePlayerToServer(userId, placeId);
+    // One call creates (or reuses) the job AND binds the player to it, so the
+    // ticket, the jobId and the port can never disagree with each other.
+    const job = createJoinJob(userId, placeId);
     const ticket = createAuthTicket(userId, placeId, {
-      port: allocation.port,
-      serverJobId: allocation.serverJobId,
+      port: job.port,
+      serverJobId: job.jobId,
     });
 
-    const playUrl = `/play?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket.ticket)}&serverPort=${allocation.port}&jobId=${encodeURIComponent(allocation.serverJobId)}`;
+    const playUrl = `/play?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket.ticket)}&serverPort=${job.port}&jobId=${encodeURIComponent(job.jobId)}`;
+
+    audit('launch_game', {
+      ip: security.clientIp(req),
+      userId: String(userId),
+      placeId: Number(placeId),
+      jobId: job.jobId,
+    });
 
     return res.json({
       ok: true,
       started: true,
       userId: String(userId),
       placeId: Number(placeId),
-      port: Number(allocation.port),
-      serverJobId: String(allocation.serverJobId),
+      port: Number(job.port),
+      // Roblox-style naming: jobId is the canonical server identifier.
+      jobId: String(job.jobId),
+      serverJobId: String(job.jobId),
+      serverHost: job.serverHost,
+      playerCount: job.playerCount,
+      maxPlayers: job.maxPlayers,
+      isNewServer: job.created,
       ticket: ticket.ticket,
       authTicket: ticket.authTicket,
+      expiresAt: new Date(ticket.expiresAt).toISOString(),
       launchURI: playUrl,
       playUrl,
       nativeLaunch: {
@@ -1897,6 +2587,18 @@ app.post('/api/launch-game', (req, res) => {
       message: error && error.message ? error.message : 'Failed to build a playable game launch.',
     });
   }
+});
+
+/**
+ * Live status of a single job. Clients poll this after joining so they can
+ * detect a dead/expired server instead of hanging forever.
+ */
+app.get('/api/jobs/:jobId', (req, res) => {
+  const status = getJobStatus(String(req.params.jobId || ''));
+  if (!status) {
+    return res.status(404).json({ ok: false, error: 'job-not-found', jobId: req.params.jobId });
+  }
+  return res.json(status);
 });
 
 app.get('/game/join', (req, res) => {
@@ -2286,6 +2988,156 @@ app.post('/Data/Upload.ashx', express.raw({ type: '*/*', limit: '100mb' }), (req
   });
 });
 
+/**
+ * Resolve an asset id to a stored record, accepting the several shapes the
+ * asset DB can use (numeric id, string id, or a name match).
+ */
+function resolveAssetById(assetId) {
+  const assets = getAssets();
+  const wanted = String(assetId || '').trim();
+  if (!wanted) {
+    return null;
+  }
+
+  if (assets[wanted]) {
+    return assets[wanted];
+  }
+
+  return Object.values(assets).find((asset) => {
+    if (!asset || typeof asset !== 'object') return false;
+    return String(asset.id) === wanted
+      || String(asset.assetId) === wanted
+      || String(asset.currentVersionId) === wanted;
+  }) || null;
+}
+
+// Studio handshake store: pending sign-in nonces waiting to be linked to a
+// web session. Persisted so a restart mid-handshake does not corrupt state.
+const studioHandshakePath = storage.dataPath('studio-handshakes.json');
+
+function getStudioHandshakes() {
+  const now = Date.now();
+  const stored = readJson(studioHandshakePath, {});
+  const fresh = {};
+  for (const [nonce, entry] of Object.entries(stored || {})) {
+    if (entry && Number(entry.expiresAt) > now) {
+      fresh[nonce] = entry;
+    }
+  }
+  return fresh;
+}
+
+/**
+ * Roblox-style asset fetch. Legacy clients request assets from several paths
+ * and expect the bytes plus a sensible content type, or a clean 404 when the
+ * asset is unknown (so the client can fall back gracefully instead of hanging).
+ *
+ * Paths handled: /Asset, /asset/, /v1/asset, /v1/assets/:id
+ */
+function serveAssetById(req, res) {
+  const rawId = req.params.id || req.query.id || req.query.assetId || req.query.assetid;
+  const asset = resolveAssetById(rawId);
+
+  if (!asset) {
+    return res.status(404).json({
+      ok: false,
+      error: 'asset-not-found',
+      assetId: rawId ? String(rawId) : null,
+    });
+  }
+
+  // If we know where the file lives on disk, stream it.
+  const candidatePaths = [asset.path, asset.filePath, asset.file]
+    .filter(Boolean)
+    .map((p) => (path.isAbsolute(p) ? p : path.join(releaseRoot, p)));
+
+  const found = candidatePaths.find((p) => {
+    try {
+      return fs.existsSync(p);
+    } catch (error) {
+      return false;
+    }
+  });
+
+  if (found) {
+    const binary = req.query.format === 'binary' || req.query.binary === '1';
+    const contentType = binary ? 'application/octet-stream' : 'application/octet-stream';
+    const stat = fs.statSync(found);
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Length', stat.size);
+    res.setHeader('Cache-Control', 'no-store');
+    return fs.createReadStream(found).pipe(res);
+  }
+
+  // No file on disk: return the asset metadata so the client at least knows the
+  // asset exists and what type it is.
+  return res.json({
+    ok: true,
+    assetId: Number(asset.id || asset.assetId) || null,
+    name: asset.name || 'Asset',
+    assetType: asset.assetType || asset.className || 'Model',
+    currentVersionId: Number(asset.currentVersionId || asset.id) || null,
+    description: asset.description || '',
+    creatorId: Number(asset.creatorId || 1),
+    creatorName: asset.creatorName || 'LuckyBlox Studio',
+    version: Number(asset.version || 1),
+    contentUrl: `${publicOrigin}/asset/?id=${Number(asset.id || asset.assetId) || 0}`,
+    hasFile: false,
+    updatedAt: asset.updatedAt || new Date().toISOString(),
+  });
+}
+
+app.get('/v1/assets/:id', serveAssetById);
+app.get('/v1/asset/:id', serveAssetById);
+app.get('/asset/', serveAssetById);
+app.get('/Asset/', serveAssetById);
+
+/**
+ * Asset metadata lookup by id, used by the client before downloading so it can
+ * decide whether it already has the asset cached.
+ */
+app.get('/v1/asset-metadata/:id', (req, res) => {
+  const asset = resolveAssetById(req.params.id);
+  if (!asset) {
+    return res.status(404).json({ ok: false, error: 'asset-not-found' });
+  }
+  return res.json({
+    ok: true,
+    assetId: Number(asset.id || asset.assetId) || null,
+    name: asset.name || 'Asset',
+    assetType: asset.assetType || asset.className || 'Model',
+    currentVersionId: Number(asset.currentVersionId || asset.id) || null,
+    description: asset.description || '',
+    creatorId: Number(asset.creatorId || 1),
+    creatorName: asset.creatorName || 'LuckyBlox Studio',
+    version: Number(asset.version || 1),
+    updatedAt: asset.updatedAt || new Date().toISOString(),
+  });
+});
+
+/**
+ * The catalogue the client and the site use to browse purchasable items. Real
+ * records from the asset DB plus the built-in catalog items.
+ */
+app.get('/v1/catalog', (req, res) => {
+  const assets = Object.values(getAssets()).map((asset) => ({
+    id: Number(asset.id || asset.assetId) || 0,
+    name: asset.name || 'Asset',
+    assetType: asset.assetType || asset.className || 'Model',
+    price: Number(asset.price || 0),
+    creatorName: asset.creatorName || 'LuckyBlox Studio',
+    thumbnailUrl: `${publicOrigin}/asset/?id=${Number(asset.id || asset.assetId) || 0}`,
+    updatedAt: asset.updatedAt || new Date().toISOString(),
+  }));
+
+  const category = String(req.query.category || req.query.assetType || '').toLowerCase();
+  const filtered = category
+    ? assets.filter((a) => String(a.assetType).toLowerCase() === category)
+    : assets;
+
+  res.json({ ok: true, total: filtered.length, items: filtered });
+});
+
 app.get('/asset/:name', (req, res) => {
   const names = [req.params.name, `${req.params.name}.rbxl`, `${req.params.name}.rbxm`];
   let filePath = null;
@@ -2671,6 +3523,15 @@ app.get('/dev/docs/auth', requireDevAuth, (req, res) => {
 const bridgeServer = app.listen(PORT, HOST, () => {
   console.log(`LuckyBlox HTTP DB bridge listening on http://${HOST}:${PORT}`);
   console.log(`LuckyBlox public base URL: ${publicBaseUrl}`);
+
+  // Make it obvious whether accounts will survive a redeploy. On a free Render
+  // instance without a disk they will not, and that looks like "fake" data.
+  const store = storage.describeStorage();
+  console.log(`[luckyblox] data dir: ${store.dataDir}`);
+  console.log(`[luckyblox] persistence: ${store.persistent ? 'ON' : 'OFF'} - ${store.note}`);
+
+  // Periodically prune expired rate-limit buckets so memory stays bounded.
+  setInterval(() => security.pruneRateLimits(), 10 * 60 * 1000).unref();
 });
 
 // Never let a listen error become an unhandled 'error' event.

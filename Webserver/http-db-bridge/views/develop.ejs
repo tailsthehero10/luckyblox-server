@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    <%= title %>
+  </title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <style>
+    :root {
+      --ink: #e8edf6;
+      --muted: #8593a8;
+      --edge: #232b39;
+      --panel: #141922;
+      --green: #00b06f;
+      --blue: #4c9aff;
+    }
+
+    body {
+      margin: 0;
+      background: #0b0e14;
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+
+    .develop-shell {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 28px 22px 60px;
+    }
+
+    .develop-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .develop-title {
+      font-size: 1.7rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin: 0;
+    }
+
+    .develop-sub {
+      color: var(--muted);
+      margin: 6px 0 0;
+      font-size: 0.92rem;
+    }
+
+    .develop-account {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--panel);
+      border: 1px solid var(--edge);
+      border-radius: 12px;
+      padding: 8px 14px;
+    }
+
+    .develop-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #3d7dff, #1f4fd8);
+      font-weight: 800;
+    }
+
+    .develop-role {
+      font-size: 0.64rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--edge);
+      color: var(--muted);
+    }
+
+    .develop-role.owner {
+      border-color: rgba(255, 176, 32, 0.5);
+      color: #ffb020;
+      background: rgba(255, 176, 32, 0.1);
+    }
+
+    .develop-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .develop-stat {
+      background: var(--panel);
+      border: 1px solid var(--edge);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .develop-stat span {
+      display: block;
+      font-size: 0.66rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .develop-stat strong {
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .develop-panel {
+      background: var(--panel);
+      border: 1px solid var(--edge);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+
+    .develop-panel-head {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--edge);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .develop-panel-body {
+      padding: 6px 0;
+    }
+
+    .develop-row {
+      display: grid;
+      grid-template-columns: 1fr 130px 110px 90px;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 18px;
+      border-bottom: 1px solid rgba(35, 43, 57, 0.5);
+      font-size: 0.9rem;
+    }
+
+    .develop-row:last-child {
+      border-bottom: none;
+    }
+
+    .develop-row.head {
+      color: var(--muted);
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .develop-name {
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .develop-meta {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .pill {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .pill.public {
+      background: rgba(0, 176, 111, 0.14);
+      color: #6ee7b7;
+      border: 1px solid rgba(0, 176, 111, 0.4);
+    }
+
+    .pill.draft {
+      background: rgba(255, 176, 32, 0.12);
+      color: #ffb020;
+      border: 1px solid rgba(255, 176, 32, 0.4);
+    }
+
+    .develop-empty {
+      padding: 26px 18px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.9rem;
+    }
+
+    .develop-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .develop-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--edge);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 0.88rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .develop-btn.primary {
+      background: linear-gradient(180deg, #3d7dff, #2358d8);
+      border-color: transparent;
+    }
+
+    .develop-btn:hover {
+      filter: brightness(1.1);
+    }
+
+    .develop-btn[aria-disabled="true"] {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+
+    .notice {
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 0.86rem;
+      margin-bottom: 18px;
+      background: rgba(76, 154, 255, 0.1);
+      border: 1px solid rgba(76, 154, 255, 0.35);
+      color: #bcd7ff;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="develop-shell">
+    <div class="develop-top">
+      <div>
+        <h1 class="develop-title">Creator Hub</h1>
+        <p class="develop-sub">Create, manage, and publish experiences on LuckyBlox.</p>
+      </div>
+      <div class="develop-account">
+        <div class="develop-avatar">
+          <%= String(user.username || 'L' ).slice(0,1).toUpperCase() %>
+        </div>
+        <div>
+          <div style="font-weight:700;">
+            <%= user.username %>
+          </div>
+          <div class="develop-meta">ID <%= user.userId %>
+          </div>
+        </div>
+        <span class="develop-role <%= isOwner ? 'owner' : '' %>">
+          <%= isOwner ? 'Owner' : 'Creator' %>
+        </span>
+      </div>
+    </div>
+
+    <% if (!signedIn) { %>
+      <div class="notice">
+        You are browsing as a guest. <a href="/signin?redirect=/develop" style="color:#7dd3fc;">Sign in</a> to publish
+        experiences and manage your places.
+      </div>
+      <% } %>
+
+        <div class="develop-stats">
+          <div class="develop-stat"><span>Your experiences</span><strong>
+              <%= stats.places %>
+            </strong></div>
+          <div class="develop-stat"><span>Public places</span><strong>
+              <%= stats.publicPlaces %>
+            </strong></div>
+          <div class="develop-stat"><span>Assets</span><strong>
+              <%= stats.assets %>
+            </strong></div>
+          <div class="develop-stat"><span>Total visits</span><strong>
+              <%= stats.visits %>
+            </strong></div>
+        </div>
+
+        <div class="develop-panel">
+          <div class="develop-panel-head">
+            <span>Your experiences</span>
+            <div class="develop-actions">
+              <a class="develop-btn" href="/studio<%= '?userId=' + user.userId %>">Open Studio</a>
+              <a class="develop-btn primary" href="/games"
+                aria-disabled="<%= places.length ? 'false' : 'true' %>">Browse games</a>
+            </div>
+          </div>
+          <div class="develop-panel-body">
+            <% if (places.length) { %>
+              <div class="develop-row head">
+                <span>Experience</span><span>Visibility</span><span>Visits</span><span>Place ID</span>
+              </div>
+              <% places.forEach((place)=> { %>
+                <div class="develop-row">
+                  <div>
+                    <div class="develop-name">
+                      <%= place.name %>
+                    </div>
+                    <div class="develop-meta">
+                      <%= place.description || 'No description yet.' %>
+                    </div>
+                  </div>
+                  <span><span class="pill <%= place.visibility === 'Public' ? 'public' : 'draft' %>">
+                      <%= place.visibility || 'Private' %>
+                    </span></span>
+                  <span class="develop-meta">
+                    <%= place.visits %>
+                  </span>
+                  <span class="develop-meta">
+                    <%= place.placeId %>
+                  </span>
+                </div>
+                <% }) %>
+                  <% } else { %>
+                    <div class="develop-empty">You have not created an experience yet. Publish one from Studio to see it
+                      here.</div>
+                    <% } %>
+          </div>
+        </div>
+
+        <div class="develop-panel">
+          <div class="develop-panel-head"><span>Published assets</span></div>
+          <div class="develop-panel-body">
+            <% if (assets.length) { %>
+              <% assets.forEach((asset)=> { %>
+                <div class="develop-row" style="grid-template-columns: 1fr 130px 110px 90px;">
+                  <div>
+                    <div class="develop-name">
+                      <%= asset.name %>
+                    </div>
+                    <div class="develop-meta">
+                      <%= asset.assetType %>
+                    </div>
+                  </div>
+                  <span class="develop-meta">
+                    <%= asset.creatorName %>
+                  </span>
+                  <span class="develop-meta">R$ <%= asset.price %></span>
+                  <span class="develop-meta">#<%= asset.id %></span>
+                </div>
+                <% }) %>
+                  <% } else { %>
+                    <div class="develop-empty">No assets published yet.</div>
+                    <% } %>
+          </div>
+        </div>
+  </div>
+  <script src="/legacy-nav.js"></script>
+</body>
+
+</html>
