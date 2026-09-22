@@ -64,6 +64,12 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 app.use('/legacy-nav.js', express.static(path.join(__dirname, 'public', 'legacy-nav.js')));
+// Serve the site icon folder so /favicon.ico, /favicon.png and the originals in
+// Webserver/site icon/ are all reachable from every page.
+const siteIconDir = path.join(releaseRoot, 'Webserver', 'site icon');
+app.use('/site-icon', express.static(siteIconDir));
+app.get('/favicon.ico', (req, res) => res.sendFile(path.join(siteIconDir, 'luckyblox.ico')));
+app.get('/favicon.png', (req, res) => res.sendFile(path.join(siteIconDir, 'luckyblox.png')));
 app.use('/ClientSettings', express.static(path.join(releaseRoot, 'Clients', '2022M', 'ClientSettings')));
 app.use('/LuckBlox.site.tk', express.static(path.join(releaseRoot, 'Clients', '2022M')));
 app.use(express.static(path.join(releaseRoot, 'Clients', '2022M')));
