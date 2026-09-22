@@ -293,10 +293,10 @@ function renderProfilePage(userId) {
   const user = users.find((entry) => entry.id === String(userId)) || users[0];
 
   const inventoryRows = [
-    ['Classic Fedora', 'Hat', 'R$ 150'],
-    ['Brickwave Tee', 'Shirt', 'R$ 90'],
-    ['Cargo Gray', 'Pants', 'R$ 85'],
-    ['Launch Device', 'Gear', 'R$ 260']
+    ['Classic Fedora', 'Hat', 'R\$ 150'],
+    ['Brickwave Tee', 'Shirt', 'R\$ 90'],
+    ['Cargo Gray', 'Pants', 'R\$ 85'],
+    ['Launch Device', 'Gear', 'R\$ 260']
   ].map((row) => `
     <div class="rbx-inventory-row">
       <span>${row[0]}</span>
@@ -354,6 +354,7 @@ function renderProfilePage(userId) {
     </div>
   `);
 }
+
 
 function renderGamePage(gameId) {
   const game = games.find((entry) => entry.id === String(gameId)) || games[0];

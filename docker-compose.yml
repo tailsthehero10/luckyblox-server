@@ -1,17 +1,13 @@
-version: '3.8'
-
 services:
   luckblox-launcher-server:
     build: 
-      context: "E:/LuckyBloxLauncher/NEW LKL/Release/luckyblox-server"
+      context: .
       dockerfile: Dockerfile
     container_name: luckblox-node-fast
     ports:
       - "3001:3001"
       - "3002:3002"
     volumes:
-      # Maps your exact Windows E: drive folder into the fast Linux Docker environment
-      - "E:/LuckyBloxLauncher/NEW LKL/Release/luckyblox-server:/app"
-      - /app/node_modules                  
+      - .:/app
       - /app/Webserver/http-db-bridge/node_modules
     restart: always

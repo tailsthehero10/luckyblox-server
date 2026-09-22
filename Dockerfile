@@ -1,22 +1,19 @@
 FROM node:18-alpine
 
-# Set high-performance production environment variables
 ENV NODE_ENV=production
 
 WORKDIR /app
 
-# 1. Copy package files first to leverage Docker layer caching
+# Copy the dependency configurations first
 COPY Webserver/http-db-bridge/package*.json ./Webserver/http-db-bridge/
-COPY package*.json ./
 
-# 2. Install dependencies cleanly and fast
-RUN cd Webserver/http-db-bridge && npm ci --only=production
-RUN npm ci --only=production --ignore-scripts
+# Install the dependencies cleanly inside the container
+RUN cd Webserver/http-db-bridge && npm ci --omit=dev
 
-# 3. Copy the rest of the application files
-COPY . .
+# Copy the actual script code so the files exist inside the container
+COPY server.js ./
+COPY Webserver/ ./Webserver/
 
 EXPOSE 3001 3002
 
-# 4. Use an explicit, optimized execution string
 CMD ["sh", "-c", "node Webserver/http-db-bridge/server.js & node server.js"]
