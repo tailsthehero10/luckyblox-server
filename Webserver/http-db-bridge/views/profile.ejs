@@ -44,7 +44,16 @@
 
       <div>
         <div class="roblox-eyebrow">Player profile</div>
-        <div class="roblox-profile-title"><%= user.username %></div>
+        <div class="roblox-profile-title">
+          <%= user.username %>
+          <% if (typeof roleBadge !== 'undefined' && roleBadge) { %>
+            <% if (roleBadge.hasImage) { %>
+              <img src="<%= roleBadge.imageUrl %>" alt="<%= roleBadge.label %>" title="<%= roleBadge.label %>" style="height:22px;width:22px;vertical-align:middle;margin-left:8px;" />
+            <% } else { %>
+              <span class="roblox-meta-pill" style="margin-left:8px;"><%= roleBadge.label %></span>
+            <% } %>
+          <% } %>
+        </div>
         <div class="roblox-meta-row">
           <span class="roblox-meta-pill">Member: <%= user.membership %></span>
           <span class="roblox-meta-pill">Join date: <%= new Date(user.joinDate || Date.now()).toLocaleDateString() %></span>

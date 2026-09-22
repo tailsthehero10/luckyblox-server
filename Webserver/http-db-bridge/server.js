@@ -280,6 +280,44 @@ function isOwnerUser(user) {
   return idMatch || nameMatch;
 }
 
+/**
+ * Resolve the role badge for a user. The site looks for an image in
+ * Assets/roles/<role>.png (served at /assets/roles/<role>.png). If no image is
+ * present we fall back to a text label so nothing renders as a broken image.
+ *
+ * The owner always resolves to the "owner" badge.
+ */
+function getRoleBadge(user) {
+  if (!user) {
+    return null;
+  }
+
+  const owner = isOwnerUser(user);
+  const rawRole = String(user.role || '').toLowerCase();
+  const role = owner ? 'owner' : (rawRole || 'player');
+
+  if (role === 'player' || !role) {
+    return null;
+  }
+
+  const label = role === 'owner' ? 'Owner' : role === 'admin' ? 'Admin' : role === 'moderator' ? 'Mod' : role;
+  const imageName = `${role}.png`;
+  const imagePath = path.join(releaseRoot, 'Assets', 'roles', imageName);
+  let hasImage = false;
+  try {
+    hasImage = fs.existsSync(imagePath);
+  } catch (error) {
+    hasImage = false;
+  }
+
+  return {
+    role,
+    label,
+    imageUrl: hasImage ? `/assets/roles/${imageName}` : null,
+    hasImage,
+  };
+}
+
 function upgradePassword(user) {
   if (!user || !user.password) return;
   // Only upgrade when the stored value is a legacy plaintext/short hash. An
@@ -817,14 +855,64 @@ function getPublishedPlaces() {
 
 function getPublicGamesForUser(userId) {
   const currentUser = getUser(userId);
-  const userGames = getPublishedPlaces().filter((entry) => {
-    const matchesAuthor = String(entry.authorId) === String(userId);
-    const matchesUsername = String(entry.author).toLowerCase() === String(currentUser.username || '').toLowerCase();
-    const isDefaultUser = String(userId) === '1' && (entry.author === 'LuckyBlox Studio' || entry.author === 'LocalPlayer');
-    return matchesAuthor || matchesUsername || isDefaultUser;
+  const targetId = String(userId);
+  const targetName = String(currentUser.username || '').toLowerCase();
+  const isOwnerId = targetId === OWNER_USER_ID;
+
+  const seen = new Set();
+  const results = [];
+
+  function add(entry) {
+    const placeId = Number(entry.placeId || entry.universeId || 0);
+    if (!placeId || seen.has(placeId)) {
+      return;
+    }
+    seen.add(placeId);
+    results.push(entry);
+  }
+
+  // 1. Places the user explicitly authored in places.json.
+  getPublishedPlaces().forEach((entry) => {
+    const matchesAuthor = String(entry.authorId) === targetId;
+    const matchesUsername = String(entry.author).toLowerCase() === targetName;
+    const isDefaultOwner = isOwnerId && (entry.author === 'LuckyBlox Studio' || entry.author === 'LocalPlayer');
+    if (matchesAuthor || matchesUsername || isDefaultOwner) {
+      add(entry);
+    }
   });
 
-  return userGames.slice(0, 8);
+  // 2. Real games from the games catalogue. These are the experiences the
+  //    server actually knows about (built from Maps), so the owner's profile
+  //    shows the full list instead of an empty panel.
+  const games = getGames();
+  Object.values(games).forEach((game) => {
+    const placeId = Number(game.placeId || 0);
+    if (!placeId) {
+      return;
+    }
+    const developer = String(game.developer || '').toLowerCase();
+    const ownsIt = isOwnerId
+      || developer === targetName
+      || developer === 'luckyblox studio'
+      || developer === 'localplayer';
+    if (ownsIt) {
+      add({
+        placeId,
+        universeId: placeId,
+        name: game.title || `Game ${placeId}`,
+        description: game.description || '',
+        author: game.developer || currentUser.username,
+        authorId: Number(userId),
+        fileName: game.mapFile || `${game.title || placeId}.rbxl`,
+        coverUrl: game.icon || '',
+        genre: game.genre || 'Adventure',
+        playerCount: Number(game.playerCount || 0),
+        publishedAt: game.updatedAt || new Date().toISOString(),
+      });
+    }
+  });
+
+  return results;
 }
 
 function getPlaceSettings(placeId) {
@@ -1701,6 +1789,8 @@ app.get('/profile', (req, res) => {
     publishedGames,
     friends: getFriendsForUser(userId),
     currency: getCurrencyForUser(user),
+    roleBadge: getRoleBadge(user),
+    games: publishedGames,
   });
 });
 
@@ -1717,6 +1807,8 @@ app.get('/profile/:userId', (req, res) => {
     publishedGames,
     friends: getFriendsForUser(userId),
     currency: getCurrencyForUser(user),
+    roleBadge: getRoleBadge(user),
+    games: publishedGames,
   });
 });
 
@@ -1733,6 +1825,8 @@ app.get('/users/:id/profile', (req, res) => {
     publishedGames,
     friends: getFriendsForUser(userId),
     currency: getCurrencyForUser(user),
+    roleBadge: getRoleBadge(user),
+    games: publishedGames,
   });
 });
 
