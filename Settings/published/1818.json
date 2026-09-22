@@ -1,0 +1,17 @@
+{
+  "placeId": 1818,
+  "universeId": 1818,
+  "gameId": "local-featured-game",
+  "creatorId": 1,
+  "creatorType": "User",
+  "name": "2018 - Full_mm2_Newest_Game",
+  "description": "Latest local featured game pre-placed for public play from the bundled Maps directory.",
+  "placeVersion": 1,
+  "version": 1,
+  "privacyType": "Public",
+  "publishedAt": "2026-09-08T00:00:00+00:00",
+  "updatedAt": "2026-09-08T00:00:00+00:00",
+  "createdAt": "2026-09-08T00:00:00+00:00",
+  "published": true,
+  "mapFile": "E:\\LuckyBloxLauncher\\NEW LKL\\Release\\Maps\\2018 - Full_mm2_Newest_Game.rbxl"
+}
