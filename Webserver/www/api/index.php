@@ -1,0 +1,52 @@
+<?php
+require_once __DIR__ . '/common.php';
+
+$info = array(
+    'name' => 'LuckyBlox Launcher API',
+    'version' => '1.0.0',
+    'services' => array(
+        'Players' => 'Load local player data and roster state',
+        'GameService' => 'Load place metadata and saved game state',
+        'SpawnService' => 'Load spawn configuration for a place',
+        'ChatService' => 'Load and update chat filter and text state',
+        'MarketplaceService' => 'Access place metadata and publishing routes',
+        'AccountService' => 'Load or update current account state',
+        'AuthService' => 'Local auth and session state',
+        'GamesService' => 'List and update local games/place metadata',
+        'InstanceService' => 'Create or query local game instances',
+        'UsersService' => 'View and update local user records',
+    ),
+    'endpoints' => array(
+        'GET /api/account.php' => 'Current account info',
+        'GET /api/auth.php' => 'Local auth/session info',
+        'POST /api/auth.php' => 'Create or update local auth/session state',
+        'GET /api/player.php?placeid=1818' => 'Load local player state',
+        'GET /api/load.php?placeid=1818' => 'Load saved place state',
+        'POST /api/save.php?placeid=1818' => 'Save place state',
+        'GET /api/spawn.php?placeid=1818' => 'Load spawn configuration',
+        'GET /api/chatfilter.php?placeid=1818' => 'Load chat filter state',
+        'POST /api/chatfilter.php?placeid=1818' => 'Update chat filter state',
+        'GET /api/text.php?placeid=1818' => 'Load text messages',
+        'POST /api/text.php?placeid=1818' => 'Save text message payloads',
+        'GET /api/services.php?placeid=1818' => 'List all available service-style APIs',
+        'GET /api/services.php?placeid=1818&service=Players' => 'Players service details',
+        'GET /api/services.php?placeid=1818&service=GameService' => 'GameService details',
+        'GET /api/services.php?placeid=1818&service=SpawnService' => 'SpawnService details',
+        'GET /api/services.php?placeid=1818&service=ChatService' => 'ChatService details',
+        'GET /api/services.php?placeid=1818&service=MarketplaceService' => 'MarketplaceService details',
+        'GET /api/services.php?placeid=1818&service=AccountService' => 'AccountService details',
+        'GET /api/services.php?placeid=1818&service=AuthService' => 'AuthService details',
+        'GET /api/services.php?placeid=1818&service=GamesService' => 'GamesService details',
+        'GET /api/services.php?placeid=1818&service=InstanceService' => 'InstanceService details',
+        'GET /api/services.php?placeid=1818&service=UsersService' => 'UsersService details',
+        'GET /api/places.php?placeid=1818' => 'Get place metadata',
+        'GET /api/games.php?placeid=1818' => 'List local games',
+        'GET /api/instance.php?placeid=1818' => 'Get local instance state',
+        'GET /api/users.php' => 'List local users',
+        'POST /api/publish.php?placeid=1818' => 'Publish a place',
+        'GET /game/load-place-info/index.php?placeid=1818' => 'Studio load-place-info compatibility endpoint',
+        'GET /game/players/1/index.php?placeid=1818' => 'Local player runtime payload',
+    ),
+);
+
+api_json_response($info);

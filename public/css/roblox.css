@@ -1,0 +1,584 @@
+:root {
+    --bg-main: #191B1D !important;
+    --bg-container: #232527 !important;
+    --border-line: #393B3D !important;
+    --text-main: #FFFFFF !important;
+    --text-muted: #B8B8B8 !important;
+    --rbx-green: #00B06F !important;
+    --rbx-blue: #00A2FF !important;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background: var(--bg-main);
+    color: var(--text-main);
+    font-family: "Gotham SSm", Arial, sans-serif;
+    line-height: 1.4;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+}
+
+a {
+    color: var(--rbx-blue);
+    text-decoration: none;
+}
+
+button,
+input {
+    font-family: inherit;
+}
+
+.rbx-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 40px;
+    background-color: var(--bg-container);
+    border-bottom: 1px solid var(--border-line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 12px;
+    box-sizing: border-box;
+    z-index: 1000;
+}
+
+.rbx-logo {
+    width: 26px;
+    height: 26px;
+    background-color: #FFFFFF;
+    transform: rotate(-8deg);
+    display: inline-block;
+}
+
+.rbx-nav-link {
+    color: var(--text-main);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0 10px;
+}
+
+.roblox-container {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: calc(100vh - 40px);
+    margin-top: 40px;
+}
+
+.rbx-sidebar {
+    background-color: var(--bg-container);
+    border-right: 1px solid var(--border-line);
+    padding-top: 12px;
+}
+
+.sidebar-item {
+    display: block;
+    padding: 10px 20px;
+    color: var(--text-main);
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.sidebar-item:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.rbx-main-content {
+    padding: 24px;
+    max-width: 1280px;
+}
+
+.rbx-hero-panel {
+    background-color: var(--bg-container);
+    border: 1px solid var(--border-line);
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 22px;
+    padding: 20px;
+}
+
+.rbx-avatar-box {
+    width: 180px;
+    height: 180px;
+    background: #000;
+    border: 1px solid var(--border-line);
+}
+
+.rbx-avatar-thumb {
+    width: 100%;
+    height: 100%;
+    background: #111;
+}
+
+.rbx-page-label {
+    color: var(--text-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+}
+
+.rbx-h1 {
+    margin: 0 0 12px 0;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.rbx-stat-strip {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.rbx-stat-strip div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.rbx-stat-strip strong {
+    color: var(--text-main);
+    font-size: 18px;
+}
+
+.rbx-stat-strip span {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.rbx-section-header {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 22px 0 14px 0;
+}
+
+.rbx-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    gap: 18px;
+}
+
+.rbx-game-tile {
+    display: block;
+    background-color: var(--bg-container);
+    border: 1px solid var(--border-line);
+    color: var(--text-main);
+    text-decoration: none;
+}
+
+.rbx-thumb {
+    width: 100%;
+    height: 180px;
+    background-color: #000000;
+    border-bottom: 1px solid var(--border-line);
+}
+
+.rbx-card-meta {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.rbx-card-meta strong {
+    color: var(--text-main);
+    font-size: 15px;
+}
+
+.rbx-card-meta span {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.rbx-game-card {
+    background-color: var(--bg-container);
+    border: 1px solid var(--border-line);
+    border-radius: 0px !important;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 640px 1fr;
+    gap: 20px;
+}
+
+.rbx-thumbnail {
+    width: 640px;
+    height: 360px;
+    background-color: #000000;
+    border: 1px solid var(--border-line);
+}
+
+.rbx-play-button {
+    background-color: var(--rbx-green);
+    color: #FFFFFF;
+    font-size: 22px;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    width: 100%;
+    padding: 14px 0;
+    cursor: pointer;
+    text-align: center;
+}
+
+.rbx-play-button:hover {
+    background-color: #008F5A;
+}
+
+.rbx-profile-header {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 20px;
+    background-color: var(--bg-container);
+    border: 1px solid var(--border-line);
+    padding: 20px;
+}
+
+.rbx-profile-avatar {
+    width: 160px;
+    height: 160px;
+    background: #000;
+    border: 1px solid var(--border-line);
+}
+
+.rbx-profile-main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.rbx-muted {
+    color: var(--text-muted);
+    margin: 0 0 10px 0;
+}
+
+.rbx-two-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.rbx-panel {
+    background-color: var(--bg-container);
+    border: 1px solid var(--border-line);
+}
+
+.rbx-panel-title {
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--border-line);
+    padding: 12px 16px;
+    font-weight: 700;
+}
+
+.rbx-panel-body {
+    padding: 16px;
+}
+
+.rbx-stat-list {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px 18px;
+    color: var(--text-main);
+}
+
+.rbx-stat-list span {
+    color: var(--text-muted);
+}
+
+.rbx-inventory-head,
+.rbx-inventory-row {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 0.8fr;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-line);
+}
+
+.rbx-inventory-head {
+    color: var(--text-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.rbx-inventory-row {
+    color: var(--text-main);
+}
+
+.rbx-meta-line {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+
+.rbx-vote-row {
+    display: grid;
+    grid-template-columns: 90px 1fr 54px;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.rbx-bar {
+    position: relative;
+    height: 12px;
+    background: #111;
+    border: 1px solid var(--border-line);
+}
+
+.rbx-bar-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: var(--rbx-green);
+}
+
+.rbx-bar-fill.bad {
+    background: #D95555;
+}
+
+.rbx-store-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    gap: 18px;
+}
+
+.rbx-store-item {
+    background-color: var(--bg-container);
+    border: 1px solid var(--border-line);
+    display: grid;
+    grid-template-columns: 70px 1fr auto;
+    gap: 12px;
+    padding: 12px;
+    align-items: center;
+}
+
+.rbx-store-icon {
+    width: 70px;
+    height: 70px;
+    border: 1px solid var(--border-line);
+}
+
+.rbx-store-text {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.rbx-store-text strong {
+    color: var(--text-main);
+    font-size: 14px;
+}
+
+.rbx-store-text span {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.rbx-store-price {
+    color: var(--rbx-green);
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.rbx-dev-head,
+.rbx-dev-row {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 0.8fr;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-line);
+}
+
+.rbx-dev-head {
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: 12px;
+}
+
+.rbx-dev-row {
+    color: var(--text-main);
+}
+
+.rbx-link {
+    color: var(--rbx-blue);
+}
+
+.game-title {
+    margin-bottom: 6px;
+}
+    margin: 0 0 10px 0;
+}
+
+.rbx-two-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.rbx-panel {
+    background-color: var(--bg-container);
+    border: 1px solid var(--border-line);
+}
+
+.rbx-panel-title {
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--border-line);
+    padding: 12px 16px;
+    font-weight: 700;
+}
+
+.rbx-panel-body {
+    padding: 16px;
+}
+
+.rbx-stat-list {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px 18px;
+    color: var(--text-main);
+}
+
+.rbx-stat-list span {
+    color: var(--text-muted);
+}
+
+.rbx-inventory-head,
+.rbx-inventory-row {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 0.8fr;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-line);
+}
+
+.rbx-inventory-head {
+    color: var(--text-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.rbx-inventory-row {
+    color: var(--text-main);
+}
+
+.rbx-meta-line {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+
+.rbx-vote-row {
+    display: grid;
+    grid-template-columns: 90px 1fr 54px;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.rbx-bar {
+    position: relative;
+    height: 12px;
+    background: #111;
+    border: 1px solid var(--border-line);
+}
+
+.rbx-bar-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: var(--rbx-green);
+}
+
+.rbx-bar-fill.bad {
+    background: #D95555;
+}
+
+.rbx-store-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    gap: 18px;
+}
+
+.rbx-store-item {
+    background-color: var(--bg-container);
+    border: 1px solid var(--border-line);
+    display: grid;
+    grid-template-columns: 70px 1fr auto;
+    gap: 12px;
+    padding: 12px;
+    align-items: center;
+}
+
+.rbx-store-icon {
+    width: 70px;
+    height: 70px;
+    border: 1px solid var(--border-line);
+}
+
+.rbx-store-text {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.rbx-store-text strong {
+    color: var(--text-main);
+    font-size: 14px;
+}
+
+.rbx-store-text span {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.rbx-store-price {
+    color: var(--rbx-green);
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.rbx-dev-head,
+.rbx-dev-row {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 0.8fr;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-line);
+}
+
+.rbx-dev-head {
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: 12px;
+}
+
+.rbx-dev-row {
+    color: var(--text-main);
+}
+
+.rbx-link {
+    color: var(--rbx-blue);
+}
+
+.game-title {
+    margin-bottom: 6px;
+}

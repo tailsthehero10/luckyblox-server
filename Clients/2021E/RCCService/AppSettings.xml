@@ -1,0 +1,4 @@
+<Settings>
+   <ContentFolder>../../../shared/content</ContentFolder>
+   <BaseUrl>http://localhost/</BaseUrl>
+</Settings>

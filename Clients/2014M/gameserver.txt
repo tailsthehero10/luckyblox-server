@@ -1,0 +1,7 @@
+game:GetService("Players").PlayerAdded:connect(function(plr)
+print(plr.Name.." Joined!")
+
+plr.Chatted:connect(function(msg)
+print(plr.Name.." : "..msg)
+end)
+end)

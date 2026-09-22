@@ -1,0 +1,44 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.epiccc.xyz/roblox.xsd" version="4">
+	<External>null</External>
+	<External>nil</External>
+	<Item class="Script" referent="RBX0">
+		<Properties>
+			<bool name="Disabled">false</bool>
+			<Content name="LinkedSource"><null></null></Content>
+			<string name="Name">AssetFixer</string>
+			<ProtectedString name="Source">local assetPropertyNames = {&quot;Texture&quot;, &quot;TextureId&quot;, &quot;SoundId&quot;, &quot;MeshId&quot;, &quot;SkyboxUp&quot;, &quot;SkyboxLf&quot;, &quot;SkyboxBk&quot;, &quot;SkyboxRt&quot;, &quot;SkyboxFt&quot;, &quot;SkyboxDn&quot;, &quot;PantsTemplate&quot;, &quot;ShirtTemplate&quot;, &quot;Graphic&quot;, &quot;Image&quot;, &quot;LinkedSource&quot;, &quot;AnimationId&quot;}
+local variations = {&quot;http://www.roblox.com/asset/%?id=&quot;, &quot;http://www.roblox.com/asset%?id=&quot;, &quot;http://.roblox.com/asset/%?id=&quot;, &quot;http://roblox.com/asset%?id=&quot;}
+
+function GetDescendants(o)
+    local allObjects = {}
+    function FindChildren(Object)
+       for i,v in pairs(Object:children()) do
+            table.insert(allObjects,v)
+            FindChildren(v)
+        end
+    end
+    FindChildren(o)
+    return allObjects
+end
+
+local replacedProperties = 0--Amount of properties changed
+
+for i, v in pairs(GetDescendants(game)) do
+&#9;for ii, property in pairs(assetPropertyNames) do
+&#9;&#9;pcall(function()
+&#9;&#9;&#9;if v[property] and not v:FindFirstChild(property) then --Check for property, make sure we&apos;re not getting a child instead of a property
+&#9;&#9;&#9;&#9;assetText = string.lower(v[property])
+&#9;&#9;&#9;&#9;for _, variation in pairs(variations) do
+&#9;&#9;&#9;&#9;&#9;v[property], matches = string.gsub(assetText, variation, &quot;http://localhost/www.civdefn.tk/asset/%?id=&quot;)
+&#9;&#9;&#9;&#9;&#9;if matches &gt; 0 then
+&#9;&#9;&#9;&#9;&#9;&#9;replacedProperties = replacedProperties + 1
+&#9;&#9;&#9;&#9;&#9;&#9;break
+&#9;&#9;&#9;&#9;&#9;end
+&#9;&#9;&#9;&#9;end
+&#9;&#9;&#9;end
+&#9;&#9;end)
+&#9;end
+end</ProtectedString>
+		</Properties>
+	</Item>
+</roblox>

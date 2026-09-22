@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/dev.css" />
+</head>
+<body>
+  <header class="roblox-topbar">
+    <div class="roblox-brand">
+      <span class="roblox-brand-mark">R</span>
+      <span>LuckyBlox Studio</span>
+    </div>
+    <nav class="roblox-nav" aria-label="Main navigation">
+      <div class="roblox-nav-links">
+        <a href="/dev">Home</a>
+        <a href="/dev/game/1818/settings">Game</a>
+        <a href="/dev/assets">Assets</a>
+        <a href="/dev/docs" class="active">API</a>
+        <div class="roblox-more-pages">
+          <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+          <div class="roblox-more-pages-dropdown">
+            <a href="/dev/create">Create Game</a>
+            <a href="/dev/docs/games">Game Engine API</a>
+            <a href="/dev/docs/places">Place API</a>
+            <a href="/dev/docs/users">User API</a>
+            <a href="/dev/docs/auth">Auth API</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+    <div class="roblox-right">
+      <span class="roblox-robux"><%= user.robux || 1200 %></span>
+      <span class="roblox-icon-button">&#9881;</span>
+      <span class="roblox-icon-button">&#128276;</span>
+      <span class="roblox-icon-button">@</span>
+      <a class="dev-btn secondary" href="/logout" style="height:32px;padding:0 10px;font-size:12px;display:inline-flex;align-items:center;line-height:1;">Sign Out</a>
+    </div>
+  </header>
+
+  <div class="dev-shell">
+    <aside class="dev-sidebar">
+      <div class="dev-sidebar-brand">Studio</div>
+      <a href="/dev"><span class="dev-sidebar-icon">&#8962;</span> Home</a>
+      <a href="/dev/create"><span class="dev-sidebar-icon">&#43;</span> Create</a>
+      <a href="/dev/game/1818/settings"><span class="dev-sidebar-icon">&#9881;</span> Settings</a>
+      <a href="/dev/assets"><span class="dev-sidebar-icon">&#9638;</span> Assets</a>
+      <a href="/dev/docs"><span class="dev-sidebar-icon">&#8505;</span> API Docs</a>
+      <a href="/dev/docs/assets" class="active"><span class="dev-sidebar-icon">&#9654;</span> Asset API</a>
+    </aside>
+
+    <main class="dev-main">
+      <div class="dev-header">
+        <div>
+          <h1>Asset API</h1>
+          <div class="dev-header-subtitle">Upload, manage, and reference game assets</div>
+        </div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/api/v1/assets</span></h3>
+        <p>List all uploaded assets.</p>
+        <div class="dev-code-block">// GET /api/v1/assets
+{
+  "ok": true,
+  "total": 12,
+  "assets": [
+    {
+      "id": 1001,
+      "name": "my-decal",
+      "assetType": "image",
+      "fileName": "my-decal.png",
+      "kind": "image",
+      "creatorId": 1,
+      "description": "A custom decal",
+      "size": 5242880,
+      "updatedAt": "..."
+    }
+  ]
+}</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/assets/upload</span></h3>
+        <p>Upload a new asset. Binary body or multipart.</p>
+        <div class="dev-code-block">// POST /api/v1/assets/upload?name=myimage&type=image
+// Content-Type: image/png
+// Body: binary PNG data (max 50MB)
+{
+  "ok": true,
+  "assetId": "123",
+  "fileName": "myimage.png",
+  "size": 5242880
+}</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/dev/assets/upload</span></h3>
+        <p>Upload asset via web UI. Multipart form data.</p>
+        <div class="dev-code-block">// POST /dev/assets/upload
+// Form: name, type, file
+{
+  "ok": true,
+  "assetId": "...",
+  "fileName": "..."
+}</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/api/v1/assets/:assetId</span></h3>
+        <p>Get asset metadata by ID.</p>
+        <div class="dev-code-block">// GET /api/v1/assets/1001
+{ "ok": true, "asset": { ... } }</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/asset/resolve</span></h3>
+        <p>Resolve asset by ID to download URL.</p>
+        <div class="dev-code-block">// POST /api/v1/asset/resolve
+// Body: { assetId: 1001 }
+{ "ok": true, "url": "/asset/1001" }</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/asset/request-upload</span></h3>
+        <p>Request an upload ticket for client-side uploads.</p>
+        <div class="dev-code-block">// POST /api/v1/asset/request-upload
+// Body: { fileName: "image.png", assetType: "image" }
+{ "ok": true, "ticket": "...", "groupId": 0 }</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3>Asset Types</h3>
+        <div class="dev-code-block">image  - PNG, 512x512 recommended for icons
+audio  - MP3, WAV
+mesh   - RBLX mesh files</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3>Game Icons</h3>
+        <p>Game icons must be <strong>512x512 pixels PNG</strong>. Upload via <code>/dev/assets/upload</code>, then set the URL in <code>/dev/game/:placeId/settings</code>.</p>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

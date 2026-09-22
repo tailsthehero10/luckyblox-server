@@ -1,0 +1,1442 @@
+:root {
+  --bg-main: #edf1f5 !important;
+  --bg-container: #ffffff !important;
+  --border-line: #d5dbe2 !important;
+  --text-main: #1d2433 !important;
+  --text-muted: #5d697a !important;
+  --rbx-green: #00a859 !important;
+  --rbx-blue: #1a5fb4 !important;
+  --rbx-header: #2f4f7f !important;
+  --rbx-header-dark: #243c68 !important;
+  --rbx-text: #1d2433 !important;
+  --rbx-muted: #5d697a !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: var(--bg-main) !important;
+  color: var(--text-main) !important;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+body {
+  background: var(--bg-main) !important;
+  color: var(--text-main) !important;
+  line-height: 1.4;
+}
+
+html {
+  background: var(--bg-main) !important;
+}
+
+body * {
+  color: inherit;
+}
+
+a {
+  color: var(--rbx-blue);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+.roblox-container {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: calc(100vh - 40px);
+  margin-top: 40px;
+}
+
+.roblox-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding: 0 18px;
+  background: linear-gradient(180deg, var(--rbx-header) 0%, var(--rbx-header-dark) 100%);
+  border-bottom: 1px solid rgba(0,0,0,0.18);
+  z-index: 20;
+}
+
+.roblox-header-left,
+.roblox-header-right,
+.roblox-header-nav {
+  display: flex;
+  align-items: center;
+}
+
+.roblox-header-left {
+  gap: 12px;
+}
+
+.rbx-logo {
+  width: 26px;
+  height: 26px;
+  transform: rotate(-8deg);
+  background: white;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.14);
+}
+
+.roblox-header-brand {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-main);
+}
+
+.roblox-header-nav {
+  gap: 18px;
+  margin-left: 20px;
+  font-size: 12px;
+  color: var(--text-main);
+}
+
+.roblox-header-nav a {
+  color: var(--text-main);
+  opacity: 0.9;
+}
+
+.roblox-header-right {
+  gap: 14px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.roblox-header-robux {
+  color: var(--rbx-green);
+}
+
+.roblox-sidebar {
+  background: var(--bg-container);
+  border-right: 1px solid var(--border-line);
+  min-height: calc(100vh - 40px);
+  padding: 20px 14px;
+}
+
+.roblox-sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.roblox-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: var(--text-main);
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.roblox-sidebar-item:hover {
+  background: rgba(255,255,255,0.02);
+  border-color: var(--border-line);
+  text-decoration: none;
+}
+
+.roblox-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px;
+  background: var(--bg-main) !important;
+  min-height: calc(100vh - 40px);
+}
+
+.roblox-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 52px;
+  padding: 12px 18px;
+  background: linear-gradient(180deg, var(--rbx-header) 0%, var(--rbx-header-dark) 100%);
+  border-bottom: 1px solid rgba(0,0,0,0.18);
+  box-shadow: inset 0 -1px 0 rgba(255,255,255,0.06);
+}
+
+.roblox-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+.roblox-brand-mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  font-size: 0.8rem;
+  line-height: 1;
+  background: linear-gradient(135deg, #3c8cff 0%, #7ac1ff 100%);
+  border: 1px solid rgba(255,255,255,0.22);
+  color: #ffffff;
+}
+
+.roblox-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+.roblox-nav a {
+  color: #edf3ff;
+  opacity: 0.9;
+}
+
+.roblox-nav a:hover {
+  color: #ffffff !important;
+  text-decoration: none !important;
+}
+
+.roblox-more-pages {
+  position: relative;
+  display: inline-block;
+}
+
+.roblox-more-pages-btn {
+  background: transparent;
+  border: 0;
+  color: #d8d8d8 !important;
+  cursor: pointer;
+  font-size: 13px !important;
+  font-weight: 500;
+  padding: 8px 10px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+}
+
+.roblox-more-pages-btn:hover {
+  color: #ffffff !important;
+  background: rgba(255,255,255,0.08);
+}
+
+.roblox-more-pages-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 220px;
+  background: #ffffff !important;
+  border: 1px solid #d6d6d6 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.14) !important;
+  padding: 8px 0;
+  z-index: 200 !important;
+  overflow: hidden;
+}
+
+.roblox-more-pages:hover .roblox-more-pages-dropdown {
+  display: block;
+}
+
+.roblox-more-pages-dropdown a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  color: #393b3d !important;
+  font-size: 13px;
+  text-decoration: none !important;
+  white-space: nowrap;
+}
+
+.roblox-more-pages-dropdown a:hover {
+  background: #f2f2f2 !important;
+  color: #0074bd !important;
+  text-decoration: none !important;
+}
+
+.roblox-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.roblox-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+.roblox-robux {
+  font-weight: 700;
+  color: var(--rbx-green);
+}
+
+.roblox-icon-button {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  border: 1px solid var(--border-line);
+  background: rgba(255,255,255,0.02);
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+.roblox-hero,
+.roblox-profile-hero {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 28px;
+  padding: 24px;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
+  border: 1px solid var(--border-line);
+  box-shadow: 0 6px 18px rgba(43,62,90,0.08);
+  margin-top: 22px;
+}
+
+.roblox-game-icon,
+.roblox-avatar-poster,
+.roblox-avatar-stage {
+  position: relative;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  min-height: 230px;
+  border: 1px solid var(--border-line);
+  background-color: rgba(255,255,255,0.02);
+}
+
+.roblox-game-icon::before,
+.roblox-avatar-poster::before,
+.roblox-avatar-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.18));
+}
+
+.roblox-title-block {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.roblox-eyebrow {
+  display: inline-block;
+  padding: 6px 10px;
+  background: rgba(0,162,255,0.12);
+  border: 1px solid rgba(0,162,255,0.4);
+  border-radius: 4px;
+  color: #dfeeff;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.roblox-profile-title,
+.roblox-game-title,
+.roblox-hero h1 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: clamp(2rem, 3vw, 2.6rem);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.roblox-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.roblox-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-line);
+  border-radius: 4px;
+  padding: 7px 10px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.roblox-description {
+  color: var(--text-muted);
+  font-size: 0.98rem;
+  line-height: 1.6;
+  margin-bottom: 18px;
+  max-width: 860px;
+}
+
+.roblox-action-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rbx-play-button,
+.roblox-play-button,
+.roblox-primary-button {
+  background: linear-gradient(180deg, #21c36b 0%, #109a50 100%) !important;
+  color: #fff !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(0,0,0,0.1) !important;
+  border-radius: 4px !important;
+  width: 100% !important;
+  padding: 12px 0 !important;
+  cursor: pointer !important;
+  transition: 0.15s ease !important;
+  box-shadow: 0 8px 18px rgba(13,150,84,0.22);
+}
+
+.rbx-play-button:hover,
+.roblox-play-button:hover,
+.roblox-primary-button:hover {
+  filter: brightness(1.03);
+}
+
+.roblox-secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 4px;
+  border: 1px solid var(--border-line);
+  background: rgba(255,255,255,0.02);
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.roblox-secondary-button:hover {
+  text-decoration: none;
+  background: rgba(255,255,255,0.04);
+}
+
+.roblox-content-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.roblox-panel {
+  background: var(--bg-container);
+  border: 1px solid var(--border-line);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.04);
+}
+
+.roblox-panel-header {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border-line);
+  background: rgba(255,255,255,0.01);
+  color: var(--text-main);
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.roblox-panel-body {
+  padding: 18px;
+}
+
+.roblox-stats-grid,
+.roblox-profile-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.roblox-stat-tile {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-line);
+  padding: 16px;
+}
+
+.roblox-stat-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.roblox-stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--text-main);
+}
+
+.roblox-votes {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.roblox-vote-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 56px;
+  align-items: center;
+  gap: 12px;
+}
+
+.roblox-vote-label {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.roblox-bar {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-line);
+  overflow: hidden;
+}
+
+.roblox-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00a2ff, #00b06f);
+}
+
+.roblox-vote-value {
+  text-align: right;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.roblox-tag-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.roblox-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-line);
+  background: rgba(0,162,255,0.08);
+  color: #d7eeff;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.roblox-avatar-poster {
+  min-height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.2)), rgba(255,255,255,0.02);
+}
+
+.roblox-avatar-big {
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f0a45f, #f4d263);
+  border: 4px solid rgba(255,255,255,0.2);
+  display: grid;
+  place-items: center;
+  font-size: 2.4rem;
+  font-weight: 700;
+  position: relative;
+  z-index: 1;
+}
+
+.roblox-bio-box {
+  margin-top: 18px;
+  padding: 16px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-line);
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.roblox-side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.roblox-render-box {
+  position: relative;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(0,0,0,0.18), rgba(24,33,42,0.7));
+  border: 1px solid var(--border-line);
+}
+
+.roblox-render-content {
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.roblox-large-avatar {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f0a45f, #f4d263);
+  border: 4px solid rgba(255,255,255,0.2);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 12px;
+  font-size: 2.8rem;
+  font-weight: 700;
+}
+
+.roblox-asset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.roblox-asset-item {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-line);
+  color: var(--text-main);
+}
+
+.roblox-asset-item:hover {
+  text-decoration: none;
+  border-color: rgba(0,162,255,0.45);
+}
+
+.roblox-asset-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(0,162,255,0.28), rgba(0,176,111,0.3));
+  border: 1px solid rgba(255,255,255,0.12);
+  font-weight: 700;
+}
+
+.roblox-asset-name {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.roblox-asset-type {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.roblox-asset-tag {
+  padding: 6px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,162,255,0.35);
+  background: rgba(0,162,255,0.08);
+  color: #dceeff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.roblox-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.roblox-detail-list > div {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.35fr) 1fr;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-line);
+}
+
+.roblox-detail-list > div:first-child {
+  padding-top: 0;
+}
+
+.roblox-detail-list > div:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.roblox-detail-list span {
+  color: var(--text-muted);
+}
+
+.roblox-detail-value {
+  overflow-wrap: anywhere;
+  font-weight: 400;
+}
+
+.roblox-status-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text-main);
+}
+
+.roblox-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--rbx-green);
+  box-shadow: 0 0 0 2px rgba(0, 168, 89, 0.14);
+}
+
+.roblox-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 24px;
+  margin-top: 22px;
+}
+
+.roblox-avatar-stage {
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.25));
+}
+
+.roblox-avatar-render {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.roblox-avatar-render .roblox-large-avatar {
+  width: 156px;
+  height: 156px;
+}
+
+.roblox-asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.roblox-asset-card {
+  padding: 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-line);
+  min-height: 130px;
+}
+
+.roblox-asset-card.selected {
+  border-color: rgba(0,162,255,0.45);
+  background: rgba(0,162,255,0.06);
+}
+
+.roblox-asset-preview {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: linear-gradient(135deg, rgba(0,162,255,0.2), rgba(0,176,111,0.28));
+  font-weight: 700;
+}
+
+.roblox-asset-card .roblox-asset-name {
+  margin-top: 10px;
+}
+
+.roblox-asset-card .roblox-asset-type {
+  margin-bottom: 10px;
+}
+
+.roblox-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.roblox-toggle input {
+  accent-color: var(--rbx-green);
+}
+
+@media (max-width: 980px) {
+  .roblox-hero,
+  .roblox-profile-hero,
+  .roblox-layout,
+  .roblox-content-grid,
+  .roblox-container {
+    grid-template-columns: 1fr;
+  }
+
+  .roblox-stats-grid,
+  .roblox-profile-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .roblox-topbar {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .roblox-page {
+    padding: 16px;
+  }
+
+  .roblox-stats-grid,
+  .roblox-profile-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .roblox-detail-list > div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
+.signin-shell,
+.account-shell,
+.studio-shell {
+  min-height: calc(100vh - 50px) !important;
+  margin-top: 50px !important;
+  padding: 24px !important;
+  background: var(--bg-main) !important;
+  color: var(--text-main) !important;
+}
+
+.signin-card,
+.account-card,
+.studio-panel {
+  background: var(--bg-container) !important;
+  border: 1px solid var(--border-line) !important;
+  border-radius: 2px !important;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.04) !important;
+  color: var(--text-main) !important;
+}
+
+.signin-card {
+  width: min(460px, 100%) !important;
+}
+
+.signin-header {
+  background: linear-gradient(180deg, var(--rbx-header) 0%, var(--rbx-header-dark) 100%) !important;
+  border-bottom: 1px solid rgba(0,0,0,0.18) !important;
+  border-radius: 0 !important;
+}
+
+.signin-brand-mark {
+  background: #ffffff !important;
+  color: var(--rbx-header-dark) !important;
+  border-radius: 2px !important;
+}
+
+.signin-title,
+.signin-subtitle,
+.signin-field label,
+.signin-meta,
+.account-shell .label,
+.studio-shell .muted {
+  color: var(--text-main) !important;
+}
+
+.signin-field input,
+.settings-form input,
+.settings-form textarea,
+.settings-form select {
+  border: 1px solid var(--border-line) !important;
+  border-radius: 2px !important;
+  background: #ffffff !important;
+  color: var(--text-main) !important;
+}
+
+.signin-button,
+.primary-button,
+.studio-button {
+  background: linear-gradient(180deg, #21c36b 0%, #109a50 100%) !important;
+  border: 1px solid rgba(0,0,0,0.1) !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+}
+
+.secondary-button,
+.studio-button.secondary {
+  background: #f5f7fa !important;
+  border: 1px solid var(--border-line) !important;
+  border-radius: 2px !important;
+  color: var(--text-main) !important;
+}
+
+.account-shell,
+.studio-shell {
+  max-width: 1200px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.account-card,
+.studio-panel {
+  padding: 18px !important;
+}
+
+.account-shell .small-box,
+.studio-place {
+  background: #f8fafc !important;
+  border: 1px solid var(--border-line) !important;
+  border-radius: 2px !important;
+  color: var(--text-main) !important;
+}
+
+.account-shell .value,
+.studio-brand,
+.studio-place h3 {
+  color: var(--text-main) !important;
+}
+
+.studio-topbar {
+  min-height: 52px !important;
+  padding: 12px 18px !important;
+  background: linear-gradient(180deg, var(--rbx-header) 0%, var(--rbx-header-dark) 100%) !important;
+  color: #ffffff !important;
+}
+
+.studio-brand {
+  color: #ffffff !important;
+  font-size: 18px !important;
+}
+
+.studio-grid {
+  gap: 24px !important;
+}
+
+.studio-list,
+.settings-form {
+  gap: 12px !important;
+}
+
+.status-chip {
+  border-radius: 2px !important;
+  background: rgba(0,168,89,0.1) !important;
+  color: #08783f !important;
+}
+
+@media (max-width: 760px) {
+  .studio-grid,
+  .account-shell .row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.roblox-game-icon {
+  aspect-ratio: 1 / 1 !important;
+  min-height: 210px !important;
+  background-image: url('https://tr.rbxcdn.com/180DAY-d111e601a049bc036dbee4dd47894778/768/432/GameIcon6/Webp/noFilter') !important;
+  background-size: contain !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+.roblox-game-list-icon {
+  width: 52px !important;
+  height: 52px !important;
+  aspect-ratio: 1 / 1 !important;
+  background-image: url('https://tr.rbxcdn.com/180DAY-d111e601a049bc036dbee4dd47894778/768/432/GameIcon6/Webp/noFilter') !important;
+  background-size: contain !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  border-radius: 0 !important;
+}
+
+.legacy-global-nav {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 22px !important;
+  min-width: 0 !important;
+}
+
+.legacy-global-nav a {
+  padding: 16px 0 !important;
+  color: #d8d8d8 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  white-space: nowrap !important;
+  text-decoration: none !important;
+}
+
+.legacy-global-nav a:hover,
+.legacy-global-nav a:focus {
+  color: #ffffff !important;
+  text-decoration: none !important;
+}
+
+.legacy-shell {
+  padding-left: 190px !important;
+  padding-top: 50px !important;
+  background: #f2f2f2 !important;
+}
+
+.legacy-shell .roblox-topbar {
+  position: fixed !important;
+  top: 0 !important;
+  left: 190px !important;
+  right: 0 !important;
+  z-index: 25 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+.legacy-sidebar {
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  z-index: 30 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 190px !important;
+  padding: 0 12px !important;
+  background: #ffffff !important;
+  border-right: 1px solid #d6d6d6 !important;
+}
+
+.legacy-sidebar-title {
+  display: flex !important;
+  align-items: center !important;
+  height: 50px !important;
+  margin: 0 -12px 12px !important;
+  padding: 0 16px !important;
+  background: #191919 !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+.legacy-sidebar a {
+  display: block !important;
+  padding: 10px 12px !important;
+  margin: 1px 0 !important;
+  border-left: 3px solid transparent !important;
+  color: #555555 !important;
+  font-size: 13px !important;
+  text-decoration: none !important;
+}
+
+.legacy-sidebar a:hover,
+.legacy-sidebar a.active {
+  background: #f0f0f0 !important;
+  border-left-color: #0074bd !important;
+  color: #0074bd !important;
+  text-decoration: none !important;
+}
+
+@media (max-width: 760px) {
+  .legacy-shell {
+    padding-left: 0 !important;
+    padding-top: 50px !important;
+  }
+
+  .legacy-shell .roblox-topbar {
+    left: 0 !important;
+    right: 0 !important;
+  }
+
+  .legacy-sidebar {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    padding: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid #d6d6d6 !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+  }
+
+  .legacy-sidebar-title {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .legacy-sidebar a {
+    margin: 0 !important;
+    border-left: 0 !important;
+    border-bottom: 3px solid transparent !important;
+  }
+
+  .legacy-sidebar a:hover,
+  .legacy-sidebar a.active {
+    border-left: 0 !important;
+    border-bottom-color: #0074bd !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .legacy-global-nav {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    gap: 14px !important;
+  }
+
+  .legacy-global-nav a {
+    padding: 10px 0 !important;
+  }
+}
+
+.roblox-hero .roblox-game-icon::before {
+  display: none !important;
+}
+
+:root {
+  --bg-main: #f2f2f2 !important;
+  --bg-container: #ffffff !important;
+  --border-line: #d6d6d6 !important;
+  --text-main: #393b3d !important;
+  --text-muted: #757575 !important;
+  --rbx-green: #00b259 !important;
+  --rbx-blue: #0074bd !important;
+  --rbx-header: #191919 !important;
+  --rbx-header-dark: #191919 !important;
+  --rbx-text: #393b3d !important;
+  --rbx-muted: #757575 !important;
+}
+
+html,
+body {
+  background: #f2f2f2 !important;
+  color: #393b3d !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 14px !important;
+}
+
+.roblox-page {
+  max-width: none !important;
+  padding: 50px 0 36px !important;
+  background: #f2f2f2 !important;
+}
+
+.roblox-topbar {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 100 !important;
+  min-height: 50px !important;
+  margin: 0 !important;
+  padding: 0 28px !important;
+  background: #191919 !important;
+  border-bottom: 1px solid #333333 !important;
+  box-shadow: none !important;
+}
+
+.roblox-brand {
+  gap: 9px !important;
+  font-size: 13px !important;
+  letter-spacing: 0.04em !important;
+}
+
+.roblox-brand-mark {
+  width: 25px !important;
+  height: 25px !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  border: 0 !important;
+  color: #191919 !important;
+}
+
+.roblox-nav,
+.roblox-nav-links {
+  gap: 24px !important;
+  font-size: 13px !important;
+}
+
+.roblox-nav a {
+  color: #d8d8d8 !important;
+  opacity: 1 !important;
+}
+
+.roblox-nav a:hover {
+  color: #ffffff !important;
+  text-decoration: none !important;
+}
+
+.roblox-right {
+  gap: 10px !important;
+  color: #d8d8d8 !important;
+  font-size: 12px !important;
+}
+
+.roblox-robux {
+  color: #8bd6a7 !important;
+}
+
+.roblox-icon-button {
+  width: 24px !important;
+  height: 24px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #d8d8d8 !important;
+}
+
+.roblox-hero,
+.roblox-profile-hero {
+  max-width: 1180px !important;
+  margin: 22px auto 0 !important;
+  padding: 20px !important;
+  gap: 20px !important;
+  background: #ffffff !important;
+  border: 1px solid #d6d6d6 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.roblox-game-icon,
+.roblox-avatar-poster,
+.roblox-avatar-stage {
+  min-height: 210px !important;
+  border-radius: 0 !important;
+  background-color: #e5e5e5 !important;
+}
+
+.roblox-game-icon::before,
+.roblox-avatar-poster::before,
+.roblox-avatar-stage::before {
+  background: none !important;
+}
+
+.roblox-hero > div:last-child,
+.roblox-profile-hero > div:last-child {
+  min-width: 0;
+}
+
+.roblox-hero h1,
+.roblox-profile-title,
+.roblox-game-title {
+  font-size: 28px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+}
+
+.roblox-eyebrow {
+  padding: 0 !important;
+  margin-bottom: 8px !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: #757575 !important;
+  font-size: 11px !important;
+  letter-spacing: 0.08em !important;
+}
+
+.roblox-meta-row {
+  gap: 8px !important;
+  margin: 14px 0 !important;
+}
+
+.roblox-meta-pill,
+.roblox-tag {
+  padding: 5px 8px !important;
+  border-radius: 0 !important;
+  background: #f7f7f7 !important;
+  border: 1px solid #d6d6d6 !important;
+  color: #757575 !important;
+  font-size: 12px !important;
+}
+
+.roblox-description {
+  color: #555555 !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.roblox-primary-button,
+.roblox-play-button,
+.rbx-play-button,
+.signin-button,
+.primary-button,
+.studio-button {
+  width: auto !important;
+  min-height: 38px !important;
+  padding: 0 18px !important;
+  border-radius: 2px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+
+.roblox-secondary-button,
+.secondary-button,
+.studio-button.secondary {
+  min-height: 36px !important;
+  padding: 0 14px !important;
+  border-radius: 2px !important;
+  background: #ffffff !important;
+  border: 1px solid #bcbcbc !important;
+  color: #393b3d !important;
+  font-size: 13px !important;
+}
+
+.roblox-content-grid,
+.roblox-layout {
+  max-width: 1180px !important;
+  margin: 20px auto 0 !important;
+  gap: 20px !important;
+}
+
+.roblox-panel,
+.account-card,
+.studio-panel,
+.signin-card {
+  border-radius: 0 !important;
+  border: 1px solid #d6d6d6 !important;
+  box-shadow: none !important;
+}
+
+.roblox-panel-header {
+  padding: 13px 16px !important;
+  background: #f7f7f7 !important;
+  color: #393b3d !important;
+  border-bottom: 1px solid #d6d6d6 !important;
+  font-size: 14px !important;
+}
+
+.roblox-panel-body {
+  padding: 16px !important;
+}
+
+.roblox-asset-item,
+.roblox-asset-card,
+.roblox-stat-tile,
+.roblox-bio-box,
+.account-shell .small-box,
+.studio-place {
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  border: 1px solid #d6d6d6 !important;
+}
+
+.roblox-asset-icon,
+.roblox-asset-preview,
+.roblox-asset-tag {
+  border-radius: 0 !important;
+}
+
+.roblox-bar {
+  border-radius: 0 !important;
+  background: #eeeeee !important;
+}
+
+.roblox-bar-fill {
+  background: #00a2e8 !important;
+}
+
+.roblox-status-dot {
+  border-radius: 50% !important;
+}
+
+.signin-shell,
+.account-shell,
+.studio-shell {
+  background: #f2f2f2 !important;
+}
+
+.signin-header,
+.studio-topbar {
+  background: #191919 !important;
+  border-radius: 0 !important;
+}
+
+.signin-title {
+  font-size: 25px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+}
+
+@media (max-width: 760px) {
+  .roblox-topbar {
+    padding: 10px 16px !important;
+    flex-wrap: wrap;
+  }
+
+  .roblox-nav-links {
+    gap: 12px !important;
+  }
+
+  .roblox-right {
+    display: none !important;
+  }
+
+  .roblox-more-pages-dropdown {
+    position: static !important;
+    min-width: 100% !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    padding: 4px 0 !important;
+    background: transparent !important;
+  }
+
+  .roblox-more-pages:hover .roblox-more-pages-dropdown {
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  .roblox-more-pages-dropdown a {
+    padding: 8px 16px !important;
+    color: #d8d8d8 !important;
+  }
+
+  .roblox-more-pages-dropdown a:hover {
+    background: rgba(255,255,255,0.06) !important;
+    color: #ffffff !important;
+  }
+}

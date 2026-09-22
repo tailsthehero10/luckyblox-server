@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+<body>
+  <div class="roblox-page">
+    <header class="roblox-topbar">
+      <div class="roblox-brand">
+        <span class="roblox-brand-mark">R</span>
+        <span>LuckyBlox</span>
+      </div>
+
+      <nav class="roblox-nav">
+        <div class="roblox-nav-links">
+          <a href="/">Home</a>
+          <a href="/games">Games</a>
+          <div class="roblox-more-pages">
+            <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+            <div class="roblox-more-pages-dropdown">
+              <a href="/profile?userId=<%= user.userId %>">Profile</a>
+              <a href="/avatar?userId=<%= user.userId %>">Avatar</a>
+              <a href="/studio">Studio</a>
+              <a href="/account">Account</a>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div class="roblox-right">
+        <span class="roblox-robux">1200</span>
+        <span class="roblox-icon-button">⚙</span>
+        <span class="roblox-icon-button">🔔</span>
+      </div>
+    </header>
+
+    <section class="roblox-profile-hero">
+      <div class="roblox-avatar-poster">
+        <div class="roblox-avatar-big"><%= user.username.slice(0,1).toUpperCase() %></div>
+      </div>
+
+      <div>
+        <div class="roblox-eyebrow">Player profile</div>
+        <div class="roblox-profile-title"><%= user.username %></div>
+        <div class="roblox-meta-row">
+          <span class="roblox-meta-pill">Member: <%= user.membership %></span>
+          <span class="roblox-meta-pill">Join date: <%= new Date(user.joinDate || Date.now()).toLocaleDateString() %></span>
+          <span class="roblox-meta-pill">ID: <%= user.userId %></span>
+        </div>
+
+        <div class="roblox-bio-box">
+          <strong style="color: var(--rbx-text); display:block; margin-bottom:8px;">About</strong>
+          <%= user.bio %>
+        </div>
+      </div>
+    </section>
+
+    <section class="roblox-content-grid">
+      <div class="roblox-panel">
+        <div class="roblox-panel-header">Statistics</div>
+        <div class="roblox-panel-body">
+          <div class="roblox-profile-stats-grid">
+            <div class="roblox-stat-tile">
+              <span class="roblox-stat-label">Friends</span>
+              <span class="roblox-stat-value"><%= user.stats.friends %></span>
+            </div>
+            <div class="roblox-stat-tile">
+              <span class="roblox-stat-label">Followers</span>
+              <span class="roblox-stat-value"><%= user.stats.followers %></span>
+            </div>
+            <div class="roblox-stat-tile">
+              <span class="roblox-stat-label">Games Played</span>
+              <span class="roblox-stat-value"><%= user.stats.plays %></span>
+            </div>
+            <div class="roblox-stat-tile">
+              <span class="roblox-stat-label">Created</span>
+              <span class="roblox-stat-value"><%= user.stats.created %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="roblox-side-stack">
+        <div class="roblox-panel">
+          <div class="roblox-panel-header">Current dressed avatar</div>
+          <div class="roblox-panel-body">
+            <div class="roblox-render-box">
+              <div class="roblox-render-content">
+                <div class="roblox-large-avatar"><%= user.username.slice(0,1).toUpperCase() %></div>
+                <div style="font-weight:700; color: var(--rbx-text);"><%= user.username %></div>
+                <div style="color: var(--rbx-muted);">Avatar render ready</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="roblox-content-grid">
+      <div class="roblox-panel">
+        <div class="roblox-panel-header">Inventory / currently wearing</div>
+        <div class="roblox-panel-body">
+          <div class="roblox-asset-list">
+            <% assets.forEach((asset) => { %>
+              <% const isWearing = user.currentlyWearing.includes(String(asset.id)); %>
+              <div class="roblox-asset-item">
+                <div class="roblox-asset-icon"><%= asset.name.slice(0,1).toUpperCase() %></div>
+                <div>
+                  <div class="roblox-asset-name"><%= asset.name %></div>
+                  <div class="roblox-asset-type"><%= asset.assetType %> · ID <%= asset.id %></div>
+                </div>
+                <div class="roblox-asset-tag"><%= isWearing ? 'Wearing' : 'Owned' %></div>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+
+      <div class="roblox-panel">
+        <div class="roblox-panel-header">Quick links</div>
+        <div class="roblox-panel-body">
+          <div class="roblox-asset-list">
+            <a class="roblox-asset-item" href="/avatar?userId=<%= user.userId %>">
+              <div class="roblox-asset-icon">A</div>
+              <div>
+                <div class="roblox-asset-name">Customize avatar</div>
+                <div class="roblox-asset-type">Outfit and appearance</div>
+              </div>
+              <div class="roblox-asset-tag">Open</div>
+            </a>
+            <a class="roblox-asset-item" href="/games">
+              <div class="roblox-asset-icon">G</div>
+              <div>
+                <div class="roblox-asset-name">Explore games</div>
+                <div class="roblox-asset-type">Launch local experiences</div>
+              </div>
+              <div class="roblox-asset-tag">Browse</div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="roblox-content-grid" style="margin-top: 20px;">
+      <div class="roblox-panel" style="grid-column: 1 / -1;">
+        <div class="roblox-panel-header">Publicly published games</div>
+        <div class="roblox-panel-body">
+          <% if (publishedGames && publishedGames.length) { %>
+            <div class="roblox-asset-list">
+              <% publishedGames.forEach((game) => { %>
+                <a class="roblox-asset-item" href="/game/<%= game.placeId %>?userId=<%= user.userId %>">
+                  <div class="roblox-asset-icon"><%= game.name.slice(0,1).toUpperCase() %></div>
+                  <div>
+                    <div class="roblox-asset-name"><%= game.name %></div>
+                    <div class="roblox-asset-type"><%= game.description %></div>
+                  </div>
+                  <div class="roblox-asset-tag">Public</div>
+                </a>
+              <% }) %>
+            </div>
+          <% } else { %>
+            <div class="roblox-muted">No public games yet.</div>
+          <% } %>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="/legacy-nav.js"></script>
+</body>
+</html>

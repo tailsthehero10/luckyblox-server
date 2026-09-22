@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/dev.css" />
+</head>
+<body>
+  <header class="roblox-topbar">
+    <div class="roblox-brand">
+      <span class="roblox-brand-mark">R</span>
+      <span>LuckyBlox Studio</span>
+    </div>
+    <nav class="roblox-nav" aria-label="Main navigation">
+      <div class="roblox-nav-links">
+        <a href="/dev">Home</a>
+        <a href="/dev/game/1818/settings">Game</a>
+        <a href="/dev/assets">Assets</a>
+        <a href="/dev/docs" class="active">API</a>
+        <div class="roblox-more-pages">
+          <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+          <div class="roblox-more-pages-dropdown">
+            <a href="/dev/create">Create Game</a>
+            <a href="/dev/docs/games">Game Engine API</a>
+            <a href="/dev/docs/places">Place API</a>
+            <a href="/dev/docs/users">User API</a>
+            <a href="/dev/docs/auth">Auth API</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+    <div class="roblox-right">
+      <span class="roblox-robux"><%= user.robux || 1200 %></span>
+      <span class="roblox-icon-button">&#9881;</span>
+      <span class="roblox-icon-button">&#128276;</span>
+      <span class="roblox-icon-button">@</span>
+      <a class="dev-btn secondary" href="/logout" style="height:32px;padding:0 10px;font-size:12px;display:inline-flex;align-items:center;line-height:1;">Sign Out</a>
+    </div>
+  </header>
+
+  <div class="dev-shell">
+    <aside class="dev-sidebar">
+      <div class="dev-sidebar-brand">Studio</div>
+      <a href="/dev"><span class="dev-sidebar-icon">&#8962;</span> Home</a>
+      <a href="/dev/create"><span class="dev-sidebar-icon">&#43;</span> Create</a>
+      <a href="/dev/game/1818/settings"><span class="dev-sidebar-icon">&#9881;</span> Settings</a>
+      <a href="/dev/assets"><span class="dev-sidebar-icon">&#9638;</span> Assets</a>
+      <a href="/dev/docs"><span class="dev-sidebar-icon">&#8505;</span> API Docs</a>
+      <a href="/dev/docs/places" class="active"><span class="dev-sidebar-icon">&#9654;</span> Place API</a>
+    </aside>
+
+    <main class="dev-main">
+      <div class="dev-header">
+        <div>
+          <h1>Place API</h1>
+          <div class="dev-header-subtitle">Create, configure, and manage places</div>
+        </div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/api/v1/places</span></h3>
+        <p>List all places.</p>
+        <div class="dev-code-block">{
+  "ok": true,
+  "total": 3,
+  "places": [
+    {
+      "placeId": 1818,
+      "universeId": 1818,
+      "name": "LuckyBlox Arena",
+      "description": "A fun obby",
+      "fileName": "Arena.rbblx",
+      "version": 2,
+      "author": "LocalPlayer",
+      "maxPlayers": 20,
+      "visibility": "Public",
+      "genre": "Adventure",
+      "updatedAt": "2026-09-13T12:00:00Z"
+    }
+  ]
+}</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/places</span></h3>
+        <p>Create a new place. Accepts raw body (.rbxlx) or JSON.</p>
+        <div class="dev-code-block">// POST /api/v1/places?name=MyPlace
+// Content-Type: application/octet-stream
+// Body: raw .rbxlx bytes
+{
+  "ok": true,
+  "placeId": 1819,
+  "fileName": "MyPlace.rbblx"
+}</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/api/v1/places/:placeId</span></h3>
+        <p>Get place details by ID.</p>
+        <div class="dev-code-block">// GET /api/v1/places/1818
+{ "ok": true, "place": { ... } }</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/studio-open-place/v1/openplace</span></h3>
+        <p>Open a place in Studio client by ID.</p>
+        <div class="dev-code-block">// GET /studio-open-place/v1/openplace?placeId=1818
+// Returns studio launch data
+{
+  "ok": true,
+  "placeId": 1818,
+  "filePath": "/workspace/saved_places/Place_1818.rbblx"
+}</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/places/:placeId/settings</span></h3>
+        <p>Update place settings (name, description, visibility).</p>
+        <div class="dev-code-block">// POST /api/v1/places/1818/settings
+// Body: { name: "New Name", description: "..." }
+{ "ok": true, "settings": { ... } }</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/places/:placeId/upload</span></h3>
+        <p>Upload an asset to a place.</p>
+        <div class="dev-code-block">// POST /api/v1/places/1818/upload
+// Content-Type: multipart/form-data
+{ "ok": true, "assetId": "123" }</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method delete">DELETE</span><span class="dev-endpoint">/api/v1/places/:placeId</span></h3>
+        <p>Delete a place.</p>
+        <div class="dev-code-block">// DELETE /api/v1/places/1818
+{ "ok": true }</div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

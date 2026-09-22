@@ -1,0 +1,15 @@
+RewriteEngine On
+
+RewriteRule ^LuckBlox\.site\.tk/login/?$ /LuckBlox.site.tk/signin/ [R=302,L]
+
+# Keep the standard Roblox-era navigation routes available from the local portal.
+RewriteRule ^LuckBlox\.site\.tk/(catalog|develop|avatar|inventory|friends|followers|following|messages|groups|robux|login|logout|notifications|search|badges|transactions|premium|download|install|discover|create|events|giftcards|careers|jobs|blog|privacy|terms|parents|accessibility|contact|support)/?$ /legacy-page.php?page=$1 [L,QSA]
+
+# Serve /page as /page.php when the PHP file exists
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.+)$ $1.php [L,QSA]
+
+# Allow directory-style pages such as /Page/Otherpage/ to load index.php automatically
+DirectoryIndex index.php

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+<body>
+  <div class="roblox-page">
+    <header class="roblox-topbar">
+      <div class="roblox-brand">
+        <span class="roblox-brand-mark">R</span>
+        <span>LuckyBlox</span>
+      </div>
+
+      <nav class="roblox-nav" aria-label="Main navigation">
+        <div class="roblox-nav-links">
+          <a href="/">Home</a>
+          <a href="/games">Games</a>
+          <div class="roblox-more-pages">
+            <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+            <div class="roblox-more-pages-dropdown">
+              <a href="/profile?userId=<%= userId %>">Profile</a>
+              <a href="/avatar?userId=<%= userId %>">Avatar</a>
+              <a href="/game?placeId=<%= placeId %>">Game</a>
+              <a href="/studio">Studio</a>
+              <a href="/account">Account</a>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div class="roblox-right">
+        <span class="roblox-robux"><%= user.robux || 1200 %></span>
+        <span class="roblox-icon-button">&#9881;</span>
+        <span class="roblox-icon-button">&#128276;</span>
+        <span class="roblox-icon-button">@</span>
+      </div>
+    </header>
+
+    <section class="roblox-hero">
+      <div class="roblox-game-icon" style="background-image: url('<%= gameName ? 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80' : '' %>');"></div>
+
+      <div>
+        <div class="roblox-eyebrow">Play</div>
+        <div class="roblox-title-block">
+          <h1><%= gameName %></h1>
+          <a class="roblox-play-button" href="luckyblox-player:1+launchmode:play+gameinfo:<%= ticket %>&placeId=<%= placeId %>&serverPort=<%= serverPort %>&jobId=<%= jobId %>">Play now</a>
+        </div>
+
+        <div class="roblox-meta-row">
+          <span class="roblox-meta-pill">Place ID: <%= placeId %></span>
+          <span class="roblox-meta-pill">Job: <%= jobId %></span>
+        </div>
+
+        <div class="roblox-description">Launch this experience on your local device.</div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/legacy-nav.js"></script>
+</body>
+</html>

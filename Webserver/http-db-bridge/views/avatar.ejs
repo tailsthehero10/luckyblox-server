@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+<body>
+  <div class="roblox-page">
+    <header class="roblox-topbar">
+      <div class="roblox-brand">
+        <span class="roblox-brand-mark">R</span>
+        <span>LuckyBlox</span>
+      </div>
+
+      <nav class="roblox-nav">
+        <div class="roblox-nav-links">
+          <a href="/">Home</a>
+          <a href="/games">Games</a>
+          <div class="roblox-more-pages">
+            <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+            <div class="roblox-more-pages-dropdown">
+              <a href="/profile?userId=<%= user.userId %>">Profile</a>
+              <a href="/avatar?userId=<%= user.userId %>">Avatar</a>
+              <a href="/studio">Studio</a>
+              <a href="/account">Account</a>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div class="roblox-right">
+        <span class="roblox-robux">1200</span>
+        <span class="roblox-icon-button">⚙</span>
+        <span class="roblox-icon-button">🔔</span>
+      </div>
+    </header>
+
+    <section class="roblox-layout">
+      <div class="roblox-panel">
+        <div class="roblox-panel-header">Avatar customization</div>
+        <div class="roblox-panel-body">
+          <div class="roblox-avatar-stage">
+            <div class="roblox-avatar-render">
+              <div class="roblox-large-avatar"><%= user.username.slice(0, 1).toUpperCase() %></div>
+              <div style="font-weight:700; font-size:1.1rem; margin-top: 12px;"><%= user.username %></div>
+              <div style="color: var(--rbx-muted);">Currently wearing <%= Array.isArray(user.currentlyWearing) ? user.currentlyWearing.length : 0 %> items</div>
+            </div>
+          </div>
+
+          <div class="roblox-button-row" style="margin-top: 18px;">
+            <button class="roblox-primary-button" id="save-wear" type="button">Save outfit</button>
+            <button class="roblox-secondary-button" id="randomize-wear" type="button">Randomize</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="roblox-panel">
+        <div class="roblox-panel-header">Inventory</div>
+        <div class="roblox-panel-body">
+          <div class="roblox-asset-grid">
+            <% const wearingList = Array.isArray(user.currentlyWearing) ? user.currentlyWearing : []; %>
+            <% assets.forEach((asset) => { %>
+              <% const isSelected = wearingList.includes(String(asset.id)); %>
+              <div class="roblox-asset-card <%= isSelected ? 'selected' : '' %>" data-asset-id="<%= asset.id %>">
+                <div class="roblox-asset-preview"><%= asset.name.slice(0, 1).toUpperCase() %></div>
+                <div class="roblox-asset-name"><%= asset.name %></div>
+                <div class="roblox-asset-type"><%= asset.assetType %> · ID <%= asset.id %></div>
+                <button class="roblox-secondary-button" type="button" data-select-asset="<%= asset.id %>"><%= isSelected ? 'Selected' : 'Select' %></button>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const userId = '<%= user.userId %>';
+    const selected = new Set(<%- JSON.stringify(wearingList || []) %>);
+
+    document.addEventListener('click', async (event) => {
+      const assetButton = event.target.closest('[data-select-asset]');
+      if (assetButton) {
+        const assetId = String(assetButton.getAttribute('data-select-asset'));
+        if (selected.has(assetId)) {
+          selected.delete(assetId);
+        } else {
+          selected.add(assetId);
+        }
+
+        assetButton.textContent = selected.has(assetId) ? 'Selected' : 'Select';
+        const card = assetButton.closest('.roblox-asset-card');
+        if (card) {
+          card.classList.toggle('selected', selected.has(assetId));
+        }
+        return;
+      }
+
+      if (event.target.id === 'save-wear') {
+        const response = await fetch('/api/avatar/wear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, assetIds: Array.from(selected) })
+        });
+
+        const payload = await response.json();
+        if (payload.ok) {
+          window.location.reload();
+        }
+      }
+
+      if (event.target.id === 'randomize-wear') {
+        const items = Array.from(document.querySelectorAll('[data-select-asset]'));
+        const randomCount = Math.min(3, items.length);
+        selected.clear();
+
+        for (let i = 0; i < randomCount; i += 1) {
+          const item = items[Math.floor(Math.random() * items.length)];
+          if (!item) continue;
+          const assetId = String(item.getAttribute('data-select-asset'));
+          selected.add(assetId);
+          const card = item.closest('.roblox-asset-card');
+          if (card) card.classList.add('selected');
+          item.textContent = 'Selected';
+        }
+      }
+    });
+  </script>
+  <script src="/legacy-nav.js"></script>
+</body>
+</html>

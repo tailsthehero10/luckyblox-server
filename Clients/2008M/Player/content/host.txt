@@ -1,0 +1,111 @@
+-- Init server
+local networkServer = game:GetService("NetworkServer")
+networkServer:Start(5252)
+
+-- Loading map
+game:Load("rbxasset://temp.rbxl")
+
+-- Saying to client "Hey bro just launch this [ Content Deleted ] game!!!!"
+game:GetService("RunService"):Run()
+
+-- Fixing bug where character won't load
+local players = game:GetService("Players")
+
+function onPlayerAdded(player)
+    wait(2)
+    player:LoadCharacter()
+end
+
+players.ChildAdded:connect(onPlayerAdded)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- script by atpied
+
+

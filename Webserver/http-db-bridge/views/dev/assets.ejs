@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/dev.css" />
+</head>
+<body>
+  <header class="roblox-topbar">
+    <div class="roblox-brand">
+      <span class="roblox-brand-mark">R</span>
+      <span>LuckyBlox Studio</span>
+    </div>
+    <nav class="roblox-nav" aria-label="Main navigation">
+      <div class="roblox-nav-links">
+        <a href="/dev">Home</a>
+        <a href="/dev/game/1818/settings">Game</a>
+        <a href="/dev/assets" class="active">Assets</a>
+        <a href="/dev/docs">API</a>
+        <div class="roblox-more-pages">
+          <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+          <div class="roblox-more-pages-dropdown">
+            <a href="/dev/create">Create Game</a>
+            <a href="/dev/docs/games">Game Engine API</a>
+            <a href="/dev/docs/places">Place API</a>
+            <a href="/dev/docs/users">User API</a>
+            <a href="/dev/docs/auth">Auth API</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+    <div class="roblox-right">
+      <span class="roblox-robux"><%= user.robux || 1200 %></span>
+      <span class="roblox-icon-button">&#9881;</span>
+      <span class="roblox-icon-button">&#128276;</span>
+      <span class="roblox-icon-button">@</span>
+      <a class="dev-btn secondary" href="/logout" style="height:32px;padding:0 10px;font-size:12px;display:inline-flex;align-items:center;line-height:1;">Sign Out</a>
+    </div>
+  </header>
+
+  <div class="dev-shell">
+    <aside class="dev-sidebar">
+      <div class="dev-sidebar-brand">Studio</div>
+      <a href="/dev"><span class="dev-sidebar-icon">&#8962;</span> Home</a>
+      <a href="/dev/create"><span class="dev-sidebar-icon">&#43;</span> Create</a>
+      <a href="/dev/game/1818/settings"><span class="dev-sidebar-icon">&#9881;</span> Settings</a>
+      <a href="/dev/assets" class="active"><span class="dev-sidebar-icon">&#9638;</span> Assets</a>
+      <a href="/dev/docs"><span class="dev-sidebar-icon">&#8505;</span> API Docs</a>
+    </aside>
+
+    <main class="dev-main">
+      <div class="dev-header">
+        <div>
+          <h1>Decals &amp; Audio</h1>
+          <div class="dev-header-subtitle">Upload and manage images, audio, and game icons</div>
+        </div>
+        <a class="dev-btn primary" href="#upload-section">Upload</a>
+      </div>
+
+      <div id="upload-section" class="dev-card" style="margin-bottom:20px;">
+        <h3 style="margin:0 0 12px;">Upload Asset</h3>
+        <form id="uploadForm" method="POST" action="/dev/assets/upload" enctype="multipart/form-data">
+          <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+            <label style="display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--dev-muted);">
+              Name
+              <input name="name" type="text" placeholder="my-asset" required style="padding:8px 10px;border:1px solid var(--dev-border);border-radius:6px;background:var(--dev-panel);color:var(--dev-text);font-size:13px;" />
+            </label>
+            <label style="display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--dev-muted);">
+              Type
+              <select name="type" style="padding:8px 10px;border:1px solid var(--dev-border);border-radius:6px;background:var(--dev-panel);color:var(--dev-text);font-size:13px;">
+                <option value="image">Image</option>
+                <option value="audio">Audio</option>
+                <option value="mesh">Mesh</option>
+              </select>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--dev-muted);">
+              File (512x512 for images)
+              <input name="file" type="file" accept="image/*,.rbxl,.mp3,.wav" style="font-size:12px;" />
+            </label>
+            <button type="submit" class="dev-btn primary" style="height:38px;">Upload</button>
+          </div>
+        </form>
+        <div class="dev-notice info" style="margin-top:10px;margin-bottom:0;">
+          Image assets should be 512x512 pixels for game icons and decals. Audio supports MP3/WAV. Mesh files use .rbxl format.
+        </div>
+      </div>
+
+      <h2 style="margin:0 0 12px; font-size:18px;">Uploaded Assets</h2>
+      <% if (assets && assets.length > 0) { %>
+        <table class="dev-table">
+          <thead>
+            <tr><th>Name</th><th>Type</th><th>Size</th><th>File</th><th>Updated</th></tr>
+          </thead>
+          <tbody>
+            <% assets.forEach((asset) => { %>
+              <tr>
+                <td style="font-weight:600;"><%= asset.name || asset.fileName %></td>
+                <td><span class="dev-tag blue"><%= asset.assetType || asset.kind %></span></td>
+                <td><%= asset.size ? (asset.size / 1024).toFixed(1) + ' KB' : 'N/A' %></td>
+                <td><code style="font-size:11px;"><%= asset.fileName || 'N/A' %></code></td>
+                <td><%= asset.updatedAt ? new Date(asset.updatedAt).toLocaleDateString() : 'N/A' %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+
+      <% if (uploadedAssets && uploadedAssets.length > 0) { %>
+        <h2 style="margin:20px 0 12px; font-size:18px;">Saved Place Files</h2>
+        <table class="dev-table">
+          <thead>
+            <tr><th>File</th><th>Size</th></tr>
+          </thead>
+          <tbody>
+            <% uploadedAssets.forEach((f) => { %>
+              <tr>
+                <td><code style="font-size:12px;"><%= f %></code></td>
+                <td>N/A</td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+
+      <% if ((!assets || assets.length === 0) && (!uploadedAssets || uploadedAssets.length === 0)) { %>
+        <div class="dev-placeholder">No assets uploaded yet. Use the upload form above.</div>
+      <% } %>
+    </main>
+  </div>
+
+  <script>
+    document.getElementById('uploadForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const response = await fetch('/dev/assets/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      if (data.ok) {
+        alert('Asset uploaded successfully!');
+        event.target.reset();
+        location.reload();
+      } else {
+        alert('Upload failed.');
+      }
+    });
+  </script>
+</body>
+</html>

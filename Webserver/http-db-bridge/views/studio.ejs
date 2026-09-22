@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <style>
+    body { margin: 0; background: #101214; color: #f3f4f5; font-family: Arial, sans-serif; }
+    .studio-shell { max-width: 1200px; margin: 0 auto; padding: 28px; }
+    .studio-topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+    .studio-brand { font-size: 28px; font-weight: 700; }
+    .studio-actions { display:flex; gap:12px; }
+    .studio-button { background:#1f9d55; color:white; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; }
+    .studio-button.secondary { background:#2b2d31; }
+    .studio-panel { background:#171a1d; border:1px solid #292d31; border-radius:12px; padding:18px; margin-bottom:18px; }
+    .studio-grid { display:grid; grid-template-columns: 1.3fr 0.7fr; gap:18px; }
+    .studio-list { display:flex; flex-direction:column; gap:12px; }
+    .studio-place { padding:12px; border-radius:10px; background:#1d2125; border:1px solid #2a2e33; }
+    .studio-place h3 { margin:0 0 6px; }
+    .studio-place p { margin:0; color:#c9ced4; }
+    .muted { color:#b6bcc6; }
+    .status-chip { display:inline-block; margin-top:8px; padding:4px 8px; border-radius:999px; background:#1d3b2b; color:#9ce6b1; font-size:12px; }
+    .settings-form { display:flex; flex-direction:column; gap:10px; }
+    .settings-form label { display:flex; flex-direction:column; gap:6px; color:#dfe5eb; font-size:13px; }
+    .settings-form input, .settings-form textarea, .settings-form select { width:100%; border-radius:8px; border:1px solid #353b41; background:#0f1215; color:#f3f5f7; padding:9px 10px; box-sizing:border-box; }
+    .settings-form textarea { min-height:80px; resize:vertical; }
+    .settings-actions { display:flex; gap:10px; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="studio-shell">
+    <div class="studio-topbar">
+      <div class="studio-brand">LuckyBlox Studio</div>
+      <div class="studio-actions">
+        <button class="studio-button" id="savePlaceBtn">Save</button>
+        <button class="studio-button secondary" id="publishPlaceBtn">Publish</button>
+      </div>
+    </div>
+
+    <div class="studio-grid">
+      <div class="studio-panel">
+        <h2 style="margin-top:0;">Places</h2>
+        <div class="studio-list">
+          <% places.forEach((place) => { %>
+            <div class="studio-place">
+              <h3><%= place.name %></h3>
+              <p><%= place.description %></p>
+              <div class="status-chip">Place ID: <%= place.placeId %></div>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+
+      <div class="studio-panel">
+        <h2 style="margin-top:0;">Account</h2>
+        <div class="muted">User: <%= user.username %></div>
+        <div class="muted">Membership: <%= user.membershipStatus || 'Premium' %></div>
+        <div class="muted">Role: Creator</div>
+        <div style="margin-top:16px;">
+          <button class="studio-button secondary" id="refreshStudioBtn">Refresh account</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="studio-panel" style="margin-top:18px;">
+      <h2 style="margin-top:0;">Game Settings</h2>
+      <form id="gameSettingsForm" class="settings-form">
+        <label>
+          Name
+          <input id="settingsName" name="name" type="text" value="LuckyBlox Arena" />
+        </label>
+        <label>
+          Description
+          <textarea id="settingsDescription" name="description">Local Studio place</textarea>
+        </label>
+        <label>
+          Visibility
+          <select id="settingsVisibility" name="visibility">
+            <option value="Public">Public</option>
+            <option value="Friends">Friends</option>
+            <option value="Private">Private</option>
+          </select>
+        </label>
+        <label>
+          Genre
+          <input id="settingsGenre" name="genre" type="text" value="Adventure" />
+        </label>
+        <label>
+          Max Players
+          <input id="settingsMaxPlayers" name="maxPlayers" type="number" min="1" max="100" value="20" />
+        </label>
+        <div class="settings-actions">
+          <button type="submit" class="studio-button">Apply settings</button>
+          <button type="button" class="studio-button secondary" id="loadSettingsBtn">Reload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const placeId = 1818;
+
+    async function callApi(path, payload) {
+      const response = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return response.json();
+    }
+
+    async function loadGameSettings() {
+      const response = await fetch(`/api/places/${placeId}/settings`);
+      const data = await response.json();
+      if (!data.ok || !data.settings) return;
+
+      const settings = data.settings;
+      document.getElementById('settingsName').value = settings.name || 'LuckyBlox Arena';
+      document.getElementById('settingsDescription').value = settings.description || 'Local Studio place';
+      document.getElementById('settingsVisibility').value = settings.visibility || 'Public';
+      document.getElementById('settingsGenre').value = settings.genre || 'Adventure';
+      document.getElementById('settingsMaxPlayers').value = settings.maxPlayers || 20;
+    }
+
+    document.getElementById('savePlaceBtn').addEventListener('click', async () => {
+      const data = await callApi('/api/save-place', {
+        name: 'LuckyBlox Studio Place',
+        placeId,
+        description: 'Saved from local Studio workflow.',
+        author: 'LocalPlayer',
+        authorId: 1,
+        version: 1,
+        data: { mode: 'save', savedAt: new Date().toISOString() }
+      });
+      alert(data.ok ? 'Saved successfully.' : 'Save failed.');
+    });
+
+    document.getElementById('publishPlaceBtn').addEventListener('click', async () => {
+      const data = await callApi('/api/publish-place', {
+        name: 'LuckyBlox Studio Publish',
+        placeId,
+        description: 'Published from local Studio workflow.',
+        author: 'LocalPlayer',
+        authorId: 1,
+        version: 1,
+        data: { mode: 'publish', publishedAt: new Date().toISOString() }
+      });
+      alert(data.ok ? 'Published successfully.' : 'Publish failed.');
+    });
+
+    document.getElementById('refreshStudioBtn').addEventListener('click', async () => {
+      const response = await fetch('/api/account/info?userId=1');
+      const data = await response.json();
+      alert(data.ok ? 'Account refreshed successfully.' : 'Account refresh failed.');
+    });
+
+    document.getElementById('loadSettingsBtn').addEventListener('click', loadGameSettings);
+
+    document.getElementById('gameSettingsForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const payload = {
+        name: document.getElementById('settingsName').value,
+        description: document.getElementById('settingsDescription').value,
+        visibility: document.getElementById('settingsVisibility').value,
+        genre: document.getElementById('settingsGenre').value,
+        maxPlayers: Number(document.getElementById('settingsMaxPlayers').value || 20),
+      };
+
+      const data = await callApi(`/api/places/${placeId}/settings`, payload);
+      alert(data.ok ? 'Game settings saved.' : 'Game settings failed to save.');
+      loadGameSettings();
+    });
+
+    loadGameSettings();
+  </script>
+  <script src="/legacy-nav.js"></script>
+</body>
+</html>

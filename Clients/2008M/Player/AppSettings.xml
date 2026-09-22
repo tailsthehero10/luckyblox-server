@@ -1,0 +1,4 @@
+<Settings>
+        <BaseUrl>http://localhost/</BaseUrl>
+	<ContentFolder>content</ContentFolder>
+</Settings>

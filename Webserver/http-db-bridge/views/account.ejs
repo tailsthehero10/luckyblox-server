@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <style>
+    body { margin: 0; background: #101214; color: #f3f4f5; font-family: Arial, sans-serif; }
+    .account-shell { max-width: 960px; margin: 32px auto; padding: 20px; }
+    .account-card { background:#171a1d; border:1px solid #292d31; border-radius:12px; padding:24px; }
+    .label { color:#bfc5cc; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; }
+    .value { font-size:24px; font-weight:700; margin-top:12px; }
+    .row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-top:18px; }
+    .small-box { background:#1d2125; border:1px solid #2a2e33; border-radius:10px; padding:18px; }
+    .button-row { margin-top:20px; display:flex; gap:12px; }
+    .primary-button { background:#1f9d55; color:white; border:none; padding:12px 18px; border-radius:8px; cursor:pointer; }
+    .secondary-button { background:#2b2d31; color:white; border:none; padding:12px 18px; border-radius:8px; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div class="account-shell">
+    <div class="account-card">
+      <div class="label">Account</div>
+      <div class="value"><%= user.username %></div>
+      <div class="row">
+        <div class="small-box">
+          <div class="label">Membership</div>
+          <div class="value" style="font-size:18px;"><%= user.membershipStatus || 'Premium' %></div>
+        </div>
+        <div class="small-box">
+          <div class="label">Role</div>
+          <div class="value" style="font-size:18px;">Creator</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="small-box">
+          <div class="label">Published places</div>
+          <div class="value" style="font-size:18px;">1</div>
+        </div>
+        <div class="small-box">
+          <div class="label">Security</div>
+          <div class="value" style="font-size:18px;">Verified</div>
+        </div>
+      </div>
+      <div class="button-row">
+        <button class="primary-button" onclick="window.location.href='/studio?userId=<%= user.userId %>'">Open Studio</button>
+        <button class="secondary-button" onclick="window.location.href='/profile?userId=<%= user.userId %>'">Profile</button>
+      </div>
+    </div>
+  </div>
+  <script src="/legacy-nav.js"></script>
+</body>
+</html>

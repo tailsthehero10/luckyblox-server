@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+<body>
+  <div class="roblox-page">
+    <header class="roblox-topbar">
+      <div class="roblox-brand">
+        <span class="roblox-brand-mark">R</span>
+        <span>LuckyBlox</span>
+      </div>
+
+      <nav class="roblox-nav" aria-label="Main navigation">
+        <div class="roblox-nav-links">
+          <a href="/">Home</a>
+          <a href="/games">Games</a>
+          <div class="roblox-more-pages">
+            <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+            <div class="roblox-more-pages-dropdown">
+              <a href="/profile?userId=<%= user.userId %>">Profile</a>
+              <a href="/avatar?userId=<%= user.userId %>">Avatar</a>
+              <a href="/game?placeId=<%= activePlaceId %>">Game</a>
+              <a href="/studio">Studio</a>
+              <a href="/account">Account</a>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div class="roblox-right">
+        <span class="roblox-robux">1200</span>
+        <span class="roblox-icon-button">⚙</span>
+        <span class="roblox-icon-button">🔔</span>
+        <span class="roblox-icon-button">@</span>
+      </div>
+    </header>
+
+    <section class="roblox-hero">
+      <div class="roblox-game-icon" style="background-image: url('<%= featuredGame.icon %>');"></div>
+
+      <div>
+        <div class="roblox-eyebrow">Featured experience</div>
+        <div class="roblox-title-block">
+          <h1><%= featuredGame.title %></h1>
+          <button class="roblox-play-button" type="button" data-launch-place-id="<%= featuredGame.placeId %>">Play</button>
+        </div>
+
+        <div class="roblox-meta-row">
+          <span class="roblox-meta-pill">Developer: <%= featuredGame.developer %></span>
+          <span class="roblox-meta-pill">Players: <%= featuredGame.playerCount %></span>
+          <span class="roblox-meta-pill">Genre: <%= featuredGame.genre %></span>
+          <span class="roblox-meta-pill">Favorites: <%= featuredGame.favorites %></span>
+        </div>
+
+        <div class="roblox-description"><%= featuredGame.description %></div>
+
+        <div class="roblox-action-row">
+          <button class="roblox-play-button" type="button" data-launch-place-id="<%= featuredGame.placeId %>">Play now</button>
+          <a class="roblox-secondary-button" href="/game?placeId=<%= featuredGame.placeId %>">About this game</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="roblox-content-grid">
+      <div class="roblox-panel">
+        <div class="roblox-panel-header">Featured games</div>
+        <div class="roblox-panel-body">
+          <div class="roblox-asset-list">
+            <% games.forEach((game) => { %>
+              <a class="roblox-asset-item" href="/game?placeId=<%= game.placeId %>">
+                <div class="roblox-asset-icon roblox-game-list-icon" aria-label="Game thumbnail"></div>
+                <div>
+                  <div class="roblox-asset-name"><%= game.title %></div>
+                  <div class="roblox-asset-type"><%= game.genre %> · <%= game.playerCount %> online</div>
+                </div>
+                <div class="roblox-asset-tag">Open</div>
+              </a>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+
+      <aside class="roblox-side-stack">
+        <div class="roblox-panel">
+          <div class="roblox-panel-header">Current active character</div>
+          <div class="roblox-panel-body">
+            <div class="roblox-render-box">
+              <div class="roblox-render-content">
+                <div class="roblox-large-avatar"><%= user.username.slice(0,1).toUpperCase() %></div>
+                <div style="font-weight:700; color: var(--rbx-text);"><%= user.username %></div>
+                <div style="color: var(--rbx-muted);">Avatar ready</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="roblox-panel">
+          <div class="roblox-panel-header">Friends</div>
+          <div class="roblox-panel-body">
+            <div class="roblox-asset-list">
+              <% const sampleFriends = [
+                { name: 'Skylin', status: 'online' },
+                { name: 'Noco', status: 'online' },
+                { name: 'Rogue', status: 'away' },
+                { name: 'Astra', status: 'online' }
+              ]; %>
+              <% sampleFriends.forEach((friend) => { %>
+                <div class="roblox-asset-item">
+                  <div class="roblox-asset-icon"><%= friend.name.slice(0,1).toUpperCase() %></div>
+                  <div>
+                    <div class="roblox-asset-name"><%= friend.name %></div>
+                    <div class="roblox-asset-type"><%= friend.status %></div>
+                  </div>
+                  <div class="roblox-asset-tag"><%= friend.status === 'online' ? 'Live' : 'Away' %></div>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </div>
+
+  <script>
+    async function launchGame(placeId) {
+      try {
+        const response = await fetch('/api/launch-game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: 1, placeId })
+        });
+
+        const payload = await response.json();
+        if (!response.ok || !payload.ok || !payload.ticket) {
+          throw new Error(payload && payload.message ? payload.message : 'Unable to generate launch ticket.');
+        }
+
+        if (payload.playUrl) {
+          window.location.href = payload.playUrl;
+        } else if (payload.launchURI) {
+          window.location.href = payload.launchURI;
+        }
+
+        return payload;
+      } catch (error) {
+        console.error('Launch failure:', error);
+        alert('LuckyBlox failed to launch the game.');
+        return null;
+      }
+    }
+
+    document.addEventListener('click', async (event) => {
+      const trigger = event.target.closest('[data-launch-place-id]');
+      if (!trigger) return;
+
+      const placeId = Number(trigger.getAttribute('data-launch-place-id')) || 1818;
+      await launchGame(placeId);
+    });
+  </script>
+  <script src="/legacy-nav.js"></script>
+</body>
+</html>

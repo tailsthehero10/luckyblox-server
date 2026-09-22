@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/dev.css" />
+</head>
+<body>
+  <header class="roblox-topbar">
+    <div class="roblox-brand">
+      <span class="roblox-brand-mark">R</span>
+      <span>LuckyBlox Studio</span>
+    </div>
+    <nav class="roblox-nav" aria-label="Main navigation">
+      <div class="roblox-nav-links">
+        <a href="/dev" class="active">Home</a>
+        <a href="/dev/game/1818/settings">Game</a>
+        <a href="/dev/assets">Assets</a>
+        <a href="/dev/docs">API</a>
+        <div class="roblox-more-pages">
+          <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+          <div class="roblox-more-pages-dropdown">
+            <a href="/dev/create">Create Game</a>
+            <a href="/dev/docs/games">Game Engine API</a>
+            <a href="/dev/docs/places">Place API</a>
+            <a href="/dev/docs/users">User API</a>
+            <a href="/dev/docs/assets">Asset API</a>
+            <a href="/dev/docs/auth">Auth API</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+    <div class="roblox-right">
+      <span class="roblox-robux"><%= user.robux || 1200 %></span>
+      <span class="roblox-icon-button">&#9881;</span>
+      <span class="roblox-icon-button">&#128276;</span>
+      <span class="roblox-icon-button">@</span>
+      <a class="dev-btn secondary" href="/logout" style="height:32px;padding:0 10px;font-size:12px;display:inline-flex;align-items:center;line-height:1;">Sign Out</a>
+    </div>
+  </header>
+
+  <div class="dev-shell">
+    <aside class="dev-sidebar">
+      <div class="dev-sidebar-brand">Studio</div>
+      <a href="/dev" class="active"><span class="dev-sidebar-icon">&#8962;</span> Home</a>
+      <a href="/dev/create"><span class="dev-sidebar-icon">&#43;</span> Create</a>
+      <a href="/dev/game/1818/settings"><span class="dev-sidebar-icon">&#9881;</span> Settings</a>
+      <a href="/dev/assets"><span class="dev-sidebar-icon">&#9638;</span> Assets</a>
+      <a href="/dev/docs"><span class="dev-sidebar-icon">&#8505;</span> API Docs</a>
+      <div style="padding: 12px 16px; border-top: 1px solid var(--dev-border); margin-top: 8px;">
+        <div style="font-size: 11px; color: var(--dev-muted);">User</div>
+        <div style="font-size: 13px; font-weight: 600;"><%= user.username %></div>
+        <div style="font-size: 11px; color: var(--dev-muted);">ID: <%= user.userId %></div>
+      </div>
+    </aside>
+
+    <main class="dev-main">
+      <% if (welcome) { %>
+        <div class="dev-notice info" style="margin-bottom:16px;">
+          Signed in successfully. Welcome back, <strong><%= user.username %></strong>! Your session is active.
+        </div>
+      <% } %>
+      <div class="dev-header">
+        <div>
+          <h1>Welcome back, <%= user.username %></h1>
+          <div class="dev-header-subtitle">Manage your games, assets, and Studio settings</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <a class="dev-btn secondary" href="/logout">Sign Out</a>
+          <a class="dev-btn primary" href="/dev/create">&#43; New Game</a>
+        </div>
+      </div>
+
+      <div class="dev-cards">
+        <div class="dev-card">
+          <h3>Your Games</h3>
+          <p><%= games.length %> published experiences on LuckyBlox.</p>
+          <div class="dev-card-meta">
+            <span class="dev-tag blue">Studio</span>
+            <a class="dev-btn secondary" href="/dev/docs/games" style="margin:0;padding:6px 12px;font-size:12px;">View API</a>
+          </div>
+        </div>
+
+        <div class="dev-card">
+          <h3>Places</h3>
+          <p><%= places.length %></p>
+          <div class="dev-card-meta">
+            <span class="dev-tag green">Active</span>
+          </div>
+        </div>
+
+        <div class="dev-card">
+          <h3>Assets</h3>
+          <p><%= assets.length %> uploaded images, audio, and meshes.</p>
+          <div class="dev-card-meta">
+            <span class="dev-tag orange">Media</span>
+          </div>
+        </div>
+
+        <div class="dev-card">
+          <h3>API Access</h3>
+          <p>Game engine, auth, and asset APIs available.</p>
+          <div class="dev-card-meta">
+            <a class="dev-btn secondary" href="/dev/docs" style="margin:0;padding:6px 12px;font-size:12px;">Read Docs</a>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;">
+        <h2 style="margin:0 0 12px; font-size:18px;">Recent Activity</h2>
+        <% if (places.length > 0) { %>
+          <table class="dev-table">
+            <thead>
+              <tr><th>Place</th><th>ID</th><th>Visibility</th><th>Genre</th><th>Updated</th></tr>
+            </thead>
+            <tbody>
+              <% places.slice(0, 5).forEach((place) => { %>
+                <tr>
+                  <td><a href="/dev/game/<%= place.placeId %>/settings" style="color:var(--dev-accent); font-weight:600;"><%= place.name %></a></td>
+                  <td><%= place.placeId %></td>
+                  <td><span class="dev-tag <%= place.visibility === 'Public' ? 'green' : 'orange' %>"><%= place.visibility %></span></td>
+                  <td><%= place.genre %></td>
+                  <td><%= new Date(place.updatedAt || Date.now()).toLocaleDateString() %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } else { %>
+          <div class="dev-placeholder">No places yet. Create your first game!</div>
+        <% } %>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

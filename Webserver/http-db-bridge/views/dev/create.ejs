@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/dev.css" />
+</head>
+<body>
+  <header class="roblox-topbar">
+    <div class="roblox-brand">
+      <span class="roblox-brand-mark">R</span>
+      <span>LuckyBlox Studio</span>
+    </div>
+    <nav class="roblox-nav" aria-label="Main navigation">
+      <div class="roblox-nav-links">
+        <a href="/dev">Home</a>
+        <a href="/dev" class="active">Create</a>
+        <a href="/dev/assets">Assets</a>
+        <a href="/dev/docs">API</a>
+        <div class="roblox-more-pages">
+          <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+          <div class="roblox-more-pages-dropdown">
+            <a href="/dev/create">Create Game</a>
+            <a href="/dev/docs/games">Game Engine API</a>
+            <a href="/dev/docs/places">Place API</a>
+            <a href="/dev/docs/users">User API</a>
+            <a href="/dev/docs/auth">Auth API</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+    <div class="roblox-right">
+      <span class="roblox-robux"><%= user.robux || 1200 %></span>
+      <span class="roblox-icon-button">&#9881;</span>
+      <span class="roblox-icon-button">&#128276;</span>
+      <span class="roblox-icon-button">@</span>
+      <a class="dev-btn secondary" href="/logout" style="height:32px;padding:0 10px;font-size:12px;display:inline-flex;align-items:center;line-height:1;">Sign Out</a>
+    </div>
+  </header>
+
+  <div class="dev-shell">
+    <aside class="dev-sidebar">
+      <div class="dev-sidebar-brand">Studio</div>
+      <a href="/dev"><span class="dev-sidebar-icon">&#8962;</span> Home</a>
+      <a href="/dev/create" class="active"><span class="dev-sidebar-icon">&#43;</span> Create</a>
+      <a href="/dev/game/1818/settings"><span class="dev-sidebar-icon">&#9881;</span> Settings</a>
+      <a href="/dev/assets"><span class="dev-sidebar-icon">&#9638;</span> Assets</a>
+      <a href="/dev/docs"><span class="dev-sidebar-icon">&#8505;</span> API Docs</a>
+    </aside>
+
+    <main class="dev-main">
+      <div class="dev-header">
+        <div>
+          <h1>Create a new experience</h1>
+          <div class="dev-header-subtitle">Start building a new LuckyBlox place from scratch</div>
+        </div>
+      </div>
+
+      <div class="dev-notice info">
+        Creating a new place generates a blank .rbxlx file. You can customize settings and upload assets afterward.
+      </div>
+
+      <form id="createForm" class="dev-form" method="POST" action="/dev/create" enctype="multipart/form-data">
+        <label>
+          Experience Name
+          <input name="name" type="text" placeholder="My LuckyBlox Experience" required maxlength="100" />
+        </label>
+
+        <label>
+          Description
+          <textarea name="description" placeholder="Describe your experience..."></textarea>
+        </label>
+
+        <label>
+          Genre
+          <select name="genre">
+            <option value="Adventure">Adventure</option>
+            <option value="Roleplaying">Roleplaying</option>
+            <option value="FPS">FPS</option>
+            <option value="Tycoon">Tycoon</option>
+            <option value="Sandbox">Sandbox</option>
+            <option value="Race">Race</option>
+            <option value="Obby">Obby</option>
+            <option value="Social">Social</option>
+          </select>
+        </label>
+
+        <label>
+          Max Players
+          <input name="maxPlayers" type="number" min="1" max="200" value="20" />
+        </label>
+
+        <label>
+          Visibility
+          <select name="visibility">
+            <option value="Public">Public</option>
+            <option value="Friends">Friends</option>
+            <option value="Private">Private</option>
+          </select>
+        </label>
+
+        <div class="dev-btn-row">
+          <button type="submit" class="dev-btn primary">Create Experience</button>
+          <a class="dev-btn secondary" href="/dev">Cancel</a>
+        </div>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    document.getElementById('createForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const params = new URLSearchParams();
+      for (const [key, value] of formData.entries()) {
+        if (key !== 'name') params.set(key, value);
+      }
+      const response = await fetch(`/dev/create?name=${encodeURIComponent(formData.get('name'))}`, {
+        method: 'POST',
+        body: params.toString()
+      });
+      const data = await response.json();
+      if (data.ok) {
+        alert('Experience created successfully!');
+        window.location.href = `/dev/game/${data.placeId}/settings`;
+      } else {
+        alert('Failed to create experience.');
+      }
+    });
+  </script>
+</body>
+</html>

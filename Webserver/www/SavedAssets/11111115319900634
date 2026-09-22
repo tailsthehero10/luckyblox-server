@@ -1,0 +1,53 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<Meta name="ExplicitAutoJoints">true</Meta>
+	<External>null</External>
+	<External>nil</External>
+	<Item class="Folder" referent="RBX59C7145E34494DB68CEF6211654CCB51">
+		<Properties>
+			<string name="Name">R15Anim</string>
+			<BinaryString name="Tags"></BinaryString>
+		</Properties>
+		<Item class="StringValue" referent="RBXEFC10B97D9984B2280BE4E20E63D1071">
+			<Properties>
+				<string name="Name">run</string>
+				<BinaryString name="Tags"></BinaryString>
+				<string name="Value"></string>
+			</Properties>
+			<Item class="Animation" referent="RBX9E6E3950E80246DCB3B536288D3BE0C1">
+				<Properties>
+					<Content name="AnimationId"><url>http://www.roblox.com/asset/?id=5319844329</url></Content>
+					<string name="Name">run</string>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+				<Item class="NumberValue" referent="RBX476DF79CA60149738C73F7FAD74D2D9F">
+					<Properties>
+						<string name="Name">Weight</string>
+						<BinaryString name="Tags"></BinaryString>
+						<double name="Value">1</double>
+					</Properties>
+				</Item>
+			</Item>
+		</Item>
+		<Item class="StringValue" referent="RBX5EEAE21AC3E74668ABD1DD404D94D4B7">
+			<Properties>
+				<string name="Name">pose</string>
+				<BinaryString name="Tags"></BinaryString>
+				<string name="Value"></string>
+			</Properties>
+			<Item class="Animation" referent="RBXE7EA0FA434E34F07B080078ED3E42886">
+				<Properties>
+					<Content name="AnimationId"><null></null></Content>
+					<string name="Name">Animation</string>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+				<Item class="NumberValue" referent="RBX783E2459DEC14F32945837AEA3D08E0F">
+					<Properties>
+						<string name="Name">Weight</string>
+						<BinaryString name="Tags"></BinaryString>
+						<double name="Value">0</double>
+					</Properties>
+				</Item>
+			</Item>
+		</Item>
+	</Item>
+</roblox>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/dev.css" />
+</head>
+<body>
+  <header class="roblox-topbar">
+    <div class="roblox-brand">
+      <span class="roblox-brand-mark">R</span>
+      <span>LuckyBlox Studio</span>
+    </div>
+    <nav class="roblox-nav" aria-label="Main navigation">
+      <div class="roblox-nav-links">
+        <a href="/dev">Home</a>
+        <a href="/dev/game/1818/settings">Game</a>
+        <a href="/dev/assets">Assets</a>
+        <a href="/dev/docs" class="active">API</a>
+        <div class="roblox-more-pages">
+          <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+          <div class="roblox-more-pages-dropdown">
+            <a href="/dev/create">Create Game</a>
+            <a href="/dev/docs/games">Game Engine API</a>
+            <a href="/dev/docs/places">Place API</a>
+            <a href="/dev/docs/users">User API</a>
+            <a href="/dev/docs/auth">Auth API</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+    <div class="roblox-right">
+      <span class="roblox-robux"><%= user.robux || 1200 %></span>
+      <span class="roblox-icon-button">&#9881;</span>
+      <span class="roblox-icon-button">&#128276;</span>
+      <span class="roblox-icon-button">@</span>
+      <a class="dev-btn secondary" href="/logout" style="height:32px;padding:0 10px;font-size:12px;display:inline-flex;align-items:center;line-height:1;">Sign Out</a>
+    </div>
+  </header>
+
+  <div class="dev-shell">
+    <aside class="dev-sidebar">
+      <div class="dev-sidebar-brand">Studio</div>
+      <a href="/dev"><span class="dev-sidebar-icon">&#8962;</span> Home</a>
+      <a href="/dev/create"><span class="dev-sidebar-icon">&#43;</span> Create</a>
+      <a href="/dev/game/1818/settings"><span class="dev-sidebar-icon">&#9881;</span> Settings</a>
+      <a href="/dev/assets"><span class="dev-sidebar-icon">&#9638;</span> Assets</a>
+      <a href="/dev/docs"><span class="dev-sidebar-icon">&#8505;</span> API Docs</a>
+      <a href="/dev/docs/users" class="active"><span class="dev-sidebar-icon">&#9654;</span> User API</a>
+    </aside>
+
+    <main class="dev-main">
+      <div class="dev-header">
+        <div>
+          <h1>User API</h1>
+          <div class="dev-header-subtitle">User profiles, status, and account data</div>
+        </div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/api/v1/users/:userId</span></h3>
+        <p>Get user profile by ID.</p>
+        <div class="dev-code-block">// GET /api/v1/users/1
+{
+  "ok": true,
+  "user": {
+    "userId": "1",
+    "username": "LocalPlayer",
+    "displayName": "LocalPlayer",
+    "bio": "Welcome to LuckyBlox.",
+    "joinDate": "2026-01-01T00:00:00Z",
+    "membershipStatus": "Premium",
+    "stats": { "friends": 5, "created": 3, "plays": 142 },
+    "avatar": { "bodyColors": { ... } }
+  }
+}</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/api/v1/users/:userId/profile</span></h3>
+        <p>Get formatted profile page data.</p>
+        <div class="dev-code-block">// GET /api/v1/users/1/profile
+{ "ok": true, "profile": { ... } }</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/api/v1/users/:userId/status</span></h3>
+        <p>Get user online/offline status.</p>
+        <div class="dev-code-block">// GET /api/v1/users/1/status
+{ "ok": true, "online": true, "lastSeen": "..." }</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/api/v1/users/:userId/inventory</span></h3>
+        <p>Get user inventory items.</p>
+        <div class="dev-code-block">// GET /api/v1/users/1/inventory
+{ "ok": true, "items": [ ... ] }</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/users/:userId/update</span></h3>
+        <p>Update user profile fields.</p>
+        <div class="dev-code-block">// POST /api/v1/users/1/update
+// Body: { bio: "New bio" }
+{ "ok": true }</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/api/account/info</span></h3>
+        <p>Get account info (legacy endpoint, requires userId query param).</p>
+        <div class="dev-code-block">// GET /api/account/info?userId=1
+{ "ok": true, "account": { ... } }</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/api/account/update</span></h3>
+        <p>Update account settings.</p>
+        <div class="dev-code-block">// POST /api/account/update?userId=1
+{ "ok": true }</div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

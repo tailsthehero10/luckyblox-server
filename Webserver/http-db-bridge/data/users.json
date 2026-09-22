@@ -1,0 +1,77 @@
+{
+  "1": {
+    "userId": "1",
+    "username": "LocalPlayer",
+    "bio": "Welcome to LuckyBlox. Build, play, and customize your avatar.",
+    "joinDate": "2024-01-15T00:00:00.000Z",
+    "membership": "Premium",
+    "inventory": [
+      "1001",
+      "1002",
+      "1003",
+      "1004"
+    ],
+    "currentlyWearing": [
+      "1001",
+      "1002",
+      "1003"
+    ],
+    "stats": {
+      "friends": 128,
+      "created": 42,
+      "plays": 743,
+      "followers": 96
+    },
+    "avatar": {
+      "bodyColors": {
+        "headColorId": 1002,
+        "torsoColorId": 1002,
+        "rightArmColorId": 1002,
+        "leftArmColorId": 1002,
+        "rightLegColorId": 1002,
+        "leftLegColorId": 1002
+      }
+    },
+    "updatedAt": "2026-09-13T16:27:50.634Z",
+    "membershipStatus": "Premium"
+  },
+  "2": {
+    "userId": "2",
+    "username": "tailsthehero10",
+    "displayName": "tailsthehero10",
+    "password": "67d91cbd7b3f716f5417a1ea3bcff3e9e89f11a5e3ef1def9482fd96d0ef116a52c24307f961a620c2c654cd984aaeadbc47ba1d17ab4aa831c709718c51a2d7",
+    "passwordSalt": "07825a4255a5d598b57ec7300ba022d6",
+    "passwordVersion": 2,
+    "bio": "New LuckyBlox creator account.",
+    "joinDate": "2026-09-13T21:16:20.056Z",
+    "membershipStatus": "Premium",
+    "inventory": [
+      "1001",
+      "1002",
+      "1003",
+      "1004"
+    ],
+    "currentlyWearing": [
+      "1001",
+      "1002",
+      "1003"
+    ],
+    "stats": {
+      "friends": 0,
+      "created": 1,
+      "plays": 0,
+      "followers": 0
+    },
+    "avatar": {
+      "bodyColors": {
+        "headColorId": 1002,
+        "torsoColorId": 1002,
+        "rightArmColorId": 1002,
+        "leftArmColorId": 1002,
+        "rightLegColorId": 1002,
+        "leftLegColorId": 1002
+      }
+    },
+    "updatedAt": "2026-09-13T21:16:20.056Z"
+  }
+}

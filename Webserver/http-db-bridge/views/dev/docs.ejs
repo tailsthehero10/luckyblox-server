@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/dev.css" />
+</head>
+<body>
+  <header class="roblox-topbar">
+    <div class="roblox-brand">
+      <span class="roblox-brand-mark">R</span>
+      <span>LuckyBlox Studio</span>
+    </div>
+    <nav class="roblox-nav" aria-label="Main navigation">
+      <div class="roblox-nav-links">
+        <a href="/dev">Home</a>
+        <a href="/dev/game/1818/settings">Game</a>
+        <a href="/dev/assets">Assets</a>
+        <a href="/dev/docs" class="active">API</a>
+        <div class="roblox-more-pages">
+          <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+          <div class="roblox-more-pages-dropdown">
+            <a href="/dev/create">Create Game</a>
+            <a href="/dev/docs/games">Game Engine API</a>
+            <a href="/dev/docs/places">Place API</a>
+            <a href="/dev/docs/users">User API</a>
+            <a href="/dev/docs/auth">Auth API</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+    <div class="roblox-right">
+      <span class="roblox-robux"><%= user.robux || 1200 %></span>
+      <span class="roblox-icon-button">&#9881;</span>
+      <span class="roblox-icon-button">&#128276;</span>
+      <span class="roblox-icon-button">@</span>
+      <a class="dev-btn secondary" href="/logout" style="height:32px;padding:0 10px;font-size:12px;display:inline-flex;align-items:center;line-height:1;">Sign Out</a>
+    </div>
+  </header>
+
+  <div class="dev-shell">
+    <aside class="dev-sidebar">
+      <div class="dev-sidebar-brand">Studio</div>
+      <a href="/dev"><span class="dev-sidebar-icon">&#8962;</span> Home</a>
+      <a href="/dev/create"><span class="dev-sidebar-icon">&#43;</span> Create</a>
+      <a href="/dev/game/1818/settings"><span class="dev-sidebar-icon">&#9881;</span> Settings</a>
+      <a href="/dev/assets"><span class="dev-sidebar-icon">&#9638;</span> Assets</a>
+      <a href="/dev/docs" class="active"><span class="dev-sidebar-icon">&#8505;</span> API Docs</a>
+    </aside>
+
+    <main class="dev-main">
+      <div class="dev-header">
+        <div>
+          <h1>LuckyBlox Studio API</h1>
+          <div class="dev-header-subtitle">REST API reference for game engine, assets, and authentication</div>
+        </div>
+      </div>
+
+      <div class="dev-notice info">
+        Base URL: <code style="color:var(--dev-text);">https://dev.LuckBlox.site.tk</code> &mdash; All endpoints return JSON. Include session cookie or <code style="color:var(--dev-text);">X-User-ID</code> header for authenticated requests.
+      </div>
+
+      <div class="dev-api-section">
+        <h3>Authentication</h3>
+        <p>Log in via the Auth API to obtain a session ticket. Include <code>/api/v1/auth/ticket</code> in subsequent requests as a cookie.</p>
+      </div>
+
+      <div class="dev-api-section">
+        <h3>Game Engine API</h3>
+        <p>Create, read, and manage game experiences.</p>
+        <a href="/dev/docs/games" class="dev-btn secondary" style="margin-top:4px;">View Game Engine API &#8594;</a>
+      </div>
+
+      <div class="dev-api-section">
+        <h3>Place API</h3>
+        <p>Manage places, servers, and instance data.</p>
+        <a href="/dev/docs/places" class="dev-btn secondary" style="margin-top:4px;">View Place API &#8594;</a>
+      </div>
+
+      <div class="dev-api-section">
+        <h3>Asset API</h3>
+        <p>Upload, download, and manage decals, audio, and meshes.</p>
+        <a href="/dev/docs/assets" class="dev-btn secondary" style="margin-top:4px;">View Asset API &#8594;</a>
+      </div>
+
+      <div class="dev-api-section">
+        <h3>User API</h3>
+        <p>Query user profiles, status, and inventory.</p>
+        <a href="/dev/docs/users" class="dev-btn secondary" style="margin-top:4px;">View User API &#8594;</a>
+      </div>
+
+      <div class="dev-api-section">
+        <h3>Status</h3>
+        <p>Check API availability and server health.</p>
+        <div class="dev-code-block">GET /api/v1/status
+
+// Response:
+{
+  "ok": true,
+  "service": "LuckyBlox HTTP DB Bridge",
+  "version": "1.0.0",
+  "uptime": "1d 4h 22m",
+  "games_total": <%= games.length %>,
+  "assets_total": <%= assets.length %>
+}</div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

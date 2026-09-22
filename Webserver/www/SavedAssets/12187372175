@@ -1,0 +1,11 @@
+{
+	"name": "Rye",
+	"faces": [
+		{
+			"name": "Regular",
+			"weight": 400,
+			"style": "normal",
+			"assetId": "rbxassetid://12187301067"
+		}
+	]
+}

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Custom 2021M Server Room - Roblox</title>
+    <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+<body>
+    <header class="rbx-header">
+        <div style="display:flex; align-items:center;">
+            <div class="rbx-logo"></div>
+            <a href="/home" class="rbx-nav-link" style="margin-left:15px;">Discover</a>
+            <a href="/catalog" class="rbx-nav-link">Catalog</a>
+            <a href="/develop" class="rbx-nav-link">Create</a>
+            <a href="/users/1/profile" class="rbx-nav-link">Profile</a>
+        </div>
+        <div>
+            <span class="rbx-nav-link" style="color: #00B06F;">R$ 4,500</span>
+        </div>
+    </header>
+
+    <div class="roblox-container">
+        <nav class="rbx-sidebar">
+            <a href="/home" class="sidebar-item">Home</a>
+            <a href="/users/1/profile" class="sidebar-item">Profile</a>
+            <a href="/games/2022M/about" class="sidebar-item">Games</a>
+            <a href="/catalog" class="sidebar-item">Catalog</a>
+            <a href="/develop" class="sidebar-item">Develop</a>
+            <a href="/avatar" class="sidebar-item">Avatar</a>
+            <a href="/inventory" class="sidebar-item">Inventory</a>
+        </nav>
+
+        <main class="rbx-main-content">
+            <div class="rbx-game-card">
+                <div class="rbx-thumbnail"></div>
+                <div>
+                    <h1 style="margin: 0 0 4px 0; font-size: 28px; font-weight: 600;">Production 2021M Server Room</h1>
+                    <p style="margin: 0 0 25px 0; font-size: 14px; color: var(--text-muted);">By <a href="/users/1/profile" style="color:var(--rbx-blue); text-decoration:none;">SystemAdmin</a></p>
+                    <button class="rbx-play-button" id="gameLaunchButton">Play</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.getElementById('gameLaunchButton').addEventListener('click', async function () {
+            try {
+                const response = await fetch('/v1/authentication-tickets', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        placeId: '2022M'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data || !data.ok || !data.ticket) {
+                    alert('Unable to generate launch ticket.');
+                    return;
+                }
+
+                const placeId = '2022M';
+                window.location.href = "luckyblox-player:1+launchmode:" + data.launchMode + "+gameinfo:" + data.ticket + "+placeId:" + placeId + "+serverIp:" + data.hostIp + "+serverPort:" + data.port + "+jobId:" + data.serverJobId;
+            } catch (error) {
+                alert('LuckyBlox failed to launch.');
+            }
+        });
+    </script>
+</body>
+</html>

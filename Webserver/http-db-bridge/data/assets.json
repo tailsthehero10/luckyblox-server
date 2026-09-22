@@ -1,0 +1,42 @@
+{
+  "1001": {
+    "id": 1001,
+    "name": "Classic Red Shirt",
+    "assetType": "Shirt",
+    "path": "assets/1001.shirt",
+    "currentVersionId": 1001,
+    "className": "Shirt",
+    "price": 0,
+    "createdAt": "2026-09-09T12:37:05.070Z"
+  },
+  "1002": {
+    "id": 1002,
+    "name": "Classic Blue Pants",
+    "assetType": "Pants",
+    "path": "assets/1002.pants",
+    "currentVersionId": 1002,
+    "className": "Pants",
+    "price": 0,
+    "createdAt": "2026-09-09T12:37:05.070Z"
+  },
+  "1003": {
+    "id": 1003,
+    "name": "Robloxian Cap",
+    "assetType": "Hat",
+    "path": "assets/1003.hat",
+    "currentVersionId": 1003,
+    "className": "Hat",
+    "price": 0,
+    "createdAt": "2026-09-09T12:37:05.070Z"
+  },
+  "1004": {
+    "id": 1004,
+    "name": "Classic Backpack",
+    "assetType": "BackAccessory",
+    "path": "assets/1004.backpack",
+    "currentVersionId": 1004,
+    "className": "BackAccessory",
+    "price": 0,
+    "createdAt": "2026-09-09T12:37:05.070Z"
+  }
+}

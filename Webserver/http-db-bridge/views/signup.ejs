@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #eef4fb 0%, #dfeaf8 100%);
+      color: #1d2433;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+
+    .signin-shell {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+    }
+
+    .signin-card {
+      width: min(460px, 100%);
+      background: #ffffff;
+      border: 1px solid #d8e1ee;
+      border-radius: 16px;
+      box-shadow: 0 12px 28px rgba(32, 52, 88, 0.12);
+      overflow: hidden;
+    }
+
+    .signin-header {
+      background: linear-gradient(180deg, #2f5ea8 0%, #224d8e 100%);
+      color: #ffffff;
+      text-align: center;
+      padding: 20px 18px 18px;
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .signin-brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .signin-brand-mark {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #62b6ff 0%, #2f7de2 100%);
+      font-size: 0.85rem;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .signin-body {
+      padding: 26px 26px 20px;
+    }
+
+    .signin-title {
+      margin: 0 0 6px;
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      color: #1d2433;
+    }
+
+    .signin-subtitle {
+      margin: 0 0 18px;
+      color: #5c697d;
+      font-size: 0.96rem;
+    }
+
+    .signin-form {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .signin-field {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .signin-field label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #536076;
+    }
+
+    .signin-field input {
+      width: 100%;
+      height: 46px;
+      border: 1px solid #ccd7e7;
+      border-radius: 8px;
+      background: #f7f9fc;
+      padding: 0 12px;
+      font-size: 1rem;
+      color: #1d2433;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .signin-field input:focus {
+      border-color: #5d8fe2;
+      box-shadow: 0 0 0 3px rgba(93, 143, 226, 0.12);
+      background: #ffffff;
+    }
+
+    .signin-field input.input-error {
+      border-color: #d9534f;
+      box-shadow: 0 0 0 3px rgba(217, 83, 79, 0.12);
+    }
+
+    .signin-button {
+      margin-top: 8px;
+      width: 100%;
+      height: 48px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #1bc15b 0%, #0ca04f 100%);
+      color: #ffffff;
+      font-size: 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(13, 160, 79, 0.18);
+      transition: filter 0.15s, opacity 0.15s;
+    }
+
+    .signin-button:hover {
+      filter: brightness(1.03);
+    }
+
+    .signin-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .signin-error {
+      margin: 0 0 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #f1b0b0;
+      background: #fff0f0;
+      color: #bb3d3d;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .signin-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 18px;
+      font-size: 0.83rem;
+      color: #5d697a;
+    }
+
+    .signin-meta a {
+      color: #2357b5;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .signin-meta a:hover {
+      text-decoration: underline;
+    }
+
+    .signin-hint {
+      margin: 0 0 14px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: #eef5ff;
+      border: 1px solid #c9ddff;
+      color: #4a6fa5;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="signin-shell">
+    <div class="signin-card">
+      <div class="signin-header">
+        <div class="signin-brand">
+          <span class="signin-brand-mark">R</span>
+          <span>LuckyBlox</span>
+        </div>
+      </div>
+
+      <div class="signin-body">
+        <h1 class="signin-title">Create account</h1>
+        <p class="signin-subtitle">Make a real LuckyBlox account and start playing with your own profile.</p>
+
+        <% if (errorMessage) { %>
+          <div class="signin-error"><%= errorMessage %></div>
+        <% } %>
+
+        <form class="signin-form" method="POST" action="/signup" id="signupForm">
+          <input type="hidden" name="redirect" value="<%= redirect || '' %>" />
+          <div class="signin-field">
+            <label for="username">Username</label>
+            <input id="username" name="username" type="text" value="<%= username || '' %>" autocomplete="username" required />
+          </div>
+
+          <div class="signin-field">
+            <label for="displayName">Display name</label>
+            <input id="displayName" name="displayName" type="text" placeholder="Your in-game name" />
+          </div>
+
+          <div class="signin-field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="new-password" required />
+          </div>
+
+          <div class="signin-field">
+            <label for="confirmPassword">Confirm password</label>
+            <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" required />
+          </div>
+
+          <button class="signin-button" type="submit" id="signupSubmit">Create account</button>
+        </form>
+
+        <div class="signin-meta">
+          <span>Already have an account? <a href="/signin">Sign in</a></span>
+          <a href="/games">Browse as guest</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var form = document.getElementById('signupForm');
+      var btn = document.getElementById('signupSubmit');
+      form.addEventListener('submit', function() {
+        var u = document.getElementById('username').value.trim();
+        var p = document.getElementById('password').value;
+        var cp = document.getElementById('confirmPassword').value;
+        var valid = true;
+        if (!u || u.length < 3) {
+          document.getElementById('username').classList.add('input-error');
+          valid = false;
+        } else {
+          document.getElementById('username').classList.remove('input-error');
+        }
+        if (!p || p.length < 4) {
+          document.getElementById('password').classList.add('input-error');
+          valid = false;
+        } else {
+          document.getElementById('password').classList.remove('input-error');
+        }
+        if (p !== cp) {
+          document.getElementById('confirmPassword').classList.add('input-error');
+          valid = false;
+        } else {
+          document.getElementById('confirmPassword').classList.remove('input-error');
+        }
+        if (!valid) return false;
+        btn.disabled = true;
+        btn.textContent = 'Creating account...';
+        return true;
+      });
+    })();
+  </script>
+</body>
+</html>

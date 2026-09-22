@@ -1,0 +1,1 @@
+{"user":{"UserId":676767,"Username":"LuckyBloxLauncher (Internal)","AgeBracket":0,"Roles":["Soothsayer","BetaTester"],"Email":{"value":"f**@roblox.com","isVerified":true},"IsBanned":false,"DisplayName":"LuckyBloxLauncher (Internal)"},"userAgreements":[]}

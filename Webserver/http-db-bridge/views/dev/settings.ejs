@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/dev.css" />
+</head>
+<body>
+  <header class="roblox-topbar">
+    <div class="roblox-brand">
+      <span class="roblox-brand-mark">R</span>
+      <span>LuckyBlox Studio</span>
+    </div>
+    <nav class="roblox-nav" aria-label="Main navigation">
+      <div class="roblox-nav-links">
+        <a href="/dev">Home</a>
+        <a href="/dev" class="active">Settings</a>
+        <a href="/dev/assets">Assets</a>
+        <a href="/dev/docs">API</a>
+        <div class="roblox-more-pages">
+          <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+          <div class="roblox-more-pages-dropdown">
+            <a href="/dev/create">Create Game</a>
+            <a href="/dev/docs/games">Game Engine API</a>
+            <a href="/dev/docs/places">Place API</a>
+            <a href="/dev/docs/users">User API</a>
+            <a href="/dev/docs/auth">Auth API</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+    <div class="roblox-right">
+      <span class="roblox-robux"><%= user.robux || 1200 %></span>
+      <span class="roblox-icon-button">&#9881;</span>
+      <span class="roblox-icon-button">&#128276;</span>
+      <span class="roblox-icon-button">@</span>
+      <a class="dev-btn secondary" href="/logout" style="height:32px;padding:0 10px;font-size:12px;display:inline-flex;align-items:center;line-height:1;">Sign Out</a>
+    </div>
+  </header>
+
+  <div class="dev-shell">
+    <aside class="dev-sidebar">
+      <div class="dev-sidebar-brand">Studio</div>
+      <a href="/dev"><span class="dev-sidebar-icon">&#8962;</span> Home</a>
+      <a href="/dev/create"><span class="dev-sidebar-icon">&#43;</span> Create</a>
+      <a href="/dev/game/1818/settings" class="active"><span class="dev-sidebar-icon">&#9881;</span> Settings</a>
+      <a href="/dev/assets"><span class="dev-sidebar-icon">&#9638;</span> Assets</a>
+      <a href="/dev/docs"><span class="dev-sidebar-icon">&#8505;</span> API Docs</a>
+    </aside>
+
+    <main class="dev-main">
+      <div class="dev-header">
+        <div>
+          <h1>Game Settings</h1>
+          <div class="dev-header-subtitle">Configure <%= place.name %> — Place ID: <%= place.placeId %></div>
+        </div>
+      </div>
+
+      <form id="settingsForm" class="dev-form" method="POST" action="/dev/game/<%= place.placeId %>/settings">
+        <label>
+          Experience Name
+          <input name="name" type="text" value="<%= place.name || '' %>" required maxlength="100" />
+        </label>
+
+        <label>
+          Description
+          <textarea name="description" maxlength="500"><%= place.description || '' %></textarea>
+        </label>
+
+        <label>
+          Genre
+          <input name="genre" type="text" value="<%= place.genre || 'Adventure' %>" maxlength="50" />
+        </label>
+
+        <label>
+          Visibility
+          <select name="visibility">
+            <option value="Public" <%= place.visibility === 'Public' ? 'selected' : '' %>>Public</option>
+            <option value="Friends" <%= place.visibility === 'Friends' ? 'selected' : '' %>>Friends</option>
+            <option value="Private" <%= place.visibility === 'Private' ? 'selected' : '' %>>Private</option>
+          </select>
+        </label>
+
+        <label>
+          Max Players
+          <input name="maxPlayers" type="number" min="1" max="200" value="<%= place.maxPlayers || 20 %>" />
+        </label>
+
+        <label>
+          Game Icon URL (512x512)
+          <input name="iconUrl" type="url" value="<%= place.iconUrl || '' %>" placeholder="https://..." />
+        </label>
+
+        <div class="dev-btn-row">
+          <button type="submit" class="dev-btn primary">Save Settings</button>
+          <button type="button" class="dev-btn secondary" id="reloadBtn">Reload</button>
+        </div>
+      </form>
+
+      <div style="margin-top:24px;">
+        <div class="dev-notice info">
+          Game icon must be a 512x512 PNG. Upload via the Assets page to manage images.
+        </div>
+
+        <h2 style="margin:0 0 12px; font-size:16px;">Game Info</h2>
+        <table class="dev-table">
+          <tbody>
+            <tr><td style="color:var(--dev-muted); width:160px;">Place ID</td><td><%= place.placeId %></td></tr>
+            <tr><td style="color:var(--dev-muted);">Universe ID</td><td><%= place.universeId || place.placeId %></td></tr>
+            <tr><td style="color:var(--dev-muted);">Author</td><td><%= place.author || 'LocalPlayer' %></td></tr>
+            <tr><td style="color:var(--dev-muted);">Version</td><td><%= place.version || 1 %></td></tr>
+            <tr><td style="color:var(--dev-muted);">File</td><td><code style="font-size:12px;"><%= place.fileName || 'N/A' %></code></td></tr>
+            <tr><td style="color:var(--dev-muted);">Last Updated</td><td><%= place.updatedAt ? new Date(place.updatedAt).toLocaleString() : 'Never' %></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    document.getElementById('settingsForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const payload = {};
+      for (const [key, value] of formData.entries()) payload[key] = value;
+      const response = await fetch(`/dev/game/<%= place.placeId %>/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(payload).toString()
+      });
+      const data = await response.json();
+      if (data.ok) {
+        alert('Settings saved successfully!');
+      } else {
+        alert('Failed to save settings.');
+      }
+    });
+
+    document.getElementById('reloadBtn').addEventListener('click', () => {
+      location.reload();
+    });
+  </script>
+</body>
+</html>

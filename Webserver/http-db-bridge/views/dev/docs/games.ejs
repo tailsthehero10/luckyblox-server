@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/dev.css" />
+</head>
+<body>
+  <header class="roblox-topbar">
+    <div class="roblox-brand">
+      <span class="roblox-brand-mark">R</span>
+      <span>LuckyBlox Studio</span>
+    </div>
+    <nav class="roblox-nav" aria-label="Main navigation">
+      <div class="roblox-nav-links">
+        <a href="/dev">Home</a>
+        <a href="/dev/game/1818/settings">Game</a>
+        <a href="/dev/assets">Assets</a>
+        <a href="/dev/docs" class="active">API</a>
+        <div class="roblox-more-pages">
+          <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+          <div class="roblox-more-pages-dropdown">
+            <a href="/dev/create">Create Game</a>
+            <a href="/dev/docs/games">Game Engine API</a>
+            <a href="/dev/docs/places">Place API</a>
+            <a href="/dev/docs/users">User API</a>
+            <a href="/dev/docs/auth">Auth API</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+    <div class="roblox-right">
+      <span class="roblox-robux"><%= user.robux || 1200 %></span>
+      <span class="roblox-icon-button">&#9881;</span>
+      <span class="roblox-icon-button">&#128276;</span>
+      <span class="roblox-icon-button">@</span>
+      <a class="dev-btn secondary" href="/logout" style="height:32px;padding:0 10px;font-size:12px;display:inline-flex;align-items:center;line-height:1;">Sign Out</a>
+    </div>
+  </header>
+
+  <div class="dev-shell">
+    <aside class="dev-sidebar">
+      <div class="dev-sidebar-brand">Studio</div>
+      <a href="/dev"><span class="dev-sidebar-icon">&#8962;</span> Home</a>
+      <a href="/dev/create"><span class="dev-sidebar-icon">&#43;</span> Create</a>
+      <a href="/dev/game/1818/settings"><span class="dev-sidebar-icon">&#9881;</span> Settings</a>
+      <a href="/dev/assets"><span class="dev-sidebar-icon">&#9638;</span> Assets</a>
+      <a href="/dev/docs"><span class="dev-sidebar-icon">&#8505;</span> API Docs</a>
+      <a href="/dev/docs/games" class="active"><span class="dev-sidebar-icon">&#9654;</span> Game Engine</a>
+    </aside>
+
+    <main class="dev-main">
+      <div class="dev-header">
+        <div>
+          <h1>Game Engine API</h1>
+          <div class="dev-header-subtitle">Create, query, and publish game experiences</div>
+        </div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/api/v1/games</span></h3>
+        <p>List all published games.</p>
+        <div class="dev-code-block">{
+  "ok": true,
+  "games": [
+    {
+      "placeId": 1818,
+      "name": "LuckyBlox Arena",
+      "description": "Local Studio place",
+      "genre": "Adventure",
+      "author": "LocalPlayer",
+      "playerCount": 0,
+      "visibility": "Public",
+      "updatedAt": "2026-09-13T12:00:00.000Z"
+    }
+  ],
+  "total": 1
+}</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/api/v1/games/:placeId</span></h3>
+        <p>Get detailed info for a specific game.</p>
+        <div class="dev-code-block">// GET /api/v1/games/1818
+{
+  "ok": true,
+  "game": { "placeId": 1818, "name": "LuckyBlox Arena", ... }
+}</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/places</span></h3>
+        <p>Create a new place. Raw body sent as .rbxlx file data.</p>
+        <div class="dev-code-block">// POST /api/v1/places?name=MyPlace
+// Body: raw .rbxlx binary or JSON
+{
+  "ok": true,
+  "placeId": 1819,
+  "fileName": "MyPlace.rbblx",
+  "filePath": "/workspace/saved_places/MyPlace.rbblx"
+}</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/dev/create</span></h3>
+        <p>Create a new experience via the web portal. Form-encoded or raw body.</p>
+        <div class="dev-code-block">// POST /dev/create?name=NewExperience
+// Body: form data or raw place file
+{
+  "ok": true,
+  "placeId": 1819,
+  "fileName": "NewExperience.rbblx",
+  "filePath": "/workspace/saved_places/NewExperience.rbblx"
+}</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/places/:placeId/publish</span></h3>
+        <p>Publish a place to make it publicly available.</p>
+        <div class="dev-code-block">// POST /api/v1/places/1818/publish
+{
+  "ok": true,
+  "placeId": 1818,
+  "publishedAt": "2026-09-13T12:00:00.000Z"
+}</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/game/save</span></h3>
+        <p>Save game instance data.</p>
+        <div class="dev-code-block">// POST /api/v1/game/save
+// Body: { placeId: 1818, data: { ... } }
+{ "ok": true, "placeId": 1818 }</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/game/publish</span></h3>
+        <p>Publish a game from Studio.</p>
+        <div class="dev-code-block">// POST /api/v1/game/publish
+// Body: { placeId: 1818, name: "My Place" }
+{ "ok": true, "placeId": 1818 }</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/games/:placeId/launch</span></h3>
+        <p>Launch a game server instance.</p>
+        <div class="dev-code-block">// POST /api/v1/games/1818/launch
+{
+  "ok": true,
+  "jobId": "abc123",
+  "serverPort": 53640
+}</div>
+      </div>
+
+      <div class="dev-api-section">
+        <h3>Game Icon Requirements</h3>
+        <p>Game icons must be 512x512 pixels PNG format. Upload via <code>/dev/assets/upload</code> and reference via <code>/dev/game/:placeId/settings</code>.</p>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
