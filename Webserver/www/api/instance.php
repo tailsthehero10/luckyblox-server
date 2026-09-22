@@ -19,7 +19,7 @@ if ($method === 'GET') {
             'playerCount' => 1,
             'maxPlayers' => 30,
             'placeId' => (int) $placeId,
-            'baseUrl' => 'http://localhost',
+            'baseUrl' => rtrim(api_public_base_url(), '/'),
             'createdAt' => date('c'),
             'metadata' => $meta,
         ),
@@ -41,7 +41,7 @@ if ($method === 'POST' || $method === 'PUT') {
         'playerCount' => isset($payload['playerCount']) ? (int) $payload['playerCount'] : 1,
         'maxPlayers' => isset($payload['maxPlayers']) ? (int) $payload['maxPlayers'] : 30,
         'placeId' => (int) $placeId,
-        'baseUrl' => isset($payload['baseUrl']) ? (string) $payload['baseUrl'] : 'http://localhost',
+        'baseUrl' => isset($payload['baseUrl']) ? (string) $payload['baseUrl'] : rtrim(api_public_base_url(), '/'),
         'createdAt' => date('c'),
         'updatedAt' => date('c'),
     );

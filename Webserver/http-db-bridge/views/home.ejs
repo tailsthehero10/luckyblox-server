@@ -32,7 +32,7 @@
       </nav>
 
       <div class="roblox-right">
-        <span class="roblox-robux"><%= user.robux || 0 %></span>
+        <span class="roblox-robux"><%= currency && currency.robux ? currency.robux : (user.robux || 0) %></span>
         <span class="roblox-icon-button">⚙</span>
         <span class="roblox-icon-button">🔔</span>
         <span class="roblox-icon-button">@</span>
@@ -102,22 +102,24 @@
           <div class="roblox-panel-header">Friends</div>
           <div class="roblox-panel-body">
             <div class="roblox-asset-list">
-              <% const sampleFriends = [
-                { name: 'Skylin', status: 'online' },
-                { name: 'Noco', status: 'online' },
-                { name: 'Rogue', status: 'away' },
-                { name: 'Astra', status: 'online' }
-              ]; %>
-              <% sampleFriends.forEach((friend) => { %>
-                <div class="roblox-asset-item">
-                  <div class="roblox-asset-icon"><%= friend.name.slice(0,1).toUpperCase() %></div>
-                  <div>
-                    <div class="roblox-asset-name"><%= friend.name %></div>
-                    <div class="roblox-asset-type"><%= friend.status %></div>
-                  </div>
-                  <div class="roblox-asset-tag"><%= friend.status === 'online' ? 'Live' : 'Away' %></div>
-                </div>
-              <% }) %>
+              <div class="roblox-meta-row" style="margin-bottom: 10px;">
+                <span class="roblox-meta-pill"><%= friends ? friends.length : 0 %> friends</span>
+                <span class="roblox-meta-pill"><%= friends ? friends.filter((f) => f.online).length : 0 %> online</span>
+              </div>
+              <% if (friends && friends.length) { %>
+                <% friends.forEach((friend) => { %>
+                  <a class="roblox-asset-item" href="<%= friend.profileUrl %>">
+                    <div class="roblox-asset-icon"><%= friend.username.slice(0,1).toUpperCase() %></div>
+                    <div>
+                      <div class="roblox-asset-name"><%= friend.username %></div>
+                      <div class="roblox-asset-type"><%= friend.status %></div>
+                    </div>
+                    <div class="roblox-asset-tag"><%= friend.online ? 'Live' : (friend.status === 'away' ? 'Away' : 'Offline') %></div>
+                  </a>
+                <% }) %>
+              <% } else { %>
+                <div class="roblox-muted">No friends yet — add someone to see them here.</div>
+              <% } %>
             </div>
           </div>
         </div>

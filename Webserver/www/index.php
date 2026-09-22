@@ -12,10 +12,12 @@ $rootPath = realpath(__DIR__ . '/../../');
 $settingsRoot = realpath($rootPath . '/Settings');
 $mapsRoot = realpath($rootPath . '/Maps');
 
-$baseUrl = 'http://localhost/LuckBlox.site.tk/';
+// Base URL comes from the environment (Render hostname) with a local fallback,
+// so the same PHP works on the desktop and in the cloud container.
+$baseUrl = function_exists('api_public_base_url') ? api_public_base_url() : '/';
 $username = read_setting($settingsRoot . '/username.txt', 'default');
 $membership = read_setting($settingsRoot . '/membership.txt', 'None');
-$ip = read_setting($settingsRoot . '/ip.txt', '127.0.0.1');
+$ip = read_setting($settingsRoot . '/ip.txt', '0.0.0.0');
 $hostPort = read_setting($settingsRoot . '/HostPort.txt', '53640');
 $serverPort = read_setting($settingsRoot . '/serverport.txt', '2005');
 $clientPort = read_setting($settingsRoot . '/clientport.txt', '53640');

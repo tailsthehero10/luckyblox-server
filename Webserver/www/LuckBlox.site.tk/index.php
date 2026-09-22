@@ -17,11 +17,11 @@ $rootPath = realpath(__DIR__ . '/../../../');
 $settingsRoot = realpath($rootPath . '/Settings');
 $mapsRoot = realpath($rootPath . '/Maps');
 
-$baseUrl = 'http://localhost/LuckBlox.site.tk/';
+$baseUrl = function_exists('api_public_base_url') ? api_public_base_url() : '/';
 $username = read_setting($settingsRoot . '/username.txt', 'default');
 $membership = read_setting($settingsRoot . '/membership.txt', 'None');
-$ip = read_setting($settingsRoot . '/ip.txt', '127.0.0.1');
-$hostPort = read_setting($settingsRoot . '/HostPort.txt', '53640');
+$ip = function_exists('api_public_server_ip') ? api_public_server_ip() : read_setting($settingsRoot . '/ip.txt', '0.0.0.0');
+$hostPort = function_exists('api_public_game_port') ? api_public_game_port() : read_setting($settingsRoot . '/HostPort.txt', '53640');
 $serverPort = read_setting($settingsRoot . '/serverport.txt', '2005');
 $clientPort = read_setting($settingsRoot . '/clientport.txt', '53640');
 $mapPath = read_setting($settingsRoot . '/MapPath.txt', '');

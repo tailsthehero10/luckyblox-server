@@ -11,26 +11,39 @@ if ($releaseRoot === false) {
 $requestedClient = isset($_GET['client']) ? strtolower(trim((string) $_GET['client'])) : '2021m';
 $requestedPlaceId = isset($_GET['placeid']) ? preg_replace('/[^0-9]/', '', (string) $_GET['placeid']) : '';
 
+// Bridge connection details come from the environment. Inside the container the
+// bridge is already running on an internal port, so we probe it instead of
+// trying to spawn a Windows process. No hardcoded loopback address or port.
+$bridgeHost = getenv('LUCKYBLOX_BRIDGE_HOST') ?: '127.0.0.1';
+$bridgePort = (int) (getenv('LUCKYBLOX_BRIDGE_PORT') ?: getenv('PORT') ?: 3001);
+
 if ($requestedPlaceId !== '') {
-    $bridgeUrl = 'http://127.0.0.1:3001/api/launch-game';
+    $bridgeUrl = 'http://' . $bridgeHost . ':' . $bridgePort . '/api/launch-game';
     $bridgeRoot = realpath(__DIR__ . '/../../http-db-bridge');
 
     $bridgeReady = false;
-    $socket = @fsockopen('127.0.0.1', 3001, $errorCode, $errorMessage, 0.4);
+    $socket = @fsockopen($bridgeHost, $bridgePort, $errorCode, $errorMessage, 0.4);
     if (is_resource($socket)) {
         fclose($socket);
         $bridgeReady = true;
     }
 
-    if (!$bridgeReady && $bridgeRoot !== false) {
-        $nodePath = 'E:/nodejs/node.exe';
-        $serverPath = str_replace('/', '\\', $bridgeRoot . '/server.js');
-        $command = 'cmd /c start "" /B "' . $nodePath . '" "' . $serverPath . '" >NUL 2>&1';
+    // Only attempt an auto-spawn on a local desktop run. In the cloud the
+    // process manager (Docker/Foreman) owns the bridge lifecycle.
+    $isCloud = getenv('PORT') !== false || getenv('RENDER') !== false;
+    if (!$bridgeReady && !$isCloud && $bridgeRoot !== false) {
+        $nodePath = getenv('NODE_BIN') ?: 'node';
+        $serverPath = $bridgeRoot . '/server.js';
+        if (stripos(PHP_OS, 'WIN') === 0) {
+            $command = 'cmd /c start "" /B "' . $nodePath . '" "' . str_replace('/', '\\', $serverPath) . '" >NUL 2>&1';
+        } else {
+            $command = escapeshellcmd($nodePath) . ' ' . escapeshellarg($serverPath) . ' > /dev/null 2>&1 &';
+        }
         @pclose(@popen($command, 'r'));
 
         for ($attempt = 0; $attempt < 12; $attempt++) {
             usleep(150000);
-            $socket = @fsockopen('127.0.0.1', 3001, $errorCode, $errorMessage, 0.4);
+            $socket = @fsockopen($bridgeHost, $bridgePort, $errorCode, $errorMessage, 0.4);
             if (is_resource($socket)) {
                 fclose($socket);
                 $bridgeReady = true;
@@ -74,11 +87,11 @@ if ($requestedPlaceId !== '') {
     }
 
     if (isset($launchPayload['playUrl']) && is_string($launchPayload['playUrl']) && strpos($launchPayload['playUrl'], 'http') !== 0) {
-        $launchPayload['playUrl'] = 'http://127.0.0.1:3001' . $launchPayload['playUrl'];
+        $launchPayload['playUrl'] = 'http://' . $bridgeHost . ':' . $bridgePort . $launchPayload['playUrl'];
     }
 
     if (isset($launchPayload['launchURI']) && is_string($launchPayload['launchURI']) && strpos($launchPayload['launchURI'], 'http') !== 0) {
-        $launchPayload['launchURI'] = 'http://127.0.0.1:3001' . $launchPayload['launchURI'];
+        $launchPayload['launchURI'] = 'http://' . $bridgeHost . ':' . $bridgePort . $launchPayload['launchURI'];
     }
 
     api_json_response($launchPayload);

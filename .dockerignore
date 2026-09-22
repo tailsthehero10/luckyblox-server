@@ -9,3 +9,14 @@ node_modules
 *.7z
 build/
 dist/
+
+# Heavy local/runtime artifacts that must not ship in the image:
+.kilo
+.vscode
+Webserver/bin/apache/logs
+Webserver/bin/database
+**/*.log
+**/authdigest_shm.*
+**/httpd.pid
+workspace/saved_places
+Uploads

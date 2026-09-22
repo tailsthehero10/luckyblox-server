@@ -1,9 +1,18 @@
 const fs = require('fs');
 const path = require('path');
+const { publicBaseUrl, publicHostname, publicProtocol } = require(path.join(__dirname, '..', '..', 'server', 'runtimeConfig'));
 
 const STUDIO_BUILD_ID = '0ab9886ca1232bdb0cd19736a3605065fba61d05';
-const DEFAULT_BASE_URL = 'http://localhost/LuckBlox.site.tk/';
-const STUDIO_EXECUTABLE_PATH = 'E:/LuckyBloxLauncher/NEW LKL/Release/Clients/2022M/RobloxStudioBeta.exe';
+// Resolved from the live deployment hostname so Studio fetches the real site
+// instead of a hardcoded localhost URL.
+const DEFAULT_BASE_URL = require(path.join(__dirname, '..', '..', 'server', 'runtimeConfig')).stripTrailingSlash(
+  publicBaseUrl || `${publicProtocol}://${publicHostname}`,
+) + '/LuckBlox.site.tk/';
+// Portable Studio executable path: an explicit env override wins, otherwise we
+// fall back to the bundled client so the same config works on Windows and Linux.
+const STUDIO_EXECUTABLE_PATH =
+  process.env.LUCKYBLOX_STUDIO_PATH ||
+  path.join(__dirname, '..', '..', 'Clients', '2022M', process.platform === 'win32' ? 'RobloxStudioBeta.exe' : 'RobloxStudioBeta');
 
 function getStudioBuildInfo() {
   return {

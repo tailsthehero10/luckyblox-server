@@ -1,11 +1,18 @@
 services:
   luckblox-launcher-server:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     container_name: luckblox-node-fast
+    # Single public port; the container binds 0.0.0.0 and reads PORT internally.
+    environment:
+      - PORT=3002
+      - HOST=0.0.0.0
+      - LUCKYBLOX_BRIDGE_HOST=127.0.0.1
+      - LUCKYBLOX_BRIDGE_PORT=3001
+      - LUCKYBLOX_GAME_HOST=0.0.0.0
+      - PUBLIC_URL=http://localhost:3002
     ports:
-      - "3001:3001"
       - "3002:3002"
     volumes:
       - .:/app

@@ -23,9 +23,9 @@ $health = array(
         'timestamp' => date('c'),
     ),
     'config' => array(
-        'baseUrl' => 'http://localhost/LuckBlox.site.tk/',
-        'ip' => api_get_setting_value($settingsRoot . '/ip.txt', '127.0.0.1'),
-        'hostPort' => api_get_setting_value($settingsRoot . '/HostPort.txt', '53640'),
+        'baseUrl' => api_public_base_url(),
+        'ip' => api_public_server_ip(),
+        'hostPort' => api_public_game_port(),
         'serverPort' => api_get_setting_value($settingsRoot . '/serverport.txt', '2005'),
         'clientPort' => api_get_setting_value($settingsRoot . '/clientport.txt', '53640'),
         'username' => api_get_current_account()['username'],

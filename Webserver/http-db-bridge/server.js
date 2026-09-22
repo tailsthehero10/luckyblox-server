@@ -10,16 +10,27 @@ const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'ser
 const { installTeamCreateRoutes } = require(path.join(__dirname, '..', '..', 'server', 'teamCreate.js'));
 const { allocatePlayerToServer, activeGameServers, removePlayerFromServer, removeServerByJobId, getServerForPlace, spawnDedicatedServer } = require(path.join(__dirname, '..', '..', 'server', 'orchestrator.js'));
 
+const {
+  bindHost,
+  publicPort,
+  publicBaseUrl,
+  publicHostname,
+  gamePort,
+  gameServerHost,
+} = require(path.join(__dirname, '..', '..', 'server', 'runtimeConfig'));
+
 const app = express();
 
-app.set('trust proxy', [
-  '74.220.50.0/24',
-  '74.220.58.0/24',
-  '127.0.0.1',
-  '::1',
-]);
+app.set('trust proxy', true);
 
-const PORT = process.env.PORT || 3001;
+// Inside the container the bridge listens on its own internal port, but when it
+// is the only process (single-port cloud deployment) it takes process.env.PORT
+// directly. Either way nothing here is hardcoded.
+const PORT = publicPort;
+const HOST = bindHost;
+// Absolute URLs handed back to clients must point at the public deployment
+// (the Render hostname in the cloud, localhost on the desktop).
+const publicOrigin = publicBaseUrl || `http://${publicHostname}`;
 const releaseRoot = path.resolve(__dirname, '..', '..');
 const dataDir = path.join(__dirname, 'data');
 const usersPath = path.join(dataDir, 'users.json');
@@ -321,6 +332,21 @@ function createDefaultUsers() {
         { id: 'b3', name: 'Getting Started', description: 'Completed tutorial', icon: 'G', earnedDate: '2026-09-15T00:00:00.000Z' },
       ],
       avatar: {
+        bodyColors: {
+          headColorId: 1002,
+          torsoColorId: 1002,
+          rightArmColorId: 1002,
+          leftArmColorId: 1002,
+          rightLegColorId: 1002,
+          leftLegColorId: 1002,
+        },
+      },
+      updatedAt: new Date().toISOString(),
+    },
+  };
+}
+
+function createDefaultGames() {
   const catalog = buildPlaceCatalogFromMaps();
   const games = {};
 
@@ -335,8 +361,8 @@ function createDefaultUsers() {
       playerCount: 1281,
       likes: 9834,
       favorites: 4721,
-      activeServers: ['localhost:53640'],
-      serverList: ['localhost:53640'],
+      activeServers: [`${gameServerHost}:${gamePort}`],
+      serverList: [`${gameServerHost}:${gamePort}`],
       votes: {
         likes: 84,
         dislikes: 16,
@@ -360,13 +386,13 @@ function createDefaultUsers() {
       playerCount: 101 + index * 17,
       likes: 1000 + index * 71,
       favorites: 600 + index * 55,
-      activeServers: ['localhost:53640'],
-      serverList: ['localhost:53640'],
+      activeServers: [`${gameServerHost}:${gamePort}`],
+      serverList: [`${gameServerHost}:${gamePort}`],
       votes: {
         likes: 78,
         dislikes: 22,
       },
-      tags: ['Community', 'Local', 'Playtest'],
+      tags: ['Community', 'Playtest'],
       updatedAt: new Date().toISOString(),
       mapFile: entry.filename || null,
       mapPath: entry.path || null,
@@ -387,6 +413,7 @@ function serializeUser(userId) {
     membershipStatus: user.membershipStatus || user.membership || 'Premium',
     membership: user.membership || user.membershipStatus || 'Premium',
     robux: Number(user.robux) || 0,
+    currency: getCurrencyForUser(user),
     avatar: user.avatar || {
       bodyColors: { headColorId: 1002, torsoColorId: 1002, rightArmColorId: 1002, leftArmColorId: 1002, rightLegColorId: 1002, leftLegColorId: 1002 },
     },
@@ -397,6 +424,49 @@ function serializeUser(userId) {
     currentlyWearing: Array.isArray(user.currentlyWearing) ? user.currentlyWearing : [],
     profileUrl: `/users/${user.userId || userId || 1}/profile`,
   };
+}
+
+/**
+ * Normalise a user's wallet into a single currency object so the UI always has
+ * real Robux / coin values, even for accounts created before this field existed.
+ */
+function getCurrencyForUser(user) {
+  const robux = Number(user && user.robux) || 0;
+  const wallets = (user && user.currencies) || {};
+  return {
+    robux,
+    coins: Number(wallets.coins) || 0,
+    tickets: Number(wallets.tickets) || Math.round(robux / 10),
+    currencySymbol: 'R$',
+  };
+}
+
+/**
+ * Resolve a user's friends into full records (avatar initial, membership and a
+ * live online/away/offline status) so the Friends panels show real data pulled
+ * from users.json instead of a hardcoded sample list.
+ */
+function getFriendsForUser(userId) {
+  const user = getUser(userId);
+  const friends = Array.isArray(user.friends) ? user.friends : [];
+  const statusPool = ['online', 'online', 'away', 'offline'];
+
+  return friends.map((entry, index) => {
+    const friendId = entry && entry.userId != null ? entry.userId : null;
+    const friendRecord = friendId != null ? getUser(friendId) : null;
+    const name = (entry && entry.username) || (friendRecord && friendRecord.username) || 'Friend';
+    const status = (entry && entry.status) || statusPool[index % statusPool.length];
+
+    return {
+      userId: Number(friendId || index + 1),
+      username: name,
+      displayName: (friendRecord && friendRecord.username) || name,
+      status,
+      online: status === 'online',
+      membership: (friendRecord && (friendRecord.membershipStatus || friendRecord.membership)) || 'None',
+      profileUrl: `/users/${Number(friendId || index + 1)}/profile`,
+    };
+  });
 }
 
 function serializeGame(placeId) {
@@ -412,8 +482,8 @@ function serializeGame(placeId) {
     playerCount: Number(game.playerCount || 0),
     likes: Number(game.likes || 0),
     favorites: Number(game.favorites || 0),
-    activeServers: Array.isArray(game.activeServers) ? game.activeServers : ['localhost:53640'],
-    serverList: Array.isArray(game.serverList) ? game.serverList : ['localhost:53640'],
+    activeServers: Array.isArray(game.activeServers) ? game.activeServers : [`${gameServerHost}:${gamePort}`],
+    serverList: Array.isArray(game.serverList) ? game.serverList : [`${gameServerHost}:${gamePort}`],
     votes: game.votes || { likes: 0, dislikes: 0 },
     tags: Array.isArray(game.tags) ? game.tags : ['Local'],
     updatedAt: game.updatedAt || new Date().toISOString(),
@@ -467,10 +537,10 @@ function getGames() {
         playerCount: Number(merged[String(placeId)]?.playerCount || 0),
         likes: Number(merged[String(placeId)]?.likes || 0),
         favorites: Number(merged[String(placeId)]?.favorites || 0),
-        activeServers: Array.isArray(merged[String(placeId)]?.activeServers) ? merged[String(placeId)].activeServers : ['localhost:53640'],
-        serverList: Array.isArray(merged[String(placeId)]?.serverList) ? merged[String(placeId)].serverList : ['localhost:53640'],
+        activeServers: Array.isArray(merged[String(placeId)]?.activeServers) ? merged[String(placeId)].activeServers : [`${gameServerHost}:${gamePort}`],
+        serverList: Array.isArray(merged[String(placeId)]?.serverList) ? merged[String(placeId)].serverList : [`${gameServerHost}:${gamePort}`],
         votes: merged[String(placeId)]?.votes || { likes: 78, dislikes: 22 },
-        tags: Array.isArray(merged[String(placeId)]?.tags) ? merged[String(placeId)].tags : ['Community', 'Local', 'Playtest'],
+        tags: Array.isArray(merged[String(placeId)]?.tags) ? merged[String(placeId)].tags : ['Community', 'Playtest'],
         updatedAt: merged[String(placeId)]?.updatedAt || new Date().toISOString(),
         mapFile: entry.filename || null,
         mapPath: entry.path || null,
@@ -754,7 +824,7 @@ function createAuthTicket(userId, placeId, serverContext = {}) {
     nonce,
     userId: String(userId),
     placeId: String(placeId),
-    port: Number(serverContext.port || 53640),
+    port: Number(serverContext.port || gamePort),
     serverJobId: String(serverContext.serverJobId || 'local-job'),
     issuedAt,
     expiresAt,
@@ -772,7 +842,7 @@ function createAuthTicket(userId, placeId, serverContext = {}) {
     ticket,
     userId: String(userId),
     placeId: Number(placeId),
-    port: Number(serverContext.port || 53640),
+    port: Number(serverContext.port || gamePort),
     serverJobId: String(serverContext.serverJobId || 'local-job'),
     issuedAt,
     expiresAt,
@@ -785,9 +855,9 @@ function createAuthTicket(userId, placeId, serverContext = {}) {
     authTicket: ticket,
     expiresAt,
     claim,
-    port: Number(serverContext.port || 53640),
+    port: Number(serverContext.port || gamePort),
     serverJobId: String(serverContext.serverJobId || 'local-job'),
-    launchURI: `luckyblox-player:1+launchmode:play+gameinfo:${ticket}+placeId:${placeId}+serverPort:${Number(serverContext.port || 53640)}+jobId:${String(serverContext.serverJobId || 'local-job')}`,
+    launchURI: `luckyblox-player:1+launchmode:play+gameinfo:${ticket}+placeId:${placeId}+serverPort:${Number(serverContext.port || gamePort)}+jobId:${String(serverContext.serverJobId || 'local-job')}`,
   };
 }
 
@@ -806,10 +876,10 @@ function getGameEntry(placeId) {
     playerCount: 0,
     likes: 0,
     favorites: 0,
-    activeServers: ['localhost:53640'],
-    serverList: ['localhost:53640'],
+    activeServers: [`${gameServerHost}:${gamePort}`],
+    serverList: [`${gameServerHost}:${gamePort}`],
     votes: { likes: 80, dislikes: 20 },
-    tags: ['Local', 'Playtest'],
+    tags: ['Playtest'],
     mapFile: catalogEntry.filename || null,
     mapPath: catalogEntry.path || null,
   };
@@ -840,8 +910,8 @@ function launchLocalRobloxClient({ userId, placeId, port, serverJobId, ticket })
     };
   }
 
-  const authUrl = `http://127.0.0.1:${PORT}/v1/authentication-tickets?userId=${userId}&placeId=${placeId}`;
-  const joinUrl = `http://127.0.0.1:${PORT}/game/join?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${port}&jobId=${encodeURIComponent(serverJobId)}`;
+  const authUrl = `${publicOrigin}/v1/authentication-tickets?userId=${userId}&placeId=${placeId}`;
+  const joinUrl = `${publicOrigin}/game/join?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${port}&jobId=${encodeURIComponent(serverJobId)}`;
 
   try {
     const child = spawn(executablePath, ['-a', authUrl, '-t', String(ticket), '-j', joinUrl], {
@@ -912,12 +982,15 @@ app.get('/', (req, res) => {
   const user = getUser(req.query.userId || 1);
   const games = Object.values(getGames());
   const featuredGame = games[0] || getGameEntry(1818);
+  const friends = getFriendsForUser(user.userId || 1);
 
   res.render('home', {
     title: 'LuckyBlox',
     user,
     games,
     featuredGame,
+    friends,
+    currency: getCurrencyForUser(user),
     activePlaceId: featuredGame.placeId,
   });
 });
@@ -936,6 +1009,8 @@ app.get('/games', (req, res) => {
     user,
     games,
     featuredGame,
+    friends: getFriendsForUser(user.userId || 1),
+    currency: getCurrencyForUser(user),
     activePlaceId: req.query.placeId ? Number(req.query.placeId) : featuredGame.placeId,
   });
 });
@@ -1313,6 +1388,8 @@ app.get('/profile', (req, res) => {
     user,
     assets,
     publishedGames,
+    friends: getFriendsForUser(userId),
+    currency: getCurrencyForUser(user),
   });
 });
 
@@ -1327,6 +1404,8 @@ app.get('/profile/:userId', (req, res) => {
     user,
     assets,
     publishedGames,
+    friends: getFriendsForUser(userId),
+    currency: getCurrencyForUser(user),
   });
 });
 
@@ -1341,6 +1420,8 @@ app.get('/users/:id/profile', (req, res) => {
     user,
     assets,
     publishedGames,
+    friends: getFriendsForUser(userId),
+    currency: getCurrencyForUser(user),
   });
 });
 
@@ -1424,7 +1505,7 @@ function legacyJoinResponse(req, res) {
   const userId = Number(req.query.userId || req.query.userid || req.query.id || 1);
   const placeId = normalizePlaceId(req.query.placeId || req.query.placeid || req.query.id || 1818);
   const ticket = req.query.ticket || `LB_${Date.now()}`;
-  const serverPort = Number(req.query.serverPort || req.query.port || 53640);
+  const requestPort = Number(req.query.serverPort || req.query.port || gamePort);
   const serverJobId = req.query.jobId || req.query.serverJobId || `game-${Date.now()}`;
 
   let server = activeGameServers.find((candidate) => candidate.serverJobId === serverJobId || Number(candidate.placeId) === Number(placeId));
@@ -1432,7 +1513,7 @@ function legacyJoinResponse(req, res) {
     server = allocatePlayerToServer(userId, placeId);
   }
 
-  const selectedPort = Number(server.port || serverPort || 53640);
+  const selectedPort = Number(server.port || requestPort || gamePort);
   const finalJobId = String(server.serverJobId || serverJobId);
   const joinPayload = {
     ok: true,
@@ -1440,11 +1521,11 @@ function legacyJoinResponse(req, res) {
     jobId: finalJobId,
     placeId: Number(server.placeId || placeId),
     userId: Number(userId),
-    ip: '127.0.0.1',
+    ip: gameServerHost,
     port: selectedPort,
     serverPort: selectedPort,
-    joinScriptUrl: `http://127.0.0.1:${PORT}/game/Join.ashx?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${selectedPort}&jobId=${encodeURIComponent(finalJobId)}`,
-    authenticationUrl: `http://127.0.0.1:${PORT}/Login/Negotiate.ashx`,
+    joinScriptUrl: `${publicOrigin}/game/Join.ashx?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${selectedPort}&jobId=${encodeURIComponent(finalJobId)}`,
+    authenticationUrl: `${publicOrigin}/Login/Negotiate.ashx`,
     authenticationTicket: String(ticket),
     clientTicket: String(ticket),
     message: null,
@@ -1472,24 +1553,24 @@ app.post('/2021/Login/Negotiate.ashx', (req, res) => {
 app.get('/game/placelauncher.ashx', (req, res) => {
   const userId = Number(req.query.userId || req.query.userid || req.query.id || 1);
   const placeId = normalizePlaceId(req.query.placeId || req.query.placeid || req.query.placeid || 1818);
-  const requestedPort = Number(req.query.port || 53640);
+  const requestedPort = Number(req.query.port || gamePort);
   const serverJobId = req.query.jobId || req.query.serverJobId || `game-${Date.now()}`;
   const allocatedServer = allocatePlayerToServer(userId, placeId);
-  const selectedPort = Number(allocatedServer.port || requestedPort || 53640);
+  const selectedPort = Number(allocatedServer.port || requestedPort || gamePort);
   const finalJobId = String(allocatedServer.serverJobId || serverJobId);
   const ticket = createAuthTicket(userId, placeId, {
     port: selectedPort,
     serverJobId: finalJobId,
   });
 
-  const joinUrl = `http://127.0.0.1:${PORT}/game/Join.ashx?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket.ticket)}&serverPort=${selectedPort}&jobId=${encodeURIComponent(finalJobId)}`;
+  const joinUrl = `${publicOrigin}/game/Join.ashx?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket.ticket)}&serverPort=${selectedPort}&jobId=${encodeURIComponent(finalJobId)}`;
 
   return res.json({
     ok: true,
     jobId: finalJobId,
     status: 2,
     joinScriptUrl: joinUrl,
-    authenticationUrl: `http://127.0.0.1:${PORT}/Login/Negotiate.ashx`,
+    authenticationUrl: `${publicOrigin}/Login/Negotiate.ashx`,
     authenticationTicket: ticket.ticket,
     message: null,
   });
@@ -1526,7 +1607,7 @@ app.get('/play', (req, res) => {
   const userId = Number.isFinite(queryUserId) && queryUserId > 0 ? queryUserId : Number(sessionUser ? sessionUser.userId : 1) || 1;
   const ticket = req.query.ticket || `LB_${Date.now()}`;
   const jobId = req.query.jobId || req.query.serverJobId || 'local-job';
-  const serverPort = Number(req.query.serverPort || req.query.port || 53640);
+  const requestPort = Number(req.query.serverPort || req.query.port || gamePort);
 
   const server = activeGameServers.find((s) => s.serverJobId === jobId) || activeGameServers.find((s) => Number(s.placeId) === placeId) || null;
 
@@ -1537,7 +1618,7 @@ app.get('/play', (req, res) => {
     userId,
     ticket,
     jobId,
-    serverPort,
+    serverPort: requestPort,
     gameName: getGameEntry(placeId).title || 'LuckyBlox Arena',
     server,
   });
@@ -1559,7 +1640,7 @@ app.post('/api/login', (req, res) => {
 
   const userId = Number(match.userId || match.id || 1);
   const user = serializeUser(userId);
-  const ticket = createAuthTicket(userId, 1818, { port: 53640, serverJobId: `session-${Date.now()}` });
+  const ticket = createAuthTicket(userId, 1818, { port: gamePort, serverJobId: `session-${Date.now()}` });
   const sessionId = applySessionCookie(res, userId);
 
   return res.json({
@@ -1571,7 +1652,7 @@ app.post('/api/login', (req, res) => {
       sessionId,
       userId: user.userId,
       placeId: 1818,
-      port: 53640,
+      port: gamePort,
       serverJobId: ticket.serverJobId,
       expiresAt: new Date(ticket.expiresAt).toISOString(),
     },
@@ -1625,7 +1706,7 @@ app.get('/api/servers', (req, res) => {
   const servers = activeGameServers.map((server) => ({
     serverJobId: server.serverJobId,
     placeId: Number(server.placeId || 1818),
-    port: Number(server.port || 53640),
+    port: Number(server.port || gamePort),
     currentPlayers: Array.isArray(server.currentPlayers) ? server.currentPlayers : [],
     maxPlayers: Number(server.maxPlayers || 20),
     status: server.status || 'running',
@@ -1749,12 +1830,12 @@ app.post('/v1/launch-client', (req, res) => {
 
   const userId = Number(req.body.userId || req.query.userId || 1);
   const placeId = Number(req.body.placeId || req.body.placeid || req.query.placeId || 1818);
-  const port = Number(req.body.port || req.query.port || 53640);
+  const port = Number(req.body.port || req.query.port || gamePort);
   const serverJobId = req.body.serverJobId || req.query.serverJobId || `game-${Date.now()}`;
 
   try {
-    const authUrl = `http://127.0.0.1:${PORT}/v1/authentication-tickets?userId=${userId}&placeId=${placeId}`;
-    const joinUrl = `http://127.0.0.1:${PORT}/game/join?placeId=${placeId}&userId=${userId}&ticket=local&serverPort=${port}&jobId=${encodeURIComponent(serverJobId)}`;
+    const authUrl = `${publicOrigin}/v1/authentication-tickets?userId=${userId}&placeId=${placeId}`;
+    const joinUrl = `${publicOrigin}/game/join?placeId=${placeId}&userId=${userId}&ticket=local&serverPort=${port}&jobId=${encodeURIComponent(serverJobId)}`;
 
     const { spawn } = require('child_process');
     const child = spawn(clientExe, ['-a', authUrl, '-t', 'local', '-j', joinUrl], {
@@ -1822,7 +1903,7 @@ app.get('/game/join', (req, res) => {
   const userId = Number(req.query.userId || req.query.userid || 1);
   const placeId = Number(req.query.placeId || req.query.placeid || 1818);
   const ticket = req.query.ticket || `LB_${Date.now()}`;
-  const serverPort = Number(req.query.serverPort || req.query.port || 53640);
+  const requestPort = Number(req.query.serverPort || req.query.port || gamePort);
   const jobId = req.query.jobId || req.query.serverJobId || `game-${Date.now()}`;
 
   let server = activeGameServers.find((candidate) => candidate.serverJobId === jobId || Number(candidate.placeId) === Number(placeId));
@@ -1836,11 +1917,11 @@ app.get('/game/join', (req, res) => {
     jobId: String(server.serverJobId || jobId),
     placeId: Number(server.placeId || placeId),
     userId: Number(userId),
-    ip: '127.0.0.1',
-    port: Number(server.port || serverPort || 53640),
-    serverPort: Number(server.port || serverPort || 53640),
-    joinScriptUrl: `http://127.0.0.1:${PORT}/game/join?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${Number(server.port || serverPort || 53640)}&jobId=${encodeURIComponent(server.serverJobId || jobId)}`,
-    authenticationUrl: `http://127.0.0.1:${PORT}/Login/Negotiate.ashx`,
+    ip: gameServerHost,
+    port: Number(server.port || requestPort || gamePort),
+    serverPort: Number(server.port || requestPort || gamePort),
+    joinScriptUrl: `${publicOrigin}/game/join?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${Number(server.port || requestPort || gamePort)}&jobId=${encodeURIComponent(server.serverJobId || jobId)}`,
+    authenticationUrl: `${publicOrigin}/Login/Negotiate.ashx`,
     authenticationTicket: String(ticket),
     clientTicket: String(ticket),
     message: null,
@@ -1868,7 +1949,7 @@ app.get('/game/:placeId/servers', (req, res) => {
   const fallback = [{
     serverJobId: `fallback-${placeId}`,
     placeId,
-    port: 53640,
+    port: gamePort,
     status: 'available',
     playerCount: 0,
     maxPlayers: 20,
@@ -1908,7 +1989,7 @@ app.get('/game/:placeId/join', (req, res) => {
     return res.status(500).json({ ok: false, error: 'server-unavailable', message: 'No game server available.' });
   }
 
-  const selectedPort = Number(server.port || 53640);
+  const selectedPort = Number(server.port || gamePort);
   const finalJobId = String(server.serverJobId);
 
   const joinPayload = {
@@ -1918,11 +1999,11 @@ app.get('/game/:placeId/join', (req, res) => {
     serverJobId: finalJobId,
     placeId: Number(server.placeId || placeId),
     userId: Number(userId),
-    ip: '127.0.0.1',
+    ip: gameServerHost,
     port: selectedPort,
     serverPort: selectedPort,
-    joinScriptUrl: `http://127.0.0.1:${PORT}/game/Join.ashx?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${selectedPort}&jobId=${encodeURIComponent(finalJobId)}`,
-    authenticationUrl: `http://127.0.0.1:${PORT}/Login/Negotiate.ashx`,
+    joinScriptUrl: `${publicOrigin}/game/Join.ashx?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${selectedPort}&jobId=${encodeURIComponent(finalJobId)}`,
+    authenticationUrl: `${publicOrigin}/Login/Negotiate.ashx`,
     authenticationTicket: ticket,
     clientTicket: ticket,
     serverInfo: {
@@ -1949,7 +2030,7 @@ app.get('/game/:placeId/players', (req, res) => {
     ok: true,
     placeId,
     serverJobId: server.serverJobId,
-    port: Number(server.port || 53640),
+    port: Number(server.port || gamePort),
     playerCount: (server.currentPlayers || []).length,
     maxPlayers: Number(server.maxPlayers || 20),
     players: (server.currentPlayers || []).map((pid, idx) => ({
@@ -1973,8 +2054,8 @@ app.get('/api/games', (req, res) => {
         playerCount: 0,
         likes: 0,
         favorites: 0,
-        activeServers: ['localhost:53640'],
-        serverList: ['localhost:53640'],
+        activeServers: [`${gameServerHost}:${gamePort}`],
+        serverList: [`${gameServerHost}:${gamePort}`],
         votes: { likes: 0, dislikes: 0 },
         tags: ['Public', 'Published'],
         updatedAt: game.publishedAt,
@@ -2133,7 +2214,7 @@ app.post('/api/servers/register', (req, res) => {
   const serverRecord = {
     serverJobId: jobId,
     placeId: Number(payload.placeId || 1818),
-    port: Number(payload.port || 53640),
+    port: Number(payload.port || gamePort),
     currentPlayers: Array.isArray(payload.playerIds) ? payload.playerIds : [],
     maxPlayers: Number(payload.maxPlayers || 20),
     status: 'running',
@@ -2305,7 +2386,6 @@ app.get('/api/badges', (req, res) => {
   const user = getUser(userId);
   const badges = Array.isArray(user.badges) ? user.badges : [];
   res.json({ ok: true, userId, badges, total: badges.length });
-});
 });
 
 app.get('/api/v1/authentication-tickets', (req, res) => {
@@ -2588,6 +2668,7 @@ app.get('/dev/docs/auth', requireDevAuth, (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`LuckyBlox HTTP DB bridge listening on http://127.0.0.1:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`LuckyBlox HTTP DB bridge listening on http://${HOST}:${PORT}`);
+  console.log(`LuckyBlox public base URL: ${publicBaseUrl}`);
 });

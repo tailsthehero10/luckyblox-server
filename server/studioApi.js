@@ -2,6 +2,11 @@ const path = require('path');
 const express = require(path.join(__dirname, '..', 'Webserver', 'http-db-bridge', 'node_modules', 'express'));
 const fs = require('fs');
 const crypto = require('crypto');
+const { publicBaseUrl, publicHostname, publicProtocol, gameServerHost } = require('./runtimeConfig');
+
+// Absolute content URLs must point at the live public deployment, not at a
+// local port, otherwise the toolbox/asset links break in the cloud.
+const publicOrigin = publicBaseUrl || `${publicProtocol}://${publicHostname}`;
 
 const releaseRoot = path.resolve(__dirname, '..');
 const workspaceRoot = path.resolve(releaseRoot, 'workspace');
@@ -328,8 +333,8 @@ function buildToolboxItem(record, index = 0) {
   const itemName = record.name || `Asset ${id}`;
   const kind = record.assetType || record.kind || 'Model';
   const contentUrl = record.filePath && fs.existsSync(record.filePath)
-    ? `http://localhost:3001/asset/${encodeURIComponent(path.basename(record.filePath))}`
-    : `http://localhost:3001/asset/?placeId=${id}`;
+    ? `${publicOrigin}/asset/${encodeURIComponent(path.basename(record.filePath))}`
+    : `${publicOrigin}/asset/?placeId=${id}`;
 
   return {
     assetId: id,
@@ -614,7 +619,7 @@ function installStudioApiRoutes(app) {
       universeId: placeRecord ? Number(placeRecord.universeId || placeId) : placeId,
       maxPlayers: placeRecord ? Number(placeRecord.maxPlayers || 20) : 20,
       allowHttpRequests: true,
-      serverAddress: '127.0.0.1',
+      serverAddress: gameServerHost,
       apiAccess: {
         avatar: true,
         publish: true,
@@ -623,7 +628,7 @@ function installStudioApiRoutes(app) {
       },
       httpService: {
         enabled: true,
-        allowedDomains: ['localhost', '127.0.0.1'],
+        allowedDomains: [publicHostname, gameServerHost].filter(Boolean),
       },
       universe: {
         id: placeRecord ? Number(placeRecord.universeId || placeId) : placeId,

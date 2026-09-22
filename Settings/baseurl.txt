@@ -1,0 +1,4 @@
+# LuckyBlox public base URL.
+# Leave this blank on a cloud host (Render sets PUBLIC_URL / RENDER_EXTERNAL_URL
+# automatically). Set it explicitly only for a custom domain, e.g.:
+#   https://luckyblox-server.onrender.com

@@ -31,7 +31,7 @@
       </nav>
 
       <div class="roblox-right">
-        <span class="roblox-robux"><%= user.robux || 0 %></span>
+        <span class="roblox-robux"><%= currency && currency.robux ? currency.robux : (user.robux || 0) %></span>
         <span class="roblox-icon-button">⚙</span>
         <span class="roblox-icon-button">🔔</span>
       </div>
@@ -49,6 +49,7 @@
           <span class="roblox-meta-pill">Member: <%= user.membership %></span>
           <span class="roblox-meta-pill">Join date: <%= new Date(user.joinDate || Date.now()).toLocaleDateString() %></span>
           <span class="roblox-meta-pill">ID: <%= user.userId %></span>
+          <span class="roblox-meta-pill">Balance: <%= currency && currency.currencySymbol ? currency.currencySymbol : 'R$' %><%= currency ? currency.robux : (user.robux || 0) %></span>
         </div>
 
         <div class="roblox-bio-box">
@@ -83,6 +84,26 @@
         </div>
       </div>
 
+      <div class="roblox-panel">
+        <div class="roblox-panel-header">Currency</div>
+        <div class="roblox-panel-body">
+          <div class="roblox-profile-stats-grid">
+            <div class="roblox-stat-tile">
+              <span class="roblox-stat-label">Robux</span>
+              <span class="roblox-stat-value"><%= currency ? currency.robux : (user.robux || 0) %></span>
+            </div>
+            <div class="roblox-stat-tile">
+              <span class="roblox-stat-label">Coins</span>
+              <span class="roblox-stat-value"><%= currency ? currency.coins : 0 %></span>
+            </div>
+            <div class="roblox-stat-tile">
+              <span class="roblox-stat-label">Tickets</span>
+              <span class="roblox-stat-value"><%= currency ? currency.tickets : 0 %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="roblox-side-stack">
         <div class="roblox-panel">
           <div class="roblox-panel-header">Current dressed avatar</div>
@@ -95,6 +116,30 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="roblox-content-grid" style="margin-top: 20px;">
+      <div class="roblox-panel" style="grid-column: 1 / -1;">
+        <div class="roblox-panel-header">Friends</div>
+        <div class="roblox-panel-body">
+          <% if (friends && friends.length) { %>
+            <div class="roblox-asset-list">
+              <% friends.forEach((friend) => { %>
+                <a class="roblox-asset-item" href="<%= friend.profileUrl %>">
+                  <div class="roblox-asset-icon"><%= friend.username.slice(0,1).toUpperCase() %></div>
+                  <div>
+                    <div class="roblox-asset-name"><%= friend.username %></div>
+                    <div class="roblox-asset-type"><%= friend.status %> · <%= friend.membership %></div>
+                  </div>
+                  <div class="roblox-asset-tag"><%= friend.online ? 'Live' : (friend.status === 'away' ? 'Away' : 'Offline') %></div>
+                </a>
+              <% }) %>
+            </div>
+          <% } else { %>
+            <div class="roblox-muted">No friends yet.</div>
+          <% } %>
         </div>
       </div>
     </section>

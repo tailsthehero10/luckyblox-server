@@ -129,9 +129,73 @@ function api_get_setting_value($path, $default = '') {
     if (!file_exists($path)) {
         return $default;
     }
-
     $value = trim((string) file_get_contents($path));
     return $value !== '' ? $value : $default;
+}
+
+/**
+ * Resolve the public base URL of the deployment.
+ *
+ * On a cloud host (Render) this comes from the environment so the site always
+ * reports its own live hostname. Locally it falls back to the configured
+ * baseurl.txt setting and finally to a relative root. No hardcoded localhost.
+ */
+function api_public_base_url() {
+    foreach (array('PUBLIC_URL', 'RENDER_EXTERNAL_URL') as $envKey) {
+        $value = getenv($envKey);
+        if ($value !== false && trim((string) $value) !== '') {
+            return rtrim(trim((string) $value), '/') . '/';
+        }
+    }
+
+    $host = getenv('PUBLIC_HOST') ?: getenv('RENDER_EXTERNAL_HOSTNAME');
+    if ($host !== false && trim((string) $host) !== '') {
+        $scheme = (getenv('PUBLIC_PROTOCOL') ?: 'https');
+        return $scheme . '://' . trim((string) $host) . '/';
+    }
+
+    $settingsRoot = api_settings_root();
+    $configured = api_get_setting_value($settingsRoot . '/baseurl.txt', '');
+    if ($configured !== '') {
+        return rtrim($configured, '/') . '/';
+    }
+
+    $requestHost = isset($_SERVER['HTTP_X_FORWARDED_HOST']) ? $_SERVER['HTTP_X_FORWARDED_HOST'] : (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '');
+    if ($requestHost !== '') {
+        $requestScheme = isset($_SERVER['HTTP_X_FORWARDED_PROTO']) ? $_SERVER['HTTP_X_FORWARDED_PROTO'] : 'http';
+        return $requestScheme . '://' . $requestHost . '/';
+    }
+
+    return '/';
+}
+
+/**
+ * Resolve the public hostname/IP clients should connect to for game traffic.
+ * Environment first, then Settings/ip.txt, then the request host.
+ */
+function api_public_server_ip() {
+    $host = getenv('PUBLIC_HOST') ?: getenv('RENDER_EXTERNAL_HOSTNAME');
+    if ($host !== false && trim((string) $host) !== '') {
+        return trim((string) $host);
+    }
+
+    $settingsRoot = api_settings_root();
+    return api_get_setting_value($settingsRoot . '/ip.txt', '0.0.0.0');
+}
+
+/**
+ * Resolve the game server port. Environment first, then Settings/HostPort.txt.
+ */
+function api_public_game_port() {
+    foreach (array('LUCKYBLOX_GAME_PORT', 'GAME_PORT') as $envKey) {
+        $value = getenv($envKey);
+        if ($value !== false && trim((string) $value) !== '') {
+            return trim((string) $value);
+        }
+    }
+
+    $settingsRoot = api_settings_root();
+    return api_get_setting_value($settingsRoot . '/HostPort.txt', '53640');
 }
 
 function api_get_local_player_state($placeId) {
@@ -146,8 +210,8 @@ function api_get_local_player_state($placeId) {
         'id' => 1,
         'userId' => 1,
         'membership' => $account['membership'],
-        'serverIp' => api_get_setting_value($settingsRoot . '/ip.txt', '127.0.0.1'),
-        'hostPort' => api_get_setting_value($settingsRoot . '/HostPort.txt', '53640'),
+        'serverIp' => api_public_server_ip(),
+        'hostPort' => api_public_game_port(),
         'serverPort' => api_get_setting_value($settingsRoot . '/serverport.txt', '2005'),
         'clientPort' => api_get_setting_value($settingsRoot . '/clientport.txt', '53640'),
         'placeId' => (int) $placeId,

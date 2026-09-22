@@ -3,8 +3,12 @@ const { randomUUID } = require('crypto');
 const net = require('net');
 const path = require('path');
 const fs = require('fs');
+const { gamePort, gameServerHost } = require('./runtimeConfig');
 
-const DEFAULT_PORT_START = 53640;
+const DEFAULT_PORT_START = gamePort;
+// Bind game servers on every interface so remote players on other devices can
+// reach them inside the container, not just the local loopback address.
+const GAME_LISTEN_HOST = gameServerHost;
 const activeGameServers = [];
 const serverRuntimeState = {
   lastAssignedPort: DEFAULT_PORT_START,
@@ -95,8 +99,8 @@ function ensureServerListener(serverRecord) {
     console.error(`[LuckyBlox Server:${serverRecord.serverJobId}] listener error: ${error.message}`);
   });
 
-  listener.listen(serverRecord.port, '127.0.0.1', () => {
-    console.log(`[LuckyBlox Server:${serverRecord.serverJobId}] listening on 127.0.0.1:${serverRecord.port}`);
+  listener.listen(serverRecord.port, GAME_LISTEN_HOST, () => {
+    console.log(`[LuckyBlox Server:${serverRecord.serverJobId}] listening on ${GAME_LISTEN_HOST}:${serverRecord.port}`);
   });
 
   serverRecord.listener = listener;

@@ -1,0 +1,25 @@
+# Render.com deployment blueprint for LuckyBlox.
+#
+# Deploy with: Render dashboard -> New -> Blueprint -> select this repo.
+# The service is a Docker web service; Render injects PORT automatically and we
+# bind 0.0.0.0 inside the container so it is reachable from the internet.
+services:
+  - type: web
+    name: luckyblox-server
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: LUCKYBLOX_BRIDGE_HOST
+        value: 127.0.0.1
+      - key: LUCKYBLOX_BRIDGE_PORT
+        value: "3001"
+      - key: LUCKYBLOX_GAME_HOST
+        value: 0.0.0.0
+      # PORT is provided by Render; do not hardcode it here.
+      - key: LUCKBLOX_SECRET
+        generateValue: true

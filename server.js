@@ -2,6 +2,15 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const {
+  bindHost,
+  publicPort,
+  legacyPort,
+  bridgePort,
+  bridgeHost,
+  publicBaseUrl,
+  gamePort,
+} = require('./server/runtimeConfig');
 
 const rootDir = __dirname;
 const savedPlacesDir = path.join(rootDir, 'saved_places');
@@ -194,12 +203,26 @@ function serveClientSettingsFile(req, res) {
       return;
     }
 
+    let body = buffer;
+
+    // Rewrite <BaseUrl> in AppSettings.xml to the live public deployment URL so
+    // clients connect to the Render hostname instead of a baked-in localhost.
+    if (extension === '.xml') {
+      const origin = publicBaseUrl || 'http://localhost';
+      body = Buffer.from(
+        String(buffer).replace(
+          /<BaseUrl>[\s\S]*?<\/BaseUrl>/i,
+          `<BaseUrl>${origin}/LuckBlox.site.tk/</BaseUrl>`,
+        ),
+      );
+    }
+
     res.writeHead(200, {
       'Content-Type': contentType,
       'Cache-Control': 'no-store',
       'Access-Control-Allow-Origin': '*',
     });
-    res.end(buffer);
+    res.end(body);
   });
 }
 
@@ -478,7 +501,7 @@ function registerPlayer(placeId, ip) {
       placeId,
       jobId: generateJobId(),
       hostIp: ip,
-      port: 53640,
+      port: gamePort,
       players: []
     };
 
@@ -586,39 +609,48 @@ function normalizeBridgePath(rawPathname) {
   return pathname;
 }
 
+// Internal origin of the Express bridge app. Never hardcode this: inside a
+// container the bridge lives on 127.0.0.1 on its own internal port, and both
+// the host and the port are configurable from the environment.
+const bridgeOrigin = `http://${bridgeHost}:${bridgePort}`;
+
 function rewriteLegacyBridgeUrl(req) {
-  const targetUrl = new URL(req.url, 'http://127.0.0.1:3001');
+  const targetUrl = new URL(req.url, 'http://127.0.0.1');
   const rawPathname = normalizeBridgePath(targetUrl.pathname);
   const legacyPlaceId = targetUrl.searchParams.get('placeid') || targetUrl.searchParams.get('placeId') || targetUrl.searchParams.get('id');
 
   if (rawPathname === '/api/places' && legacyPlaceId) {
-    return `http://127.0.0.1:3001/api/places/${legacyPlaceId}/settings${targetUrl.search ? '' : ''}`;
+    return `${bridgeOrigin}/api/places/${legacyPlaceId}/settings`;
   }
 
   if (rawPathname === '/api/load.php') {
-    return `http://127.0.0.1:3001/api/places/${legacyPlaceId || 1818}/settings`;
+    return `${bridgeOrigin}/api/places/${legacyPlaceId || 1818}/settings`;
   }
 
   if (rawPathname === '/api/save-place') {
-    return 'http://127.0.0.1:3001/api/save-place';
+    return `${bridgeOrigin}/api/save-place`;
   }
 
   if (rawPathname === '/api/publish-place') {
-    return 'http://127.0.0.1:3001/api/publish-place';
+    return `${bridgeOrigin}/api/publish-place`;
   }
 
-  return `http://127.0.0.1:3001${rawPathname}${targetUrl.search || ''}`;
+  return `${bridgeOrigin}${rawPathname}${targetUrl.search || ''}`;
 }
 
 function proxyToBridge(req, res) {
   const targetUrl = new URL(rewriteLegacyBridgeUrl(req));
   const headers = { ...req.headers };
+  // Preserve the original public host so the bridge can build absolute URLs
+  // pointing at the live Render deployment instead of localhost.
+  headers['x-forwarded-host'] = req.headers['x-forwarded-host'] || req.headers.host || 'localhost';
+  headers['x-forwarded-proto'] = req.headers['x-forwarded-proto'] || 'http';
   delete headers.host;
   delete headers.connection;
 
   const options = {
     hostname: targetUrl.hostname,
-    port: Number(targetUrl.port || 3001),
+    port: Number(targetUrl.port || bridgePort),
     path: `${targetUrl.pathname}${targetUrl.search || ''}`,
     method: req.method,
     headers,
@@ -664,7 +696,15 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname === '/health') {
-    sendJson(res, 200, { ok: true, status: 'live', name: 'LuckyBlox legacy bridge', target: 'http://127.0.0.1:3001' });
+    sendJson(res, 200, {
+      ok: true,
+      status: 'live',
+      name: 'LuckyBlox legacy bridge',
+      target: bridgeOrigin,
+      host: bindHost,
+      port: publicPort,
+      publicBaseUrl,
+    });
     return;
   }
 
@@ -691,11 +731,15 @@ const server = http.createServer((req, res) => {
   proxyToBridge(req, res);
 });
 
-const PORT = Number(process.env.LUCKYBLOX_LEGACY_PORT || 3002);
-const HOST = '0.0.0.0';
+// Bind on every network interface so the container port is reachable from the
+// internet. The port itself always comes from the platform (process.env.PORT)
+// via runtimeConfig, never from a hardcoded local number.
+const PORT = legacyPort;
+const HOST = bindHost;
 
 server.listen(PORT, HOST, () => {
-  console.log(`LuckyBlox compatibility server listening on http://localhost:${PORT}/LuckBlox.site.tk`);
+  console.log(`LuckyBlox compatibility server listening on http://${HOST}:${PORT}/LuckBlox.site.tk`);
+  console.log(`LuckyBlox proxy target bridge: ${bridgeOrigin}`);
 });
 
 process.on('SIGINT', () => {
