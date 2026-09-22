@@ -15451,3 +15451,23 @@ PHP Warning:  PHP Startup: Unable to load dynamic library 'curl' (tried: E:/Luck
 [Tue Sep 22 14:24:40.922380 2026] [proxy:error] [pid 33948:tid 1596] AH00959: ap_proxy_connect_backend disabling worker for (127.0.0.1) for 60s
 [Tue Sep 22 14:24:40.922380 2026] [proxy_http:error] [pid 33948:tid 1596] [client ::1:56414] AH01114: HTTP: failed to make connection to backend: 127.0.0.1
 [Tue Sep 22 14:25:18.615387 2026] [proxy:error] [pid 33948:tid 1604] AH00940: HTTP: disabled connection for (127.0.0.1)
+[Tue Sep 22 16:16:59.108826 2026] [ssl:warn] [pid 39424:tid 840] AH01909: dev.LuckBlox.site.tk:443:0 server certificate does NOT include an ID which matches the server name
+[Tue Sep 22 16:16:59.113824 2026] [ssl:warn] [pid 39424:tid 840] AH01909: main-serveur:443:0 server certificate does NOT include an ID which matches the server name
+[Tue Sep 22 16:17:00.120822 2026] [core:warn] [pid 39424:tid 840] AH00098: pid file E:/LuckyBloxLauncher/NEW LKL/Release/luckyblox-server/Webserver/bin/apache/logs/httpd.pid overwritten -- Unclean shutdown of previous Apache run?
+[Tue Sep 22 16:17:00.121826 2026] [auth_digest:notice] [pid 39424:tid 840] AH01757: generating secret for digest authentication ...
+[Tue Sep 22 16:17:00.260821 2026] [ssl:warn] [pid 39424:tid 840] AH01873: Init: Session Cache is not configured [hint: SSLSessionCache]
+[Tue Sep 22 16:17:00.261821 2026] [ssl:warn] [pid 39424:tid 840] AH01909: dev.LuckBlox.site.tk:443:0 server certificate does NOT include an ID which matches the server name
+[Tue Sep 22 16:17:00.263826 2026] [ssl:warn] [pid 39424:tid 840] AH01909: main-serveur:443:0 server certificate does NOT include an ID which matches the server name
+PHP Warning:  PHP Startup: Unable to load dynamic library 'curl' (tried: E:/LuckyBloxLauncher/NEW LKL/Release/luckyblox-server/Webserver/bin/php/php-7.2.7/ext\\curl (The specified module could not be found.), E:/LuckyBloxLauncher/NEW LKL/Release/luckyblox-server/Webserver/bin/php/php-7.2.7/ext\\php_curl.dll (The specified procedure could not be found.)) in Unknown on line 0
+[Tue Sep 22 16:17:01.141821 2026] [mpm_winnt:notice] [pid 39424:tid 840] AH00455: Apache/2.4.18 (Win32) OpenSSL/1.0.2f PHP/7.2.7 configured -- resuming normal operations
+[Tue Sep 22 16:17:01.141821 2026] [mpm_winnt:notice] [pid 39424:tid 840] AH00456: Server built: Jan 28 2016 09:58:25
+[Tue Sep 22 16:17:01.141821 2026] [core:notice] [pid 39424:tid 840] AH00094: Command line: 'E:\\LuckyBloxLauncher\\NEW LKL\\Release\\luckyblox-server\\Webserver\\bin\\apache\\bin\\httpd.exe -d E:/LuckyBloxLauncher/NEW LKL/Release/luckyblox-server/Webserver/bin/apache -f E:\\LuckyBloxLauncher\\NEW LKL\\Release\\luckyblox-server\\Webserver\\bin\\apache\\conf\\httpd.conf'
+[Tue Sep 22 16:17:01.152825 2026] [mpm_winnt:notice] [pid 39424:tid 840] AH00418: Parent: Created child process 18436
+[Tue Sep 22 16:17:04.806543 2026] [ssl:warn] [pid 18436:tid 908] AH01909: dev.LuckBlox.site.tk:443:0 server certificate does NOT include an ID which matches the server name
+[Tue Sep 22 16:17:04.809543 2026] [ssl:warn] [pid 18436:tid 908] AH01909: main-serveur:443:0 server certificate does NOT include an ID which matches the server name
+[Tue Sep 22 16:17:05.195542 2026] [auth_digest:notice] [pid 18436:tid 908] AH01757: generating secret for digest authentication ...
+[Tue Sep 22 16:17:05.382543 2026] [ssl:warn] [pid 18436:tid 908] AH01873: Init: Session Cache is not configured [hint: SSLSessionCache]
+[Tue Sep 22 16:17:05.384545 2026] [ssl:warn] [pid 18436:tid 908] AH01909: dev.LuckBlox.site.tk:443:0 server certificate does NOT include an ID which matches the server name
+[Tue Sep 22 16:17:05.386545 2026] [ssl:warn] [pid 18436:tid 908] AH01909: main-serveur:443:0 server certificate does NOT include an ID which matches the server name
+PHP Warning:  PHP Startup: Unable to load dynamic library 'curl' (tried: E:/LuckyBloxLauncher/NEW LKL/Release/luckyblox-server/Webserver/bin/php/php-7.2.7/ext\\curl (The specified module could not be found.), E:/LuckyBloxLauncher/NEW LKL/Release/luckyblox-server/Webserver/bin/php/php-7.2.7/ext\\php_curl.dll (The specified procedure could not be found.)) in Unknown on line 0
+[Tue Sep 22 16:17:06.064544 2026] [mpm_winnt:notice] [pid 18436:tid 908] AH00354: Child: Starting 64 worker threads.
