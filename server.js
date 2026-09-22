@@ -639,7 +639,9 @@ function proxyToBridge(req, res) {
 }
 
 const server = http.createServer((req, res) => {
-  const url = new URL(req.url, 'http://localhost');
+  const forwardedProto = req.headers['x-forwarded-proto'] || 'http';
+  const forwardedHost = req.headers['x-forwarded-host'] || req.headers['host'] || 'localhost';
+  const url = new URL(req.url, `${forwardedProto}://${forwardedHost}`);
   let pathname = url.pathname;
 
   if (pathname.startsWith('/LuckBlox.site.tk')) {

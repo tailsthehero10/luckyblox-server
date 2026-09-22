@@ -11,6 +11,14 @@ const { installTeamCreateRoutes } = require(path.join(__dirname, '..', '..', 'se
 const { allocatePlayerToServer, activeGameServers, removePlayerFromServer, removeServerByJobId, getServerForPlace, spawnDedicatedServer } = require(path.join(__dirname, '..', '..', 'server', 'orchestrator.js'));
 
 const app = express();
+
+app.set('trust proxy', [
+  '74.220.50.0/24',
+  '74.220.58.0/24',
+  '127.0.0.1',
+  '::1',
+]);
+
 const PORT = process.env.PORT || 3001;
 const releaseRoot = path.resolve(__dirname, '..', '..');
 const dataDir = path.join(__dirname, 'data');
@@ -758,17 +766,8 @@ function getTicketStatus(ticket) {
 }
 
 function resolveRobloxPlayerBinary() {
-  const candidates = [
-    path.join(releaseRoot, 'Clients', '2021M', 'RobloxPlayerBeta.exe'),
-    path.join(releaseRoot, 'Clients', '2020M', 'RobloxPlayerBeta.exe'),
-    path.join(releaseRoot, 'Clients', '2019M', 'Player', 'RobloxPlayerBeta.exe'),
-    path.join(releaseRoot, 'Clients', '2018M', 'Player', 'RobloxPlayerBeta.exe'),
-    path.join(releaseRoot, 'Clients', '2018L', 'Player', 'RobloxPlayerBeta.exe'),
-    path.join(releaseRoot, 'Clients', '2018E', 'Player', 'RobloxPlayerBeta.exe'),
-    path.join(releaseRoot, 'Clients', '2021E', 'RCCService', 'RobloxPlayerBeta.exe'),
-  ];
-
-  return candidates.find((candidate) => fs.existsSync(candidate)) || null;
+  const clientPath = path.join(releaseRoot, 'Clients', '2021M', 'RobloxPlayerBeta.exe');
+  return fs.existsSync(clientPath) ? clientPath : null;
 }
 
 function launchLocalRobloxClient({ userId, placeId, port, serverJobId, ticket }) {
@@ -1594,6 +1593,8 @@ app.post('/v1/authentication-tickets', (req, res) => {
     serverJobId: allocation.serverJobId,
   });
 
+  const clientExe = resolveRobloxPlayerBinary();
+
   res.status(201).json({
     ok: true,
     userId: String(userId),
@@ -1604,6 +1605,9 @@ app.post('/v1/authentication-tickets', (req, res) => {
     authTicket: ticket.authTicket,
     expiresAt: new Date(ticket.expiresAt).toISOString(),
     launchURI: ticket.launchURI,
+    clientVersion: '2021M',
+    clientPath: clientExe,
+    clientReady: clientExe !== null,
   });
 });
 
@@ -1646,6 +1650,42 @@ app.get('/v1/authentication-tickets/', (req, res) => {
 app.get('/api/tickets/:ticket', (req, res) => {
   const ticket = getTicketStatus(req.params.ticket);
   res.json({ ok: Boolean(ticket), ticket });
+});
+
+app.post('/v1/launch-client', (req, res) => {
+  const clientExe = resolveRobloxPlayerBinary();
+  if (!clientExe) {
+    return res.status(500).json({ ok: false, error: 'client-not-found', clientVersion: '2021M', details: 'RobloxPlayerBeta.exe not found in Clients/2021M' });
+  }
+
+  const userId = Number(req.body.userId || req.query.userId || 1);
+  const placeId = Number(req.body.placeId || req.body.placeid || req.query.placeId || 1818);
+  const port = Number(req.body.port || req.query.port || 53640);
+  const serverJobId = req.body.serverJobId || req.query.serverJobId || `game-${Date.now()}`;
+
+  try {
+    const authUrl = `http://127.0.0.1:${PORT}/v1/authentication-tickets?userId=${userId}&placeId=${placeId}`;
+    const joinUrl = `http://127.0.0.1:${PORT}/game/join?placeId=${placeId}&userId=${userId}&ticket=local&serverPort=${port}&jobId=${encodeURIComponent(serverJobId)}`;
+
+    const { spawn } = require('child_process');
+    const child = spawn(clientExe, ['-a', authUrl, '-t', 'local', '-j', joinUrl], {
+      detached: false,
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+
+    res.json({
+      ok: true,
+      clientVersion: '2021M',
+      clientPath: clientExe,
+      started: true,
+      pid: child.pid,
+      authUrl,
+      joinUrl,
+    });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: 'client-launch-failed', clientVersion: '2021M', details: error.message });
+  }
 });
 
 app.post('/api/launch-game', (req, res) => {

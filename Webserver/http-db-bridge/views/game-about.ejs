@@ -58,13 +58,31 @@
 
                 const data = await response.json();
 
-                if (!data || !data.ok || !data.ticket) {
-                    alert('Unable to generate launch ticket.');
+                if (!data || !data.ok) {
+                    alert('Unable to generate ticket.');
                     return;
                 }
 
-                const placeId = '2022M';
-                window.location.href = "luckyblox-player:1+launchmode:" + data.launchMode + "+gameinfo:" + data.ticket + "+placeId:" + placeId + "+serverIp:" + data.hostIp + "+serverPort:" + data.port + "+jobId:" + data.serverJobId;
+                if (data.clientReady) {
+                    const launchRes = await fetch('/v1/launch-client', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: data.userId,
+                            placeId: data.placeId,
+                            port: data.port,
+                            serverJobId: data.serverJobId
+                        })
+                    });
+                    const launchData = await launchRes.json();
+                    if (launchData.ok) {
+                        window.location.href = data.launchURI;
+                    } else {
+                        alert('Client launch failed: ' + (launchData.details || 'Unknown error'));
+                    }
+                } else {
+                    alert('LuckyBlox 2021M client is not available on this server.');
+                }
             } catch (error) {
                 alert('LuckyBlox failed to launch.');
             }
