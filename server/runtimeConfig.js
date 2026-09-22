@@ -50,15 +50,53 @@ function readHostFile(fileName, fallback) {
 
 // The public port injected by the cloud platform. Locally we keep the classic
 // desktop ports so nothing about the Windows workflow breaks.
-const publicPort = toPort(process.env.PORT, 3002);
-const bridgePort = toPort(
-  process.env.LUCKYBLOX_BRIDGE_PORT || process.env.BRIDGE_PORT,
-  3001,
-);
-const legacyPort = toPort(
-  process.env.LUCKYBLOX_LEGACY_PORT,
-  publicPort === 3001 ? 3002 : publicPort,
-);
+//
+// IMPORTANT: the proxy and the bridge must never resolve to the same port, or
+// the second one to bind dies with EADDRINUSE. We resolve them here, in one
+// place, and guarantee they differ.
+const rawPort = toPort(process.env.PORT, 0);
+const role = String(process.env.LUCKYBLOX_ROLE || '').toLowerCase();
+
+let publicPort;
+let bridgePort;
+let legacyPort;
+
+if (role === 'bridge') {
+  // This process IS the internal bridge: take the internal port, with the
+  // platform PORT only as a last-resort fallback.
+  bridgePort = toPort(
+    process.env.LUCKYBLOX_BRIDGE_PORT || process.env.BRIDGE_PORT,
+    rawPort || 3001,
+  );
+  publicPort = rawPort || bridgePort;
+  legacyPort = toPort(process.env.LUCKYBLOX_LEGACY_PORT, 0) || bridgePort;
+} else if (role === 'proxy' || role === 'legacy') {
+  // This process IS the public proxy: own the platform PORT.
+  publicPort = rawPort || 3002;
+  legacyPort = toPort(process.env.LUCKYBLOX_LEGACY_PORT, publicPort) || publicPort;
+  bridgePort = toPort(
+    process.env.LUCKYBLOX_BRIDGE_PORT || process.env.BRIDGE_PORT,
+    3001,
+  );
+} else {
+  // Standalone / single-process mode: one process serves the public port and
+  // proxies to an internal bridge on a *different* port.
+  publicPort = rawPort || 3002;
+  legacyPort = toPort(process.env.LUCKYBLOX_LEGACY_PORT, publicPort) || publicPort;
+  bridgePort = toPort(
+    process.env.LUCKYBLOX_BRIDGE_PORT || process.env.BRIDGE_PORT,
+    publicPort === 3001 ? 3002 : 3001,
+  );
+}
+
+// Final safety net: if anything above collapsed the two onto one port, move the
+// internal bridge off the public port.
+if (bridgePort === publicPort && role !== 'bridge') {
+  bridgePort = publicPort === 3001 ? 3002 : 3001;
+}
+if (legacyPort === 0) {
+  legacyPort = publicPort;
+}
 
 const bindHost = process.env.HOST || process.env.BIND_HOST || '0.0.0.0';
 
@@ -91,6 +129,7 @@ module.exports = {
   publicPort,
   bridgePort,
   legacyPort,
+  role,
   bridgeHost: process.env.LUCKYBLOX_BRIDGE_HOST || '127.0.0.1',
   legacyHost: process.env.LUCKYBLOX_LEGACY_HOST || '127.0.0.1',
   publicHostname,

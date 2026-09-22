@@ -39,6 +39,7 @@ const sharedEnv = {
 
 const children = [];
 let shuttingDown = false;
+const restartCounts = new Map();
 
 function startProcess(name, scriptPath, env) {
   const child = spawn(process.execPath, [scriptPath], {
@@ -51,12 +52,30 @@ function startProcess(name, scriptPath, env) {
     if (shuttingDown) {
       return;
     }
-    console.error(`[luckyblox] ${name} exited (code=${code} signal=${signal}); restarting in 2s`);
+
+    // Drop the dead child from the tracked list so we never try to signal it.
+    const idx = children.findIndex((entry) => entry.child === child);
+    if (idx >= 0) {
+      children.splice(idx, 1);
+    }
+
+    // Exponential-ish backoff and a hard cap, so a crash loop cannot
+    // hammer the box.
+    const attempts = (restartCounts.get(name) || 0) + 1;
+    restartCounts.set(name, attempts);
+
+    if (attempts > 10) {
+      console.error(`[luckyblox] ${name} crashed ${attempts} times; giving up. Fix the error and redeploy.`);
+      return;
+    }
+
+    const delayMs = Math.min(1000 * attempts, 10000);
+    console.error(`[luckyblox] ${name} exited (code=${code} signal=${signal}); restart #${attempts} in ${delayMs}ms`);
     setTimeout(() => {
       if (!shuttingDown) {
         startProcess(name, scriptPath, env);
       }
-    }, 2000);
+    }, delayMs);
   });
 
   child.on('error', (error) => {
@@ -88,14 +107,24 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 console.log(`[luckyblox] public port ${publicPort} on ${bindHost}; bridge on ${runtime.bridgeHost}:${bridgePort}`);
 
-// Boot the bridge first, then the proxy that fronts it.
+// Boot the bridge first, then the proxy that fronts it. Each child is told its
+// ROLE so runtimeConfig allocates ports deterministically and they can never
+// resolve to the same port.
 startProcess('bridge', path.join(rootDir, 'Webserver', 'http-db-bridge', 'server.js'), {
   ...sharedEnv,
+  LUCKYBLOX_ROLE: 'bridge',
   PORT: String(bridgePort),
+  LUCKYBLOX_BRIDGE_PORT: String(bridgePort),
 });
 
-startProcess('legacy', path.join(rootDir, 'server.js'), {
-  ...sharedEnv,
-  PORT: String(publicPort),
-  LUCKYBLOX_LEGACY_PORT: String(publicPort),
-});
+// Give the bridge a moment to take its port before the proxy starts, so a slow
+// container never races the two on startup.
+setTimeout(() => {
+  startProcess('proxy', path.join(rootDir, 'server.js'), {
+    ...sharedEnv,
+    LUCKYBLOX_ROLE: 'proxy',
+    PORT: String(publicPort),
+    LUCKYBLOX_LEGACY_PORT: String(publicPort),
+    LUCKYBLOX_BRIDGE_PORT: String(bridgePort),
+  });
+}, 600);

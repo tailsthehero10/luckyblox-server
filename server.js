@@ -737,6 +737,19 @@ const server = http.createServer((req, res) => {
 const PORT = legacyPort;
 const HOST = bindHost;
 
+// A listen error must never crash the process with an unhandled 'error' event.
+// If the port is taken we log it clearly and exit non-zero so the supervisor
+// can retry with backoff rather than exploding.
+server.on('error', (error) => {
+  if (error && error.code === 'EADDRINUSE') {
+    console.error(`[luckyblox] proxy cannot bind ${HOST}:${PORT} — address already in use. `
+      + 'Another instance is still running, or the port was not released yet.');
+    process.exit(1);
+  }
+  console.error(`[luckyblox] proxy server error: ${error && error.message}`);
+  process.exit(1);
+});
+
 server.listen(PORT, HOST, () => {
   console.log(`LuckyBlox compatibility server listening on http://${HOST}:${PORT}/LuckBlox.site.tk`);
   console.log(`LuckyBlox proxy target bridge: ${bridgeOrigin}`);

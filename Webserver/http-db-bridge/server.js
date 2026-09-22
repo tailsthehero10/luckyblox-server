@@ -2668,7 +2668,17 @@ app.get('/dev/docs/auth', requireDevAuth, (req, res) => {
   });
 });
 
-app.listen(PORT, HOST, () => {
+const bridgeServer = app.listen(PORT, HOST, () => {
   console.log(`LuckyBlox HTTP DB bridge listening on http://${HOST}:${PORT}`);
   console.log(`LuckyBlox public base URL: ${publicBaseUrl}`);
+});
+
+// Never let a listen error become an unhandled 'error' event.
+bridgeServer.on('error', (error) => {
+  if (error && error.code === 'EADDRINUSE') {
+    console.error(`[luckyblox] bridge cannot bind ${HOST}:${PORT} — address already in use.`);
+    process.exit(1);
+  }
+  console.error(`[luckyblox] bridge server error: ${error && error.message}`);
+  process.exit(1);
 });
