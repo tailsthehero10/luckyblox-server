@@ -281,28 +281,34 @@ function isOwnerUser(user) {
 }
 
 /**
- * Resolve the role badge for a user. The site looks for an image in
- * Assets/roles/<role>.png (served at /assets/roles/<role>.png). If no image is
- * present we fall back to a text label so nothing renders as a broken image.
+ * The Roblox admin badge. There is exactly ONE admin badge — you either have
+ * admin or you don't. The image ships in Assets/roles/admin.png (extracted from
+ * the bundled 2021M client) and is served at /assets/roles/admin.png.
  *
- * The owner always resolves to the "owner" badge.
+ * Admin is granted by:
+ *   - the account being the deployment owner (ID 1 / LUCKYBLOX_OWNER_USERNAME), or
+ *   - an explicit "admin": true (or "isAdmin": true) flag on the account.
  */
-function getRoleBadge(user) {
+function isAdminUser(user) {
   if (!user) {
+    return false;
+  }
+  if (isOwnerUser(user)) {
+    return true;
+  }
+  return user.admin === true || user.isAdmin === true;
+}
+
+/**
+ * Returns the admin badge for a user, or null when they are not an admin.
+ * The badge is the single Roblox admin icon; no role tiers.
+ */
+function getAdminBadge(user) {
+  if (!isAdminUser(user)) {
     return null;
   }
 
-  const owner = isOwnerUser(user);
-  const rawRole = String(user.role || '').toLowerCase();
-  const role = owner ? 'owner' : (rawRole || 'player');
-
-  if (role === 'player' || !role) {
-    return null;
-  }
-
-  const label = role === 'owner' ? 'Owner' : role === 'admin' ? 'Admin' : role === 'moderator' ? 'Mod' : role;
-  const imageName = `${role}.png`;
-  const imagePath = path.join(releaseRoot, 'Assets', 'roles', imageName);
+  const imagePath = path.join(releaseRoot, 'Assets', 'roles', 'admin.png');
   let hasImage = false;
   try {
     hasImage = fs.existsSync(imagePath);
@@ -311,9 +317,8 @@ function getRoleBadge(user) {
   }
 
   return {
-    role,
-    label,
-    imageUrl: hasImage ? `/assets/roles/${imageName}` : null,
+    label: 'Admin',
+    imageUrl: hasImage ? '/assets/roles/admin.png' : null,
     hasImage,
   };
 }
@@ -1062,6 +1067,13 @@ function buildAvatarPayload(userId, placeId = 1818) {
       { assetId: 3360689775, assetName: 'Salute', position: 1 },
       { assetId: 3576968026, assetName: 'Shrug', position: 2 },
     ],
+    // Admin badge. When the account is an admin, the client shows the Roblox
+    // admin icon next to the username. These are the fields the client checks.
+    isVerified: isAdminUser(user),
+    isAdmin: isAdminUser(user),
+    adminBadgeUrl: isAdminUser(user) && getAdminBadge(user) && getAdminBadge(user).hasImage
+      ? `${publicOrigin}/assets/roles/admin.png`
+      : null,
   };
 }
 
@@ -1789,7 +1801,7 @@ app.get('/profile', (req, res) => {
     publishedGames,
     friends: getFriendsForUser(userId),
     currency: getCurrencyForUser(user),
-    roleBadge: getRoleBadge(user),
+    adminBadge: getAdminBadge(user),
     games: publishedGames,
   });
 });
@@ -1807,7 +1819,7 @@ app.get('/profile/:userId', (req, res) => {
     publishedGames,
     friends: getFriendsForUser(userId),
     currency: getCurrencyForUser(user),
-    roleBadge: getRoleBadge(user),
+    adminBadge: getAdminBadge(user),
     games: publishedGames,
   });
 });
@@ -1825,7 +1837,7 @@ app.get('/users/:id/profile', (req, res) => {
     publishedGames,
     friends: getFriendsForUser(userId),
     currency: getCurrencyForUser(user),
-    roleBadge: getRoleBadge(user),
+    adminBadge: getAdminBadge(user),
     games: publishedGames,
   });
 });
@@ -3306,6 +3318,8 @@ app.get('/api/v1/me', (req, res) => {
 app.get('/api/v1/account', (req, res) => {
   const userId = Number(req.query.userId || req.headers['x-user-id'] || 1);
   const user = getUser(userId);
+  const admin = isAdminUser(user);
+  const badge = getAdminBadge(user);
   res.json({
     ok: true,
     user: {
@@ -3313,7 +3327,10 @@ app.get('/api/v1/account', (req, res) => {
       username: user.username,
       displayName: user.username,
       membership: user.membershipStatus || user.membership || 'Premium',
-      role: 'Creator',
+      role: admin ? 'Admin' : 'Creator',
+      isVerified: admin,
+      isAdmin: admin,
+      adminBadgeUrl: badge && badge.hasImage ? `${publicOrigin}/assets/roles/admin.png` : null,
       robux: Number(user.robux) || 0,
       stats: Object.assign({ friends: 0, created: 0, plays: 0, followers: 0, badges: 0, gameVisits: 0 }, user.stats || {}),
       friendCount: Array.isArray(user.friends) ? user.friends.length : 0,

@@ -116,7 +116,10 @@
               "displayName":  "tailsthehero10",
               "bio":  "Owner of the LuckyBlox server. Building the public revival experience.",
               "membership":  "Admin",
-              "membershipStatus":  "Admin"
+              "membershipStatus":  "Admin",
+              "admin":  true,
+              "isAdmin":  true,
+              "isVerified":  true
           },
     "2":  {
               "userId":  "2",
@@ -204,7 +207,10 @@
                                             }
                          },
               "updatedAt":  "2026-09-13T21:16:20.056Z",
-              "role":  "owner"
+              "role":  "owner",
+              "admin":  true,
+              "isAdmin":  true,
+              "isVerified":  true
           },
     "3":  {
               "userId":  "3",

@@ -46,11 +46,11 @@
         <div class="roblox-eyebrow">Player profile</div>
         <div class="roblox-profile-title">
           <%= user.username %>
-          <% if (typeof roleBadge !== 'undefined' && roleBadge) { %>
-            <% if (roleBadge.hasImage) { %>
-              <img src="<%= roleBadge.imageUrl %>" alt="<%= roleBadge.label %>" title="<%= roleBadge.label %>" style="height:22px;width:22px;vertical-align:middle;margin-left:8px;" />
+          <% if (typeof adminBadge !== 'undefined' && adminBadge) { %>
+            <% if (adminBadge.hasImage) { %>
+              <img src="<%= adminBadge.imageUrl %>" alt="Admin" title="Admin" style="height:22px;width:22px;vertical-align:middle;margin-left:8px;" />
             <% } else { %>
-              <span class="roblox-meta-pill" style="margin-left:8px;"><%= roleBadge.label %></span>
+              <span class="roblox-meta-pill" style="margin-left:8px;">Admin</span>
             <% } %>
           <% } %>
         </div>
