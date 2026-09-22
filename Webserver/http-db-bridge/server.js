@@ -247,7 +247,9 @@ function createDefaultUsers() {
       password: 'local',
       bio: 'Welcome to LuckyBlox. Build, play, and customize your avatar.',
       joinDate: '2024-01-15T00:00:00.000Z',
+      membership: 'Premium',
       membershipStatus: 'Premium',
+      robux: 1200,
       inventory: ['1001', '1002', '1003', '1004'],
       currentlyWearing: ['1001', '1002', '1003'],
       stats: {
@@ -255,7 +257,25 @@ function createDefaultUsers() {
         created: 42,
         plays: 743,
         followers: 96,
+        badges: 14,
+        gameVisits: 3200,
       },
+      friends: [
+        { userId: '2', username: 'tailsthehero10', status: 'online' },
+        { userId: '3', username: 'Skylin', status: 'online' },
+        { userId: '4', username: 'Noco', status: 'away' },
+        { userId: '5', username: 'Rogue', status: 'offline' },
+        { userId: '6', username: 'Astra', status: 'online' },
+        { userId: '7', username: 'PixelMind', status: 'offline' },
+        { userId: '8', username: 'NeonWave', status: 'online' },
+      ],
+      badges: [
+        { id: 'b1', name: 'Welcome to Roblox', description: 'Joined LuckyBlox', icon: 'W', earnedDate: '2024-01-15T00:00:00.000Z' },
+        { id: 'b2', name: 'First Build', description: 'Published your first place', icon: 'B', earnedDate: '2024-02-10T00:00:00.000Z' },
+        { id: 'b3', name: 'Social Butterfly', description: 'Added 100 friends', icon: 'S', earnedDate: '2024-04-22T00:00:00.000Z' },
+        { id: 'b4', name: 'Veteran', description: 'Played 1000+ games', icon: 'V', earnedDate: '2024-06-15T00:00:00.000Z' },
+        { id: 'b5', name: 'Premium Member', description: 'Active Premium subscriber', icon: 'P', earnedDate: '2024-01-15T00:00:00.000Z' },
+      ],
       avatar: {
         bodyColors: {
           headColorId: 1002,
@@ -268,10 +288,39 @@ function createDefaultUsers() {
       },
       updatedAt: new Date().toISOString(),
     },
-  };
-}
-
-function createDefaultGames() {
+    '2': {
+      userId: '2',
+      username: 'tailsthehero10',
+      displayName: 'tailsthehero10',
+      password: '67d91cbd7b3f716f5417a1ea3bcff3e9e89f11a5e3ef1def9482fd96d0ef116a52c24307f961a620c2c654cd984aaeadbc47ba1d17ab4aa831c709718c51a2d7',
+      passwordSalt: '07825a4255a5d598b57ec7300ba022d6',
+      passwordVersion: 2,
+      bio: 'New LuckyBlox creator account.',
+      joinDate: '2026-09-13T21:16:20.056Z',
+      membership: 'Premium',
+      membershipStatus: 'Premium',
+      robux: 500,
+      inventory: ['1001', '1002', '1003', '1004'],
+      currentlyWearing: ['1001', '1002', '1003'],
+      stats: {
+        friends: 42,
+        created: 1,
+        plays: 0,
+        followers: 0,
+        badges: 3,
+        gameVisits: 12,
+      },
+      friends: [
+        { userId: '1', username: 'LocalPlayer', status: 'online' },
+        { userId: '9', username: 'BuilderZ', status: 'online' },
+        { userId: '10', username: 'StarDust', status: 'away' },
+      ],
+      badges: [
+        { id: 'b1', name: 'Welcome to Roblox', description: 'Joined LuckyBlox', icon: 'W', earnedDate: '2026-09-13T21:16:20.056Z' },
+        { id: 'b2', name: 'Newcomer', description: 'Created first place', icon: 'N', earnedDate: '2026-09-14T00:00:00.000Z' },
+        { id: 'b3', name: 'Getting Started', description: 'Completed tutorial', icon: 'G', earnedDate: '2026-09-15T00:00:00.000Z' },
+      ],
+      avatar: {
   const catalog = buildPlaceCatalogFromMaps();
   const games = {};
 
@@ -336,10 +385,14 @@ function serializeUser(userId) {
     bio: user.bio || '',
     joinDate: user.joinDate || new Date().toISOString(),
     membershipStatus: user.membershipStatus || user.membership || 'Premium',
+    membership: user.membership || user.membershipStatus || 'Premium',
+    robux: Number(user.robux) || 0,
     avatar: user.avatar || {
       bodyColors: { headColorId: 1002, torsoColorId: 1002, rightArmColorId: 1002, leftArmColorId: 1002, rightLegColorId: 1002, leftLegColorId: 1002 },
     },
-    stats: user.stats || { friends: 0, created: 0, plays: 0, followers: 0 },
+    stats: Object.assign({ friends: 0, created: 0, plays: 0, followers: 0, badges: 0, gameVisits: 0 }, user.stats || {}),
+    friends: Array.isArray(user.friends) ? user.friends : [],
+    badges: Array.isArray(user.badges) ? user.badges : [],
     inventory: Array.isArray(user.inventory) ? user.inventory : [],
     currentlyWearing: Array.isArray(user.currentlyWearing) ? user.currentlyWearing : [],
     profileUrl: `/users/${user.userId || userId || 1}/profile`,
@@ -445,9 +498,13 @@ function getUser(userId = 1) {
       bio: 'Welcome to LuckyBlox.',
       joinDate: new Date().toISOString(),
       membershipStatus: 'None',
+      membership: 'None',
+      robux: 0,
       inventory: [],
       currentlyWearing: [],
-      stats: { friends: 0, created: 0, plays: 0, followers: 0 },
+      stats: { friends: 0, created: 0, plays: 0, followers: 0, badges: 0, gameVisits: 0 },
+      friends: [],
+      badges: [],
       avatar: { bodyColors: { headColorId: 1002, torsoColorId: 1002, rightArmColorId: 1002, leftArmColorId: 1002, rightLegColorId: 1002, leftLegColorId: 1002 } },
       updatedAt: new Date().toISOString(),
     };
@@ -458,9 +515,12 @@ function getUser(userId = 1) {
     userId: String(keyedUser.userId || userId),
     membership: keyedUser.membershipStatus || keyedUser.membership || 'Premium',
     membershipStatus: keyedUser.membershipStatus || keyedUser.membership || 'Premium',
+    robux: Number(keyedUser.robux) || 0,
     inventory: Array.isArray(keyedUser.inventory) ? keyedUser.inventory : [],
     currentlyWearing: Array.isArray(keyedUser.currentlyWearing) ? keyedUser.currentlyWearing : [],
-    stats: keyedUser.stats || { friends: 0, created: 0, plays: 0, followers: 0 },
+    stats: Object.assign({ friends: 0, created: 0, plays: 0, followers: 0, badges: 0, gameVisits: 0 }, keyedUser.stats || {}),
+    friends: Array.isArray(keyedUser.friends) ? keyedUser.friends : [],
+    badges: Array.isArray(keyedUser.badges) ? keyedUser.badges : [],
     avatar: keyedUser.avatar || { bodyColors: { headColorId: 1002, torsoColorId: 1002, rightArmColorId: 1002, leftArmColorId: 1002, rightLegColorId: 1002, leftLegColorId: 1002 } },
   };
 }
@@ -1083,6 +1143,7 @@ app.post('/signin', (req, res) => {
     return res.status(401).render('signin', {
       title: 'Sign in - LuckyBlox',
       errorMessage: 'We could not find that account. Try creating one first.',
+      redirect: '',
       username,
       hintMessage: '',
       basePath: res.locals.basePath || '',
@@ -1094,6 +1155,7 @@ app.post('/signin', (req, res) => {
       return res.status(401).render('signin', {
         title: 'Sign in - LuckyBlox',
         errorMessage: 'That password is incorrect.',
+        redirect: '',
         username,
         hintMessage: '',
         basePath: res.locals.basePath || '',
@@ -1103,6 +1165,7 @@ app.post('/signin', (req, res) => {
     return res.status(401).render('signin', {
       title: 'Sign in - LuckyBlox',
       errorMessage: 'That password is incorrect.',
+      redirect: '',
       username,
       hintMessage: '',
       basePath: res.locals.basePath || '',
@@ -1289,6 +1352,32 @@ app.get('/account', (req, res) => {
     title: `${user.username} Account`,
     user,
     assets,
+  });
+});
+
+app.get('/friends', (req, res) => {
+  const userId = Number(req.query.userId || req.query.userid || 1);
+  const user = getUser(userId);
+  const friends = Array.isArray(user.friends) ? user.friends : [];
+  const friendUsers = friends.map((f) => getUser(f.userId)).filter(Boolean);
+
+  res.render('friends', {
+    title: 'Friends',
+    user,
+    friends: friendUsers,
+    friendStatuses: friends,
+  });
+});
+
+app.get('/badges', (req, res) => {
+  const userId = Number(req.query.userId || req.query.userid || 1);
+  const user = getUser(userId);
+  const badges = Array.isArray(user.badges) ? user.badges : [];
+
+  res.render('badges', {
+    title: 'Badges',
+    user,
+    badges,
   });
 });
 
@@ -2192,11 +2281,31 @@ app.get('/api/v1/account', (req, res) => {
       displayName: user.username,
       membership: user.membershipStatus || user.membership || 'Premium',
       role: 'Creator',
+      robux: Number(user.robux) || 0,
+      stats: Object.assign({ friends: 0, created: 0, plays: 0, followers: 0, badges: 0, gameVisits: 0 }, user.stats || {}),
+      friendCount: Array.isArray(user.friends) ? user.friends.length : 0,
+      badgeCount: Array.isArray(user.badges) ? user.badges.length : 0,
     },
     permissions: {
       create: true, edit: true, publish: true, inventory: true,
     },
   });
+});
+
+app.get('/api/friends', (req, res) => {
+  const userId = Number(req.query.userId || req.query.userid || req.headers['x-user-id'] || 1);
+  const user = getUser(userId);
+  const friends = Array.isArray(user.friends) ? user.friends : [];
+  const friendUsers = friends.map((f) => getUser(f.userId)).filter(Boolean);
+  res.json({ ok: true, userId, friends: friendUsers, total: friends.length });
+});
+
+app.get('/api/badges', (req, res) => {
+  const userId = Number(req.query.userId || req.query.userid || req.headers['x-user-id'] || 1);
+  const user = getUser(userId);
+  const badges = Array.isArray(user.badges) ? user.badges : [];
+  res.json({ ok: true, userId, badges, total: badges.length });
+});
 });
 
 app.get('/api/v1/authentication-tickets', (req, res) => {

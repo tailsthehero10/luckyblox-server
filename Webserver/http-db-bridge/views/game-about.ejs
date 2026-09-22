@@ -16,7 +16,7 @@
             <a href="/users/1/profile" class="rbx-nav-link">Profile</a>
         </div>
         <div>
-            <span class="rbx-nav-link" style="color: #00B06F;">R$ 4,500</span>
+            <span class="rbx-nav-link" style="color: #00B06F;">R$ <%= (typeof userRobux !== 'undefined' ? userRobux : (user && (user.robux || 0))) %></span>
         </div>
     </header>
 
