@@ -2322,8 +2322,8 @@ app.get('/play', (req, res) => {
 });
 
 app.post('/api/login', (req, res) => {
-  const username = String(req.body.username || req.body.userName || req.query.username || 'LocalPlayer');
-  const password = String(req.body.password || req.body.pass || req.query.password || 'local');
+  const username = String(req.body.username || req.body.userName || req.query.username || '');
+  const password = String(req.body.password || req.body.pass || req.query.password || '');
   const users = getUsers();
   const match = Object.values(users).find((user) => String(user.username || user.displayName || '').toLowerCase() === username.toLowerCase());
 
@@ -2331,14 +2331,28 @@ app.post('/api/login', (req, res) => {
     return res.status(401).json({ ok: false, error: 'invalid-credentials', message: 'Unknown username.' });
   }
 
-  if (match.password && password !== match.password) {
-    return res.status(401).json({ ok: false, error: 'invalid-credentials', message: 'Incorrect password.' });
+  // Verify against the stored PBKDF2 hash with a constant-time compare.
+  // This route previously compared a plaintext `password` field that no account
+  // actually has, so the check was skipped and ANY password authenticated as
+  // ANY account. Accounts missing credentials must never be signifiable.
+  const hasCredential = Boolean(match.password && match.passwordSalt);
+  const passwordOk = hasCredential && verifyPassword(password, match.password, match.passwordSalt);
+
+  if (!hasCredential || !passwordOk) {
+    audit('api_login_failed', {
+      ip: security.clientIp(req),
+      username,
+      reason: hasCredential ? 'bad-password' : 'no-credential-set',
+    });
+    return res.status(401).json({ ok: false, error: 'invalid-credentials', message: 'Incorrect username or password.' });
   }
 
   const userId = Number(match.userId || match.id || 1);
   const user = serializeUser(userId);
   const ticket = createAuthTicket(userId, 1818, { port: gamePort, serverJobId: `session-${Date.now()}` });
   const sessionId = applySessionCookie(res, userId);
+
+  audit('api_login_success', { ip: security.clientIp(req), userId: String(userId) });
 
   return res.json({
     ok: true,
