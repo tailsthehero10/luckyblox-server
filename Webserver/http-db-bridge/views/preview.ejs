@@ -20,17 +20,40 @@
         <img src="/site-icon/luckyblox.png" alt="LuckyBlox" style="height:28px; width:auto;" />
         <span>LuckyBlox</span>
       </div>
+
+      <%# 2021 roblox.com header kept its primary links and its Sign Up / Log In
+          actions pinned to the right. Preview mode hides the site, so these
+          point at the real routes for when the build opens. %>
+      <nav class="roblox-nav" aria-label="Main navigation">
+        <div class="roblox-nav-links">
+          <a href="/games">Discover</a>
+          <a href="/avatar">Avatar Shop</a>
+          <a href="/develop">Create</a>
+          <a href="/studio">Studio</a>
+        </div>
+      </nav>
+
+      <div class="roblox-right">
+        <a class="roblox-header-action" href="/signin">Log In</a>
+        <a class="roblox-header-action roblox-header-action-primary" href="/signup">Sign Up</a>
+      </div>
     </header>
 
+    <%# Standard page hero, same rhythm as every other page: avatar-sized mark on
+        the left, title and meta beside it, left aligned. No oversized statement
+        heading and no special-case treatment — the preview is a normal page that
+        happens to describe the server. %>
     <section class="roblox-hero">
-      <div class="roblox-game-icon"
-        style="background-image: url('/site-icon/luckyblox.png'); background-size: contain; background-repeat: no-repeat; background-position: center;">
+      <div class="roblox-avatar-poster">
+        <div class="roblox-avatar-big"
+          style="background-image: url('/site-icon/luckyblox.png'); background-size: contain; background-repeat: no-repeat; background-position: center;">
+        </div>
       </div>
 
       <div>
         <div class="roblox-eyebrow">Live preview</div>
-        <div class="roblox-title-block">
-          <h1>The server is running.</h1>
+        <div class="roblox-profile-title">
+          LuckyBlox
         </div>
 
         <div class="roblox-meta-row">
