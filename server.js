@@ -14,8 +14,6 @@ const {
 
 const rootDir = __dirname;
 const savedPlacesDir = path.join(rootDir, 'saved_places');
-const publicDir = path.join(rootDir, 'public');
-const cssPath = path.join(publicDir, 'css', 'roblox.css');
 
 if (!fs.existsSync(savedPlacesDir)) {
   fs.mkdirSync(savedPlacesDir, { recursive: true });
@@ -158,21 +156,6 @@ function sendJson(res, statusCode, payload) {
     'Cache-Control': 'no-store'
   });
   res.end(JSON.stringify(payload));
-}
-
-function serveStaticCss(res) {
-  fs.readFile(cssPath, 'utf8', (error, css) => {
-    if (error) {
-      sendJson(res, 500, { ok: false, error: 'CSS not found' });
-      return;
-    }
-
-    res.writeHead(200, {
-      'Content-Type': 'text/css; charset=utf-8',
-      'Cache-Control': 'no-store'
-    });
-    res.end(css);
-  });
 }
 
 function serveClientSettingsFile(req, res) {
@@ -708,10 +691,10 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (pathname === '/css/roblox.css') {
-    serveStaticCss(res);
-    return;
-  }
+  // NOTE: /css/roblox.css is deliberately NOT served from here. The bridge owns
+  // public/css/roblox.css (the real stylesheet the templates are written against);
+  // serving a second copy from the proxy's own public/ folder shadowed it and the
+  // live site rendered unstyled. Let it fall through to proxyToBridge below.
 
   if (pathname === '/AppSettings.xml' || pathname.endsWith('/AppSettings.xml') || pathname.startsWith('/ClientSettings/') || pathname === '/ClientSettings') {
     serveClientSettingsFile(req, res);
