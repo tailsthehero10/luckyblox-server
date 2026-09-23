@@ -79,9 +79,49 @@ const siteIconDir = path.join(releaseRoot, 'Webserver', 'site icon');
 app.use('/site-icon', express.static(siteIconDir));
 app.get('/favicon.ico', (req, res) => res.sendFile(path.join(siteIconDir, 'luckyblox.ico')));
 app.get('/favicon.png', (req, res) => res.sendFile(path.join(siteIconDir, 'luckyblox.png')));
-app.use('/ClientSettings', express.static(path.join(releaseRoot, 'Clients', '2022M', 'ClientSettings')));
-app.use('/LuckBlox.site.tk', express.static(path.join(releaseRoot, 'Clients', '2022M')));
-app.use(express.static(path.join(releaseRoot, 'Clients', '2022M')));
+// Client binary assets (ClientSettings, Qml, DLLs, ...). These are per-client
+// folders and not every client ships all of them - 2021M contains only
+// AppSettings.xml and its exe - so resolve the selected client per request and
+// fall back to the default when the folder is absent instead of 404ing.
+const DEFAULT_CLIENT_DIR = path.join(releaseRoot, 'Clients', '2022M');
+
+function resolveClientAssetDir() {
+  try {
+    const file = path.join(releaseRoot, 'Settings', 'SelectedClient.txt');
+    if (!fs.existsSync(file)) return DEFAULT_CLIENT_DIR;
+    const value = String(fs.readFileSync(file, 'utf8')).replace(/^\uFEFF/, '').trim();
+    if (!/^[A-Za-z0-9_-]+$/.test(value)) return DEFAULT_CLIENT_DIR;
+    const candidate = path.join(releaseRoot, 'Clients', value);
+    return fs.existsSync(candidate) ? candidate : DEFAULT_CLIENT_DIR;
+  } catch (error) {
+    return DEFAULT_CLIENT_DIR;
+  }
+}
+
+// Express needs a fixed root, so mount a resolver that picks the right file on
+// each request and falls back to the default client's copy.
+function serveClientAsset(subPath) {
+  return (req, res, next) => {
+    const relative = String(req.path || '').replace(/^\/+/, '');
+    const clientDir = resolveClientAssetDir();
+    const own = path.join(clientDir, subPath || '', relative);
+
+    if (own.startsWith(clientDir) && fs.existsSync(own) && fs.statSync(own).isFile()) {
+      return res.sendFile(own);
+    }
+
+    const shared = path.join(DEFAULT_CLIENT_DIR, subPath || '', relative);
+    if (shared.startsWith(DEFAULT_CLIENT_DIR) && fs.existsSync(shared) && fs.statSync(shared).isFile()) {
+      return res.sendFile(shared);
+    }
+
+    return next();
+  };
+}
+
+app.use('/ClientSettings', serveClientAsset('ClientSettings'));
+app.use('/LuckBlox.site.tk', serveClientAsset(''));
+app.use(serveClientAsset(''));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/assets', express.static(path.join(releaseRoot, 'Assets')));

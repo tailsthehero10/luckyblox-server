@@ -15,6 +15,47 @@ const {
 const rootDir = __dirname;
 const savedPlacesDir = path.join(rootDir, 'saved_places');
 
+// ---------------------------------------------------------------------------
+// Which client are we serving?
+//
+// The launcher records the chosen client in Settings/SelectedClient.txt (e.g.
+// "2021M"). AppSettings.xml and ClientSettings/ are per-client files, so serving
+// them from a hardcoded folder hands the wrong client the wrong URLs - 2021M
+// needs a trailing /home/ that 2022M does not have. Resolve it per request and
+// fall back to the default only when the setting is missing or unknown.
+// ---------------------------------------------------------------------------
+const DEFAULT_CLIENT = '2022M';
+const clientsRoot = path.join(rootDir, 'Clients');
+
+function readSelectedClient() {
+  try {
+    const file = path.join(rootDir, 'Settings', 'SelectedClient.txt');
+    if (!fs.existsSync(file)) return '';
+    const value = String(fs.readFileSync(file, 'utf8')).replace(/^\uFEFF/, '').trim();
+    // Guard against a crafted value escaping the Clients folder.
+    return /^[A-Za-z0-9_-]+$/.test(value) ? value : '';
+  } catch (error) {
+    return '';
+  }
+}
+
+/**
+ * The client folder to read settings from. Prefers SelectedClient.txt, then the
+ * static default when that has an AppSettings.xml, so behaviour never
+ * regresses to a hard 404.
+ */
+function resolveClientDir() {
+  const selected = readSelectedClient();
+  if (selected) {
+    const candidate = path.join(clientsRoot, selected);
+    if (fs.existsSync(path.join(candidate, 'AppSettings.xml'))) {
+      return candidate;
+    }
+  }
+
+  return path.join(clientsRoot, DEFAULT_CLIENT);
+}
+
 if (!fs.existsSync(savedPlacesDir)) {
   fs.mkdirSync(savedPlacesDir, { recursive: true });
 }
@@ -159,18 +200,37 @@ function sendJson(res, statusCode, payload) {
 }
 
 function serveClientSettingsFile(req, res) {
-  const releaseRoot = path.resolve(__dirname);
   const normalizedPath = normalizeBridgePath(new URL(req.url, 'http://localhost').pathname);
   const cleanPath = normalizedPath.replace(/^\//, '');
-  const localFile = cleanPath === 'AppSettings.xml'
-    ? path.join(releaseRoot, 'Clients', '2022M', 'AppSettings.xml')
-    : cleanPath.startsWith('ClientSettings/')
-      ? path.join(releaseRoot, 'Clients', '2022M', 'ClientSettings', path.basename(cleanPath))
-      : null;
+  const clientDir = resolveClientDir();
+  const clientName = path.basename(clientDir);
+
+  let localFile = null;
+  if (cleanPath === 'AppSettings.xml') {
+    localFile = path.join(clientDir, 'AppSettings.xml');
+  } else if (cleanPath.startsWith('ClientSettings/')) {
+    const requested = path.basename(cleanPath);
+    const own = path.join(clientDir, 'ClientSettings', requested);
+
+    // Not every client ships a ClientSettings folder (2021M does not). Rather
+    // than 404 - which stalls the loading screen - fall back to the default
+    // client's copy when the requested client has none of its own.
+    if (fs.existsSync(own)) {
+      localFile = own;
+    } else {
+      const shared = path.join(clientsRoot, DEFAULT_CLIENT, 'ClientSettings', requested);
+      if (fs.existsSync(shared)) localFile = shared;
+    }
+  }
 
   if (!localFile || !fs.existsSync(localFile)) {
     res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ ok: false, error: 'client-settings-not-found', requestedPath: cleanPath }));
+    res.end(JSON.stringify({
+      ok: false,
+      error: 'client-settings-not-found',
+      requestedPath: cleanPath,
+      client: clientName,
+    }));
     return;
   }
 
@@ -189,13 +249,21 @@ function serveClientSettingsFile(req, res) {
     let body = buffer;
 
     // Rewrite <BaseUrl> in AppSettings.xml to the live public deployment URL so
-    // clients connect to the Render hostname instead of a baked-in localhost.
+    // clients connect to the host actually serving them instead of a baked-in
+    // localhost. Each client's own path suffix is preserved: 2021M expects a
+    // trailing /home/ where 2022M does not, and dropping it breaks its routing.
     if (extension === '.xml') {
       const origin = publicBaseUrl || 'http://localhost';
+      const suffixMatch = String(buffer).match(/<BaseUrl>[\s\S]*?<\/BaseUrl>/i);
+      const existingPath = suffixMatch
+        ? (suffixMatch[0].match(/LuckBlox\.site\.tk(\/[^<]*)?/i) || [])[1] || '/'
+        : '/';
+      const suffix = existingPath.startsWith('/') ? existingPath : '/' + existingPath;
+
       body = Buffer.from(
         String(buffer).replace(
           /<BaseUrl>[\s\S]*?<\/BaseUrl>/i,
-          `<BaseUrl>${origin}/LuckBlox.site.tk/</BaseUrl>`,
+          `<BaseUrl>${origin}/LuckBlox.site.tk${suffix}</BaseUrl>`,
         ),
       );
     }
@@ -204,6 +272,7 @@ function serveClientSettingsFile(req, res) {
       'Content-Type': contentType,
       'Cache-Control': 'no-store',
       'Access-Control-Allow-Origin': '*',
+      'X-LuckyBlox-Client': clientName,
     });
     res.end(body);
   });

@@ -7,3 +7,5 @@ LuckyBlox public base URL: http://localhost:3002
 LuckyBlox compatibility server listening on http://0.0.0.0:3002/LuckBlox.site.tk
 LuckyBlox proxy target bridge: http://127.0.0.1:3001
 [LuckyBlox Server:3e66f0f5-e621-4ab6-b65c-1aff126478b6] listening on 0.0.0.0:53640
+[LuckyBlox Server:3e66f0f5-e621-4ab6-b65c-1aff126478b6] exited code=1 signal=null
+[LuckyBlox Server:3e66f0f5-e621-4ab6-b65c-1aff126478b6] listener closed

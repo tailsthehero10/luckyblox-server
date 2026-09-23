@@ -1,0 +1,50 @@
+{
+  "_comment": "LuckyBlox Discord Presence settings. Edit freely - no rebuild needed.",
+  "applicationId": "1552282667964178472",
+  "_comment_detailsPrefix": "Details becomes this prefix + the specific game name.",
+  "detailsPrefix": "LuckyBlox:",
+  "details": "LuckyBlox:customblox",
+  "showUsername": true,
+  "stateWhenLauncherOnly": "Browsing the launcher",
+  "largeImageKey": "luckyblox",
+  "largeImageText": "LuckyBlox",
+  "smallImageKey": "",
+  "smallImageText": "",
+  "_comment_timer": "Show elapsed time since the app started.",
+  "showTimer": true,
+  "_comment_buttons": "Discord allows 0-2 buttons. Leave empty to hide.",
+  "buttons": [],
+  "_comment_poll": "How often to re-check state, in seconds.",
+  "pollSeconds": 5,
+  "_comment_clients": "Process names treated as 'in game'. Matched case-insensitively.",
+  "gameProcesses": [
+    "RobloxPlayerBeta",
+    "RobloxStudioBeta",
+    "RobloxStudio"
+  ],
+  "launcherProcesses": [
+    "LuckyBlox Launcher"
+  ],
+  "_comment_paths": "Where the launcher keeps its settings.",
+  "settingsRelativePath": "Settings",
+  "usernameFile": "username.txt",
+  "clientFile": "SelectedClient.txt",
+  "rpcToggleFile": "DiscordRPC.txt",
+
+  "_comment_game": "Which game is running. MapPath.txt is written by the launcher when it loads a map; gameserverraw.json carries the slot size.",
+  "mapPathFile": "MapPath.txt",
+  "gameServerFile": "gameserverraw.json",
+
+  "_comment_slots": "Live party sizing: playerCount / maxPlayers / slots left, read from the launcher API for the current job.",
+  "showPlayerCount": true,
+  "showSlotsLeft": true,
+  "apiBaseUrl": "http://127.0.0.1:2005",
+  "jobIdFile": "jobid.txt",
+
+  "_comment_icons": "Per-game 512x512 Discord asset keys. Upload the image to your Discord app, then map place id -> asset key. Unlisted ids fall back to largeImageKey.",
+  "gameImageKeys": {
+    "1818": "luckyblox"
+  },
+  "fetchLiveIcons": false,
+  "iconCacheRelativePath": "_presence/iconcache"
+}
