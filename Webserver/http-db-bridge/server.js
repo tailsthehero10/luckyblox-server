@@ -785,6 +785,11 @@ function ensureSeedData() {
   // rather than relying on someone calling /luckblox-salt-setup by hand.
   upgradeLegacyPasswords();
 
+  // Let the owner password come from the environment so it never has to be
+  // committed to the repository. Set LUCKYBLOX_OWNER_PASSWORD on the host and it
+  // is hashed and applied to the owner account at boot.
+  applyOwnerPasswordFromEnv();
+
   if (!fs.existsSync(assetsPath)) {
     writeJson(assetsPath, createDefaultAssets());
   }
@@ -818,6 +823,44 @@ function upgradeLegacyPasswords() {
     console.log(`[luckyblox] upgraded ${upgraded} legacy plaintext password(s) to salted hashes`);
   }
   return upgraded;
+}
+
+/**
+ * Apply the owner password supplied through LUCKYBLOX_OWNER_PASSWORD (or its
+ * LUCKYBLOX_OWNER_PASSWORD_SALT companion) to the owner account. Keeping the
+ * credential in an environment variable means it is never stored in the repo,
+ * which matters because this project's data files are public on GitHub.
+ *
+ * Runs on every boot and re-hashes only when the configured password does not
+ * already match, so a redeploy is idempotent. Returns true when it changed the
+ * stored credential.
+ */
+function applyOwnerPasswordFromEnv() {
+  const password = process.env.LUCKYBLOX_OWNER_PASSWORD;
+  if (!password) {
+    return false;
+  }
+
+  const users = getUsers();
+  const owner = users[OWNER_USER_ID];
+  if (!owner) {
+    console.warn(`[luckyblox] LUCKYBLOX_OWNER_PASSWORD set but owner id ${OWNER_USER_ID} was not found`);
+    return false;
+  }
+
+  if (owner.password && owner.passwordSalt && verifyPassword(password, owner.password, owner.passwordSalt)) {
+    return false;
+  }
+
+  const { hash, salt, version } = hashPassword(password);
+  owner.password = hash;
+  owner.passwordSalt = salt;
+  owner.passwordVersion = version;
+  owner.updatedAt = new Date().toISOString();
+  users[OWNER_USER_ID] = owner;
+  writeJson(usersPath, users);
+  console.log(`[luckyblox] applied owner password for ${owner.username || OWNER_USER_ID} from LUCKYBLOX_OWNER_PASSWORD`);
+  return true;
 }
 
 function getUsers() {
