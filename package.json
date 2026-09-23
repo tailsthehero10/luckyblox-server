@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node start.js",
     "start:bridge": "node Webserver/http-db-bridge/server.js",
-    "start:legacy": "node server.js"
+    "start:legacy": "node server.js",
+    "dev:play": "node tools/dev-launch.js",
+    "dev:play:dry": "node tools/dev-launch.js --dry-run"
   },
   "engines": {
     "node": ">=18"

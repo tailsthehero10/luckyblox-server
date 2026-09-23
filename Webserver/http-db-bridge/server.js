@@ -778,6 +778,13 @@ function ensureSeedData() {
     writeJson(usersPath, createDefaultUsers());
   }
 
+  // Migrate any legacy plaintext password to a salted hash at boot. The login
+  // route only accepts salted hashes, so without this the default account (and
+  // any account created before hashing) can never sign in — and on a fresh
+  // container the seed data is regenerated every deploy, so this must run here
+  // rather than relying on someone calling /luckblox-salt-setup by hand.
+  upgradeLegacyPasswords();
+
   if (!fs.existsSync(assetsPath)) {
     writeJson(assetsPath, createDefaultAssets());
   }
@@ -790,6 +797,27 @@ function ensureSeedData() {
       writeJson(gamesPath, createDefaultGames());
     }
   }
+}
+
+/**
+ * Hash every stored password that is still plaintext / unsalted so login works.
+ * Mirrors /luckblox-salt-setup but runs automatically on startup. Returns how
+ * many accounts were upgraded.
+ */
+function upgradeLegacyPasswords() {
+  const users = getUsers();
+  let upgraded = 0;
+  for (const id of Object.keys(users)) {
+    const user = users[id];
+    if (user && user.password && user.password.length < 64 && !user.passwordSalt) {
+      upgradePassword(user);
+      upgraded += 1;
+    }
+  }
+  if (upgraded > 0) {
+    console.log(`[luckyblox] upgraded ${upgraded} legacy plaintext password(s) to salted hashes`);
+  }
+  return upgraded;
 }
 
 function getUsers() {
@@ -1348,6 +1376,17 @@ const PREVIEW_ALLOWLIST = [
   /^\/health$/,
   /^\/api\/preview-status$/,
   /^\/preview$/,
+  // Owner control panel + admin API must survive preview mode, otherwise the
+  // owner is locked out of their own open/close switch on a live deployment.
+  /^\/sitestat/,
+  /^\/api\/site-status$/,
+  /^\/api\/admin\//,
+  // Auth/session endpoints: the owner has to be able to sign in to reach the
+  // control panel, and the launcher client logs in through the same routes.
+  /^\/api\/login$/,
+  /^\/api\/logout$/,
+  /^\/api\/v1\/me$/,
+  /^\/api\/account\//,
   /^\/css\//,
   /^\/fonts\//,
   /^\/assets\//,

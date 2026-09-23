@@ -23,7 +23,7 @@ services:
       # Only /preview is public until the site is finished. Set to "off" to open
       # the full site.
       - key: LUCKYBLOX_PREVIEW_MODE
-        value: "on"
+        value: "off"
       - key: LUCKYBLOX_PREVIEW_STAGE
         value: In development
       # PORT is provided by Render; do not hardcode it here.

@@ -119,7 +119,10 @@
               "membershipStatus":  "Admin",
               "admin":  true,
               "isAdmin":  true,
-              "isVerified":  true
+              "isVerified":  true,
+              "password":  "c16429d5f2d101e1a6d911c7b24b8d2e95ec9f4762da56335e9e82ce640a9ff81a7448091452a1239d184da2b00ea9caa01a47a09ceee47bba67efb6be3f2f41",
+              "passwordSalt":  "9c2513561643172219ef162681dc95e1",
+              "passwordVersion":  3
           },
     "2":  {
               "userId":  "2",

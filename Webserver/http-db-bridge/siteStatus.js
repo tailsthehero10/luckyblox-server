@@ -66,6 +66,9 @@ const VALID_IDS = Object.keys(STATUSES);
 const ALWAYS_OPEN = [
   /^\/sitestat$/,
   /^\/api\/site-status$/,
+  // Owner admin API stays reachable while the site is closed so the owner can
+  // still manage it (revoke sessions, set roles) without reopening the site.
+  /^\/api\/admin\//,
   /^\/css\//,
   /^\/fonts\//,
   /^\/site-icon\//,
