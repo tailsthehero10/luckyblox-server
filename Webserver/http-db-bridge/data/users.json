@@ -110,7 +110,7 @@
         "leftLegColorId": 1002
       }
     },
-    "updatedAt": "2026-09-23T15:04:49.109Z",
+    "updatedAt": "2026-09-23T17:14:15.079Z",
     "role": "owner",
     "username": "tailsthehero10",
     "displayName": "tailsthehero10",
@@ -120,8 +120,8 @@
     "admin": true,
     "isAdmin": true,
     "isVerified": true,
-    "password": "12b35f2d218b380f7284b1842aa5732729245e96f12a62ac801b08abad6b5d1156e2d8483dfec833ffa9303bdbcc2f18ba65eda761d66bfaf384f26005ef26a9",
-    "passwordSalt": "00042e769a0e18a6cffc097e898b3002",
+    "password": "24747f8c43d79634e11be7c3a00fdf0408c150adecc06695781c37bf2655066b1a4b883e2fb0f9bf0f40bf342dcd5fc4ed205c281299efd2c5d57d824a27d6bb",
+    "passwordSalt": "652a1414baf5c52fc2e198ac527a7506",
     "passwordVersion": 3
   },
   "2": {

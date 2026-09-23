@@ -246,16 +246,18 @@ input {
 }
 
 .roblox-brand-mark {
+  /* The brand mark is the real site icon (luckyblox.png), not a letter tile. */
   width: 24px;
   height: 24px;
   border-radius: 4px;
-  display: grid;
-  place-items: center;
-  font-size: 0.8rem;
-  line-height: 1;
-  background: linear-gradient(135deg, #3c8cff 0%, #7ac1ff 100%);
-  border: 1px solid rgba(255,255,255,0.22);
-  color: #ffffff;
+  display: block;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+img.roblox-brand-mark {
+  background: transparent;
+  border: 0;
 }
 
 .roblox-nav {
@@ -652,15 +654,22 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.2)), rgba(255,255,255,0.02);
+  /* A soft neutral surface rather than a flat grey slab, so the placeholder
+     reads as an empty avatar frame and not as a broken image. */
+  background: linear-gradient(180deg, #f4f6f8 0%, #e7ebef 100%);
+  border: 1px solid var(--border-line);
+  border-radius: 8px;
 }
 
 .roblox-avatar-big {
   width: 118px;
   height: 118px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #f0a45f, #f4d263);
-  border: 4px solid rgba(255,255,255,0.2);
+  /* Brand blue instead of the orange/yellow default, to match the site. */
+  background: linear-gradient(135deg, #2f7de2 0%, #1b4fa0 100%);
+  color: #ffffff;
+  border: 4px solid rgba(255,255,255,0.9);
+  box-shadow: 0 6px 16px rgba(20, 44, 88, 0.18);
   display: grid;
   place-items: center;
   font-size: 2.4rem;
@@ -1273,9 +1282,10 @@ body {
   width: 25px !important;
   height: 25px !important;
   border-radius: 0 !important;
-  background: #ffffff !important;
+  /* Image mark: never paint a background or border behind it. */
+  background: transparent !important;
   border: 0 !important;
-  color: #191919 !important;
+  object-fit: contain !important;
 }
 
 .roblox-nav,
@@ -1329,8 +1339,9 @@ body {
 .roblox-avatar-poster,
 .roblox-avatar-stage {
   min-height: 210px !important;
-  border-radius: 0 !important;
-  background-color: #e5e5e5 !important;
+  border-radius: 8px !important;
+  /* Neutral surface, not a flat grey slab (which read as a broken image). */
+  background-color: #eef1f4 !important;
 }
 
 .roblox-game-icon::before,

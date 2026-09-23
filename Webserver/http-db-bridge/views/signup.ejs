@@ -29,11 +29,11 @@
 
     .signin-shell::before {
       content: "";
-      position: absolute;
-      /* Bleed past every edge so the blur never leaves a soft/uncovered border,
-         and so the layer always covers the full viewport regardless of size. */
+      position: fixed;
+      /* Fixed to the viewport so the image always covers the whole screen, no
+         matter how tall the content is - no white bands top or bottom. */
       inset: -40px;
-      background-image: url('/img/auth-background.png');
+      background-image: url('/sign-background');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -75,12 +75,9 @@
     .signin-brand-mark {
       width: 28px;
       height: 28px;
-      display: grid;
-      place-items: center;
-      border-radius: 6px;
-      background: linear-gradient(135deg, #62b6ff 0%, #2f7de2 100%);
-      font-size: 0.85rem;
-      border: 1px solid rgba(255,255,255,0.2);
+      display: block;
+      object-fit: contain;
+      flex: 0 0 auto;
     }
 
     .signin-body {
@@ -217,7 +214,7 @@
     <div class="signin-card">
       <div class="signin-header">
         <div class="signin-brand">
-          <span class="signin-brand-mark">R</span>
+          <img class="signin-brand-mark" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
           <span>LuckyBlox</span>
         </div>
       </div>

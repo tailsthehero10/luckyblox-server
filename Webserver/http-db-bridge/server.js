@@ -82,6 +82,21 @@ const siteIconDir = path.join(releaseRoot, 'Webserver', 'site icon');
 app.use('/site-icon', express.static(siteIconDir));
 app.get('/favicon.ico', (req, res) => res.sendFile(path.join(siteIconDir, 'luckyblox.ico')));
 app.get('/favicon.png', (req, res) => res.sendFile(path.join(siteIconDir, 'luckyblox.png')));
+// Sign in / sign up background. The source file lives at
+// Webserver/site icon/BackgroundSigninup/sign page.jpg (a space in the name, so
+// a raw static URL is awkward); expose it under a clean, space-free path.
+const signBackgroundCandidates = [
+  path.join(siteIconDir, 'BackgroundSigninup', 'sign page.jpg'),
+  path.join(siteIconDir, 'BackgroundSigninup', 'sign page.png'),
+];
+app.get('/sign-background', (req, res) => {
+  const file = signBackgroundCandidates.find((candidate) => fs.existsSync(candidate));
+  if (!file) {
+    return res.status(404).send('sign background not found');
+  }
+  res.set('Cache-Control', 'public, max-age=86400');
+  return res.sendFile(file);
+});
 // Client binary assets (ClientSettings, Qml, DLLs, ...). These are per-client
 // folders and not every client ships all of them - 2021M contains only
 // AppSettings.xml and its exe - so resolve the selected client per request and
