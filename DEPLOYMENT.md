@@ -27,7 +27,7 @@ navigation links**, so visitors cannot reach the unfinished site or see progress
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `LUCKYBLOX_PREVIEW_MODE` | `on` | `off` opens the full site to the public |
+| `LUCKYBLOX_PREVIEW_MODE` | `off` | `on` shows only the placeholder page; `off` serves the full site |
 | `LUCKYBLOX_PREVIEW_STAGE` | `In development` | Label shown on the preview page |
 
 What stays reachable during preview (so the server and launcher clients keep
@@ -35,8 +35,8 @@ working): `/health`, `/preview`, `/api/preview-status`, `/css/*`, `/assets/*`,
 `/ClientSettings`, `/AppSettings.xml`, `/v1/*`, `/Login/*`, `/game/*`,
 `/api/launch-game`, `/legacy-nav.js`.
 
-**When you finish the site:** set `LUCKYBLOX_PREVIEW_MODE=off` in the Render
-dashboard. No code change needed and the preview page stops being served.
+The real site is served by default; preview mode is opt-in. If you ever want the
+placeholder page back, set `LUCKYBLOX_PREVIEW_MODE=on` in the Render dashboard.
 
 ## Network configuration (all environment-driven)
 

@@ -20,8 +20,8 @@ services:
         value: "3001"
       - key: LUCKYBLOX_GAME_HOST
         value: 0.0.0.0
-      # Only /preview is public until the site is finished. Set to "off" to open
-      # the full site.
+      # Serve the real site ("off"). Set to "on" only to show the placeholder
+      # preview page while the build is unfinished.
       - key: LUCKYBLOX_PREVIEW_MODE
         value: "off"
       - key: LUCKYBLOX_PREVIEW_STAGE

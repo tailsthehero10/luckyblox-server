@@ -49,9 +49,9 @@ async function waitForReady(serverProcess) {
 
 (async () => {
   // Run against an isolated data dir so the test never touches (or depends on)
-  // the developer's tracked data/users.json. Preview mode is left at its default
-  // (on) on purpose: this exercises the LIVE configuration, where the login and
-  // launch routes must stay reachable even while the site itself is gated.
+  // the developer's tracked data/users.json. Preview mode defaults to off, but
+  // the login and launch routes are allowlisted either way and must stay
+  // reachable no matter how the site itself is gated - that is what this checks.
   const tempDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckblox-session-test-'));
 
   const server = spawn(process.execPath, ['Webserver/http-db-bridge/server.js'], {

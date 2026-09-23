@@ -1394,13 +1394,15 @@ app.get('/api/studio/config', (req, res) => {
 // Preview mode keeps a single, self-contained page live so the deployment can
 // be seen working, while every other page (and navigation) is withheld.
 //
-//   LUCKYBLOX_PREVIEW_MODE=on   -> force preview on
+//   LUCKYBLOX_PREVIEW_MODE=on   -> force preview on  (placeholder page only)
 //   LUCKYBLOX_PREVIEW_MODE=off  -> force preview off (site is finished/public)
-//   unset                       -> defaults to ON until explicitly finished
+//   unset                       -> defaults to OFF: the real site is served
 //
-// Turn it off by setting LUCKYBLOX_PREVIEW_MODE=off in the environment when the
-// build is done — no code change needed, and the preview page disappears.
-const PREVIEW_MODE = String(process.env.LUCKYBLOX_PREVIEW_MODE || 'on').toLowerCase() !== 'off';
+// The default is OFF because the deployment is live and has to serve the real
+// site and the client endpoints. A stale/unset env var on the host must never
+// silently turn the whole site into a placeholder again; preview is now opt-in
+// via LUCKYBLOX_PREVIEW_MODE=on.
+const PREVIEW_MODE = String(process.env.LUCKYBLOX_PREVIEW_MODE || 'off').toLowerCase() === 'on';
 const PREVIEW_STAGE = String(process.env.LUCKYBLOX_PREVIEW_STAGE || 'In development');
 const PREVIEW_TEASERS = [
   'Account system',
