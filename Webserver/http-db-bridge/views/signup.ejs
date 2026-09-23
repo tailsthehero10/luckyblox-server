@@ -8,20 +8,43 @@
   <style>
     body {
       margin: 0;
-      background: linear-gradient(180deg, #eef4fb 0%, #dfeaf8 100%);
+      /* The background image is set on .signin-shell (so it can be blurred
+         without blurring the card). This is only the fallback colour. */
+      background: #0f172a;
       color: #1d2433;
       font-family: "Gotham SSm", Arimo, "Segoe UI", Arial, sans-serif;
     }
 
     .signin-shell {
+      position: relative;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 28px;
+      /* Background image with a light blur. The blur lives on this ::before layer
+         so the card above it stays sharp. */
+      overflow: hidden;
+    }
+
+    .signin-shell::before {
+      content: "";
+      position: absolute;
+      /* Bleed past every edge so the blur never leaves a soft/uncovered border,
+         and so the layer always covers the full viewport regardless of size. */
+      inset: -40px;
+      background-image: url('/img/auth-background.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      /* "not too much" blur, plus a slight darkening so white cards read well */
+      filter: blur(6px) brightness(0.85);
+      z-index: 0;
     }
 
     .signin-card {
+      position: relative;
+      z-index: 1;
       width: min(460px, 100%);
       background: #ffffff;
       border: 1px solid #d8e1ee;

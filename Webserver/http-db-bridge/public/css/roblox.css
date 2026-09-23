@@ -225,6 +225,13 @@ input {
   background: linear-gradient(180deg, var(--rbx-header) 0%, var(--rbx-header-dark) 100%);
   border-bottom: 1px solid rgba(0,0,0,0.18);
   box-shadow: inset 0 -1px 0 rgba(255,255,255,0.06);
+  /* The topbar is the site's navigation, so it must sit above every piece of
+     page content. Without a stacking context it scrolled *under* panels and
+     dropdowns, which is why the nav looked broken/lost. Sticky keeps it pinned
+     to the top of the viewport while still occupying its normal space. */
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
 .roblox-brand {
@@ -349,6 +356,22 @@ input {
 .roblox-robux {
   font-weight: 700;
   color: var(--rbx-green);
+  /* Robux is a value, not a button: give it a currency-chip look with the R$
+     symbol injected so it reads as currency rather than a bare number. */
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 176, 111, 0.12);
+  border: 1px solid rgba(0, 176, 111, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+
+.roblox-robux::before {
+  content: "R$";
+  font-weight: 800;
+  opacity: 0.9;
 }
 
 .roblox-icon-button {
@@ -361,6 +384,16 @@ input {
   background: rgba(255,255,255,0.02);
   color: var(--text-main);
   font-size: 0.9rem;
+  /* These are links now (they go to real pages), so strip the anchor default. */
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.roblox-icon-button:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.28);
+  text-decoration: none;
 }
 
 .roblox-hero,
@@ -1083,7 +1116,7 @@ input {
   top: 0 !important;
   left: 190px !important;
   right: 0 !important;
-  z-index: 25 !important;
+  z-index: 1000 !important;
   margin: 0 !important;
   border-radius: 0 !important;
 }
@@ -1093,7 +1126,7 @@ input {
   left: 0 !important;
   top: 0 !important;
   bottom: 0 !important;
-  z-index: 30 !important;
+  z-index: 1001 !important;
   display: flex !important;
   flex-direction: column !important;
   width: 190px !important;

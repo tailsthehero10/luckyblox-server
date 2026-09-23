@@ -52,6 +52,10 @@ placeholder page back, set `LUCKYBLOX_PREVIEW_MODE=on` in the Render dashboard.
 | `PUBLIC_HOST` / `RENDER_EXTERNAL_HOSTNAME` | auto | Public hostname. |
 | `PUBLIC_PROTOCOL` | `https` (cloud) | Scheme for generated URLs. |
 | `LUCKBLOX_SECRET` | dev fallback | HMAC secret for auth tickets. |
+| `LUCKYBLOX_DATA_DIR` | bundled `data/` | Where accounts/sessions are stored. Point at a Render Disk (e.g. `/var/data`) so data survives redeploys. |
+| `LUCKYBLOX_OWNER_ID` | `1` | Which user id is the deployment owner. |
+| `LUCKYBLOX_OWNER_USERNAME` | `tailsthehero10` | Owner username. |
+| `LUCKYBLOX_OWNER_PASSWORD` | *(unset)* | Owner password, hashed and applied to the owner at boot. Keeps the credential out of the repo and re-applied after every redeploy. |
 
 On Render these public values are auto-detected from `RENDER_EXTERNAL_URL` /
 `RENDER_EXTERNAL_HOSTNAME`, so links always point at

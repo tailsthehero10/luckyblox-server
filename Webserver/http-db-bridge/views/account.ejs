@@ -5,50 +5,94 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><%= title %></title>
   <link rel="stylesheet" href="/css/roblox.css" />
-  <style>
-    body { margin: 0; background: #101214; color: #f3f4f5; font-family: "Gotham SSm", Arimo, Arial, sans-serif; }
-    .account-shell { max-width: 960px; margin: 32px auto; padding: 20px; }
-    .account-card { background:#171a1d; border:1px solid #292d31; border-radius:12px; padding:24px; }
-    .label { color:#bfc5cc; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; }
-    .value { font-size:24px; font-weight:700; margin-top:12px; }
-    .row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-top:18px; }
-    .small-box { background:#1d2125; border:1px solid #2a2e33; border-radius:10px; padding:18px; }
-    .button-row { margin-top:20px; display:flex; gap:12px; }
-    .primary-button { background:#1f9d55; color:white; border:none; padding:12px 18px; border-radius:8px; cursor:pointer; }
-    .secondary-button { background:#2b2d31; color:white; border:none; padding:12px 18px; border-radius:8px; cursor:pointer; }
-  </style>
 </head>
 <body>
-  <div class="account-shell">
-    <div class="account-card">
-      <div class="label">Account</div>
-      <div class="value"><%= user.username %></div>
-      <div class="row">
-        <div class="small-box">
-          <div class="label">Membership</div>
-          <div class="value" style="font-size:18px;"><%= user.membershipStatus || 'Premium' %></div>
+  <div class="roblox-page">
+    <header class="roblox-topbar">
+      <div class="roblox-brand">
+        <span class="roblox-brand-mark">R</span>
+        <span>LuckyBlox</span>
+      </div>
+
+      <nav class="roblox-nav" aria-label="Main navigation">
+        <div class="roblox-nav-links">
+          <a href="/">Home</a>
+          <a href="/games">Games</a>
+          <div class="roblox-more-pages">
+            <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+            <div class="roblox-more-pages-dropdown">
+              <a href="/profile?userId=<%= user.userId %>">Profile</a>
+              <a href="/avatar?userId=<%= user.userId %>">Avatar</a>
+              <a href="/friends">Friends</a>
+              <a href="/studio">Studio</a>
+            </div>
+          </div>
         </div>
-        <div class="small-box">
-          <div class="label">Role</div>
-          <div class="value" style="font-size:18px;">Creator</div>
+      </nav>
+
+      <div class="roblox-right">
+        <span class="roblox-robux"><%= (currency && currency.robux) || user.robux || 0 %></span>
+        <a class="roblox-icon-button" href="/account" title="Account settings" aria-label="Account settings">&#9881;</a>
+        <a class="roblox-icon-button" href="/friends" title="Friends" aria-label="Friends">&#128101;</a>
+        <a class="roblox-icon-button" href="/profile?userId=<%= user.userId %>" title="Profile" aria-label="Profile">@</a>
+      </div>
+    </header>
+
+    <section class="roblox-profile-hero">
+      <div class="roblox-avatar-poster">
+        <div class="roblox-avatar-big"><%= user.username.slice(0, 1).toUpperCase() %></div>
+      </div>
+      <div>
+        <div class="roblox-eyebrow">Account</div>
+        <div class="roblox-profile-title">
+          <%= user.username %>
+          <% if (typeof adminBadge !== 'undefined' && adminBadge && adminBadge.hasImage) { %>
+            <img src="<%= adminBadge.imageUrl %>" alt="Admin" title="Admin" style="height:20px; vertical-align:middle; margin-left:8px;" />
+          <% } %>
+        </div>
+        <div class="roblox-meta-row">
+          <span class="roblox-meta-pill">Membership: <%= user.membershipStatus || user.membership || 'None' %></span>
+          <span class="roblox-meta-pill">Role: <%= (typeof isAdmin !== 'undefined' && isAdmin) ? 'Admin' : 'Creator' %></span>
+          <span class="roblox-meta-pill">Places: <%= (publishedGames && publishedGames.length) || 0 %></span>
         </div>
       </div>
-      <div class="row">
-        <div class="small-box">
-          <div class="label">Published places</div>
-          <div class="value" style="font-size:18px;">1</div>
-        </div>
-        <div class="small-box">
-          <div class="label">Security</div>
-          <div class="value" style="font-size:18px;">Verified</div>
+    </section>
+
+    <section class="roblox-content-grid">
+      <div class="roblox-panel">
+        <div class="roblox-panel-header">Wallet</div>
+        <div class="roblox-panel-body">
+          <div class="roblox-stat-list">
+            <span>Robux</span><strong>R$ <%= (currency && currency.robux) || user.robux || 0 %></strong>
+            <span>Tickets</span><strong><%= (currency && currency.tickets) || 0 %></strong>
+            <span>Coins</span><strong><%= (currency && currency.coins) || 0 %></strong>
+          </div>
         </div>
       </div>
-      <div class="button-row">
-        <button class="primary-button" onclick="window.location.href='/studio?userId=<%= user.userId %>'">Open Studio</button>
-        <button class="secondary-button" onclick="window.location.href='/profile?userId=<%= user.userId %>'">Profile</button>
+
+      <div class="roblox-panel">
+        <div class="roblox-panel-header">Your places</div>
+        <div class="roblox-panel-body">
+          <% if (publishedGames && publishedGames.length) { %>
+            <div class="roblox-asset-list">
+              <% publishedGames.forEach((place) => { %>
+                <a class="roblox-asset-item" href="/game?placeId=<%= place.placeId %>">
+                  <div class="roblox-asset-icon"><%= (place.name || 'G').slice(0, 1).toUpperCase() %></div>
+                  <div>
+                    <div class="roblox-asset-name"><%= place.name %></div>
+                    <div class="roblox-asset-type"><%= place.genre || 'Experience' %></div>
+                  </div>
+                </a>
+              <% }) %>
+            </div>
+          <% } else { %>
+            <div class="roblox-muted">You have not published a place yet.</div>
+          <% } %>
+        </div>
       </div>
-    </div>
+    </section>
   </div>
+
   <script src="/legacy-nav.js"></script>
 </body>
 </html>

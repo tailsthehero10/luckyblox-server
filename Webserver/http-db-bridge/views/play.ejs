@@ -33,9 +33,9 @@
 
       <div class="roblox-right">
         <span class="roblox-robux"><%= user.robux || 0 %></span>
-        <span class="roblox-icon-button">&#9881;</span>
-        <span class="roblox-icon-button">&#128276;</span>
-        <span class="roblox-icon-button">@</span>
+        <a class="roblox-icon-button" href="/account" title="Account settings" aria-label="Account settings">&#9881;</a>
+        <a class="roblox-icon-button" href="/friends" title="Friends" aria-label="Friends">&#128101;</a>
+        <a class="roblox-icon-button" href="/profile?userId=<%= user.userId %>" title="Profile" aria-label="Profile">@</a>
       </div>
     </header>
 

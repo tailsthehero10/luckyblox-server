@@ -29,6 +29,36 @@
   </style>
 </head>
 <body>
+  <div class="roblox-page">
+    <header class="roblox-topbar">
+      <div class="roblox-brand">
+        <span class="roblox-brand-mark">R</span>
+        <span>LuckyBlox</span>
+      </div>
+
+      <nav class="roblox-nav" aria-label="Main navigation">
+        <div class="roblox-nav-links">
+          <a href="/">Home</a>
+          <a href="/games">Games</a>
+          <div class="roblox-more-pages">
+            <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+            <div class="roblox-more-pages-dropdown">
+              <a href="/profile?userId=<%= user.userId %>">Profile</a>
+              <a href="/develop">Create</a>
+              <a href="/account">Account</a>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div class="roblox-right">
+        <span class="roblox-robux"><%= (currency && currency.robux) || user.robux || 0 %></span>
+        <a class="roblox-icon-button" href="/account" title="Account settings" aria-label="Account settings">&#9881;</a>
+        <a class="roblox-icon-button" href="/friends" title="Friends" aria-label="Friends">&#128101;</a>
+        <a class="roblox-icon-button" href="/profile?userId=<%= user.userId %>" title="Profile" aria-label="Profile">@</a>
+      </div>
+    </header>
+
   <div class="studio-shell">
     <div class="studio-topbar">
       <div class="studio-brand">LuckyBlox Studio</div>
@@ -55,8 +85,9 @@
       <div class="studio-panel">
         <h2 style="margin-top:0;">Account</h2>
         <div class="muted">User: <%= user.username %></div>
-        <div class="muted">Membership: <%= user.membershipStatus || 'Premium' %></div>
-        <div class="muted">Role: Creator</div>
+        <div class="muted">Membership: <%= user.membershipStatus || user.membership || 'None' %></div>
+        <div class="muted">Role: <%= (typeof isAdmin !== 'undefined' && isAdmin) ? 'Admin' : 'Creator' %></div>
+        <div class="muted">Robux: R$ <%= (currency && currency.robux) || user.robux || 0 %></div>
         <div style="margin-top:16px;">
           <button class="studio-button secondary" id="refreshStudioBtn">Refresh account</button>
         </div>
@@ -96,6 +127,7 @@
         </div>
       </form>
     </div>
+  </div>
   </div>
 
   <script>

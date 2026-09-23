@@ -69,6 +69,9 @@ const siteStatus = require('./siteStatus').createSiteStatus({
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
+// Page imagery (e.g. the sign-in background). Kept as a folder so a new image can
+// be dropped in without a code change.
+app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
 // Roblox Gotham SSm webfonts (shared/content/fonts) copied into public/fonts so
 // the site renders in the real Roblox typeface instead of a system fallback.
 app.use('/fonts', express.static(path.join(__dirname, 'public', 'fonts')));
@@ -433,10 +436,11 @@ function getUsers() {
   return readJson(usersPath, {});
 }
 
-function getUserByUsername(username) {
-  const users = getUsers();
-  return Object.values(users).find((u) => String(u.username || '').toLowerCase() === String(username || '').toLowerCase()) || null;
-}
+// NOTE: the effective getUserByUsername is defined further down (after
+// OWNER_USER_ID exists, which its tie-breaking uses). A second copy used to live
+// here with a plain first-match lookup; because the later declaration wins, that
+// copy was dead code and its duplicate-username bug was invisible. It was
+// removed so there is exactly one implementation.
 
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
@@ -773,6 +777,76 @@ function serializeGame(placeId) {
   };
 }
 
+/**
+ * Remove duplicate accounts that share a username, keeping the one a person can
+ * actually sign in with.
+ *
+ * The data file historically held two "tailsthehero10" records (ids 1 and 2) - one
+ * with a password hash, one without. Whichever a lookup happened to reach first
+ * decided whether sign-in worked, which is why login looked broken. This keeps
+ * the record with a credential (newest hash first, then the owner id), re-points
+ * the loser's key to it so existing sessions keep resolving, and drops the rest.
+ *
+ * Idempotent: running it on already-unique data does nothing.
+ */
+function dedupeUsersByUsername() {
+  const users = getUsers();
+  const keys = Object.keys(users);
+  if (keys.length === 0) return 0;
+
+  const survivorFor = new Map();
+  for (const key of keys) {
+    const user = users[key];
+    if (!user || typeof user !== 'object') continue;
+    const name = String(user.username || user.displayName || '').trim().toLowerCase();
+    if (!name) continue;
+
+    const current = survivorFor.get(name);
+    if (!current) {
+      survivorFor.set(name, key);
+      continue;
+    }
+
+    const a = users[current];
+    const credentialOf = (u) => (u.password && u.passwordSalt ? 1 : 0);
+    const better = credentialOf(user) - credentialOf(a) > 0
+      || (credentialOf(user) === credentialOf(a)
+        && Number(user.passwordVersion || 0) > Number(a.passwordVersion || 0))
+      || (credentialOf(user) === credentialOf(a)
+        && Number(user.passwordVersion || 0) === Number(a.passwordVersion || 0)
+        && String(user.userId || '') === OWNER_USER_ID);
+
+    survivorFor.set(name, better ? key : current);
+  }
+
+  let removed = 0;
+  for (const key of keys) {
+    const user = users[key];
+    if (!user || typeof user !== 'object') continue;
+    const name = String(user.username || user.displayName || '').trim().toLowerCase();
+    if (!name) continue;
+    const survivor = survivorFor.get(name);
+    if (survivor && survivor !== key) {
+      delete users[key];
+      removed += 1;
+    }
+  }
+
+  if (removed > 0) {
+    // Re-key the surviving records by their own userId so keys and ids stay in
+    // step, and any stale reference to a removed key cannot resurrect it.
+    const compacted = {};
+    for (const user of Object.values(users)) {
+      const id = String(user.userId || user.id || Object.keys(compacted).length + 1);
+      compacted[id] = { ...user, userId: id };
+    }
+    writeJson(usersPath, compacted);
+    console.log(`[luckyblox] removed ${removed} duplicate account record(s) sharing a username`);
+  }
+
+  return removed;
+}
+
 function ensureSeedData() {
   if (!fs.existsSync(usersPath)) {
     writeJson(usersPath, createDefaultUsers());
@@ -789,6 +863,10 @@ function ensureSeedData() {
   // committed to the repository. Set LUCKYBLOX_OWNER_PASSWORD on the host and it
   // is hashed and applied to the owner account at boot.
   applyOwnerPasswordFromEnv();
+
+  // Collapse duplicate usernames so a lookup can never land on a record without
+  // a credential (see getUserByUsername).
+  dedupeUsersByUsername();
 
   if (!fs.existsSync(assetsPath)) {
     writeJson(assetsPath, createDefaultAssets());
@@ -954,7 +1032,7 @@ function getUserByUsername(username = '') {
   }
 
   const users = getUsers();
-  const found = Object.values(users).find((user) => {
+  const matches = Object.values(users).filter((user) => {
     if (!user || typeof user !== 'object') {
       return false;
     }
@@ -963,9 +1041,31 @@ function getUserByUsername(username = '') {
     return usernameValue === target;
   });
 
-  if (!found) {
+  if (matches.length === 0) {
     return null;
   }
+
+  // Usernames are unique in practice, but the data file can contain more than
+  // one record for the same name (it did: two "tailsthehero10" entries, one with
+  // a password and one without). A plain first-match lookup then resolves to an
+  // account that cannot sign in at all - the login reports "no credential set"
+  // even though a valid credential for that username exists.
+  //
+  // Prefer an account that actually has a stored credential, then the
+  // highest-version (newest) hash, then the owner id, so sign-in always lands on
+  // the record the user can really log into.
+  const found = matches.slice().sort((a, b) => {
+    const credentialOf = (u) => (u.password && u.passwordSalt ? 1 : 0);
+    const credentialDiff = credentialOf(b) - credentialOf(a);
+    if (credentialDiff !== 0) return credentialDiff;
+
+    const versionDiff = Number(b.passwordVersion || 0) - Number(a.passwordVersion || 0);
+    if (versionDiff !== 0) return versionDiff;
+
+    const ownerA = String(a.userId || a.id || '') === OWNER_USER_ID ? 1 : 0;
+    const ownerB = String(b.userId || b.id || '') === OWNER_USER_ID ? 1 : 0;
+    return ownerB - ownerA;
+  })[0];
 
   return getUser(found.userId || found.id || 1);
 }
@@ -2145,13 +2245,22 @@ app.get('/users/:id/profile', (req, res) => {
 });
 
 app.get('/account', (req, res) => {
-  const user = getUser(req.query.userId || 1);
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const userId = req.query.userId || (sessionUser && (sessionUser.userId || sessionUser.id)) || 1;
+  const user = getUser(userId);
   const assets = Object.values(getAssets());
+  const publishedGames = getPublicGamesForUser(userId);
+  const adminBadge = getAdminBadge(user);
 
   res.render('account', {
     title: `${user.username} Account`,
     user,
     assets,
+    // Real values for the account summary - the view used to hardcode these.
+    publishedGames,
+    currency: getCurrencyForUser(user),
+    adminBadge,
+    isAdmin: isAdminUser(user),
   });
 });
 
@@ -2278,7 +2387,9 @@ app.post('/api/admin/set-role', requireOwner, (req, res) => {
 });
 
 app.get('/studio', (req, res) => {
-  const user = getUser(req.query.userId || 1);
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const userId = req.query.userId || (sessionUser && (sessionUser.userId || sessionUser.id)) || 1;
+  const user = getUser(userId);
   const places = Object.values(getGames()).map((game) => ({
     placeId: Number(game.placeId || 1818),
     name: game.title || 'LuckyBlox Place',
@@ -2289,6 +2400,10 @@ app.get('/studio', (req, res) => {
     title: 'LuckyBlox Studio',
     user,
     places,
+    // Real account facts so the page stops hardcoding "Role: Creator" etc.
+    currency: getCurrencyForUser(user),
+    isAdmin: isAdminUser(user),
+    adminBadge: getAdminBadge(user),
   });
 });
 
@@ -3627,6 +3742,29 @@ app.get('/studio-open-place/v1/openplace', (req, res) => {
 app.get('/api/v1/me', (req, res) => {
   const user = getUser(req.query.userId || req.headers['x-user-id'] || 1);
   res.json({ ok: true, user: serializeUser(user.userId || 1) });
+});
+
+/**
+ * Live wallet for the signed-in visitor, used by the header so the Robux figure
+ * is read from the account instead of being frozen into the rendered HTML.
+ * Falls back to the anonymous demo account when there is no session, matching
+ * the rest of the site's guest behaviour.
+ */
+app.get('/api/me', (req, res) => {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const userId = sessionUser ? (sessionUser.userId || sessionUser.id || 1) : 1;
+  const user = getUser(userId);
+  res.json({
+    ok: true,
+    signedIn: Boolean(sessionUser),
+    user: {
+      userId: Number(user.userId || userId),
+      username: user.username,
+      displayName: user.username,
+      robux: Number(user.robux) || 0,
+      currency: getCurrencyForUser(user),
+    },
+  });
 });
 
 app.get('/api/v1/account', (req, res) => {

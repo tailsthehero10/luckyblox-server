@@ -1,30 +1,58 @@
 (function () {
   'use strict';
 
+  /**
+   * Shared header behaviour for every page.
+   *
+   * This file used to overwrite the page nav with a hardcoded list that included
+   * routes the server does not implement (/robux, /events, /help, /groups,
+   * /messages, /settings), and injected a second sidebar into the body of every
+   * page - which is why the navigation looked like it was "everywhere" and some
+   * buttons did nothing. It now only:
+   *
+   *   1. builds the nav from links that actually resolve to a real route,
+   *   2. keeps the live site-status block inside a sidebar the page already has,
+   *   3. refreshes the Robux figure from the account so it is live, not frozen.
+   *
+   * Nothing is injected into the body any more.
+   */
   var links = [
     ['Discover', '/games'],
-    ['Avatar Shop', '/catalog'],
+    ['Avatar', '/avatar'],
     ['Create', '/develop'],
-    ['Robux', '/robux'],
-    ['Search', '/games'],
-    ['Events', '/events'],
-    ['Help', '/help'],
-    ['Log In', '/signin'],
-    ['Sign Up', '/signup']
+    ['Studio', '/studio']
   ];
 
   function renderLinks(nav) {
-    nav.classList.add('legacy-global-nav');
-    nav.innerHTML = links.map(function (link) {
+    if (!nav) return;
+
+    var target = nav.classList.contains('roblox-nav-links')
+      ? nav
+      : (nav.querySelector('.roblox-nav-links') || nav);
+
+    target.innerHTML = links.map(function (link) {
       return '<a href="' + link[1] + '">' + link[0] + '</a>';
     }).join('');
+
+    markActive(target);
+  }
+
+  function markActive(scope) {
+    var currentPath = window.location.pathname.replace(/\/$/, '');
+    scope.querySelectorAll('a').forEach(function (link) {
+      var linkPath = new URL(link.getAttribute('href'), window.location.href).pathname.replace(/\/$/, '');
+      if (!linkPath) return;
+      if (currentPath === linkPath || (linkPath !== '/' && currentPath.indexOf(linkPath + '/') === 0)) {
+        link.classList.add('active');
+        link.setAttribute('aria-current', 'page');
+      }
+    });
   }
 
   /**
-   * Live site-status block in the sidebar. Reads /api/site-status so the sidebar
-   * always shows the real current state (open / work in progress / maintenance /
-   * closed) and links through to /sitestat. Failures are shown plainly — the
-   * block never invents a status it could not read.
+   * Live site-status block, added only to a sidebar the page already has. Pages
+   * without a sidebar (sign-in, sign-up, game pages) are left untouched, so this
+   * no longer appears everywhere.
    */
   function renderStatus(sidebar) {
     if (!sidebar || sidebar.querySelector('.legacy-site-status')) return;
@@ -66,33 +94,39 @@
       });
   }
 
+  /**
+   * Replace the rendered Robux figure with the live value from the account. The
+   * number is server-rendered as a first paint, then corrected here, so it is
+   * never a hardcoded constant that ignores the account.
+   */
+  function refreshRobux() {
+    var el = document.querySelector('.roblox-robux');
+    if (!el) return;
+
+    fetch('/api/me', { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('status ' + r.status)); })
+      .then(function (data) {
+        if (!data || !data.ok || !data.user) return;
+        var robux = Number(data.user.robux);
+        if (!Number.isFinite(robux)) return;
+        el.textContent = robux.toLocaleString();
+        el.setAttribute('title', 'R$ ' + robux.toLocaleString());
+      })
+      .catch(function () {
+        /* leave the server-rendered value in place rather than inventing one */
+      });
+  }
+
   function start() {
-    var nav = document.querySelector('.roblox-nav-links, .roblox-nav');
-    if (nav) renderLinks(nav);
+    renderLinks(document.querySelector('.roblox-nav, .roblox-nav-links'));
+    renderStatus(document.querySelector('.legacy-sidebar'));
+    refreshRobux();
 
     var sidebar = document.querySelector('.legacy-sidebar');
-    if (!sidebar) {
-      sidebar = document.createElement('aside');
-      sidebar.className = 'legacy-sidebar';
-      sidebar.innerHTML = '<div class="legacy-sidebar-title">LuckyBlox</div>' +
-        '<a href="/home">Home</a><a href="/games">Games</a><a href="/catalog">Catalog</a>' +
-        '<a href="/avatar">Avatar</a><a href="/develop">Create</a><a href="/profile">Profile</a>' +
-        '<a href="/friends">Friends</a><a href="/groups">Groups</a><a href="/messages">Messages</a>' +
-        '<a href="/settings">Settings</a>' +
-        '<a href="/signin">Log In</a><a href="/signup">Sign Up</a>';
-      document.body.insertBefore(sidebar, document.body.firstChild);
+    if (sidebar) {
+      document.body.classList.add('legacy-shell');
+      markActive(sidebar);
     }
-
-    renderStatus(sidebar);
-
-    document.body.classList.add('legacy-shell');
-    var currentPath = window.location.pathname.replace(/\/$/, '');
-    sidebar.querySelectorAll('a').forEach(function (link) {
-      var linkPath = new URL(link.href, window.location.href).pathname.replace(/\/$/, '');
-      if (currentPath === linkPath || (linkPath && currentPath.indexOf(linkPath + '/') === 0)) {
-        link.classList.add('active');
-      }
-    });
   }
 
   if (document.readyState === 'loading') {

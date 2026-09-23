@@ -1,87 +1,80 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Custom 2021M Server Room - Roblox</title>
+    <title><%= title %></title>
     <link rel="stylesheet" href="/css/roblox.css" />
 </head>
 <body>
-    <header class="rbx-header">
-        <div style="display:flex; align-items:center;">
-            <div class="rbx-logo"></div>
-            <a href="/home" class="rbx-nav-link" style="margin-left:15px;">Discover</a>
-            <a href="/catalog" class="rbx-nav-link">Catalog</a>
-            <a href="/develop" class="rbx-nav-link">Create</a>
-            <a href="/users/1/profile" class="rbx-nav-link">Profile</a>
+    <div class="roblox-page">
+    <header class="roblox-topbar">
+      <div class="roblox-brand">
+        <span class="roblox-brand-mark">R</span>
+        <span>LuckyBlox</span>
+      </div>
+
+      <nav class="roblox-nav" aria-label="Main navigation">
+        <div class="roblox-nav-links">
+          <a href="/">Home</a>
+          <a href="/games">Games</a>
         </div>
-        <div>
-            <span class="rbx-nav-link" style="color: #00B06F;">R$ <%= (typeof userRobux !== 'undefined' ? userRobux : (user && (user.robux || 0))) %></span>
-        </div>
+      </nav>
+
+      <div class="roblox-right">
+        <span class="roblox-robux"><%= (user && (user.robux || 0)) || 0 %></span>
+        <a class="roblox-icon-button" href="/account" title="Account settings" aria-label="Account settings">&#9881;</a>
+        <a class="roblox-icon-button" href="/friends" title="Friends" aria-label="Friends">&#128101;</a>
+        <a class="roblox-icon-button" href="/profile?userId=<%= user.userId %>" title="Profile" aria-label="Profile">@</a>
+      </div>
     </header>
 
-    <div class="roblox-container">
-        <nav class="rbx-sidebar">
-            <a href="/home" class="sidebar-item">Home</a>
-            <a href="/users/1/profile" class="sidebar-item">Profile</a>
-            <a href="/games/2022M/about" class="sidebar-item">Games</a>
-            <a href="/catalog" class="sidebar-item">Catalog</a>
-            <a href="/develop" class="sidebar-item">Develop</a>
-            <a href="/avatar" class="sidebar-item">Avatar</a>
-            <a href="/inventory" class="sidebar-item">Inventory</a>
-        </nav>
-
-        <main class="rbx-main-content">
-            <div class="rbx-game-card">
-                <div class="rbx-thumbnail"></div>
-                <div>
-                    <h1 style="margin: 0 0 4px 0; font-size: 28px; font-weight: 600;">Production 2021M Server Room</h1>
-                    <p style="margin: 0 0 25px 0; font-size: 14px; color: var(--text-muted);">By <a href="/users/1/profile" style="color:var(--rbx-blue); text-decoration:none;">SystemAdmin</a></p>
-                    <button class="rbx-play-button" id="gameLaunchButton">Play</button>
-                </div>
+    <section class="roblox-hero">
+        <div class="roblox-game-icon" aria-label="Game icon"></div>
+        <div>
+            <div class="roblox-eyebrow">Experience</div>
+            <div class="roblox-title-block">
+                <h1><%= game.title %></h1>
+                <button class="roblox-play-button" type="button" data-launch-place-id="<%= placeId %>">Play</button>
             </div>
-        </main>
+            <div class="roblox-meta-row">
+                <span class="roblox-meta-pill">Developer: <%= game.developer %></span>
+                <span class="roblox-meta-pill">Players: <%= game.playerCount %></span>
+                <span class="roblox-meta-pill">Genre: <%= game.genre %></span>
+                <span class="roblox-meta-pill">Favorites: <%= game.favorites %></span>
+            </div>
+            <div class="roblox-description"><%= game.description %></div>
+        </div>
+    </section>
     </div>
 
     <script>
-        document.getElementById('gameLaunchButton').addEventListener('click', async function () {
+        // Launch through the same endpoint and delegated handler the rest of the
+        // site uses. The old inline handler posted to /v1/launch-client, which does
+        // not exist on this server, and hardcoded placeId '2022M' regardless of the
+        // game being viewed.
+        document.addEventListener('click', async (event) => {
+            const trigger = event.target.closest('[data-launch-place-id]');
+            if (!trigger) return;
+
             try {
-                const response = await fetch('/v1/authentication-tickets', {
+                const placeId = Number(trigger.getAttribute('data-launch-place-id')) || 1818;
+                const response = await fetch('/api/launch-game', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        placeId: '2022M'
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ placeId })
                 });
 
                 const data = await response.json();
-
-                if (!data || !data.ok) {
-                    alert('Unable to generate ticket.');
+                if (!response.ok || !data || !data.ok || !data.ticket) {
+                    alert((data && data.message) || 'Unable to generate a launch ticket.');
                     return;
                 }
 
-                if (data.clientReady) {
-                    const launchRes = await fetch('/v1/launch-client', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            userId: data.userId,
-                            placeId: data.placeId,
-                            port: data.port,
-                            serverJobId: data.serverJobId
-                        })
-                    });
-                    const launchData = await launchRes.json();
-                    if (launchData.ok) {
-                        window.location.href = data.launchURI;
-                    } else {
-                        alert('Client launch failed: ' + (launchData.details || 'Unknown error'));
-                    }
-                } else {
-                    alert('LuckyBlox 2021M client is not available on this server.');
+                if (data.playUrl) {
+                    window.location.href = data.playUrl;
+                } else if (data.launchURI) {
+                    window.location.href = data.launchURI;
                 }
             } catch (error) {
                 alert('LuckyBlox failed to launch.');

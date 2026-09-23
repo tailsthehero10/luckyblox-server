@@ -29,3 +29,20 @@ services:
       # PORT is provided by Render; do not hardcode it here.
       - key: LUCKBLOX_SECRET
         generateValue: true
+      # Owner account (id 1). The password is hashed and applied to the owner at
+      # boot, so it survives redeploys and never lives in the repo. Set the real
+      # value in the Render dashboard (Environment -> Add Environment Variable)
+      # or with `sync: false`; leave the placeholder to be prompted on first sync.
+      - key: LUCKYBLOX_OWNER_ID
+        value: "1"
+      - key: LUCKYBLOX_OWNER_USERNAME
+        value: tailsthehero10
+      - key: LUCKYBLOX_OWNER_PASSWORD
+        sync: false
+      # Accounts, sessions and currency live in a data dir. On the free plan the
+      # container filesystem is wiped on every deploy, so without a disk the owner
+      # password (and every account) resets. Either attach a Render Disk and set
+      # LUCKYBLOX_DATA_DIR to its mount path, or keep the owner password in the
+      # env var above so it is re-applied on each boot.
+      # - key: LUCKYBLOX_DATA_DIR
+      #   value: /var/data
