@@ -63,6 +63,9 @@ const activeSessions = new Map();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
+// Roblox Gotham SSm webfonts (shared/content/fonts) copied into public/fonts so
+// the site renders in the real Roblox typeface instead of a system fallback.
+app.use('/fonts', express.static(path.join(__dirname, 'public', 'fonts')));
 app.use('/legacy-nav.js', express.static(path.join(__dirname, 'public', 'legacy-nav.js')));
 // Serve the site icon folder so /favicon.ico, /favicon.png and the originals in
 // Webserver/site icon/ are all reachable from every page.
@@ -1273,6 +1276,7 @@ const PREVIEW_ALLOWLIST = [
   /^\/api\/preview-status$/,
   /^\/preview$/,
   /^\/css\//,
+  /^\/fonts\//,
   /^\/assets\//,
   /^\/asset\//i,
   /^\/v1\/asset/i,

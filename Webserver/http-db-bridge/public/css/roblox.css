@@ -10,6 +10,42 @@
   --rbx-header-dark: #243c68 !important;
   --rbx-text: #1d2433 !important;
   --rbx-muted: #5d697a !important;
+  --rbx-font: "Gotham SSm", "GothamSSm", Arimo, "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* ---------------------------------------------------------------------------
+   Roblox Gotham SSm — the real typeface Roblox used on roblox.com in 2021.
+   The .otf files ship with this repo in shared/content/fonts and are copied to
+   public/fonts so the web UI can load them directly. Arimo is kept in the stack
+   as a fallback because Roblox itself lists Arimo as a native family.
+   --------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Gotham SSm";
+  src: url("/fonts/GothamSSm-Book.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gotham SSm";
+  src: url("/fonts/GothamSSm-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gotham SSm";
+  src: url("/fonts/GothamSSm-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gotham SSm";
+  src: url("/fonts/GothamSSm-Black.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
 }
 
 * {
@@ -22,7 +58,23 @@ html, body {
   min-height: 100vh;
   background: var(--bg-main) !important;
   color: var(--text-main) !important;
-  font-family: "Segoe UI", Arial, sans-serif;
+  font-family: var(--rbx-font);
+}
+
+/* Gotham everywhere, including form controls and buttons that do not inherit. */
+body,
+button,
+input,
+select,
+textarea,
+optgroup,
+option,
+table,
+th,
+td,
+h1, h2, h3, h4, h5, h6,
+p, span, div, a, li, label, strong, em, small, code, pre, blockquote {
+  font-family: var(--rbx-font) !important;
 }
 
 body {
@@ -975,7 +1027,7 @@ input {
 .roblox-game-icon {
   aspect-ratio: 1 / 1 !important;
   min-height: 210px !important;
-  background-image: url('https://tr.rbxcdn.com/180DAY-d111e601a049bc036dbee4dd47894778/768/432/GameIcon6/Webp/noFilter') !important;
+  background-image: url('/site-icon/luckyblox.png') !important;
   background-size: contain !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
@@ -987,7 +1039,7 @@ input {
   width: 52px !important;
   height: 52px !important;
   aspect-ratio: 1 / 1 !important;
-  background-image: url('https://tr.rbxcdn.com/180DAY-d111e601a049bc036dbee4dd47894778/768/432/GameIcon6/Webp/noFilter') !important;
+  background-image: url('/site-icon/luckyblox.png') !important;
   background-size: contain !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
@@ -1154,7 +1206,7 @@ html,
 body {
   background: #f2f2f2 !important;
   color: #393b3d !important;
-  font-family: Arial, Helvetica, sans-serif !important;
+  font-family: var(--rbx-font) !important;
   font-size: 14px !important;
 }
 
@@ -1439,4 +1491,137 @@ body {
     background: rgba(255,255,255,0.06) !important;
     color: #ffffff !important;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Non-selectable UI chrome.
+   Chrome and UI text behave like an application, not a document: dragging across
+   the page must not highlight text, and the logo/brand art must not be picked up
+   by the selection cursor or draggable. Real content (inputs, descriptions,
+   code, and the like) opts back in below.
+   --------------------------------------------------------------------------- */
+img,
+svg,
+picture,
+video,
+canvas,
+.roblox-brand,
+.roblox-brand *,
+.roblox-topbar,
+.roblox-topbar *,
+.roblox-nav,
+.roblox-nav *,
+.roblox-meta-pill,
+.roblox-asset-icon,
+.roblox-asset-tag,
+.roblox-avatar-big,
+.roblox-avatar-poster,
+.roblox-icon-button,
+.roblox-robux,
+.roblox-panel-header,
+button,
+.roblox-primary-button,
+.roblox-secondary-button,
+.roblox-more-pages-btn,
+.roblox-eyebrow,
+.roblox-stat-label,
+.roblox-asset-type {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-user-drag: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* Images never advertise themselves as draggable. */
+img {
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+  pointer-events: none !important;
+}
+
+/* Keep pointing devices working for anything clickable that wraps an image. */
+a img,
+button img {
+  pointer-events: auto !important;
+}
+
+/* Text inputs and real body content stay selectable — you have to be able to
+   type in a field and copy a description. */
+input,
+textarea,
+select,
+[contenteditable="true"],
+code,
+pre,
+.roblox-bio-box,
+.roblox-description,
+.roblox-asset-name {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* ---------------------------------------------------------------------------
+   Preview page — vertical layout.
+   The 2021 Roblox home page stacked its sections in a single centred column
+   rather than laying them out side by side, so the preview follows that:
+   every major section becomes one full-width column, centred and readable.
+   --------------------------------------------------------------------------- */
+.roblox-preview-page .roblox-page {
+  display: block !important;
+  max-width: 970px !important;
+  margin: 0 auto !important;
+  padding: 0 16px 48px !important;
+}
+
+/* Hero: stack the icon above the text instead of beside it. */
+.roblox-preview-page .roblox-hero {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  gap: 20px !important;
+  padding: 28px 20px !important;
+}
+
+.roblox-preview-page .roblox-hero .roblox-game-icon {
+  margin: 0 auto !important;
+  width: 180px !important;
+  min-height: 180px !important;
+  height: 180px !important;
+}
+
+/* Each block below the hero spans the full column width, stacked. */
+.roblox-preview-page .roblox-content-grid {
+  display: block !important;
+  grid-template-columns: none !important;
+  width: 100% !important;
+  margin: 0 0 20px !important;
+}
+
+.roblox-preview-page .roblox-content-grid + .roblox-content-grid {
+  margin-top: 20px !important;
+}
+
+.roblox-preview-page .roblox-panel,
+.roblox-preview-page .roblox-side-stack,
+.roblox-preview-page [style*="grid-column"] {
+  display: block !important;
+  width: 100% !important;
+  grid-column: auto !important;
+  margin: 0 0 16px !important;
+}
+
+/* Meta pills sit centred under the headline rather than ragged-left. */
+.roblox-preview-page .roblox-meta-row {
+  justify-content: center !important;
+  flex-wrap: wrap !important;
+}
+
+.roblox-preview-page .roblox-title-block,
+.roblox-preview-page .roblox-description {
+  text-align: center !important;
 }
