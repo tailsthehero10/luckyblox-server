@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    <%= title %>
+  </title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+
+<body>
+  <div class="roblox-page">
+    <header class="roblox-topbar">
+      <div class="roblox-brand">
+        <img src="/site-icon/luckyblox.png" alt="LuckyBlox" style="height:28px; width:auto;" />
+        <span>LuckyBlox</span>
+      </div>
+
+      <nav class="roblox-nav" aria-label="Main navigation">
+        <div class="roblox-nav-links">
+          <a href="/">Home</a>
+          <a href="/games">Games</a>
+          <a href="/develop">Create</a>
+        </div>
+      </nav>
+
+      <div class="roblox-right">
+        <% if (user) { %>
+          <span class="roblox-robux">
+            <%= user.robux || 0 %>
+          </span>
+          <% } else { %>
+            <a class="roblox-header-action" href="/signin">Log In</a>
+            <% } %>
+      </div>
+    </header>
+
+    <section class="roblox-hero">
+      <div class="roblox-avatar-poster">
+        <div class="roblox-avatar-big">
+          <%= String(status.label || 'S' ).slice(0, 1).toUpperCase() %>
+        </div>
+      </div>
+
+      <div>
+        <div class="roblox-eyebrow">Site status</div>
+        <div class="roblox-title-block">
+          <h1>
+            <%= status.headline %>
+          </h1>
+          <span class="roblox-meta-pill roblox-status-badge roblox-status-<%= status.status %>">
+            <%= status.label %>
+          </span>
+        </div>
+
+        <div class="roblox-meta-row">
+          <span class="roblox-meta-pill">
+            <%= status.open ? 'Accepting visitors' : 'Not accepting visitors' %>
+          </span>
+          <% if (status.updatedAt) { %>
+            <span class="roblox-meta-pill">Updated: <%= status.updatedAtDisplay %></span>
+            <% } %>
+              <% if (status.updatedBy) { %>
+                <span class="roblox-meta-pill">By: <%= status.updatedBy %></span>
+                <% } %>
+        </div>
+
+        <div class="roblox-description">
+          <%= status.detail %>
+        </div>
+
+        <% if (status.note) { %>
+          <div class="roblox-bio-box">
+            <strong style="color: var(--rbx-text); display:block; margin-bottom:8px;">Owner note</strong>
+            <%= status.note %>
+          </div>
+          <% } %>
+      </div>
+    </section>
+
+    <section class="roblox-content-grid">
+      <div class="roblox-panel" style="grid-column: 1 / -1;">
+        <div class="roblox-panel-header">What this means</div>
+        <div class="roblox-panel-body">
+          <div class="roblox-asset-list">
+            <div class="roblox-asset-item">
+              <div class="roblox-asset-icon">W</div>
+              <div>
+                <div class="roblox-asset-name">Website</div>
+                <div class="roblox-asset-type">
+                  <%= status.open ? 'Fully available.' : 'Closed — visitors see the status notice.' %>
+                </div>
+              </div>
+              <div class="roblox-asset-tag">
+                <%= status.open ? 'Open' : 'Closed' %>
+              </div>
+            </div>
+
+            <div class="roblox-asset-item">
+              <div class="roblox-asset-icon">C</div>
+              <div>
+                <div class="roblox-asset-name">Clients & launcher</div>
+                <div class="roblox-asset-type">Login, join and launch endpoints stay available.</div>
+              </div>
+              <div class="roblox-asset-tag">Open</div>
+            </div>
+
+            <div class="roblox-asset-item">
+              <div class="roblox-asset-icon">S</div>
+              <div>
+                <div class="roblox-asset-name">This status page</div>
+                <div class="roblox-asset-type">Always reachable at /sitestat.</div>
+              </div>
+              <div class="roblox-asset-tag">Open</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <% if (saved) { %>
+      <section class="roblox-content-grid" style="margin-top: 20px;">
+        <div class="roblox-panel" style="grid-column: 1 / -1;">
+          <div class="roblox-panel-body">
+            <div class="roblox-description">Site status updated.</div>
+          </div>
+        </div>
+      </section>
+      <% } %>
+
+        <% if (error) { %>
+          <section class="roblox-content-grid" style="margin-top: 20px;">
+            <div class="roblox-panel" style="grid-column: 1 / -1;">
+              <div class="roblox-panel-body">
+                <div class="roblox-description">Could not change status: <%= error %>
+                </div>
+              </div>
+            </div>
+          </section>
+          <% } %>
+
+            <% if (canControl) { %>
+              <section class="roblox-content-grid" style="margin-top: 20px;">
+                <div class="roblox-panel" style="grid-column: 1 / -1;">
+                  <div class="roblox-panel-header">Owner controls</div>
+                  <div class="roblox-panel-body">
+                    <form method="POST" action="/sitestat/set" class="roblox-status-form">
+                      <div class="roblox-status-options">
+                        <% validStatuses.forEach((option)=> { %>
+                          <label class="roblox-status-option">
+                            <input type="radio" name="status" value="<%= option.id %>" <%=option.id===status.status
+                              ? 'checked' : '' %> />
+                            <span>
+                              <%= option.label %>
+                            </span>
+                          </label>
+                          <% }) %>
+                      </div>
+
+                      <label class="roblox-status-note-label" for="status-note">
+                        Note shown to visitors (optional)
+                      </label>
+                      <input class="roblox-status-note" id="status-note" type="text" name="note" maxlength="500"
+                        value="<%= status.note %>" placeholder="e.g. Back after the weekend." />
+
+                      <div class="roblox-button-row">
+                        <button class="roblox-primary-button" type="submit">Apply status</button>
+                        <a class="roblox-secondary-button" href="/sitestat">Refresh</a>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </section>
+              <% } else if (!user) { %>
+                <section class="roblox-content-grid" style="margin-top: 20px;">
+                  <div class="roblox-panel" style="grid-column: 1 / -1;">
+                    <div class="roblox-panel-body">
+                      <div class="roblox-description">
+                        <a href="/signin?redirect=/sitestat">Sign in</a> as the owner to control the site status.
+                      </div>
+                    </div>
+                  </div>
+                </section>
+                <% } %>
+  </div>
+  <script src="/legacy-nav.js"></script>
+</body>
+
+</html>

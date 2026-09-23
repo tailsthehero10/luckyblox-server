@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>
+    <%= title %>
+  </title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+
+<body class="roblox-preview-page">
+  <div class="roblox-page">
+    <header class="roblox-topbar">
+      <div class="roblox-brand">
+        <img src="/site-icon/luckyblox.png" alt="LuckyBlox" style="height:28px; width:auto;" />
+        <span>LuckyBlox</span>
+      </div>
+
+      <div class="roblox-right">
+        <a class="roblox-header-action" href="/sitestat">Site status</a>
+      </div>
+    </header>
+
+    <section class="roblox-hero">
+      <div class="roblox-game-icon"
+        style="background-image: url('/site-icon/luckyblox.png'); background-size: contain; background-repeat: no-repeat; background-position: center;">
+      </div>
+
+      <div>
+        <div class="roblox-eyebrow">Site status</div>
+        <div class="roblox-title-block">
+          <h1>
+            <%= status.headline %>
+          </h1>
+          <span class="roblox-meta-pill roblox-status-badge roblox-status-<%= status.status %>">
+            <%= status.label %>
+          </span>
+        </div>
+
+        <div class="roblox-meta-row">
+          <% if (status.updatedAt) { %>
+            <span class="roblox-meta-pill">Updated: <%= status.updatedAtDisplay %></span>
+          <% } %>
+        </div>
+
+        <div class="roblox-description">
+          <%= status.detail %>
+        </div>
+
+        <% if (status.note) { %>
+          <div class="roblox-description">
+            <strong>
+              <%= status.note %>
+            </strong>
+          </div>
+          <% } %>
+
+            <div class="roblox-button-row" style="justify-content: center; margin-top: 18px;">
+              <a class="roblox-primary-button" href="/sitestat">Check status</a>
+            </div>
+      </div>
+    </section>
+  </div>
+</body>
+
+</html>

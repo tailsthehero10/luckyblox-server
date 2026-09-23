@@ -60,6 +60,12 @@ const secretKey = process.env.LUCKBLOX_SECRET || 'luckblox-local-dev-secret';
 const activeTickets = new Map();
 const activeSessions = new Map();
 
+// Owner-controlled open/close switch for the whole site (see siteStatus.js).
+const siteStatus = require('./siteStatus').createSiteStatus({
+  storePath: storage.dataPath('site-status.json'),
+  envOverride: process.env.LUCKYBLOX_SITE_STATUS || '',
+});
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
@@ -1331,6 +1337,147 @@ app.get('/preview', (req, res) => {
     title: 'LuckyBlox — Live Preview',
     stage: PREVIEW_STAGE,
     teasers: PREVIEW_TEASERS,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Site status — public status page + owner open/close controls
+// ---------------------------------------------------------------------------
+// The owner can flip the site between open, work in progress, maintenance and
+// closed without editing code or redeploying. /sitestat always shows the real
+// current status, whether or not the site is open.
+
+/**
+ * Format an ISO timestamp as a stable, locale-independent string.
+ * toLocaleString() renders in the *server's* locale (which produced Arabic
+ * numerals and RTL marks on a UTC box), so build the string explicitly.
+ */
+function formatStatusTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, `
+    + `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+}
+
+/** Shared shape so the page, the sidebar and the API all agree. */
+function siteStatusPayload() {
+  const s = siteStatus.get();
+  return {
+    ok: true,
+    status: s.id,
+    label: s.label,
+    open: s.open,
+    closed: !s.open,
+    headline: s.headline,
+    detail: s.detail,
+    note: s.note,
+    updatedAt: s.updatedAt,
+    updatedAtDisplay: formatStatusTime(s.updatedAt),
+    updatedBy: s.updatedBy,
+    source: s.source,
+    readError: s.readError || null,
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+app.get('/api/site-status', (req, res) => {
+  res.json(siteStatusPayload());
+});
+
+// Public status page. Works whether the site is open or closed.
+app.get('/sitestat', (req, res) => {
+  const user = req.sessionUser || null;
+  res.render('sitestat', {
+    title: 'LuckyBlox — Site status',
+    status: siteStatusPayload(),
+    user,
+    isOwner: Boolean(user && isOwnerUser(user)),
+    canControl: Boolean(user && isOwnerUser(user)),
+    validStatuses: Object.values(siteStatus.STATUSES).map((s) => ({ id: s.id, label: s.label })),
+    saved: req.query.saved === '1',
+    error: req.query.error || '',
+  });
+});
+
+// Owner-only: change the site status.
+app.post('/api/site-status', requireOwner, (req, res) => {
+  const statusId = String(req.body.status || req.query.status || '').trim();
+  const note = String(req.body.note || req.query.note || '').trim();
+  const result = siteStatus.set(statusId, {
+    note,
+    updatedBy: (req.sessionUser && (req.sessionUser.username || req.sessionUser.userId)) || 'owner',
+  });
+
+  if (!result.ok) {
+    return res.status(400).json({ ok: false, error: result.error, valid: result.valid || siteStatus.VALID_IDS });
+  }
+
+  audit('site_status_changed', {
+    ip: security.clientIp(req),
+    status: statusId,
+    by: String((req.sessionUser && req.sessionUser.userId) || ''),
+  });
+
+  return res.json({ ok: true, ...siteStatusPayload() });
+});
+
+// Owner control panel (form-based, so it works without JavaScript).
+app.post('/sitestat/set', requireOwner, (req, res) => {
+  const statusId = String(req.body.status || '').trim();
+  const note = String(req.body.note || '').trim();
+  const result = siteStatus.set(statusId, {
+    note,
+    updatedBy: (req.sessionUser && (req.sessionUser.username || req.sessionUser.userId)) || 'owner',
+  });
+
+  if (!result.ok) {
+    return res.redirect('/sitestat?error=' + encodeURIComponent(result.error));
+  }
+
+  audit('site_status_changed', {
+    ip: security.clientIp(req),
+    status: statusId,
+    by: String((req.sessionUser && req.sessionUser.userId) || ''),
+    via: 'form',
+  });
+
+  return res.redirect('/sitestat?saved=1');
+});
+
+// Gate: when the site is closed, every non-essential page shows the closed
+// notice instead of content. /sitestat, assets and the launcher APIs stay up so
+// the status is always visible and clients keep working.
+app.use((req, res, next) => {
+  const state = siteStatus.get();
+  if (state.open) {
+    return next();
+  }
+
+  if (siteStatus.isAlwaysOpen(req.path)) {
+    return next();
+  }
+
+  const wantsJson = req.path.startsWith('/api/')
+    || req.path.startsWith('/v1/')
+    || (req.headers.accept || '').includes('application/json');
+
+  if (wantsJson) {
+    return res.status(503).json({
+      ok: false,
+      error: 'site-closed',
+      status: state.id,
+      message: state.headline,
+      detail: state.detail,
+    });
+  }
+
+  return res.status(503).render('closed', {
+    title: 'LuckyBlox — ' + state.label,
+    status: siteStatusPayload(),
   });
 });
 

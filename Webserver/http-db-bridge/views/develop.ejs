@@ -64,7 +64,7 @@
 
         <div class="roblox-meta-row">
           <span class="roblox-meta-pill">ID: <%= user.userId %></span>
-          <span class="roblox-meta-pill">Experiences: <%= stats.places %></span>
+          <span class="roblox-meta-pill">Games: <%= stats.places %></span>
           <span class="roblox-meta-pill">Assets: <%= stats.assets %></span>
           <span class="roblox-meta-pill">Visits: <%= stats.visits %></span>
         </div>
@@ -73,7 +73,7 @@
           <div class="roblox-description">
             You are browsing as a guest.
             <a href="/signin?redirect=/develop">Sign in</a>
-            to publish experiences and manage your places.
+            to publish games and manage your places.
           </div>
           <% } %>
       </div>
@@ -81,7 +81,7 @@
 
     <section class="roblox-content-grid">
       <div class="roblox-panel">
-        <div class="roblox-panel-header">Your experiences</div>
+        <div class="roblox-panel-header">Your games</div>
         <div class="roblox-panel-body">
           <% if (places.length) { %>
             <div class="roblox-asset-list">
@@ -97,7 +97,7 @@
               <% }) %>
             </div>
           <% } else { %>
-            <div class="roblox-description">You have not created an experience yet. Publish one from Studio to see it here.</div>
+            <div class="roblox-description">You have not created a game yet. Publish one from Studio to see it here.</div>
           <% } %>
         </div>
       </div>
@@ -119,7 +119,7 @@
                 <div class="roblox-asset-icon">G</div>
                 <div>
                   <div class="roblox-asset-name">Browse games</div>
-                  <div class="roblox-asset-type">Play published experiences</div>
+                  <div class="roblox-asset-type">Play published games</div>
                 </div>
                 <div class="roblox-asset-tag">Open</div>
               </a>

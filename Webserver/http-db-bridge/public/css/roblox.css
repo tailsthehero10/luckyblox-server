@@ -1950,3 +1950,158 @@ button:focus,
   outline: 1px solid #606060 !important;
   outline-offset: 1px !important;
 }
+
+/* ---------------------------------------------------------------------------
+   Site status — /sitestat page, the closed notice, and the owner controls.
+   Colours come from the existing 2021 palette only (greys, plus the site's own
+   green/blue accents that were already in the theme).
+   --------------------------------------------------------------------------- */
+.roblox-status-badge {
+  font-weight: 500 !important;
+}
+
+/* Open — the theme's own green. */
+.roblox-status-open {
+  background: #00b259 !important;
+  border-color: #00b259 !important;
+  color: #ffffff !important;
+}
+
+/* Work in progress / maintenance / closed — neutral grey, per the 2021 theme. */
+.roblox-status-work,
+.roblox-status-maintenance,
+.roblox-status-locked {
+  background: #606060 !important;
+  border-color: #606060 !important;
+  color: #ffffff !important;
+}
+
+/* --- Status page shell ---------------------------------------------------- */
+.roblox-page .roblox-status-form {
+  padding: 0 !important;
+}
+
+.roblox-status-options {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  margin-bottom: 18px !important;
+}
+
+.roblox-status-option {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 10px 14px !important;
+  border: 1px solid #d6d6d6 !important;
+  background: #ffffff !important;
+  font-size: 14px !important;
+  color: #393b3d !important;
+  cursor: pointer !important;
+}
+
+.roblox-status-option:hover {
+  background: #f7f7f7 !important;
+}
+
+.roblox-status-option input {
+  margin: 0 !important;
+  accent-color: #00a2e8 !important;
+}
+
+.roblox-status-note-label {
+  display: block !important;
+  font-size: 13px !important;
+  color: #606060 !important;
+  margin-bottom: 6px !important;
+}
+
+.roblox-status-note {
+  width: 100% !important;
+  max-width: 560px !important;
+  padding: 10px 12px !important;
+  border: 1px solid #d6d6d6 !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  color: #393b3d !important;
+  font-size: 14px !important;
+  margin-bottom: 18px !important;
+}
+
+.roblox-status-note:focus {
+  outline: 1px solid #606060 !important;
+  outline-offset: 1px !important;
+  border-color: #606060 !important;
+}
+
+/* The status page uses the shared panel/asset-list look, so pad its sections
+   the same way the other pages do. */
+.roblox-page .roblox-status-form ~ * {
+  padding: 0 !important;
+}
+
+.roblox-status-page .roblox-panel-body,
+.roblox-preview-page .roblox-panel-body {
+  padding: 0 !important;
+}
+
+/* Keep the owner form comfortably padded inside its panel. */
+.roblox-page .roblox-panel-body > .roblox-status-form {
+  padding: 16px !important;
+}
+
+.roblox-page .roblox-panel-body > .roblox-description {
+  padding: 16px !important;
+}
+
+/* --- Status sidebar block (legacy-nav.js injects this) -------------------- */
+.legacy-site-status {
+  display: block !important;
+  margin: 12px 0 0 !important;
+  padding: 10px 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  text-decoration: none !important;
+}
+
+.legacy-site-status:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  text-decoration: none !important;
+}
+
+.legacy-site-status-label {
+  display: block !important;
+  font-size: 11px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: #9a9a9a !important;
+  margin-bottom: 4px !important;
+}
+
+.legacy-site-status-value {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 13px !important;
+  color: #ffffff !important;
+}
+
+.legacy-site-status-dot {
+  width: 9px !important;
+  height: 9px !important;
+  border-radius: 50% !important;
+  background: #606060 !important;
+  flex: 0 0 auto !important;
+}
+
+.legacy-site-status-dot.is-open {
+  background: #00b259 !important;
+}
+
+.legacy-site-status-detail {
+  display: block !important;
+  font-size: 11px !important;
+  color: #9a9a9a !important;
+  margin-top: 4px !important;
+  line-height: 1.4 !important;
+}
