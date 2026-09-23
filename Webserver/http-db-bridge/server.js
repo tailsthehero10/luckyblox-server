@@ -1856,14 +1856,12 @@ app.get('/account', (req, res) => {
 app.get('/friends', (req, res) => {
   const userId = Number(req.query.userId || req.query.userid || 1);
   const user = getUser(userId);
-  const friends = Array.isArray(user.friends) ? user.friends : [];
-  const friendUsers = friends.map((f) => getUser(f.userId)).filter(Boolean);
+  const friendUsers = getFriendsForUser(userId);
 
   res.render('friends', {
     title: 'Friends',
     user,
     friends: friendUsers,
-    friendStatuses: friends,
   });
 });
 
@@ -3344,10 +3342,10 @@ app.get('/api/v1/account', (req, res) => {
 
 app.get('/api/friends', (req, res) => {
   const userId = Number(req.query.userId || req.query.userid || req.headers['x-user-id'] || 1);
-  const user = getUser(userId);
-  const friends = Array.isArray(user.friends) ? user.friends : [];
-  const friendUsers = friends.map((f) => getUser(f.userId)).filter(Boolean);
-  res.json({ ok: true, userId, friends: friendUsers, total: friends.length });
+  // Resolve through the public-safe serializer: getUser() returns the raw record,
+  // which carries password/passwordSalt hashes that must never leave the server.
+  const friendUsers = getFriendsForUser(userId);
+  res.json({ ok: true, userId, friends: friendUsers, total: friendUsers.length });
 });
 
 app.get('/api/badges', (req, res) => {

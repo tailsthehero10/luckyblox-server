@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    <%= title %>
+  </title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+
+<body>
+  <div class="roblox-page">
+    <header class="roblox-topbar">
+      <div class="roblox-brand">
+        <span class="roblox-brand-mark">R</span>
+        <span>LuckyBlox</span>
+      </div>
+
+      <nav class="roblox-nav">
+        <div class="roblox-nav-links">
+          <a href="/">Home</a>
+          <a href="/games">Games</a>
+          <div class="roblox-more-pages">
+            <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+            <div class="roblox-more-pages-dropdown">
+              <a href="/profile?userId=<%= user.userId %>">Profile</a>
+              <a href="/avatar?userId=<%= user.userId %>">Avatar</a>
+              <a href="/studio">Studio</a>
+              <a href="/account">Account</a>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div class="roblox-right">
+        <span class="roblox-robux">
+          <%= user.robux || 0 %>
+        </span>
+        <span class="roblox-icon-button">⚙</span>
+        <span class="roblox-icon-button">🔔</span>
+      </div>
+    </header>
+
+    <% const badgeList=Array.isArray(badges) ? badges : []; %>
+
+      <section class="roblox-profile-hero">
+        <div class="roblox-avatar-poster">
+          <div class="roblox-avatar-big">
+            <%= user.username.slice(0, 1).toUpperCase() %>
+          </div>
+        </div>
+
+        <div>
+          <div class="roblox-eyebrow">Achievements</div>
+          <div class="roblox-profile-title">
+            <%= user.username %>'s badges
+          </div>
+
+          <div class="roblox-meta-row">
+            <span class="roblox-meta-pill">Badges: <%= badgeList.length %></span>
+            <span class="roblox-meta-pill">User ID: <%= user.userId %></span>
+          </div>
+
+          <div class="roblox-description">
+            Badges earned on LuckyBlox. New badges are awarded automatically as you play.
+          </div>
+        </div>
+      </section>
+
+      <section class="roblox-content-grid">
+        <div class="roblox-panel" style="grid-column: 1 / -1;">
+          <div class="roblox-panel-header">Earned badges</div>
+          <div class="roblox-panel-body">
+            <% if (badgeList.length) { %>
+              <div class="roblox-asset-list">
+                <% badgeList.forEach((badge)=> { %>
+                  <div class="roblox-asset-item">
+                    <div class="roblox-asset-icon">
+                      <%= String(badge.icon || badge.name || 'B' ).slice(0, 1).toUpperCase() %>
+                    </div>
+                    <div>
+                      <div class="roblox-asset-name">
+                        <%= badge.name %>
+                      </div>
+                      <div class="roblox-asset-type">
+                        <%= badge.description %>
+                      </div>
+                    </div>
+                    <div class="roblox-asset-tag">
+                      <% if (badge.earnedDate) { %>
+                        <%= new Date(badge.earnedDate).toLocaleDateString() %>
+                          <% } else { %>
+                            Earned
+                            <% } %>
+                    </div>
+                  </div>
+                  <% }) %>
+              </div>
+              <% } else { %>
+                <div class="roblox-description">No badges yet. Play experiences to start earning badges.</div>
+                <% } %>
+          </div>
+        </div>
+      </section>
+  </div>
+  <script src="/legacy-nav.js"></script>
+</body>
+
+</html>

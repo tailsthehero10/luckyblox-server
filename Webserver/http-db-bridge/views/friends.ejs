@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    <%= title %>
+  </title>
+  <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+
+<body>
+  <div class="roblox-page">
+    <header class="roblox-topbar">
+      <div class="roblox-brand">
+        <span class="roblox-brand-mark">R</span>
+        <span>LuckyBlox</span>
+      </div>
+
+      <nav class="roblox-nav">
+        <div class="roblox-nav-links">
+          <a href="/">Home</a>
+          <a href="/games">Games</a>
+          <div class="roblox-more-pages">
+            <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+            <div class="roblox-more-pages-dropdown">
+              <a href="/profile?userId=<%= user.userId %>">Profile</a>
+              <a href="/avatar?userId=<%= user.userId %>">Avatar</a>
+              <a href="/studio">Studio</a>
+              <a href="/account">Account</a>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div class="roblox-right">
+        <span class="roblox-robux">
+          <%= user.robux || 0 %>
+        </span>
+        <span class="roblox-icon-button">⚙</span>
+        <span class="roblox-icon-button">🔔</span>
+      </div>
+    </header>
+
+    <section class="roblox-profile-hero">
+      <div class="roblox-avatar-poster">
+        <div class="roblox-avatar-big">
+          <%= user.username.slice(0, 1).toUpperCase() %>
+        </div>
+      </div>
+
+      <div>
+        <div class="roblox-eyebrow">Social</div>
+        <div class="roblox-profile-title">
+          <%= user.username %>'s friends
+        </div>
+
+        <% const friendList = Array.isArray(friends) ? friends : []; %>
+        <% const onlineCount = friendList.filter((friend) => friend && friend.status === 'online').length; %>
+
+        <div class="roblox-meta-row">
+          <span class="roblox-meta-pill">Friends: <%= friendList.length %></span>
+          <span class="roblox-meta-pill">Online: <%= onlineCount %></span>
+          <span class="roblox-meta-pill">User ID: <%= user.userId %></span>
+        </div>
+
+        <div class="roblox-description">
+          People you have added as friends on LuckyBlox.
+        </div>
+      </div>
+    </section>
+
+    <section class="roblox-content-grid">
+      <div class="roblox-panel" style="grid-column: 1 / -1;">
+        <div class="roblox-panel-header">All friends</div>
+        <div class="roblox-panel-body">
+          <% if (friendList.length) { %>
+            <div class="roblox-asset-list">
+              <% friendList.forEach((friend)=> { %>
+                <a class="roblox-asset-item" href="/profile?userId=<%= friend.userId %>">
+                  <div class="roblox-asset-icon">
+                    <%= String(friend.username).slice(0, 1).toUpperCase() %>
+                  </div>
+                  <div>
+                    <div class="roblox-asset-name">
+                      <%= friend.username %>
+                    </div>
+                    <div class="roblox-asset-type">
+                      <%= friend.status %>
+                    </div>
+                  </div>
+                  <div class="roblox-asset-tag">
+                    <%= friend.status==='online' ? 'Live' : (friend.status==='away' ? 'Away' : 'Offline' ) %>
+                  </div>
+                </a>
+                <% }) %>
+            </div>
+            <% } else { %>
+              <div class="roblox-description">No friends yet. Add people from their profile page.</div>
+              <% } %>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="/legacy-nav.js"></script>
+</body>
+
+</html>
