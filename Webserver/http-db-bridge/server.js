@@ -98,6 +98,23 @@ function resolveClientAssetDir() {
   }
 }
 
+// The committed AppSettings.xml files carry a baked-in localhost BaseUrl. When
+// the bridge itself is the public entry point (single-port deployment) that
+// localhost URL would be handed straight to the client, so rewrite it to the
+// live public origin here - the same rewrite server.js does on its own path.
+// Each client's own path suffix is preserved (2021M expects a trailing /home/,
+// 2022M does not) because dropping it breaks the client's routing.
+function rewriteAppSettingsBaseUrl(body, origin) {
+  const match = String(body).match(/<BaseUrl>[\s\S]*?<\/BaseUrl>/i);
+  if (!match) return body;
+  const existingPath = (match[0].match(/LuckBlox\.site\.tk(\/[^<]*)?/i) || [])[1] || '/';
+  const suffix = existingPath.startsWith('/') ? existingPath : '/' + existingPath;
+  return String(body).replace(
+    /<BaseUrl>[\s\S]*?<\/BaseUrl>/i,
+    `<BaseUrl>${origin}/LuckBlox.site.tk${suffix}</BaseUrl>`,
+  );
+}
+
 // Express needs a fixed root, so mount a resolver that picks the right file on
 // each request and falls back to the default client's copy.
 function serveClientAsset(subPath) {
@@ -106,16 +123,26 @@ function serveClientAsset(subPath) {
     const clientDir = resolveClientAssetDir();
     const own = path.join(clientDir, subPath || '', relative);
 
+    let file = null;
     if (own.startsWith(clientDir) && fs.existsSync(own) && fs.statSync(own).isFile()) {
-      return res.sendFile(own);
+      file = own;
+    } else {
+      const shared = path.join(DEFAULT_CLIENT_DIR, subPath || '', relative);
+      if (shared.startsWith(DEFAULT_CLIENT_DIR) && fs.existsSync(shared) && fs.statSync(shared).isFile()) {
+        file = shared;
+      }
     }
 
-    const shared = path.join(DEFAULT_CLIENT_DIR, subPath || '', relative);
-    if (shared.startsWith(DEFAULT_CLIENT_DIR) && fs.existsSync(shared) && fs.statSync(shared).isFile()) {
-      return res.sendFile(shared);
+    if (!file) return next();
+
+    if (path.basename(file).toLowerCase() === 'appsettings.xml') {
+      const body = rewriteAppSettingsBaseUrl(fs.readFileSync(file, 'utf8'), publicOrigin);
+      res.set('Content-Type', 'application/xml; charset=utf-8');
+      res.set('Cache-Control', 'no-store');
+      return res.send(body);
     }
 
-    return next();
+    return res.sendFile(file);
   };
 }
 
