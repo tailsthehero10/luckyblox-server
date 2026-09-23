@@ -66,6 +66,14 @@
                 });
 
                 const data = await response.json();
+
+                // Playing needs an account: send guests to sign in, then back here.
+                if (response.status === 401 || (data && data.error === 'sign-in-required')) {
+                    const next = encodeURIComponent(window.location.pathname + window.location.search);
+                    window.location.href = '/signin?redirect=' + next;
+                    return;
+                }
+
                 if (!response.ok || !data || !data.ok || !data.ticket) {
                     alert((data && data.message) || 'Unable to generate a launch ticket.');
                     return;

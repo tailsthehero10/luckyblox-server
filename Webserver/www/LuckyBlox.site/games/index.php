@@ -1,226 +1,130 @@
 <?php
-require_once __DIR__ . '/../../api/common.php';
+require_once __DIR__ . '/../../api/luckyblox-data.php';
 
-$rootPath = realpath(__DIR__ . '/../../../');
-$mapsRoot = realpath($rootPath . '/Maps');
-$settingsRoot = realpath($rootPath . '/Settings');
+session_start();
 
-$placeId = isset($_GET['placeid']) ? preg_replace('/[^0-9]/', '', (string) $_GET['placeid']) : '';
-
-$placeFiles = array();
-if (is_dir($mapsRoot)) {
-    $placeFiles = array_values(array_filter(glob($mapsRoot . '/*'), function($file) {
-        return is_file($file);
-    }));
+$c = lb_get_current_user();
+if (!$c) {
+    $c = lb_find_user_by_id(1);
+    if (!$c) {
+        $c = array('userId' => '1', 'username' => 'LocalPlayer', 'displayName' => 'LocalPlayer');
+    }
 }
 
-usort($placeFiles, function($a, $b) {
-    return strcasecmp(basename($a), basename($b));
+$games = lb_get_all_games();
+$gamesCount = count($games);
+$featuredPlaceId = lb_get_latest_published_place_id();
+
+usort($games, function($a, $b) {
+    $diff = (int) $b['playerCount'] - (int) $a['playerCount'];
+    if ($diff !== 0) return $diff;
+    return (int) $b['placeId'] - (int) $a['placeId'];
 });
 
-$metadata = $placeId !== '' ? api_get_place_metadata($placeId) : null;
-$featuredPlaceId = api_get_latest_published_place_id();
-$featuredMetadata = api_get_place_metadata($featuredPlaceId);
-$totalPlaces = count($placeFiles);
-$publishedCount = is_dir($settingsRoot . '/published') ? count(glob($settingsRoot . '/published/*.json')) : 0;
+$mapsRoot = lb_maps_root();
+$mapCount = is_dir($mapsRoot) ? count(array_filter(glob($mapsRoot . '/*'), 'is_file')) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>LuckyBlox Games</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 24px;
-            font-family: Arial, Helvetica, sans-serif;
-            background: #e5e7eb;
-            color: #111827;
-        }
-        a { color: #1d4ed8; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .topbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 20px;
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 14px 18px;
-            margin-bottom: 18px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
-        }
-        .brand { display:flex; align-items:center; gap:12px; font-weight:700; font-size:1.05rem; text-transform:uppercase; }
-        .brand-mark {
-            width: 32px; height: 32px; border-radius: 6px; background: #1d4ed8; color: #fff;
-            display: grid; place-items: center; font-size: 0.95rem;
-        }
-        .nav { display:flex; flex-wrap:wrap; gap:14px; font-size:0.9rem; }
-        .hero, .card, .selected-card {
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 22px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
-        }
-        .hero { margin-bottom: 20px; }
-        .eyebrow {
-            display:inline-block; background:#dbeafe; color:#1d4ed8; border:1px solid #93c5fd;
-            border-radius:4px; padding:5px 8px; font-size:0.75rem; font-weight:700;
-            letter-spacing:0.08em; text-transform:uppercase; margin-bottom:10px;
-        }
-        h1, h2, h3 { margin-top: 0; }
-        .subtitle { margin:14px 0 0; max-width:780px; color:#374151; }
-        .button-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
-        .button {
-            display:inline-flex; align-items:center; justify-content:center;
-            padding:10px 16px; border-radius:6px; background:#2563eb; border:1px solid #1d4ed8;
-            color:#ffffff; font-weight:700;
-        }
-        .button.secondary { background:#f8fafc; border:1px solid #cbd5e1; color:#111827; }
-        .button.warning { background:#a16207; border:1px solid #92400e; }
-        .stats-grid {
-            display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
-            gap:18px; margin-bottom:20px;
-        }
-        .label {
-            color:#1d4ed8; font-size:0.75rem; font-weight:700; letter-spacing:0.08em;
-            text-transform:uppercase; margin-bottom:8px;
-        }
-        .value { font-weight:700; font-size:1.05rem; }
-        .muted { color:#4b5563; margin-top:6px; font-size:0.9rem; }
-        .selected-card { margin-bottom: 22px; }
-        .list-grid {
-            display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
-            gap:22px;
-            margin-top:20px;
-        }
-        .place-card { background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:18px; }
-        .place-name { margin: 12px 0 8px; font-size: 1.1rem; }
-        .meta { color:#1d4ed8; font-size:0.75rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
-        .place-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
-        ul { margin:0; padding-left:18px; }
-        li { margin:8px 0; color:#374151; }
-        code { background:#f3f4f6; border:1px solid #d1d5db; border-radius:4px; padding:3px 6px; color:#111827; }
-        .pill {
-            display:inline-block; padding:4px 8px; border-radius:999px; background:rgba(34,197,94,0.15);
-            color:#166534; font-size:0.8rem; font-weight:700;
-        }
-        .footer {
-            margin-top: 24px; padding-top: 16px; border-top: 1px solid #cbd5e1; color:#4b5563;
-            text-align:center; font-size:0.9rem;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Games | LuckyBlox</title>
+    <link rel="icon" href="/site-icon/luckyblox.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/site-icon/luckyblox.png" />
     <link rel="stylesheet" href="/style.css" />
+    <style>
+        body { margin:0; padding:0; font-family:Arial, Helvetica, sans-serif; background:#0b0f17; color:#e2e8f0; }
+        a { color:#7dd3fc; text-decoration:none; }
+        a:hover { text-decoration:underline; }
+        .container { max-width:1200px; margin:0 auto; padding:20px; }
+        .topbar { display:flex; align-items:center; justify-content:space-between; gap:20px; background:rgba(17,24,39,0.9); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px 20px; margin-bottom:20px; box-shadow:0 18px 42px rgba(0,0,0,0.42); position:sticky; top:12px; z-index:5; backdrop-filter:blur(8px); }
+        .brand { display:flex; align-items:center; gap:12px; font-weight:700; font-size:1.2rem; text-transform:uppercase; }
+        .brand img { width:32px; height:32px; }
+        .nav { display:flex; flex-wrap:wrap; gap:14px; font-size:0.9rem; color:#a8b5c9; }
+        .nav a { padding:8px 12px; border-radius:10px; transition:0.15s ease; }
+        .nav a:hover { background:rgba(255,255,255,0.03); color:#e2e8f0; }
+        .nav .active { background:rgba(76,163,255,0.12); color:#e2e8f0; border:1px solid rgba(76,163,255,0.3); }
+        .hero { background:linear-gradient(135deg,rgba(18,26,37,0.96),rgba(14,22,34,0.96)); border:1px solid rgba(255,255,255,0.08); border-radius:22px; padding:28px; box-shadow:0 18px 42px rgba(0,0,0,0.42); margin-bottom:24px; }
+        .hero h1 { margin:0 0 12px; font-size:2rem; }
+        .hero p { color:#a8b5c9; margin:0; max-width:700px; }
+        .game-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:20px; }
+        .game-card { background:rgba(17,24,39,0.9); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:18px; box-shadow:0 18px 42px rgba(0,0,0,0.42); overflow:hidden; }
+        .game-thumb { height:140px; border-radius:12px; background:linear-gradient(135deg,rgba(76,163,255,0.26),rgba(29,78,216,0.18)); border:1px solid rgba(255,255,255,0.08); margin-bottom:14px; }
+        .game-card h3 { margin:0 0 6px; font-size:1.1rem; }
+        .game-meta { color:#64748b; font-size:0.85rem; margin-bottom:10px; }
+        .game-desc { color:#94a3b8; font-size:0.85rem; line-height:1.5; margin-bottom:12px; }
+        .game-tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+        .tag { background:rgba(55,211,154,0.12); color:#37d39a; border:1px solid rgba(55,211,154,0.28); padding:4px 8px; border-radius:999px; font-size:0.72rem; font-weight:700; }
+        .game-stats { display:flex; justify-content:space-between; align-items:center; }
+        .stat { text-align:center; }
+        .stat .num { font-size:1.3rem; font-weight:700; color:#4ca3ff; }
+        .stat .lbl { font-size:0.7rem; color:#64748b; }
+        .play-btn { display:inline-flex; align-items:center; justify-content:center; padding:10px 16px; border-radius:10px; background:linear-gradient(135deg,#7dd3fc,#4ca3ff); color:#06161f; font-weight:800; border:none; cursor:pointer; }
+        .play-btn:hover { filter:brightness(1.1); }
+        .empty { color:#64748b; text-align:center; padding:40px; }
+    </style>
 </head>
 <body>
     <div class="container">
         <div class="topbar">
             <div class="brand">
-                <div class="brand-mark">L</div>
+                <img src="/site-icon/luckyblox.png" alt="LuckyBlox" />
                 <span>LuckyBlox</span>
             </div>
-            <div class="nav">
-                <a href="/LuckBlox.site.tk/home">Home</a>
-                <a href="/LuckBlox.site.tk/games">Games</a>
-                <a href="/LuckBlox.site.tk/profile">Profile</a>
-                <a href="/LuckBlox.site.tk/settings">Settings</a>
-                <a href="/LuckBlox.site.tk/share">Share</a>
-                <a href="/LuckBlox.site.tk/about">About</a>
-                <a href="/LuckBlox.site.tk/help">Help</a>
-            </div>
+            <nav class="nav">
+                <a href="/LuckBlox.site/home">Home</a>
+                <a class="active" href="/LuckBlox.site/games">Games</a>
+                <a href="/LuckBlox.site/game?placeid=<?php echo (int) $featuredPlaceId; ?>">Game</a>
+                <a href="/LuckBlox.site/users/<?php echo (int) $c['userId']; ?>/profile">Profile</a>
+                <a href="/LuckBlox.site/settings">Settings</a>
+                <a href="/LuckBlox.site/share">Share</a>
+                <a href="/LuckBlox.site/about">About</a>
+                <?php if ($c && !$c['isAdmin']): ?>
+                    <a href="/LuckBlox.site/signin/">Log In</a>
+                    <a href="/LuckBlox.site/signup/">Sign Up</a>
+                <?php else: ?>
+                    <a href="/LuckBlox.site.tk/logout">Log Out</a>
+                <?php endif; ?>
+            </nav>
         </div>
 
         <div class="hero">
-            <div class="eyebrow">Games portal</div>
-            <h1>LuckyBlox games catalog</h1>
-            <p class="subtitle">
-                Browse the local library, inspect metadata for any place, jump to the featured public game, and open the latest published title directly from this classic-style catalog.
-            </p>
-            <div class="button-row">
-                <a class="button" href="/LuckBlox.site.tk/play?placeid=<?php echo (int) $featuredPlaceId; ?>">Play featured game</a>
-                <a class="button secondary" href="/LuckBlox.site.tk/games?placeid=<?php echo (int) $featuredPlaceId; ?>">Open featured details</a>
-                <a class="button secondary" href="/LuckBlox.site.tk/share">Share &amp; Play</a>
-            </div>
+            <h1>Games</h1>
+            <p>Browse and play local LuckyBlox experiences. All games run from the bundled server. Join instantly or launch the client directly.</p>
         </div>
 
-        <div class="stats-grid">
-            <div class="card">
-                <div class="label">Featured place</div>
-                <div class="value"><?php echo htmlspecialchars($featuredMetadata['name']); ?></div>
-                <div class="muted">Place ID: <?php echo (int) $featuredMetadata['placeId']; ?></div>
-            </div>
-            <div class="card">
-                <div class="label">Installed games</div>
-                <div class="value"><?php echo (int) $totalPlaces; ?></div>
-                <div class="muted">Maps available from the local library</div>
-            </div>
-            <div class="card">
-                <div class="label">Published</div>
-                <div class="value"><?php echo (int) $publishedCount; ?></div>
-                <div class="muted">Published place metadata records</div>
-            </div>
-            <div class="card">
-                <div class="label">Public play</div>
-                <div class="value"><?php echo $featuredMetadata['published'] ? 'Live' : 'Offline'; ?></div>
-                <div class="muted">Featured game status on the local server</div>
-            </div>
-        </div>
-
-        <?php if ($metadata !== null): ?>
-            <div class="selected-card">
-                <div class="meta">Selected game</div>
-                <h2><?php echo htmlspecialchars($metadata['name']); ?></h2>
-                <p style="color:#374151; margin:10px 0 0;">
-                    <?php echo htmlspecialchars($metadata['description'] !== '' ? $metadata['description'] : 'No description provided yet.'); ?>
-                </p>
-                <div class="button-row">
-                    <a class="button" href="/LuckBlox.site.tk/play?placeid=<?php echo (int) $placeId; ?>">Play now</a>
-                    <a class="button secondary" href="/api/load.php?placeid=<?php echo (int) $placeId; ?>">Load state</a>
-                    <a class="button secondary" href="/api/save.php?placeid=<?php echo (int) $placeId; ?>">Save state</a>
-                    <a class="button secondary" href="/api/player.php?placeid=<?php echo (int) $placeId; ?>">Player data</a>
-                    <a class="button secondary" href="/api/services.php?placeid=<?php echo (int) $placeId; ?>">Services API</a>
-                    <a class="button warning" href="/api/publish.php?placeid=<?php echo (int) $placeId; ?>">Publish</a>
-                </div>
-                <ul style="margin-top:16px;">
-                    <li><strong>Place ID:</strong> <code><?php echo (int) $metadata['placeId']; ?></code></li>
-                    <li><strong>Game ID:</strong> <code><?php echo htmlspecialchars($metadata['gameId']); ?></code></li>
-                    <li><strong>Universe ID:</strong> <code><?php echo (int) $metadata['universeId']; ?></code></li>
-                    <li><strong>Version:</strong> <code><?php echo (int) $metadata['version']; ?></code></li>
-                    <li><strong>Published:</strong> <span class="pill"><?php echo $metadata['published'] ? 'Yes' : 'No'; ?></span></li>
-                    <li><strong>Map exists:</strong> <code><?php echo $metadata['mapExists'] ? 'Yes' : 'No'; ?></code></li>
-                    <li><strong>Stats:</strong> <code>Visits=<?php echo (int) $metadata['stats']['visits']; ?>, Loads=<?php echo (int) $metadata['stats']['loads']; ?>, Saves=<?php echo (int) $metadata['stats']['saves']; ?>, Publishes=<?php echo (int) $metadata['stats']['publishes']; ?></code></li>
-                </ul>
-            </div>
-        <?php endif; ?>
-
-        <div class="card">
-            <h2>Available places</h2>
-            <div class="list-grid">
-                <?php foreach ($placeFiles as $file): ?>
-                    <?php $placeName = basename($file); ?>
-                    <?php $placeId = (int) basename($file, '.rbxl'); ?>
-                    <?php if ($placeId <= 0) { $placeId = array_search($file, $placeFiles) + 1; } ?>
-                    <div class="place-card">
-                        <div class="meta">Place <?php echo (int) $placeId; ?></div>
-                        <div class="place-name"><?php echo htmlspecialchars($placeName); ?></div>
-                        <div class="place-actions">
-                            <a class="button" href="/LuckBlox.site.tk/games?placeid=<?php echo (int) $placeId; ?>">Open</a>
-                            <a class="button secondary" href="/LuckBlox.site.tk/play?placeid=<?php echo (int) $placeId; ?>">Play</a>
-                            <a class="button secondary" href="/api/load.php?placeid=<?php echo (int) $placeId; ?>">Load</a>
-                            <a class="button secondary" href="/api/save.php?placeid=<?php echo (int) $placeId; ?>">Save</a>
+        <?php if (empty($games)): ?>
+            <div class="empty">No games found. <a href="/LuckBlox.site/downloads">Download a client</a> to get started.</div>
+        <?php else: ?>
+            <div class="game-grid">
+                <?php foreach ($games as $game): ?>
+                    <div class="game-card">
+                        <div class="game-thumb"></div>
+                        <h3><?php echo htmlspecialchars($game['title']); ?></h3>
+                        <div class="game-meta">Place ID: <?php echo (int) $game['placeId']; ?> • <?php echo htmlspecialchars($game['developer']); ?></div>
+                        <div class="game-desc"><?php echo htmlspecialchars($game['description'] ?: 'A local map packaged as a playable LuckyBlox experience.'); ?></div>
+                        <div class="game-tags">
+                            <?php foreach ($game['tags'] as $tag): ?>
+                                <span class="tag"><?php echo htmlspecialchars($tag); ?></span>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="game-stats">
+                            <div style="display:flex;gap:16px;">
+                                <div class="stat"><div class="num"><?php echo (int) $game['playerCount']; ?></div><div class="lbl">Players</div></div>
+                                <div class="stat"><div class="num"><?php echo (int) $game['likes']; ?></div><div class="lbl">Likes</div></div>
+                                <div class="stat"><div class="num"><?php echo (int) $game['favorites']; ?></div><div class="lbl">Favorites</div></div>
+                            </div>
+                            <a class="play-btn" href="/LuckBlox.site/play?placeid=<?php echo (int) $game['placeId']; ?>">Play</a>
                         </div>
                     </div>
                 <?php endforeach; ?>
             </div>
-        </div>
+        <?php endif; ?>
 
-        <div class="footer">
-            LuckyBlox • Classic local game portal • <a href="/LuckBlox.site.tk/">Dashboard</a>
+        <div style="margin-top:24px;text-align:center;color:#64748b;">
+            <span><?php echo $gamesCount; ?> games available • <?php echo $mapCount; ?> maps installed</span>
         </div>
     </div>
-    <script src="/legacy-nav.js"></script>
 </body>
 </html>

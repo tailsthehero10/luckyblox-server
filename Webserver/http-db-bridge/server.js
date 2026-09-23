@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { buildPlaceCatalogFromMaps, normalizePlaceId: normalizePlaceIdInput, resolveRequestedPlace } = require('./gameMapResolver');
 const { getRobloxProfileTemplateItems } = require('./robloxTemplateSource');
+const robloxApi = require('./robloxApi');
 const { getStudioBuildInfo, getStudioUpdateManifest } = require('./studioBuildInfo');
 const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'server', 'studioApi.js'));
 const { installTeamCreateRoutes } = require(path.join(__dirname, '..', '..', 'server', 'teamCreate.js'));
@@ -172,6 +173,27 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/assets', express.static(path.join(releaseRoot, 'Assets')));
 app.use('/maps', express.static(mapsRoot));
 
+// Roblox's own game placeholder art (the blocky forest card + the wide banner).
+// The source files have spaces/hashes in their names, so expose them under
+// stable, readable routes that templates can reference directly.
+const gamePlaceholderRoot = path.join(releaseRoot, 'Webserver', 'gameplaceholder');
+const GAME_CARD_PLACEHOLDER = path.join(gamePlaceholderRoot, 'Card_512x512', 'c719f9be53f9a41fd34309fe723577a69615962b.png');
+const GAME_BIG_PLACEHOLDER = path.join(gamePlaceholderRoot, 'Big_', 'image (44).png');
+
+app.get('/gameplaceholder/card.png', (req, res) => {
+  if (!fs.existsSync(GAME_CARD_PLACEHOLDER)) return res.status(404).end();
+  res.set('Cache-Control', 'public, max-age=86400');
+  return res.sendFile(GAME_CARD_PLACEHOLDER);
+});
+
+app.get('/gameplaceholder/big.png', (req, res) => {
+  if (!fs.existsSync(GAME_BIG_PLACEHOLDER)) return res.status(404).end();
+  res.set('Cache-Control', 'public, max-age=86400');
+  return res.sendFile(GAME_BIG_PLACEHOLDER);
+});
+
+app.use('/gameplaceholder', express.static(gamePlaceholderRoot));
+
 function parseCookieHeader(cookieHeader = '') {
   const cookieMap = {};
   const parts = String(cookieHeader || '').split(';');
@@ -324,6 +346,8 @@ app.use((req, res, next) => {
   res.locals.csrfToken = req.csrfToken;
   res.locals.currentUser = req.sessionUser;
   res.locals.isOwner = isOwnerUser(req.sessionUser);
+  // Stable, locale-independent date formatting for every template.
+  res.locals.formatDate = formatDate;
   next();
 });
 
@@ -724,6 +748,67 @@ function serializeUser(userId) {
     currentlyWearing: Array.isArray(user.currentlyWearing) ? user.currentlyWearing : [],
     profileUrl: `/users/${user.userId || userId || 1}/profile`,
   };
+}
+
+/**
+ * Resolve the images for a user's profile: the dressed avatar and the currently
+ * equipped item thumbnails.
+ *
+ * Two sources, in order:
+ *   1. If the account is linked to a real Roblox id (user.robloxUserId), fetch
+ *      the genuine headshot / full-body render from Roblox so the profile shows
+ *      the actual character. Real data, not a placeholder.
+ *   2. Otherwise build the view from the user's own saved `currentlyWearing`
+ *      inventory, resolving each item's real Roblox name/thumbnail by asset id.
+ *
+ * Always returns a shape the view can render; every network call is best-effort
+ * and falls back to null so a Roblox outage never breaks the page.
+ */
+async function resolveProfileAvatar(user) {
+  const result = {
+    headshotUrl: null,
+    fullBodyUrl: null,
+    equipped: [],
+    robloxUserId: null,
+  };
+
+  const linkedId = Number(user && user.robloxUserId);
+  if (Number.isFinite(linkedId) && linkedId > 0) {
+    result.robloxUserId = linkedId;
+    const [headshot, fullBody] = await Promise.all([
+      robloxApi.getAvatarHeadshotUrl(linkedId, '150x150'),
+      robloxApi.getAvatarFullBodyUrl(linkedId, '420x420'),
+    ]);
+    result.headshotUrl = headshot;
+    result.fullBodyUrl = fullBody;
+  }
+
+  const wearing = Array.isArray(user && user.currentlyWearing) ? user.currentlyWearing : [];
+  const assets = getAssets();
+
+  const equipped = await Promise.all(wearing.map(async (rawId) => {
+    const id = Number(rawId);
+    const local = assets[String(rawId)] || (Number.isFinite(id) ? assets[String(id)] : null);
+
+    // Prefer the real Roblox asset record (name + thumbnail) when the id is a
+    // genuine Roblox asset id; fall back to the locally stored item.
+    const details = Number.isFinite(id) && id > 0 ? await robloxApi.getAssetDetails(id) : null;
+    const thumbnail = Number.isFinite(id) && id > 0 ? await robloxApi.getAssetThumbnailUrl(id) : null;
+
+    if (!details && !local) return null;
+
+    return {
+      id,
+      name: (details && details.name) || (local && local.name) || `Asset ${id}`,
+      assetType: (local && (local.assetType || local.className)) || 'Asset',
+      thumbnailUrl: thumbnail,
+      price: details ? details.price : Number((local && local.price) || 0),
+      creatorName: (details && details.creator && details.creator.name) || (local && local.creatorName) || null,
+    };
+  }));
+
+  result.equipped = equipped.filter(Boolean);
+  return result;
 }
 
 /**
@@ -1148,9 +1233,12 @@ function getPublicGamesForUser(userId) {
     }
   });
 
-  // 2. Real games from the games catalogue. These are the experiences the
-  //    server actually knows about (built from Maps), so the owner's profile
-  //    shows the full list instead of an empty panel.
+  // 2. Real games from the games catalogue.
+  //
+  //    Only games this account actually owns are listed. It used to hand the
+  //    owner (and anyone) every game on the server, which put all 48 map-derived
+  //    experiences on every profile and made the panel look broken. A profile
+  //    shows a person's own creations, so match on author id or developer name.
   const games = getGames();
   Object.values(games).forEach((game) => {
     const placeId = Number(game.placeId || 0);
@@ -1158,10 +1246,9 @@ function getPublicGamesForUser(userId) {
       return;
     }
     const developer = String(game.developer || '').toLowerCase();
-    const ownsIt = isOwnerId
-      || developer === targetName
-      || developer === 'luckyblox studio'
-      || developer === 'localplayer';
+    const ownsIt = developer === targetName
+      || String(game.authorId || '') === targetId
+      || (isOwnerId && String(game.authorId || '') === String(OWNER_USER_ID));
     if (ownsIt) {
       add({
         placeId,
@@ -1627,6 +1714,22 @@ function formatStatusTime(iso) {
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, `
     + `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+}
+
+/**
+ * Format an ISO date as a stable, locale-independent day/month/year string.
+ *
+ * toLocaleDateString() renders in the *server's* locale, which produced Arabic
+ * numerals and an Islamic-calendar suffix on a UTC box. Build the string
+ * explicitly so every visitor sees the same thing.
+ */
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
 /** Shared shape so the page, the sidebar and the API all agree. */
@@ -2205,7 +2308,7 @@ app.post('/luckblox.site.tk/logout', (req, res) => {
   res.redirect(redirect);
 });
 
-app.get('/profile', (req, res) => {
+app.get('/profile', async (req, res) => {
   const userId = req.query.userId || 1;
   const user = getUser(userId);
   const assets = Object.values(getAssets());
@@ -2220,10 +2323,11 @@ app.get('/profile', (req, res) => {
     currency: getCurrencyForUser(user),
     adminBadge: getAdminBadge(user),
     games: publishedGames,
+    profileAvatar: await resolveProfileAvatar(user),
   });
 });
 
-app.get('/profile/:userId', (req, res) => {
+app.get('/profile/:userId', async (req, res) => {
   const userId = req.params.userId || 1;
   const user = getUser(userId);
   const assets = Object.values(getAssets());
@@ -2238,11 +2342,11 @@ app.get('/profile/:userId', (req, res) => {
     currency: getCurrencyForUser(user),
     adminBadge: getAdminBadge(user),
     games: publishedGames,
+    profileAvatar: await resolveProfileAvatar(user),
   });
 });
 
-app.get('/users/:id/profile', (req, res) => {
-  const userId = req.params.id || 1;
+app.get('/users/:id/profile', async (req, res) => {  const userId = req.params.id || 1;
   const user = getUser(userId);
   const assets = Object.values(getAssets());
   const publishedGames = getPublicGamesForUser(userId);
@@ -2256,6 +2360,7 @@ app.get('/users/:id/profile', (req, res) => {
     currency: getCurrencyForUser(user),
     adminBadge: getAdminBadge(user),
     games: publishedGames,
+    profileAvatar: await resolveProfileAvatar(user),
   });
 });
 
@@ -2946,11 +3051,76 @@ app.get('/v1/join-script', (req, res) => {
   }
 });
 
+/**
+ * Link the signed-in account to a real Roblox account by username.
+ *
+ * Resolves the username through Roblox's public API and stores the resulting
+ * user id on the account, so profiles can render the genuine avatar instead of a
+ * placeholder. This is what removes the need to hand-link a robloxUserId.
+ */
+app.post('/api/link-roblox', async (req, res) => {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  if (!sessionUser) {
+    return res.status(401).json({ ok: false, error: 'sign-in-required', message: 'Sign in before linking a Roblox account.' });
+  }
+
+  const username = String(req.body.username || req.query.username || '').trim();
+  if (!username) {
+    return res.status(400).json({ ok: false, error: 'missing-username', message: 'Provide the Roblox username to link.' });
+  }
+
+  const match = await robloxApi.getUserByUsername(username);
+  if (!match || !match.id) {
+    return res.status(404).json({ ok: false, error: 'roblox-user-not-found', message: `No Roblox account named "${username}".` });
+  }
+
+  const userId = String(sessionUser.userId || sessionUser.id || 1);
+  saveUser(userId, { robloxUserId: match.id, robloxUsername: match.name });
+  audit('link_roblox', { userId, robloxUserId: match.id, robloxUsername: match.name });
+
+  return res.json({
+    ok: true,
+    userId,
+    roblox: match,
+    headshotUrl: await robloxApi.getAvatarHeadshotUrl(match.id),
+    fullBodyUrl: await robloxApi.getAvatarFullBodyUrl(match.id),
+  });
+});
+
+/** Real Roblox catalog search by keyword, for the avatar/item pages. */
+app.get('/api/roblox/asset/:assetId', async (req, res) => {
+  const details = await robloxApi.getAssetDetails(req.params.assetId);
+  if (!details) {
+    return res.status(404).json({ ok: false, error: 'asset-not-found' });
+  }
+  return res.json({
+    ok: true,
+    asset: {
+      ...details,
+      thumbnailUrl: await robloxApi.getAssetThumbnailUrl(details.assetId),
+    },
+  });
+});
+
+app.get('/api/roblox/user/:userId', async (req, res) => {
+  const user = await robloxApi.getUser(req.params.userId);
+  if (!user) {
+    return res.status(404).json({ ok: false, error: 'user-not-found' });
+  }
+  return res.json({
+    ok: true,
+    user: {
+      ...user,
+      headshotUrl: await robloxApi.getAvatarHeadshotUrl(user.id),
+      fullBodyUrl: await robloxApi.getAvatarFullBodyUrl(user.id),
+    },
+  });
+});
+
 app.post('/api/avatar/wear', (req, res) => {
   const userId = String(req.body.userId || 1);
   const incomingAssetIds = Array.isArray(req.body.assetIds) ? req.body.assetIds : [];
   const normalizedIds = incomingAssetIds.map((id) => String(id));
-
   const updatedUser = saveUser(userId, {
     currentlyWearing: normalizedIds,
   });
@@ -3090,8 +3260,23 @@ app.post('/v1/launch-client', (req, res) => {
 
 app.post('/api/launch-game', (req, res) => {
   const sessionUser = req.sessionUser || resolveSessionUser(req);
-  const requestedUserId = Number(req.body.userId || req.body.userid || req.query.userId || (sessionUser ? sessionUser.userId : 1));
-  const userId = Number.isFinite(requestedUserId) && requestedUserId > 0 ? requestedUserId : Number(sessionUser ? sessionUser.userId : 1) || 1;
+
+  // Playing requires an account. A guest must sign in first, exactly like the
+  // real site: we no longer silently fall back to a demo user, which used to let
+  // anyone join as user 1 without ever authenticating.
+  if (!sessionUser) {
+    audit('launch_game_denied', { ip: security.clientIp(req), reason: 'not-signed-in' });
+    return res.status(401).json({
+      ok: false,
+      error: 'sign-in-required',
+      message: 'You need to sign in to play.',
+      signInUrl: '/signin?redirect=' + encodeURIComponent(req.originalUrl || '/'),
+    });
+  }
+
+  // The launch is always attributed to the signed-in account - a client cannot
+  // request a ticket for somebody else.
+  const userId = Number(sessionUser.userId || sessionUser.id) || 1;
   const placeId = Number(req.body.placeId || req.body.placeid || req.query.placeId || 1818);
 
   try {

@@ -91,7 +91,7 @@
                     </div>
                     <div class="roblox-asset-tag">
                       <% if (badge.earnedDate) { %>
-                        <%= new Date(badge.earnedDate).toLocaleDateString() %>
+                        <%= formatDate(badge.earnedDate) %>
                           <% } else { %>
                             Earned
                             <% } %>

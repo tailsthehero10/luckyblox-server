@@ -678,6 +678,106 @@ img.roblox-brand-mark {
   z-index: 1;
 }
 
+/* The real dressed character render fetched from Roblox. */
+.roblox-avatar-image {
+  max-width: 100%;
+  max-height: 240px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+/* An asset icon that is a real Roblox thumbnail image rather than a letter. */
+.roblox-asset-icon-image {
+  object-fit: contain;
+  background: #f4f6f8;
+  padding: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Game cards (2021-style grid)
+   ---------------------------------------------------------------------------
+   A 16:9 thumbnail with the title and live player count underneath. The grid is
+   responsive: it fits as many columns as the viewport allows, so the same markup
+   works on a phone and a large monitor. */
+.roblox-game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.roblox-game-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+}
+
+.roblox-game-card:hover {
+  text-decoration: none;
+}
+
+.roblox-game-card-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #dfe3e8;
+  border: 1px solid var(--border-line);
+}
+
+.roblox-game-card-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* The placeholder art is square (236x236), so `contain` keeps it undistorted
+     inside the 16:9 frame instead of stretching it. Real Roblox icons are 16:9
+     and fill the frame under `cover`. */
+  object-fit: contain;
+  display: block;
+}
+
+/* A real (16:9) game icon should fill the frame rather than sit letterboxed. */
+.roblox-game-card-thumb img:first-child:not(.roblox-game-card-placeholder) {
+  z-index: 1;
+  object-fit: cover;
+  background: #dfe3e8;
+}
+
+.roblox-game-card-meta {
+  min-width: 0;
+}
+
+.roblox-game-card-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--rbx-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.roblox-game-card-sub {
+  font-size: 0.8rem;
+  color: var(--rbx-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The full-body render used by the profile's "Current dressed avatar" panel. */
+.roblox-avatar-image-large {
+  max-width: 100%;
+  max-height: 320px;
+}
+
 .roblox-bio-box {
   margin-top: 18px;
   padding: 16px;

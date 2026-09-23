@@ -40,7 +40,15 @@
 
     <section class="roblox-profile-hero">
       <div class="roblox-avatar-poster">
-        <div class="roblox-avatar-big"><%= user.username.slice(0,1).toUpperCase() %></div>
+        <% if (typeof profileAvatar !== 'undefined' && profileAvatar && (profileAvatar.fullBodyUrl || profileAvatar.headshotUrl)) { %>
+          <img class="roblox-avatar-image"
+               src="<%= profileAvatar.fullBodyUrl || profileAvatar.headshotUrl %>"
+               alt="<%= user.username %> avatar"
+               onerror="this.style.display='none';var f=this.parentNode.querySelector('.roblox-avatar-big');if(f)f.style.display='grid';" />
+          <div class="roblox-avatar-big" style="display:none;"><%= user.username.slice(0,1).toUpperCase() %></div>
+        <% } else { %>
+          <div class="roblox-avatar-big"><%= user.username.slice(0,1).toUpperCase() %></div>
+        <% } %>
       </div>
 
       <div>
@@ -57,7 +65,7 @@
         </div>
         <div class="roblox-meta-row">
           <span class="roblox-meta-pill">Member: <%= user.membership %></span>
-          <span class="roblox-meta-pill">Join date: <%= new Date(user.joinDate || Date.now()).toLocaleDateString() %></span>
+          <span class="roblox-meta-pill">Join date: <%= formatDate(user.joinDate) %></span>
           <span class="roblox-meta-pill">ID: <%= user.userId %></span>
           <span class="roblox-meta-pill">Balance: <%= currency && currency.currencySymbol ? currency.currencySymbol : 'R$' %><%= currency ? currency.robux : (user.robux || 0) %></span>
         </div>
@@ -120,9 +128,17 @@
           <div class="roblox-panel-body">
             <div class="roblox-render-box">
               <div class="roblox-render-content">
-                <div class="roblox-large-avatar"><%= user.username.slice(0,1).toUpperCase() %></div>
+                <% if (typeof profileAvatar !== 'undefined' && profileAvatar && profileAvatar.fullBodyUrl) { %>
+                  <img class="roblox-avatar-image roblox-avatar-image-large"
+                       src="<%= profileAvatar.fullBodyUrl %>"
+                       alt="<%= user.username %> dressed avatar"
+                       onerror="this.style.display='none';var f=this.parentNode.querySelector('.roblox-large-avatar');if(f)f.style.display='grid';" />
+                  <div class="roblox-large-avatar" style="display:none;"><%= user.username.slice(0,1).toUpperCase() %></div>
+                <% } else { %>
+                  <div class="roblox-large-avatar"><%= user.username.slice(0,1).toUpperCase() %></div>
+                  <div style="color: var(--rbx-muted);">No Roblox account linked yet.</div>
+                <% } %>
                 <div style="font-weight:700; color: var(--rbx-text);"><%= user.username %></div>
-                <div style="color: var(--rbx-muted);">Avatar render ready</div>
               </div>
             </div>
           </div>
@@ -156,20 +172,27 @@
 
     <section class="roblox-content-grid">
       <div class="roblox-panel">
-        <div class="roblox-panel-header">Inventory / currently wearing</div>
+        <div class="roblox-panel-header">Currently wearing</div>
         <div class="roblox-panel-body">
           <div class="roblox-asset-list">
-            <% assets.forEach((asset) => { %>
-              <% const isWearing = user.currentlyWearing.includes(String(asset.id)); %>
-              <div class="roblox-asset-item">
-                <div class="roblox-asset-icon"><%= asset.name.slice(0,1).toUpperCase() %></div>
-                <div>
-                  <div class="roblox-asset-name"><%= asset.name %></div>
-                  <div class="roblox-asset-type"><%= asset.assetType %> · ID <%= asset.id %></div>
+            <% if (typeof profileAvatar !== 'undefined' && profileAvatar && profileAvatar.equipped && profileAvatar.equipped.length) { %>
+              <% profileAvatar.equipped.forEach((item) => { %>
+                <div class="roblox-asset-item">
+                  <% if (item.thumbnailUrl) { %>
+                    <img class="roblox-asset-icon roblox-asset-icon-image" src="<%= item.thumbnailUrl %>" alt="<%= item.name %>" loading="lazy" />
+                  <% } else { %>
+                    <div class="roblox-asset-icon"><%= item.name.slice(0,1).toUpperCase() %></div>
+                  <% } %>
+                  <div>
+                    <div class="roblox-asset-name"><%= item.name %></div>
+                    <div class="roblox-asset-type"><%= item.assetType %><%= item.creatorName ? ' · ' + item.creatorName : '' %></div>
+                  </div>
+                  <div class="roblox-asset-tag"><%= item.price ? 'R$ ' + item.price : 'Equipped' %></div>
                 </div>
-                <div class="roblox-asset-tag"><%= isWearing ? 'Wearing' : 'Owned' %></div>
-              </div>
-            <% }) %>
+              <% }) %>
+            <% } else { %>
+              <div class="roblox-muted">Nothing equipped yet — visit the Avatar page to dress this character.</div>
+            <% } %>
           </div>
         </div>
       </div>

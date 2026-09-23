@@ -69,24 +69,33 @@
     </section>
 
     <section class="roblox-content-grid">
-      <div class="roblox-panel">
-        <div class="roblox-panel-header">Featured games</div>
+      <div class="roblox-panel" style="grid-column: 1 / -1;">
+        <div class="roblox-panel-header">Popular games</div>
         <div class="roblox-panel-body">
-          <div class="roblox-asset-list">
+          <%# 2021-style game cards: a 16:9 thumbnail with the real Roblox placeholder
+              art, title underneath and live player count. Not a cramped list row. %>
+          <div class="roblox-game-grid">
             <% games.forEach((game) => { %>
-              <a class="roblox-asset-item" href="/game?placeId=<%= game.placeId %>">
-                <div class="roblox-asset-icon roblox-game-list-icon" aria-label="Game thumbnail"></div>
-                <div>
-                  <div class="roblox-asset-name"><%= game.title %></div>
-                  <div class="roblox-asset-type"><%= game.genre %> · <%= game.playerCount %> online</div>
+              <a class="roblox-game-card" href="/game?placeId=<%= game.placeId %>">
+                <div class="roblox-game-card-thumb">
+                  <% if (game.icon && /^https?:\/\//.test(game.icon)) { %>
+                    <img src="<%= game.icon %>" alt="<%= game.title %>" loading="lazy"
+                         onerror="this.style.display='none';var p=this.parentNode;if(p)p.classList.add('is-placeholder');" />
+                  <% } %>
+                  <img class="roblox-game-card-placeholder" src="/gameplaceholder/card.png" alt="" loading="lazy" />
                 </div>
-                <div class="roblox-asset-tag">Open</div>
+                <div class="roblox-game-card-meta">
+                  <div class="roblox-game-card-title"><%= game.title %></div>
+                  <div class="roblox-game-card-sub"><%= game.genre %> · <%= game.playerCount %> playing</div>
+                </div>
               </a>
             <% }) %>
           </div>
         </div>
       </div>
+    </section>
 
+    <section class="roblox-content-grid">
       <aside class="roblox-side-stack">
         <div class="roblox-panel">
           <div class="roblox-panel-header">Current active character</div>
@@ -136,10 +145,18 @@
         const response = await fetch('/api/launch-game', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: 1, placeId })
+          body: JSON.stringify({ placeId })
         });
 
         const payload = await response.json();
+
+        // Playing needs an account: send guests to sign in, then back here.
+        if (response.status === 401 || (payload && payload.error === 'sign-in-required')) {
+          const next = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = '/signin?redirect=' + next;
+          return null;
+        }
+
         if (!response.ok || !payload.ok || !payload.ticket) {
           throw new Error(payload && payload.message ? payload.message : 'Unable to generate launch ticket.');
         }

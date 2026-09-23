@@ -1,3 +1,4 @@
 {
-    "robloxLsp.workspace.maxPreload": 8000
+    "robloxLsp.workspace.maxPreload": 8000,
+    "CodeGPT.apiKey": "CodeGPT Plus Beta"
 }

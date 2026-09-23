@@ -1,40 +1,48 @@
 <?php
 require_once __DIR__ . '/../../api/common.php';
+require_once __DIR__ . '/../../api/luckyblox-data.php';
 
-function read_setting($path, $default = '') {
-    if (!file_exists($path)) {
-        return $default;
+session_start();
+
+$c = lb_get_current_user();
+if (!$c) {
+    $c = lb_find_user_by_id(1);
+    if (!$c) {
+        $c = array('userId' => '1', 'username' => 'LocalPlayer', 'displayName' => 'LocalPlayer', 'membership' => 'Premium', 'robux' => 0, 'bio' => '', 'joinDate' => '');
     }
-
-    $value = trim((string) file_get_contents($path));
-    return $value !== '' ? $value : $default;
 }
 
-$rootPath = realpath(__DIR__ . '/../../../../');
-$settingsRoot = realpath($rootPath . '/Settings');
-$mapsRoot = realpath($rootPath . '/Maps');
+$username = $c['username'];
+$displayName = $c['displayName'] ?? $username;
+$membership = $c['membership'];
+$robux = (int) $c['robux'];
+$userId = (int) $c['userId'];
+$bio = $c['bio'] ?? '';
+$isAdmin = $c['isAdmin'] || lb_is_owner($c);
 
-$username = read_setting($settingsRoot . '/username.txt', 'default');
-$membership = read_setting($settingsRoot . '/membership.txt', 'None');
-$ip = read_setting($settingsRoot . '/ip.txt', '127.0.0.1');
-$hostPort = read_setting($settingsRoot . '/HostPort.txt', '53640');
-$serverPort = read_setting($settingsRoot . '/serverport.txt', '2005');
-$clientPort = read_setting($settingsRoot . '/clientport.txt', '53640');
-$mapPath = read_setting($settingsRoot . '/MapPath.txt', '');
+$ip = lb_get_server_ip();
+$hostPort = lb_get_host_port();
+$serverPort = api_get_setting_value(lb_settings_root() . '/serverport.txt', '2005');
+$clientPort = lb_get_client_port();
+$mapPath = ltrim(str_replace(lb_settings_root() . '/', '', api_get_setting_value(lb_settings_root() . '/MapPath.txt', '')));
 
-$featuredPlaceId = api_get_latest_published_place_id();
+$featuredPlaceId = lb_get_latest_published_place_id();
 $featuredMetadata = api_get_place_metadata($featuredPlaceId);
 
+$games = lb_get_all_games();
+$gamesCount = count($games);
+
 $maps = array();
+$mapsRoot = lb_maps_root();
 if (is_dir($mapsRoot)) {
     $maps = array_values(array_filter(glob($mapsRoot . '/*'), function($file) {
         return is_file($file);
     }));
 }
-
 usort($maps, function($a, $b) {
     return strcasecmp(basename($a), basename($b));
 });
+$mapCount = count($maps);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,6 +50,9 @@ usort($maps, function($a, $b) {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>LuckyBlox | Home</title>
+    <link rel="icon" href="/site-icon/luckyblox.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/site-icon/luckyblox.png" />
+    <link rel="stylesheet" href="/style.css" />
     <style>
         :root {
             --bg: #0b0f17;
@@ -105,6 +116,8 @@ usort($maps, function($a, $b) {
             letter-spacing: 0.06em;
             text-transform: uppercase;
         }
+
+        .brand img { width: 34px; height: 34px; }
 
         .brand-mark {
             width: 34px;
@@ -209,6 +222,7 @@ usort($maps, function($a, $b) {
             font-weight: 800;
             border: 1px solid transparent;
             transition: 0.15s ease;
+            cursor: pointer;
         }
 
         .button.primary {
@@ -499,26 +513,29 @@ usort($maps, function($a, $b) {
             }
         }
     </style>
-    <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
     <div class="page">
         <header class="topbar">
             <div class="brand">
-                <div class="brand-mark">L</div>
+                <img src="/site-icon/luckyblox.png" alt="LuckyBlox" />
                 <span>LuckyBlox</span>
             </div>
 
             <nav class="nav" aria-label="Main navigation">
-                <a class="active" href="/LuckBlox.site.tk/home">Home</a>
-                <a href="/LuckBlox.site.tk/games">Games</a>
-                <a href="/LuckBlox.site.tk/game?placeid=<?php echo (int) $featuredPlaceId; ?>">Game</a>
-                <a href="/LuckBlox.site.tk/users/1/profile">Profile</a>
-                <a href="/LuckBlox.site.tk/settings">Settings</a>
-                <a href="/LuckBlox.site.tk/share">Share</a>
-                <a href="/LuckBlox.site.tk/about">About</a>
-                <a href="/LuckBlox.site.tk/signin">Log In</a>
-                <a href="/LuckBlox.site.tk/signup">Sign Up</a>
+                <a class="active" href="/LuckBlox.site/home">Home</a>
+                <a href="/LuckBlox.site/games">Games</a>
+                <a href="/LuckBlox.site/game?placeid=<?php echo (int) $featuredPlaceId; ?>">Game</a>
+                <a href="/LuckBlox.site/users/1/profile">Profile</a>
+                <a href="/LuckBlox.site/settings">Settings</a>
+                <a href="/LuckBlox.site/share">Share</a>
+                <a href="/LuckBlox.site/about">About</a>
+                <?php if ($c && !$c['isAdmin']): ?>
+                <a href="/LuckBlox.site/signin/">Log In</a>
+                <a href="/LuckBlox.site/signup/">Sign Up</a>
+                <?php else: ?>
+                <a href="/LuckBlox.site.tk/logout">Log Out</a>
+                <?php endif; ?>
             </nav>
         </header>
 
@@ -527,13 +544,14 @@ usort($maps, function($a, $b) {
                 <span class="badge">Public home</span>
                 <h1>Build, play, and launch your next favorite local game.</h1>
                 <p class="subtitle">
-                    LuckyBlox is running as a local Roblox-style platform at the canonical public route <strong>http://localhost/LuckBlox.site.tk</strong>.
-                    Browse the live catalog, jump into the featured place, and launch directly from the local portal.
+                    LuckyBlox is running as a local Roblox-style platform at <strong>http://localhost/LuckyBlox.site</strong>.
+                    Browse the live catalog, jump into the featured place, and launch directly from the portal.
                 </p>
                 <div class="cta-row">
-                    <a class="button primary" href="/LuckBlox.site.tk/play?placeid=<?php echo (int) $featuredPlaceId; ?>">Play featured game</a>
-                    <a class="button secondary" href="/LuckBlox.site.tk/games">Browse all games</a>
-                    <a class="button secondary" href="/LuckBlox.site.tk/share">Share &amp; play</a>
+                    <a class="button primary" href="/LuckBlox.site/play?placeid=<?php echo (int) $featuredPlaceId; ?>">Play featured game</a>
+                    <a class="button secondary" href="/LuckBlox.site/games">Browse all games</a>
+                    <a class="button secondary" href="/LuckBlox.site/share">Share &amp; play</a>
+                    <a class="button secondary" href="/LuckBlox.site/downloads">Download client</a>
                 </div>
             </div>
 
@@ -563,12 +581,12 @@ usort($maps, function($a, $b) {
             <div class="stat-card">
                 <span class="stat-label">Account</span>
                 <div class="stat-value"><?php echo htmlspecialchars($username); ?></div>
-                <div class="stat-muted">Membership: <?php echo htmlspecialchars($membership); ?></div>
+                <div class="stat-muted">Membership: <?php echo htmlspecialchars($membership); ?> • R$<?php echo $robux; ?></div>
             </div>
 
             <div class="stat-card">
                 <span class="stat-label">Maps</span>
-                <div class="stat-value"><?php echo intval(count($maps)); ?></div>
+                <div class="stat-value"><?php echo intval($mapCount); ?></div>
                 <div class="stat-muted">Installed local worlds ready for launch</div>
             </div>
 
@@ -582,27 +600,25 @@ usort($maps, function($a, $b) {
         <section class="content-grid">
             <div class="panel">
                 <div class="panel-header">
-                    <h2 class="panel-title">Popular worlds</h2>
+                    <h2 class="panel-title">Available games (<?php echo $gamesCount; ?>)</h2>
                     <span class="pill">Live</span>
                 </div>
 
                 <div class="game-list">
                     <?php
-                    $gamePreview = array_slice($maps, 0, 4);
-                    foreach ($gamePreview as $index => $mapFile) {
-                        $base = basename($mapFile, '.rbxl');
-                        $gameId = 1818 + $index;
+                    $gamePreview = array_slice($games, 0, 4);
+                    foreach ($gamePreview as $game):
                     ?>
                     <div class="game-item">
                         <div class="game-thumb"></div>
-                        <h3><?php echo htmlspecialchars(str_replace('_', ' ', $base)); ?></h3>
-                        <p>Community-made local world with a playable launch flow and public access route.</p>
+                        <h3><?php echo htmlspecialchars($game['title']); ?></h3>
+                        <p><?php echo htmlspecialchars($game['description'] ?: 'A local map packaged as a playable LuckyBlox experience.'); ?></p>
                         <div class="game-links">
-                            <span>World <?php echo (int) $gameId; ?></span>
-                            <a class="mini-button" href="/LuckBlox.site.tk/play?placeid=<?php echo (int) $gameId; ?>">Play</a>
+                            <span>Place <?php echo (int) $game['placeId']; ?> • <?php echo (int) $game['playerCount']; ?> players</span>
+                            <a class="mini-button" href="/LuckBlox.site/play?placeid=<?php echo (int) $game['placeId']; ?>">Play</a>
                         </div>
                     </div>
-                    <?php } ?>
+                    <?php endforeach; ?>
                 </div>
             </div>
 
@@ -612,11 +628,12 @@ usort($maps, function($a, $b) {
                 </div>
 
                 <ul class="links-list">
-                    <li><strong>Featured place</strong><a href="/LuckBlox.site.tk/play?placeid=<?php echo (int) $featuredPlaceId; ?>">Open</a></li>
-                    <li><strong>Games catalog</strong><a href="/LuckBlox.site.tk/games">View</a></li>
-                    <li><strong>Profile</strong><a href="/LuckBlox.site.tk/users/1/profile">Open</a></li>
-                    <li><strong>Settings</strong><a href="/LuckBlox.site.tk/settings">Inspect</a></li>
-                    <li><strong>Share &amp; play</strong><a href="/LuckBlox.site.tk/share">Open</a></li>
+                    <li><strong>Featured place</strong><a href="/LuckBlox.site/play?placeid=<?php echo (int) $featuredPlaceId; ?>">Open</a></li>
+                    <li><strong>Games catalog</strong><a href="/LuckBlox.site/games">View</a></li>
+                    <li><strong>Profile</strong><a href="/LuckBlox.site/users/<?php echo $userId; ?>/profile">Open</a></li>
+                    <li><strong>Settings</strong><a href="/LuckBlox.site/settings">Inspect</a></li>
+                    <li><strong>Share &amp; play</strong><a href="/LuckBlox.site/share">Open</a></li>
+                    <li><strong>Clients</strong><a href="/LuckBlox.site/downloads">Download</a></li>
                 </ul>
             </div>
         </section>
@@ -626,31 +643,30 @@ usort($maps, function($a, $b) {
                 <div class="spotlight-icon">1</div>
                 <h3>Featured place</h3>
                 <p>Jump directly into the most recent published user-facing game on the local server.</p>
-                <a class="mini-button" href="/LuckBlox.site.tk/play?placeid=<?php echo (int) $featuredPlaceId; ?>">Launch</a>
+                <a class="mini-button" href="/LuckBlox.site/play?placeid=<?php echo (int) $featuredPlaceId; ?>">Launch</a>
             </div>
 
             <div class="spotlight">
                 <div class="spotlight-icon">2</div>
                 <h3>Browse worlds</h3>
                 <p>Explore the public catalog, discover active local experiences, and open each title instantly.</p>
-                <a class="mini-button" href="/LuckBlox.site.tk/games">Open catalog</a>
+                <a class="mini-button" href="/LuckBlox.site/games">Open catalog</a>
             </div>
 
             <div class="spotlight">
                 <div class="spotlight-icon">3</div>
                 <h3>Share</h3>
                 <p>Use the built-in share flow for quick links and public game discovery from the main site.</p>
-                <a class="mini-button" href="/LuckBlox.site.tk/share">Share</a>
+                <a class="mini-button" href="/LuckBlox.site/share">Share</a>
             </div>
 
             <div class="spotlight">
                 <div class="spotlight-icon">4</div>
                 <h3>Profile</h3>
                 <p>Review identity, membership, and public profile information from the main portal.</p>
-                <a class="mini-button" href="/LuckBlox.site.tk/users/1/profile">Profile</a>
+                <a class="mini-button" href="/LuckBlox.site/users/<?php echo $userId; ?>/profile">Profile</a>
             </div>
         </section>
     </div>
-    <script src="/legacy-nav.js"></script>
 </body>
 </html>
