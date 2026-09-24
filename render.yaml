@@ -41,8 +41,18 @@ services:
         sync: false
       # Accounts, sessions and currency live in a data dir. On the free plan the
       # container filesystem is wiped on every deploy, so without a disk the owner
-      # password (and every account) resets. Either attach a Render Disk and set
-      # LUCKYBLOX_DATA_DIR to its mount path, or keep the owner password in the
-      # env var above so it is re-applied on each boot.
+      # password (and every account) resets.
+      #
+      # Option 1 (FREE, no disk): mirror the data to the private storage repo
+      # tailsthehero10/Luckyblox-Storage-1. Create a fine-grained token on this
+      # machine with Contents: Read+Write for that repo, then set in the Render
+      # dashboard:
+      #   LUCKYBLOX_SYNC=github
+      #   LUCKYBLOX_SYNC_TOKEN=<fine-grained PAT>
+      # (LUCKYBLOX_SYNC_REPO defaults to tailsthehero10/Luckyblox-Storage-1.)
+      #
+      # Option 2 (paid): attach a Render Disk and set LUCKYBLOX_DATA_DIR to its
+      # mount path. Either way, keeping LUCKYBLOX_OWNER_PASSWORD in the env var
+      # above re-applies the owner on each boot if everything else is lost.
       # - key: LUCKYBLOX_DATA_DIR
       #   value: /var/data

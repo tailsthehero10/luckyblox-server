@@ -25,6 +25,7 @@
 const fs = require('fs');
 const path = require('path');
 const runtime = require('./runtimeConfig');
+const remoteStore = require('./remoteStore');
 
 const repoRoot = runtime.rootDir;
 const bundledDataDir = path.join(repoRoot, 'Webserver', 'http-db-bridge', 'data');
@@ -103,6 +104,9 @@ function writeJson(fileName, data) {
   try {
     fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
     fs.renameSync(tmpPath, filePath);
+    // Mirror to the free remote store (if configured) so the data outlives this
+    // container. Debounced and best-effort - it never blocks or throws here.
+    remoteStore.saveFile(fileName, data);
     return true;
   } catch (error) {
     console.error(`[luckyblox] writeJson ${fileName} failed: ${error.message}`);
@@ -115,15 +119,38 @@ function writeJson(fileName, data) {
   }
 }
 
+/**
+ * Restore data from the free remote store on boot.
+ *
+ * Called once during startup (see server start). A failure here is not fatal:
+ * the app continues with whatever is on the local disk. When nothing is
+ * configured this is a no-op, so local-only deployments are unaffected.
+ */
+async function restoreFromRemote() {
+  ensureDataDir();
+  return remoteStore.loadAll(dataDir);
+}
+
+/** Push any queued writes immediately (used on shutdown). Best effort. */
+async function flushRemote() {
+  return remoteStore.flush();
+}
+
 /** Human-readable summary of where data is stored (logged at boot). */
 function describeStorage() {
+  const remote = remoteStore.describe();
   return {
     dataDir,
-    persistent: isPersistent,
-    note: isPersistent
+    persistent: isPersistent || remote.enabled,
+    localPersistent: isPersistent,
+    remote,
+    note: (isPersistent
       ? 'Data is stored on a persistent volume and will survive redeploys.'
-      : 'Data is stored in the container filesystem and WILL BE LOST on redeploy. '
-      + 'Set LUCKYBLOX_DATA_DIR (or attach a Render Disk) to persist accounts.',
+      : remote.enabled
+        ? `Data is mirrored to a free ${remote.mode} store and will survive redeploys.`
+        : 'Data is stored in the container filesystem and WILL BE LOST on redeploy. '
+          + 'Set LUCKYBLOX_DATA_DIR / attach a Render Disk, OR set LUCKYBLOX_SYNC '
+          + 'to mirror to a FREE store (see server/remoteStore.js).'),
   };
 }
 
@@ -135,5 +162,7 @@ module.exports = {
   dataPath,
   readJson,
   writeJson,
+  restoreFromRemote,
+  flushRemote,
   describeStorage,
 };

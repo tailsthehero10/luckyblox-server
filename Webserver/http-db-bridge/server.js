@@ -5752,26 +5752,57 @@ app.get('/dev/docs/auth', requireDevAuth, (req, res) => {
   });
 });
 
-const bridgeServer = app.listen(PORT, HOST, () => {
-  console.log(`LuckyBlox HTTP DB bridge listening on http://${HOST}:${PORT}`);
-  console.log(`LuckyBlox public base URL: ${publicBaseUrl}`);
+// Restore data from the free remote store (if LUCKYBLOX_SYNC is set) BEFORE the
+// server accepts requests, so the first request already sees the recovered
+// accounts/games. When nothing is configured this resolves immediately.
+storage.restoreFromRemote()
+  .then((result) => {
+    if (result && result.enabled) {
+      console.log(`[luckyblox] remote sync: restored ${result.loaded.length} file(s) from ${result.mode}`);
+    }
+  })
+  .catch((error) => {
+    console.warn(`[luckyblox] remote sync restore failed: ${error && error.message}`);
+  })
+  .finally(() => {
+    const bridgeServer = app.listen(PORT, HOST, () => {
+      console.log(`LuckyBlox HTTP DB bridge listening on http://${HOST}:${PORT}`);
+      console.log(`LuckyBlox public base URL: ${publicBaseUrl}`);
 
-  // Make it obvious whether accounts will survive a redeploy. On a free Render
-  // instance without a disk they will not, and that looks like "fake" data.
-  const store = storage.describeStorage();
-  console.log(`[luckyblox] data dir: ${store.dataDir}`);
-  console.log(`[luckyblox] persistence: ${store.persistent ? 'ON' : 'OFF'} - ${store.note}`);
+      // Make it obvious whether accounts will survive a redeploy. On a free Render
+      // instance without a disk they will not, and that looks like "fake" data.
+      const store = storage.describeStorage();
+      console.log(`[luckyblox] data dir: ${store.dataDir}`);
+      console.log(`[luckyblox] persistence: ${store.persistent ? 'ON' : 'OFF'} - ${store.note}`);
+      if (store.remote && store.remote.enabled) {
+        console.log(`[luckyblox] free remote storage: ${store.remote.mode} - ${store.remote.note}`);
+      }
 
-  // Periodically prune expired rate-limit buckets so memory stays bounded.
-  setInterval(() => security.pruneRateLimits(), 10 * 60 * 1000).unref();
-});
+      // Periodically prune expired rate-limit buckets so memory stays bounded.
+      setInterval(() => security.pruneRateLimits(), 10 * 60 * 1000).unref();
+    });
 
-// Never let a listen error become an unhandled 'error' event.
-bridgeServer.on('error', (error) => {
-  if (error && error.code === 'EADDRINUSE') {
-    console.error(`[luckyblox] bridge cannot bind ${HOST}:${PORT} — address already in use.`);
-    process.exit(1);
-  }
-  console.error(`[luckyblox] bridge server error: ${error && error.message}`);
-  process.exit(1);
-});
+    // Never let a listen error become an unhandled 'error' event.
+    bridgeServer.on('error', (error) => {
+      if (error && error.code === 'EADDRINUSE') {
+        console.error(`[luckyblox] bridge cannot bind ${HOST}:${PORT} \u2014 address already in use.`);
+        process.exit(1);
+      }
+      console.error(`[luckyblox] bridge server error: ${error && error.message}`);
+      process.exit(1);
+    });
+  });
+
+// On the way down (a redeploy sends SIGTERM), give any queued remote save a
+// moment to finish so the last account/game edit is not lost with the container.
+let shuttingDown = false;
+function gracefulShutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[luckyblox] received ${signal}; flushing remote storage...`);
+  storage.flushRemote()
+    .catch(() => { /* best effort */ })
+    .finally(() => setTimeout(() => process.exit(0), 150));
+}
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

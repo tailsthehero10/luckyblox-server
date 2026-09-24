@@ -25,6 +25,17 @@ LuckyBlox is a local Roblox-style game platform served from a release folder. Ap
 - PBKDF2-SHA512 password hashing: 210000 iterations, 64-byte key length.
 - Static assets under `Webserver/www/site-icon/` and `Webserver/www/gameplaceholder/`.
 
+## Persistence (free, no disk needed)
+- Data lives in `Webserver/http-db-bridge/data/`. On a host without a persistent
+  disk (Render free tier) the container filesystem is wiped on redeploy.
+- `server/remoteStore.js` mirrors the data files to a FREE store so they survive
+  with no paid disk. Modes: `LUCKYBLOX_SYNC=github` (a separate private repo +
+  a fine-grained token with Contents: Read+Write) or `LUCKYBLOX_SYNC=http`
+  (any JSON blob endpoint).
+- `server/storage.js` pulls on boot (`restoreFromRemote`) and pushes on every
+  write (debounced, best-effort). Unset `LUCKYBLOX_SYNC` = local-only, unchanged.
+- Test: `node tests/remoteStore.test.js`.
+
 ## Client install model
 - The content client lives in a folder literally named `Luckyblox` (see `server/clientLauncher.js`).
   Resolution order: `LUCKYBLOX_CLIENT_PATH` -> `LUCKYBLOX_CLIENT_ROOT\Luckyblox` ->
