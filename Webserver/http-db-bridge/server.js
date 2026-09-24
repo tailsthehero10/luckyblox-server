@@ -87,6 +87,26 @@ app.use('/lb-select.js', express.static(path.join(__dirname, 'public', 'lb-selec
 // Webserver/site icon/ are all reachable from every page.
 const siteIconDir = path.join(releaseRoot, 'Webserver', 'site icon');
 app.use('/site-icon', express.static(siteIconDir));
+
+// The real archived 2021 stylesheets (Navigation, Builder, Thumbnails, Avatar,
+// Footer, NotificationStream) plus the small luckyblox.css that fills the few
+// gaps the archive capture left. The captured avatar-editor chrome and the
+// profile/avatar pages are written against these rules, so they have to be
+// reachable at /css/2021/*.
+const classicCssDir = path.join(releaseRoot, 'Webserver', 'www', 'css', '2021');
+app.use('/css/2021', express.static(classicCssDir, { fallthrough: false }));
+
+// Real item thumbnails, captured from the archived 2021 avatar page along with
+// the catalogue they belong to (see api/classic-avatar-catalog.php). Served
+// locally so the profile shows genuine item art instead of letter tiles - and
+// so it keeps working without reaching out to Roblox on every page view.
+const classicThumbsDir = path.join(releaseRoot, 'Webserver', 'www', 'avatar-thumbs');
+app.use('/avatar-thumbs', express.static(classicThumbsDir, { fallthrough: false }));
+
+// The page script for the classic pages (tab switching, scale sliders, equip).
+const classicJsDir = path.join(releaseRoot, 'Webserver', 'www', 'classic');
+app.use('/classic', express.static(classicJsDir, { fallthrough: false }));
+
 app.get('/favicon.ico', (req, res) => res.sendFile(path.join(siteIconDir, 'luckyblox.ico')));
 app.get('/favicon.png', (req, res) => res.sendFile(path.join(siteIconDir, 'luckyblox.png')));
 // Sign in / sign up background. The source file lives at

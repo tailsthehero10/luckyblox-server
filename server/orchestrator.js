@@ -122,14 +122,28 @@ function buildLaunchCommand(placeId, port, jobId) {
     '--jobId', String(jobId),
   ];
 
+  // These are Windows desktop binaries. On Linux (the container) they can never
+  // exist, and the local fallback used to be `cmd /c echo` - a Windows shell
+  // that is also missing there. Spawning it threw ENOENT and took the whole
+  // bridge process down, which surfaced to players as
+  // "legacy-server-proxy-failed" on the join URL.
+  //
+  // A game server with no desktop client to launch is not an error: the
+  // in-process listener still accepts the connection, which is what a local
+  // play session actually uses. So report "no desktop client" and let the
+  // caller skip the spawn instead of trying to run an executable that cannot
+  // exist here.
   const candidates = [robloxPlayer, studioPlayer];
   const availableCandidate = candidates.find((candidate) => fs.existsSync(candidate));
 
   if (!availableCandidate) {
     return {
-      command: 'cmd',
-      args: ['/c', 'echo', 'LuckyBlox server process unavailable'],
-      type: 'fallback',
+      command: null,
+      args: [],
+      type: 'none',
+      reason: process.platform === 'win32'
+        ? 'no local Roblox client is installed'
+        : 'desktop client launch is not available on this platform',
     };
   }
 
@@ -158,34 +172,52 @@ function spawnDedicatedServer(placeId) {
   const launch = buildLaunchCommand(placeId, port, serverJobId);
   serverRecord.launchCommand = launch;
 
-  try {
-    const child = spawn(launch.command, launch.args, {
-      detached: false,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true,
-    });
+  // Only spawn when there is actually something to spawn. On Linux there is no
+  // desktop client, and the old code still tried to run a Windows shell - the
+  // spawn error propagated and killed the bridge process, which is why joining
+  // a game returned "legacy-server-proxy-failed".
+  if (launch.command) {
+    try {
+      const child = spawn(launch.command, launch.args, {
+        detached: false,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+      });
 
-    serverRecord.pid = child.pid;
-    child.stdout.on('data', (chunk) => {
-      const text = String(chunk).trim();
-      if (text.length) {
-        console.log(`[LuckyBlox Server:${serverJobId}] stdout: ${text}`);
-      }
-    });
+      serverRecord.pid = child.pid;
 
-    child.stderr.on('data', (chunk) => {
-      const text = String(chunk).trim();
-      if (text.length) {
-        console.error(`[LuckyBlox Server:${serverJobId}] stderr: ${text}`);
-      }
-    });
+      child.on('error', (error) => {
+        // A missing desktop client must never take the game server down with it.
+        console.warn(`[LuckyBlox Server:${serverJobId}] client launch unavailable: ${error.message}`);
+        serverRecord.pid = null;
+      });
 
-    child.on('exit', (code, signal) => {
-      console.log(`[LuckyBlox Server:${serverJobId}] exited code=${code} signal=${signal}`);
-      removeServerByJobId(serverJobId);
-    });
-  } catch (error) {
-    console.warn(`[LuckyBlox Server:${serverJobId}] client launch not available: ${error.message}`);
+      child.stdout.on('data', (chunk) => {
+        const text = String(chunk).trim();
+        if (text.length) {
+          console.log(`[LuckyBlox Server:${serverJobId}] stdout: ${text}`);
+        }
+      });
+
+      child.stderr.on('data', (chunk) => {
+        const text = String(chunk).trim();
+        if (text.length) {
+          console.error(`[LuckyBlox Server:${serverJobId}] stderr: ${text}`);
+        }
+      });
+
+      child.on('exit', (code, signal) => {
+        console.log(`[LuckyBlox Server:${serverJobId}] exited code=${code} signal=${signal}`);
+        // The desktop client exiting means the local player closed it. The
+        // hosted game server listener is independent and must stay up, so the
+        // record is kept and only the pid is cleared.
+        serverRecord.pid = null;
+      });
+    } catch (error) {
+      console.warn(`[LuckyBlox Server:${serverJobId}] client launch not available: ${error.message}`);
+    }
+  } else {
+    console.log(`[LuckyBlox Server:${serverJobId}] no desktop client to launch (${launch.reason})`);
   }
 
   serverRecord.status = 'running';

@@ -47,6 +47,9 @@ body = body.split('http://www.roblox.com').join('{U}');
 // 2. Item thumbnails. The saved folder names the downloaded images
 //    "noFilter", "noFilter(1)", "noFilter(2)" ... in document order, so they
 //    are mapped positionally onto the <img> tags rather than by asset id.
+//    The files are WebP with no extension in the capture; the copy in
+//    Webserver/www/avatar-thumbs carries a real .webp suffix so the server
+//    sends a correct Content-Type and the browser renders them.
 const imageQueue = Array.from(body.matchAll(/src="((?:\.\/)?Avatar - Roblox_files\/noFilter[^"]*)"/gi))
   .map((m) => m[1]);
 let thumbnailCount = 0;
@@ -54,7 +57,7 @@ body = body.replace(
   /(?:src=")((?:\.\/)?Avatar - Roblox_files\/(noFilter[^"]*?))(?:\?(?:[^"]*))?"/gi,
   (match, full, file) => {
     thumbnailCount += 1;
-    return `src="/avatar-thumbs/${encodeURIComponent(file)}"`;
+    return `src="/avatar-thumbs/${encodeURIComponent(file)}.webp"`;
   },
 );
 console.log('thumbnail <img> rewritten:', thumbnailCount, 'of', imageQueue.length);

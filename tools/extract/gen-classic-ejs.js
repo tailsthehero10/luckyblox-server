@@ -26,6 +26,17 @@ const out = path.join(outDir, 'classic-avatar-shell.ejs');
 
 let shell = fs.readFileSync(src, 'utf8');
 
+// 0. The thumbnail filenames are captured without an extension (the archive
+//    saved them as bare "noFilter(1)" files). The copy under avatar-thumbs has a
+//    real .webp suffix so the server sends a correct Content-Type, so add it
+//    back here - otherwise every thumbnail request 404s.
+//    Anchored on the closing double quote so the ")" inside "noFilter(1)" is
+//    kept as part of the name.
+shell = shell.replace(/\/avatar-thumbs\/([^"]+)(")/g, (match, name, quote) => {
+  if (/\.(webp|png|jpe?g|gif)$/i.test(name)) return match;
+  return `/avatar-thumbs/${name}.webp${quote}`;
+});
+
 // 1. The archived page's three.js canvas slot becomes an EJS include for the
 //    account's avatar figure.
 shell = shell.replace('{A}', '<%- include(\'avatar-figure\', { user: user, size: 300 }) %>');

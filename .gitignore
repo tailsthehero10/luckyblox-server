@@ -1,2 +1,5 @@
 Webserver/bin/apache/logs/
 Webserver/bin/apache/logs/authdigest_shm.*
+# Local server logs (written when running start.js on a desktop).
+server-out.log
+server-err.log
