@@ -34,17 +34,62 @@ $bodyColors = $avatar['bodyColors'] ?? array(
     'rightLegColorId' => 1002, 'leftLegColorId' => 1002,
 );
 
+// Roblox-profile data: social counters, currently-wearing and creations.
+$stats = $user['stats'] ?? array();
+$friendsCount = (int) ($stats['friends'] ?? count($user['friends'] ?? array()));
+$followersCount = (int) ($stats['followers'] ?? 0);
+$followingCount = (int) ($stats['following'] ?? count($user['following'] ?? array()));
+$robuxCount = (int) ($user['robux'] ?? 0);
+$currency = $user['currencies'] ?? array();
+$wearingIds = is_array($user['currentlyWearing'] ?? null) ? $user['currentlyWearing'] : array();
+$wearingItems = lb_resolve_wearing_items($wearingIds);
+$creations = lb_get_user_creations($userId);
+
 function lb_color_for_id($id) {
-    $map = array(
-        1 => '#F8B295', 2 => '#F7B7A3', 24 => '#F8B295', 25 => '#F7B7A3',
-        26 => '#F6B594', 27 => '#F5B287', 28 => '#F4AF7A',
-        29 => '#F3AC6D', 30 => '#F2A960', 1001 => '#F8B295', 1002 => '#B4D1F0',
-        1003 => '#E8C8A0', 1004 => '#A2C5F7', 1018 => '#E8D5B7', 1019 => '#F0E0D0',
-        1020 => '#A2C5F7', 1021 => '#8CB3E0', 1022 => '#7AB3E0', 1023 => '#6AB3E0',
-        1024 => '#5AA3D0', 1025 => '#4A93C0', 1026 => '#3A83B0', 1027 => '#2A73A0',
-        1028 => '#1A6390', 1029 => '#0A5380', 1030 => '#004370',
-    );
-    return $map[$id] ?? '#B4D1F0';
+    return 'rgb(' . lb_body_color_rgb($id) . ')';
+}
+
+/**
+ * Resolve a user's "currently wearing" ids to named, priced asset records so
+ * the profile shows real items instead of bare ids (Roblox parity).
+ */
+function lb_resolve_wearing_items($ids) {
+    $assets = lb_get_assets();
+    $result = array();
+    foreach ((array) $ids as $rawId) {
+        $key = (string) $rawId;
+        if (!isset($assets[$key])) {
+            continue;
+        }
+        $entry = $assets[$key];
+        $result[] = array(
+            'id' => $key,
+            'name' => $entry['name'] ?? ('Asset ' . $key),
+            'assetType' => $entry['assetType'] ?? ($entry['className'] ?? 'Asset'),
+            'price' => (int) ($entry['price'] ?? 0),
+        );
+    }
+    return $result;
+}
+
+/** Published games owned by a user, for the profile "Creations" panel. */
+function lb_get_user_creations($userId) {
+    $places = lb_get_places();
+    $result = array();
+    foreach ($places as $key => $place) {
+        if (!is_array($place)) {
+            continue;
+        }
+        $ownerId = (string) ($place['authorId'] ?? ($place['creatorId'] ?? ''));
+        if ($ownerId === (string) $userId) {
+            $result[] = array(
+                'placeId' => (int) ($place['placeId'] ?? $key),
+                'name' => $place['name'] ?? ('Place ' . $key),
+                'description' => $place['description'] ?? 'A local LuckyBlox experience.',
+            );
+        }
+    }
+    return $result;
 }
 
 function lb_membership_label($m) {
@@ -102,6 +147,30 @@ function lb_membership_label($m) {
         .avatar-color { width:24px; height:24px; border:1px solid #cbd5e1; border-radius:4px; }
         .badge-pill { display:inline-block; padding:3px 8px; border-radius:999px; font-size:0.75rem; font-weight:700; }
         .badge-admin { background:#fee2e2; color:#991b1b; }
+
+        /* 3D-style blocky avatar figure (CSS transform, driven by body colors) */
+        .avatar-stage { perspective:900px; display:flex; align-items:center; justify-content:center; min-height:260px; background:linear-gradient(160deg,#eef2ff,#e0f2fe); border-radius:12px; border:1px solid #dbeafe; }
+        .figure3d { position:relative; width:120px; height:240px; transform-style:preserve-3d; transform:rotateX(-8deg) rotateY(-22deg); animation:lb-spin 14s linear infinite; }
+        @keyframes lb-spin { 0%{transform:rotateX(-8deg) rotateY(-22deg);} 50%{transform:rotateX(-8deg) rotateY(22deg);} 100%{transform:rotateX(-8deg) rotateY(-22deg);} }
+        .part3d { position:absolute; border-radius:4px; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.18), 6px 6px 10px rgba(0,0,0,0.12); }
+        .p-head { width:44px; height:44px; left:38px; top:0; }
+        .p-torso { width:60px; height:64px; left:30px; top:46px; }
+        .p-larm { width:18px; height:58px; left:10px; top:52px; }
+        .p-rarm { width:18px; height:58px; left:92px; top:52px; }
+        .p-lleg { width:18px; height:64px; left:42px; top:112px; }
+        .p-rleg { width:18px; height:64px; left:62px; top:112px; }
+        .p-face { position:absolute; top:14px; left:50%; transform:translateX(-50%); font-size:20px; }
+        .p-accessory { position:absolute; top:-6px; left:50%; transform:translateX(-50%); font-size:22px; }
+        .avatar-3d-caption { text-align:center; margin-top:12px; color:#64748b; font-size:0.8rem; }
+        .social-row { display:flex; gap:20px; flex-wrap:wrap; margin:14px 0 0; }
+        .social-item { text-align:center; }
+        .social-value { font-size:1.15rem; font-weight:700; color:#0f172a; }
+        .social-label { font-size:0.72rem; color:#64748b; text-transform:uppercase; letter-spacing:0.04em; }
+        .wearing-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-top:8px; }
+        .wearing-item { display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; }
+        .wearing-thumb { width:34px; height:34px; border-radius:6px; background:#dbeafe; color:#1d4ed8; display:grid; place-items:center; font-weight:700; flex-shrink:0; }
+        .wearing-name { font-size:0.85rem; font-weight:700; }
+        .wearing-type { font-size:0.72rem; color:#64748b; }
     </style>
 </head>
 <body>
@@ -123,9 +192,22 @@ function lb_membership_label($m) {
         </div>
 
         <div class="card">
-            <div style="display:flex;align-items:center;gap:24px;">
-                <div class="avatar-preview"><?php echo htmlspecialchars(strtoupper(substr($user['username'], 0, 1))); ?></div>
-                <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
+                <div class="avatar-stage">
+                    <div class="figure3d" title="<?php echo htmlspecialchars($user['username']); ?> avatar">
+                        <div class="part3d p-head" style="background:<?php echo htmlspecialchars(lb_color_for_id((int) ($bodyColors['headColorId'] ?? 1002))); ?>;">
+                            <div class="p-face">&#128512;</div>
+                            <?php if (!empty($wearingItems)): ?><div class="p-accessory">&#127913;</div><?php endif; ?>
+                        </div>
+                        <div class="part3d p-torso" style="background:<?php echo htmlspecialchars(lb_color_for_id((int) ($bodyColors['torsoColorId'] ?? 1002))); ?>;"></div>
+                        <div class="part3d p-larm" style="background:<?php echo htmlspecialchars(lb_color_for_id((int) ($bodyColors['leftArmColorId'] ?? 1002))); ?>;"></div>
+                        <div class="part3d p-rarm" style="background:<?php echo htmlspecialchars(lb_color_for_id((int) ($bodyColors['rightArmColorId'] ?? 1002))); ?>;"></div>
+                        <div class="part3d p-lleg" style="background:<?php echo htmlspecialchars(lb_color_for_id((int) ($bodyColors['leftLegColorId'] ?? 1002))); ?>;"></div>
+                        <div class="part3d p-rleg" style="background:<?php echo htmlspecialchars(lb_color_for_id((int) ($bodyColors['rightLegColorId'] ?? 1002))); ?>;"></div>
+                    </div>
+                </div>
+                <div style="flex:1;min-width:240px;">
+                    <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;font-weight:700;">Player profile</div>
                     <h1>
                         <?php echo htmlspecialchars($user['displayName']); ?>
                         <?php if ($user['isAdmin']): ?>
@@ -140,33 +222,79 @@ function lb_membership_label($m) {
                     </div>
                     <div style="color:#64748b; font-size:0.9rem;">
                         User ID: <code><?php echo (int) $user['userId']; ?></code>
-                        &middot; Robux: <code>R$<?php echo (int) $user['robux']; ?></code>
+                        &middot; Joined: <code><?php echo htmlspecialchars(substr((string) ($user['joinDate'] ?? ''), 0, 10)); ?></code>
+                        &middot; Robux: <code>R$<?php echo $robuxCount; ?></code>
+                    </div>
+                    <div class="social-row">
+                        <div class="social-item"><div class="social-value"><?php echo $friendsCount; ?></div><div class="social-label">Friends</div></div>
+                        <div class="social-item"><div class="social-value"><?php echo $followersCount; ?></div><div class="social-label">Followers</div></div>
+                        <div class="social-item"><div class="social-value"><?php echo $followingCount; ?></div><div class="social-label">Following</div></div>
                     </div>
                 </div>
             </div>
 
-            <?php if ($user['bio']): ?>
-                <p style="margin:16px 0 0; color:#334155;"><?php echo htmlspecialchars($user['bio']); ?></p>
-            <?php else: ?>
-                <p style="margin:16px 0 0; color:#94a3b8; font-style:italic;">No bio yet.</p>
-            <?php endif; ?>
+            <div style="margin-top:16px;">
+                <strong style="display:block;margin-bottom:6px;">About</strong>
+                <?php if ($user['bio']): ?>
+                    <p style="margin:0; color:#334155;"><?php echo htmlspecialchars($user['bio']); ?></p>
+                <?php else: ?>
+                    <p style="margin:0; color:#94a3b8; font-style:italic;">No bio yet.</p>
+                <?php endif; ?>
+            </div>
 
             <div class="avatar-colors">
                 <?php foreach ($bodyColors as $part => $colorId): ?>
-                    <div class="avatar-color" style="background:<?php echo htmlspecialchars(lb_color_for_id((int)$colorId)); ?>;" title="<?php echo htmlspecialchars($part); ?> (Color ID <?php echo (int) $colorId; ?>)"></div>
+                    <div class="avatar-color" style="background:<?php echo htmlspecialchars(lb_color_for_id((int)$colorId)); ?>;" title="<?php echo htmlspecialchars($part); ?> — <?php echo htmlspecialchars(lb_body_color_name((int) $colorId)); ?> (<?php echo (int) $colorId; ?>)"></div>
                 <?php endforeach; ?>
             </div>
         </div>
 
         <div class="card">
+            <h2>Currently Wearing (<?php echo count($wearingItems); ?>)</h2>
+            <?php if (empty($wearingItems)): ?>
+                <p style="color:#94a3b8; font-style:italic;">Nothing equipped yet — visit the <a href="/LuckBlox.site/avatar">Avatar page</a> to dress this character.</p>
+            <?php else: ?>
+                <div class="wearing-list">
+                    <?php foreach ($wearingItems as $item): ?>
+                        <div class="wearing-item">
+                            <div class="wearing-thumb"><?php echo htmlspecialchars(strtoupper(substr($item['name'], 0, 1))); ?></div>
+                            <div>
+                                <div class="wearing-name"><?php echo htmlspecialchars($item['name']); ?></div>
+                                <div class="wearing-type"><?php echo htmlspecialchars($item['assetType']); ?><?php echo $item['price'] > 0 ? ' · R$' . (int) $item['price'] : ''; ?></div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <div class="card">
+            <h2>Creations (<?php echo count($creations); ?>)</h2>
+            <?php if (empty($creations)): ?>
+                <p style="color:#94a3b8; font-style:italic;">No published games yet.</p>
+            <?php else: ?>
+                <?php foreach ($creations as $creation): ?>
+                    <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #e5e7eb;">
+                        <div style="width:40px;height:40px;border-radius:8px;background:#dbeafe;color:#1d4ed8;display:grid;place-items:center;font-weight:700;"><?php echo htmlspecialchars(strtoupper(substr($creation['name'], 0, 1))); ?></div>
+                        <div style="flex:1;">
+                            <div style="font-weight:700;"><?php echo htmlspecialchars($creation['name']); ?></div>
+                            <div style="color:#94a3b8; font-size:0.85rem;"><?php echo htmlspecialchars($creation['description']); ?></div>
+                        </div>
+                        <a href="/LuckBlox.site/game?placeid=<?php echo (int) $creation['placeId']; ?>" style="font-size:0.85rem;">Play</a>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
+        <div class="card">
             <h2>Stats</h2>
             <div class="stat-grid">
-                <div class="stat-item"><div class="stat-value"><?php echo (int) $user['stats']['friends']; ?></div><div class="stat-label">Friends</div></div>
-                <div class="stat-item"><div class="stat-value"><?php echo (int) $user['stats']['created']; ?></div><div class="stat-label">Created</div></div>
-                <div class="stat-item"><div class="stat-value"><?php echo (int) $user['stats']['plays']; ?></div><div class="stat-label">Plays</div></div>
-                <div class="stat-item"><div class="stat-value"><?php echo (int) ($user['stats']['gameVisits'] ?? ($user['stats']['visits'] ?? 0)); ?></div><div class="stat-label">Game Visits</div></div>
-                <div class="stat-item"><div class="stat-value"><?php echo (int) $user['stats']['followers']; ?></div><div class="stat-label">Followers</div></div>
-                <div class="stat-item"><div class="stat-value"><?php echo (int) $user['stats']['badges']; ?></div><div class="stat-label">Badges</div></div>
+                <div class="stat-item"><div class="stat-value"><?php echo $friendsCount; ?></div><div class="stat-label">Friends</div></div>
+                <div class="stat-item"><div class="stat-value"><?php echo (int) ($stats['created'] ?? 0); ?></div><div class="stat-label">Created</div></div>
+                <div class="stat-item"><div class="stat-value"><?php echo (int) ($stats['plays'] ?? 0); ?></div><div class="stat-label">Plays</div></div>
+                <div class="stat-item"><div class="stat-value"><?php echo (int) ($stats['gameVisits'] ?? ($stats['visits'] ?? 0)); ?></div><div class="stat-label">Game Visits</div></div>
+                <div class="stat-item"><div class="stat-value"><?php echo $followersCount; ?></div><div class="stat-label">Followers</div></div>
+                <div class="stat-item"><div class="stat-value"><?php echo (int) ($stats['badges'] ?? count($user['badges'])); ?></div><div class="stat-label">Badges</div></div>
             </div>
         </div>
 

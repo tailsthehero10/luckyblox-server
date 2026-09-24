@@ -18,8 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $_POST['password'] ?? '';
         $confirmPassword = $_POST['confirmPassword'] ?? '';
         $gender = $_POST['gender'] ?? 'NotSpecified';
+        $birthday = isset($_POST['birthday']) ? trim((string) $_POST['birthday']) : null;
 
-        $result = lb_signup($username, $password, $confirmPassword, $displayName, $gender);
+        $result = lb_signup($username, $password, $confirmPassword, $displayName, $gender, $birthday);
         if ($result['ok']) {
             header('Location: /LuckBlox.site/home?welcome=1');
             exit;
@@ -111,6 +112,10 @@ $displayNameVal = htmlspecialchars($_POST['displayName'] ?? '');
 
             <label for="confirmPassword">Confirm password *</label>
             <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required minlength="8" />
+
+            <label for="birthday">Birthday</label>
+            <input type="date" id="birthday" name="birthday" value="<?php echo htmlspecialchars($_POST['birthday'] ?? ''); ?>" max="<?php echo date('Y-m-d'); ?>" />
+            <div class="small">Optional — used for the age-appropriate account settings, like Roblox.</div>
 
             <label for="gender">Gender (optional)</label>
             <select id="gender" name="gender">

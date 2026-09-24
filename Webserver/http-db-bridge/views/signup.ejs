@@ -250,6 +250,20 @@
             <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" required />
           </div>
 
+          <div class="signin-field">
+            <label for="birthday">Birthday</label>
+            <input id="birthday" name="birthday" type="date" max="<%= new Date().toISOString().slice(0,10) %>" />
+          </div>
+
+          <div class="signin-field">
+            <label for="gender">Gender</label>
+            <select id="gender" name="gender">
+              <option value="NotSpecified">Prefer not to say</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+
           <button class="signin-button" type="submit" id="signupSubmit">Create account</button>
         </form>
 

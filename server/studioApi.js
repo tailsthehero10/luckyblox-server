@@ -397,11 +397,36 @@ function installedSessions() {
   };
 }
 
-function installStudioApiRoutes(app) {
+function installStudioApiRoutes(app, options = {}) {
   if (app._studioApiInstalled) {
     return app;
   }
   app._studioApiInstalled = true;
+
+  // Optional resolver supplied by the host server so the Studio/client user
+  // endpoints report the real signed-in account instead of a hardcoded
+  // "LocalPlayer". Falls back to a minimal record when not provided.
+  const resolveUser = typeof options.resolveUser === 'function' ? options.resolveUser : null;
+  const fallbackUser = (userId) => ({
+    userId: Number(userId) || 1,
+    username: 'LocalPlayer',
+    displayName: 'LocalPlayer',
+    membership: 'None',
+    membershipStatus: 'None',
+    role: 'Developer',
+    id: Number(userId) || 1,
+  });
+  const lookupUser = (userId) => {
+    if (!resolveUser) {
+      return fallbackUser(userId);
+    }
+    try {
+      const found = resolveUser(userId);
+      return found ? { ...fallbackUser(userId), ...found } : fallbackUser(userId);
+    } catch (error) {
+      return fallbackUser(userId);
+    }
+  };
 
   const sessionManager = installedSessions();
 
@@ -701,30 +726,32 @@ function installStudioApiRoutes(app) {
   });
 
   app.get('/v1/users/:userId', (req, res) => {
-    const userId = Number(req.params.userId || req.query.userId || 1);
+    const user = lookupUser(req.params.userId || req.query.userId || 1);
     res.json({
       ok: true,
       user: {
-        userId,
-        username: 'LocalPlayer',
-        displayName: 'LocalPlayer',
-        membership: 'Premium',
-        role: 'Developer',
-        id: userId,
+        userId: Number(user.userId) || 1,
+        username: user.username || 'LocalPlayer',
+        displayName: user.displayName || user.username || 'LocalPlayer',
+        membership: user.membership || user.membershipStatus || 'None',
+        role: user.role || 'Developer',
+        id: Number(user.userId) || 1,
+        description: user.bio || '',
+        created: user.joinDate || '',
       },
     });
   });
 
   app.get('/v1/account/info', (req, res) => {
-    const userId = Number(req.query.userId || req.headers['x-user-id'] || 1);
+    const user = lookupUser(req.query.userId || req.headers['x-user-id'] || 1);
     res.json({
       ok: true,
       user: {
-        userId,
-        username: 'LocalPlayer',
-        displayName: 'LocalPlayer',
-        membership: 'Premium',
-        role: 'Creator',
+        userId: Number(user.userId) || 1,
+        username: user.username || 'LocalPlayer',
+        displayName: user.displayName || user.username || 'LocalPlayer',
+        membership: user.membership || user.membershipStatus || 'None',
+        role: user.role || 'Developer',
       },
       permissions: {
         create: true,
@@ -861,7 +888,8 @@ function installStudioApiRoutes(app) {
       user: {
         userId: Number(userId),
         username,
-        membership: 'Premium',
+        displayName: (lookupUser(userId).displayName) || username,
+        membership: (lookupUser(userId).membership) || 'None',
       },
       sessionToken: token,
       token,

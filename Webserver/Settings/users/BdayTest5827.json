@@ -1,0 +1,57 @@
+{
+    "userId": "11",
+    "username": "BdayTest5827",
+    "displayName": "Bday Test",
+    "membership": "Premium",
+    "membershipStatus": "Premium",
+    "role": "player",
+    "isAdmin": false,
+    "studioAccess": true,
+    "authenticated": true,
+    "robloxUserId": null,
+    "robux": 100,
+    "currencies": {
+        "robux": 100,
+        "coins": 250,
+        "tickets": 10
+    },
+    "inventory": [
+        "1001",
+        "1002",
+        "1003",
+        "1004"
+    ],
+    "currentlyWearing": [
+        "1001",
+        "1002",
+        "1003"
+    ],
+    "avatar": {
+        "gender": "Male",
+        "playerAvatarType": "R15",
+        "scales": {
+            "height": 1,
+            "width": 1,
+            "head": 1,
+            "depth": 1,
+            "proportion": 0,
+            "bodyType": 0
+        },
+        "bodyColors": {
+            "headColorId": 18,
+            "torsoColorId": 18,
+            "rightArmColorId": 18,
+            "leftArmColorId": 18,
+            "rightLegColorId": 303,
+            "leftLegColorId": 303
+        },
+        "currentlyWearing": [
+            "1001",
+            "1002",
+            "1003"
+        ]
+    },
+    "gender": "Male",
+    "joinDate": "2026-09-24T06:04:00+00:00",
+    "updatedAt": "2026-09-24T06:04:02+00:00"
+}

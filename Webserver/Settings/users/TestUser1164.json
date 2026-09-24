@@ -1,0 +1,51 @@
+{
+    "userId": "11",
+    "username": "TestUser1164",
+    "displayName": "Test Display",
+    "membership": "Premium",
+    "membershipStatus": "Premium",
+    "role": "player",
+    "isAdmin": false,
+    "studioAccess": true,
+    "authenticated": true,
+    "robloxUserId": null,
+    "robux": 100,
+    "currencies": {
+        "coins": 250,
+        "ticket": 10
+    },
+    "inventory": [
+        "1001",
+        "1002",
+        "1003",
+        "1004"
+    ],
+    "currentlyWearing": [
+        "1001",
+        "1002",
+        "1003"
+    ],
+    "avatar": {
+        "gender": "Male",
+        "playerAvatarType": "R15",
+        "scales": {
+            "height": 1,
+            "width": 1,
+            "head": 1,
+            "depth": 1,
+            "proportion": 0,
+            "bodyType": 0
+        },
+        "bodyColors": {
+            "headColorId": 18,
+            "torsoColorId": 18,
+            "rightArmColorId": 18,
+            "leftArmColorId": 18,
+            "rightLegColorId": 303,
+            "leftLegColorId": 303
+        }
+    },
+    "gender": "Male",
+    "joinDate": "2026-09-24T05:30:41+00:00",
+    "updatedAt": "2026-09-24T05:30:41+00:00"
+}

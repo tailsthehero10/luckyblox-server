@@ -167,6 +167,20 @@ function lb_find_user_by_username($username) {
     return lb_normalize_user($best['user'], $best['key']);
 }
 
+function lb_normalize_currencies($user) {
+    $wallet = is_array($user['currencies'] ?? null) ? $user['currencies'] : array();
+    $robux = (int) ($user['robux'] ?? ($wallet['robux'] ?? 0));
+    $tickets = $wallet['tickets'] ?? ($wallet['ticket'] ?? null);
+    if ($tickets === null) {
+        $tickets = (int) round($robux / 10);
+    }
+    return array(
+        'robux' => $robux,
+        'coins' => (int) ($wallet['coins'] ?? 0),
+        'tickets' => (int) $tickets,
+    );
+}
+
 function lb_normalize_user($user, $key = null) {
     if (!is_array($user)) {
         return null;
@@ -182,13 +196,15 @@ function lb_normalize_user($user, $key = null) {
         'membership'    => $user['membershipStatus'] ?? ($user['membership'] ?? 'Premium'),
         'membershipStatus' => $user['membershipStatus'] ?? ($user['membership'] ?? 'Premium'),
         'robux'         => (int) ($user['robux'] ?? 0),
-        'currencies'    => $user['currencies'] ?? array(),
+        'currencies'    => lb_normalize_currencies($user),
         'inventory'     => is_array($user['inventory'] ?? null) ? $user['inventory'] : array(),
         'currentlyWearing' => is_array($user['currentlyWearing'] ?? null) ? $user['currentlyWearing'] : array(),
         'stats'         => is_array($user['stats'] ?? null) ? $user['stats'] : array(
-            'friends' => 0, 'created' => 0, 'plays' => 0, 'followers' => 0, 'badges' => 0, 'gameVisits' => 0
+            'friends' => 0, 'following' => 0, 'created' => 0, 'plays' => 0, 'followers' => 0, 'badges' => 0, 'gameVisits' => 0
         ),
         'friends'       => is_array($user['friends'] ?? null) ? $user['friends'] : array(),
+        'following'     => is_array($user['following'] ?? null) ? $user['following'] : array(),
+        'followers'     => is_array($user['followers'] ?? null) ? $user['followers'] : array(),
         'badges'        => is_array($user['badges'] ?? null) ? $user['badges'] : array(),
          'avatar'        => is_array($user['avatar'] ?? null) ? $user['avatar'] : array(
             'bodyColors' => array(
@@ -198,6 +214,9 @@ function lb_normalize_user($user, $key = null) {
             )
         ),
         'gender'        => $user['gender'] ?? ($user['avatar']['gender'] ?? 'NotSpecified'),
+        'birthday'      => $user['birthday'] ?? null,
+        'created'       => $user['created'] ?? ($user['joinDate'] ?? ''),
+        'profileUrl'    => $user['profileUrl'] ?? ('/LuckBlox.site/users/' . $id . '/profile'),
         'robloxUserId'  => $user['robloxUserId'] ?? null,
         'admin'         => (bool) ($user['admin'] ?? $user['isAdmin'] ?? false),
         'isAdmin'       => (bool) ($user['admin'] ?? $user['isAdmin'] ?? false),
@@ -452,7 +471,7 @@ function lb_verify_csrf() {
     return lb_verify_csrf_token((string) $token, $sessionId);
 }
 
-function lb_signup($username, $password, $confirmPassword, $displayName = null, $gender = 'NotSpecified') {
+function lb_signup($username, $password, $confirmPassword, $displayName = null, $gender = 'NotSpecified', $birthday = null) {
     $errors = array();
 
     $usernameCheck = lb_check_username_policy($username);
@@ -484,50 +503,29 @@ function lb_signup($username, $password, $confirmPassword, $displayName = null, 
         return array('ok' => false, 'errors' => array('That username is already taken.'));
     }
 
-    $existingIds = array_map(function($u) {
-        return is_array($u) ? (int) ($u['userId'] ?? $u['id'] ?? 1) : 0;
-    }, array_values($users));
-    $nextId = max(1, max($existingIds) ?: 0) + 1;
+    $existingIds = array();
+    foreach ($users as $existingUser) {
+        if (is_array($existingUser)) {
+            $existingIds[] = (int) ($existingUser['userId'] ?? $existingUser['id'] ?? 1);
+        }
+    }
+    $nextId = (empty($existingIds) ? 1 : max(1, max($existingIds))) + 1;
 
     $hashed = lb_hash_password($password);
 
     $defaultColors = lb_default_body_colors_for_gender($gender);
 
-    $user = array(
-        'userId' => (string) $nextId,
-        'username' => $username,
-        'displayName' => $displayName ?: $username,
-        'gender' => $gender,
-        'password' => $hashed['hash'],
-        'passwordSalt' => $hashed['salt'],
-        'passwordVersion' => $hashed['version'],
-        'role' => 'player',
-        'bio' => 'New LuckyBlox creator account.',
-        'joinDate' => date('c'),
-        'membershipStatus' => 'Premium',
-        'robux' => 100,
-        'currencies' => array('coins' => 250, 'ticket' => 10),
-        'inventory' => array('1001', '1002', '1003', '1004'),
-        'currentlyWearing' => array('1001', '1002', '1003'),
-        'stats' => array('friends' => 0, 'created' => 1, 'plays' => 0, 'followers' => 0, 'badges' => 0, 'gameVisits' => 0),
-        'friends' => array(),
-        'badges' => array(),
-        'avatar' => array(
-            'gender' => $gender,
-            'playerAvatarType' => 'R15',
-            'scales' => array(
-                'height' => 1.0, 'width' => 1.0, 'head' => 1.0,
-                'depth' => 1.0, 'proportion' => 0.0, 'bodyType' => 0.0,
-            ),
-            'bodyColors' => $defaultColors,
-        ),
-        'updatedAt' => date('c'),
-    );
+    $user = lb_build_new_user_record($nextId, $username, $displayName, $gender, $hashed, $defaultColors, $birthday);
 
     $users[(string) $nextId] = $user;
     lb_write_json('users.json', $users);
 
     lb_create_session_for_user((string) $nextId);
+
+    // Push the brand-new account into the client-visible local state
+    // (Settings/username.txt, membership.txt, users/<name>.json) so the
+    // launcher, Studio and game clients load the same identity the site has.
+    lb_sync_local_identity(lb_normalize_user($user, (string) $nextId));
 
     return array(
         'ok' => true,
@@ -566,7 +564,111 @@ function lb_signin($username, $password) {
 
     lb_create_session_for_user($user['userId']);
 
+    // Refresh the client-visible local identity on every sign-in too, so the
+    // launcher picks up inventory / avatar / membership changes.
+    lb_sync_local_identity($user);
+
     return array('ok' => true, 'userId' => $user['userId'], 'username' => $user['username']);
+}
+
+function lb_write_settings_json($path, $data) {
+    $dir = dirname($path);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0777, true);
+    }
+    $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    return file_put_contents($path, $json);
+}
+
+function lb_sync_local_identity($user) {
+    if (!is_array($user)) {
+        return false;
+    }
+
+    $settingsRoot = lb_settings_root();
+    if (!is_dir($settingsRoot)) {
+        @mkdir($settingsRoot, 0777, true);
+    }
+
+    $username = trim((string) ($user['username'] ?? ''));
+    if ($username === '') {
+        return false;
+    }
+
+    $membership = (string) ($user['membershipStatus'] ?? ($user['membership'] ?? 'None'));
+    if ($membership === '') {
+        $membership = 'None';
+    }
+
+    file_put_contents($settingsRoot . '/username.txt', $username);
+    file_put_contents($settingsRoot . '/membership.txt', $membership);
+
+    $role = (string) ($user['role'] ?? 'player');
+    if ($role === '') {
+        $role = 'player';
+    }
+
+    lb_write_settings_json($settingsRoot . '/selected-user.json', array(
+        'userId' => (string) ($user['userId'] ?? $user['key'] ?? '1'),
+        'username' => $username,
+        'displayName' => (string) ($user['displayName'] ?? $username),
+        'membership' => $membership,
+        'role' => $role,
+        'isAdmin' => lb_is_admin($user),
+        'isOwner' => lb_is_owner($user),
+        'robloxUserId' => $user['robloxUserId'] ?? null,
+        'updatedAt' => date('c'),
+    ));
+
+    $userDir = $settingsRoot . '/users';
+    if (!is_dir($userDir)) {
+        @mkdir($userDir, 0777, true);
+    }
+
+    $safeName = preg_replace('/[^A-Za-z0-9_.-]+/', '_', $username);
+    if ($safeName === '') {
+        $safeName = 'user';
+    }
+
+    $profile = array(
+        'userId' => (string) ($user['userId'] ?? $user['key'] ?? '1'),
+        'username' => $username,
+        'displayName' => (string) ($user['displayName'] ?? $username),
+        'membership' => $membership,
+        'membershipStatus' => $membership,
+        'role' => $role,
+        'isAdmin' => lb_is_admin($user),
+        'studioAccess' => true,
+        'authenticated' => true,
+        'robloxUserId' => $user['robloxUserId'] ?? null,
+        'robux' => (int) ($user['robux'] ?? 0),
+        'currencies' => is_array($user['currencies'] ?? null) ? $user['currencies'] : array(),
+        'inventory' => is_array($user['inventory'] ?? null) ? $user['inventory'] : array(),
+        'currentlyWearing' => is_array($user['currentlyWearing'] ?? null) ? $user['currentlyWearing'] : array(),
+        'avatar' => is_array($user['avatar'] ?? null) ? $user['avatar'] : array(),
+        'gender' => $user['gender'] ?? 'NotSpecified',
+        'joinDate' => $user['joinDate'] ?? date('c'),
+        'updatedAt' => date('c'),
+    );
+
+    lb_write_settings_json($userDir . '/' . $safeName . '.json', $profile);
+
+    lb_write_settings_json($settingsRoot . '/users/id-' . (string) ($user['userId'] ?? $user['key'] ?? '1') . '.json', $profile);
+
+    return true;
+}
+
+/**
+ * Push the signed-in account into the client-visible local state so the
+ * launcher, Studio and the game clients read the same identity the site
+ * session holds. Mirrors what the PHP auth.php / account.php endpoints write.
+ */
+function lb_sync_current_identity() {
+    $user = lb_get_current_user();
+    if (!$user) {
+        return false;
+    }
+    return lb_sync_local_identity($user);
 }
 
 function lb_create_session_for_user($userId) {
@@ -587,6 +689,90 @@ function lb_create_session_for_user($userId) {
     lb_save_session_store($sessions);
     lb_set_session_cookie($sessionId, $expiresAt);
     return $sessionId;
+}
+
+/**
+ * Build the full record for a brand-new account, shaped the way a Roblox
+ * profile is shaped (see https://www.roblox.com/users/1/profile):
+ *
+ *   - identity       username / displayName / joinDate / bio
+ *   - social         friends / followers / following counters
+ *   - wear           equipped ("Currently Wearing") starter items
+ *   - creations      published games counter
+ *   - store          a starter inventory to buy/own from
+ *
+ * Everything the profile page, the 3D avatar view and the clients read is
+ * populated here, so a fresh account is not blank on any surface.
+ */
+function lb_build_new_user_record($nextId, $username, $displayName, $gender, $hashed, $defaultColors, $birthday = null) {
+    $now = date('c');
+    $joinDate = $now;
+
+    $birthdayValue = null;
+    if (is_string($birthday) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $birthday)) {
+        $birthdayValue = $birthday;
+    }
+
+    // Starter kit: a shirt, pants, hat and backpack (mirrors the classic
+    // Roblox starter set). These ids also exist in assets.json so the
+    // profile "Currently Wearing" list resolves to real, named items.
+    $starterInventory = array('1001', '1002', '1003', '1004');
+    $starterWearing = array('1001', '1002', '1003');
+
+    return array(
+        'userId' => (string) $nextId,
+        'username' => $username,
+        'displayName' => $displayName ?: $username,
+        'gender' => $gender,
+        'password' => $hashed['hash'],
+        'passwordSalt' => $hashed['salt'],
+        'passwordVersion' => $hashed['version'],
+        'role' => 'player',
+        'bio' => 'Hi, I\'m new to LuckyBlox!',
+        'joinDate' => $joinDate,
+        'created' => $joinDate,
+        'birthday' => $birthdayValue,
+        'membershipStatus' => 'Premium',
+        'membership' => 'Premium',
+        'robux' => 100,
+        'currencies' => array('robux' => 100, 'coins' => 250, 'tickets' => 10),
+        'inventory' => $starterInventory,
+        'currentlyWearing' => $starterWearing,
+        'wearing' => $starterWearing,
+        'stats' => array(
+            'friends' => 0,
+            'following' => 0,
+            'created' => 0,
+            'plays' => 0,
+            'followers' => 0,
+            'badges' => 1,
+            'gameVisits' => 0,
+        ),
+        'friends' => array(),
+        'following' => array(),
+        'followers' => array(),
+        'badges' => array(
+            array(
+                'id' => 'welcome',
+                'name' => 'Welcome to LuckyBlox',
+                'description' => 'Joined LuckyBlox',
+                'icon' => 'W',
+                'earnedDate' => $joinDate,
+            ),
+        ),
+        'avatar' => array(
+            'gender' => $gender,
+            'playerAvatarType' => 'R15',
+            'scales' => array(
+                'height' => 1.0, 'width' => 1.0, 'head' => 1.0,
+                'depth' => 1.0, 'proportion' => 0.0, 'bodyType' => 0.0,
+            ),
+            'bodyColors' => $defaultColors,
+            'currentlyWearing' => $starterWearing,
+        ),
+        'profileUrl' => '/LuckBlox.site/users/' . (string) $nextId . '/profile',
+        'updatedAt' => $now,
+    );
 }
 
 function lb_normalize_game($game) {

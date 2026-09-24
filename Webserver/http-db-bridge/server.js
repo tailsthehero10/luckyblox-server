@@ -1170,6 +1170,129 @@ function getUserByUsername(username = '') {
   return getUser(found.userId || found.id || 1);
 }
 
+/**
+ * Push a signed-in account into the client-visible local state so the launcher,
+ * Studio and the game clients read the same identity the site session holds.
+ *
+ * The clients do not read users.json directly - they read:
+ *   Settings/username.txt              (current username)
+ *   Settings/membership.txt            (current membership)
+ *   Settings/users/<username>.json     (per-user profile)
+ * This mirrors what the PHP auth.php / account.php endpoints write, so signing
+ * up or signing in on the site is immediately visible to both clients.
+ */
+/**
+ * Build the full record for a brand-new account, shaped the way a Roblox
+ * profile is shaped (https://www.roblox.com/users/1/profile): identity, social
+ * counters, currently-wearing, a starter inventory and a welcome badge. This
+ * keeps Node signups identical to the PHP lb_build_new_user_record() record.
+ */
+function buildNewUserRecord({ userId, username, displayName, passwordHash, passwordSalt, passwordVersion, gender, birthday }) {
+  const now = new Date().toISOString();
+  const starterInventory = ['1001', '1002', '1003', '1004'];
+  const starterWearing = ['1001', '1002', '1003'];
+  const safeBirthday = typeof birthday === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(birthday) ? birthday : null;
+  const bodyColors = {
+    headColorId: 1002,
+    torsoColorId: 1002,
+    rightArmColorId: 1002,
+    leftArmColorId: 1002,
+    rightLegColorId: 1002,
+    leftLegColorId: 1002,
+  };
+
+  return {
+    userId: String(userId),
+    username,
+    displayName: displayName || username,
+    gender: gender || 'NotSpecified',
+    password: passwordHash,
+    passwordSalt,
+    passwordVersion,
+    role: 'player',
+    bio: "Hi, I'm new to LuckyBlox!",
+    joinDate: now,
+    created: now,
+    birthday: safeBirthday,
+    membershipStatus: 'Premium',
+    membership: 'Premium',
+    robux: 100,
+    currencies: { robux: 100, coins: 250, tickets: 10 },
+    inventory: starterInventory,
+    currentlyWearing: starterWearing,
+    wearing: starterWearing,
+    stats: { friends: 0, following: 0, created: 0, plays: 0, followers: 0, badges: 1, gameVisits: 0 },
+    friends: [],
+    following: [],
+    followers: [],
+    badges: [
+      { id: 'welcome', name: 'Welcome to LuckyBlox', description: 'Joined LuckyBlox', icon: 'W', earnedDate: now },
+    ],
+    avatar: {
+      gender: gender || 'NotSpecified',
+      playerAvatarType: 'R15',
+      scales: { height: 1, width: 1, head: 1, depth: 1, proportion: 0, bodyType: 0 },
+      bodyColors,
+      currentlyWearing: starterWearing,
+    },
+    profileUrl: `/users/${userId}/profile`,
+    updatedAt: now,
+  };
+}
+
+function syncLocalIdentity(user) {
+  if (!user || typeof user !== 'object') {
+    return false;
+  }
+
+  const username = String(user.username || user.displayName || '').trim();
+  if (!username) {
+    return false;
+  }
+  const settingsRoot = path.join(releaseRoot, 'Settings');
+  try {
+    fs.mkdirSync(settingsRoot, { recursive: true });
+
+    const membership = String(user.membershipStatus || user.membership || 'None') || 'None';
+    fs.writeFileSync(path.join(settingsRoot, 'username.txt'), username);
+    fs.writeFileSync(path.join(settingsRoot, 'membership.txt'), membership);
+
+    const userId = String(user.userId || user.id || '1');
+    const role = String(user.role || 'player') || 'player';
+    const profile = {
+      userId,
+      username,
+      displayName: String(user.displayName || username),
+      membership,
+      membershipStatus: membership,
+      role,
+      isAdmin: Boolean(user.admin || user.isAdmin || role === 'owner' || role === 'admin'),
+      studioAccess: true,
+      authenticated: true,
+      robloxUserId: user.robloxUserId || null,
+      robux: Number(user.robux) || 0,
+      currencies: user.currencies && typeof user.currencies === 'object' ? user.currencies : {},
+      inventory: Array.isArray(user.inventory) ? user.inventory : [],
+      currentlyWearing: Array.isArray(user.currentlyWearing) ? user.currentlyWearing : [],
+      avatar: user.avatar && typeof user.avatar === 'object' ? user.avatar : {},
+      gender: user.gender || (user.avatar && user.avatar.gender) || 'NotSpecified',
+      joinDate: user.joinDate || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const usersDir = path.join(settingsRoot, 'users');
+    fs.mkdirSync(usersDir, { recursive: true });
+
+    const safeName = username.replace(/[^A-Za-z0-9_.-]+/g, '_') || 'user';
+    fs.writeFileSync(path.join(usersDir, `${safeName}.json`), JSON.stringify(profile, null, 2));
+    fs.writeFileSync(path.join(usersDir, `id-${userId}.json`), JSON.stringify(profile, null, 2));
+
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 function getPublishedPlaces() {
   const placesFilePath = path.join(dataDir, 'places.json');
   const records = readJson(placesFilePath, {});
@@ -1570,7 +1693,7 @@ function writeUploadedPackage(fileName, buffer, assetKind = 'rbxl') {
 }
 
 ensureSeedData();
-installStudioApiRoutes(app);
+installStudioApiRoutes(app, { resolveUser: (userId) => getUser(userId) });
 installTeamCreateRoutes(app);
 
 app.get('/health', (req, res) => {
@@ -2016,40 +2139,21 @@ app.post('/signup', requireCsrf, (req, res) => {
 
   const nextId = Math.max(1, ...Object.values(users).map((user) => Number(user.userId || user.id || 1))) + 1;
   const { hash, salt, version } = hashPassword(password);
-  const created = {
-    userId: String(nextId),
+  const created = buildNewUserRecord({
+    userId: nextId,
     username,
-    displayName: displayName || username,
-    password: hash,
+    displayName,
+    passwordHash: hash,
     passwordSalt: salt,
     passwordVersion: version,
-    role: 'player',
-    bio: 'New LuckyBlox creator account.',
-    joinDate: new Date().toISOString(),
-    membershipStatus: 'None',
-    robux: 100,
-    currencies: { coins: 250, tickets: 10 },
-    inventory: ['1001', '1002', '1003', '1004'],
-    currentlyWearing: ['1001', '1002', '1003'],
-    stats: { friends: 0, created: 1, plays: 0, followers: 0, badges: 0, gameVisits: 0 },
-    friends: [],
-    badges: [],
-    avatar: {
-      bodyColors: {
-        headColorId: 1002,
-        torsoColorId: 1002,
-        rightArmColorId: 1002,
-        leftArmColorId: 1002,
-        rightLegColorId: 1002,
-        leftLegColorId: 1002,
-      },
-    },
-    updatedAt: new Date().toISOString(),
-  };
+    gender: String(req.body.gender || 'NotSpecified'),
+    birthday: req.body.birthday,
+  });
 
   users[String(nextId)] = created;
   writeJson(usersPath, users);
   applySessionCookie(res, nextId, req);
+  syncLocalIdentity(created);
   audit('signup_success', { ip, userId: String(nextId), username });
   const redirect = req.body.redirect || req.query.redirect || '/dev';
   const bp = res.locals.basePath || '';
@@ -2082,31 +2186,22 @@ app.post('/luckblox.site.tk/signup', (req, res) => {
   }
 
   const nextId = Math.max(1, ...Object.values(users).map((user) => Number(user.userId || user.id || 1))) + 1;
-  const { hash, salt } = hashPassword(password);
-  const created = {
-    userId: String(nextId),
+  const { hash, salt, version } = hashPassword(password);
+  const created = buildNewUserRecord({
+    userId: nextId,
     username,
-    displayName: displayName || username,
-    password: hash,
+    displayName,
+    passwordHash: hash,
     passwordSalt: salt,
-    passwordVersion: 2,
-    bio: 'New LuckyBlox creator account.',
-    joinDate: new Date().toISOString(),
-    membershipStatus: 'Premium',
-    inventory: ['1001', '1002', '1003', '1004'],
-    currentlyWearing: ['1001', '1002', '1003'],
-    stats: { friends: 0, created: 1, plays: 0, followers: 0 },
-    avatar: {
-      bodyColors: {
-        headColorId: 1002, torsoColorId: 1002, rightArmColorId: 1002, leftArmColorId: 1002, rightLegColorId: 1002, leftLegColorId: 1002,
-      },
-    },
-    updatedAt: new Date().toISOString(),
-  };
+    passwordVersion: version,
+    gender: String(req.body.gender || 'NotSpecified'),
+    birthday: req.body.birthday,
+  });
 
   users[String(nextId)] = created;
   writeJson(usersPath, users);
   applySessionCookie(res, nextId);
+  syncLocalIdentity(created);
   return res.json({ ok: true, userId: String(nextId), username, displayName: created.displayName });
 });
 
@@ -2173,6 +2268,9 @@ app.post('/signin', requireCsrf, (req, res) => {
   security.clearRateLimit(`signin:user:${username.toLowerCase()}`);
 
   const { csrfToken } = applySessionCookie(res, user.userId || user.id || 1, req);
+  // Refresh the client-visible local identity so the launcher and clients load
+  // the signed-in account (inventory / avatar / membership) immediately.
+  syncLocalIdentity(user);
   audit('signin_success', { ip, userId: String(user.userId || user.id), username });
 
   // If this sign-in came from a Studio handshake, link the account to it so the
@@ -2197,7 +2295,7 @@ app.post('/luckblox.site.tk/login', (req, res) => {
     return res.status(401).json({ ok: false, error: 'user-not-found', message: 'We could not find that account.' });
   }
 
-  if (user.passwordVersion === 2 && user.password && user.passwordSalt) {
+  if (user.passwordSalt && user.password) {
     if (!verifyPassword(password, user.password, user.passwordSalt)) {
       return res.status(401).json({ ok: false, error: 'invalid-password', message: 'Incorrect password.' });
     }
@@ -2205,11 +2303,12 @@ app.post('/luckblox.site.tk/login', (req, res) => {
     return res.status(401).json({ ok: false, error: 'invalid-password', message: 'Incorrect password.' });
   }
 
-  if (user.passwordVersion !== 2) {
+  if (Number(user.passwordVersion || 0) !== security.HASH_VERSION) {
     upgradePassword(user);
   }
 
   applySessionCookie(res, user.userId || user.id || 1);
+  syncLocalIdentity(user);
   return res.json({ ok: true, userId: user.userId || user.id, username: user.username, displayName: user.displayName });
 });
 
@@ -2222,7 +2321,7 @@ app.post('/luckblox.site.tk/signin', (req, res) => {
     return res.status(401).json({ ok: false, error: 'user-not-found', message: 'We could not find that account.' });
   }
 
-  if (user.passwordVersion === 2 && user.password && user.passwordSalt) {
+  if (user.passwordSalt && user.password) {
     if (!verifyPassword(password, user.password, user.passwordSalt)) {
       return res.status(401).json({ ok: false, error: 'invalid-password', message: 'Incorrect password.' });
     }
@@ -2230,11 +2329,12 @@ app.post('/luckblox.site.tk/signin', (req, res) => {
     return res.status(401).json({ ok: false, error: 'invalid-password', message: 'Incorrect password.' });
   }
 
-  if (user.passwordVersion !== 2) {
+  if (Number(user.passwordVersion || 0) !== security.HASH_VERSION) {
     upgradePassword(user);
   }
 
   applySessionCookie(res, user.userId || user.id || 1);
+  syncLocalIdentity(user);
   const bp = res.locals.basePath || '';
   const redirect = req.body.redirect || req.query.redirect || '/dev';
   return res.json({ ok: true, redirect: `${bp}${redirect}?signedin=1`, userId: user.userId || user.id });
