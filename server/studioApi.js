@@ -439,34 +439,47 @@ function installStudioApiRoutes(app, options = {}) {
   app.get('/asset', (req, res) => {
     const requestedId = req.query.assetId || req.query.id || req.query.placeId || req.query.file;
     const requestedFile = req.query.file || req.query.name;
-    const targetFile = requestedFile ? path.join(savedPlacesRoot, normalizeFileName(requestedFile, 'rbxl')) : null;
 
-    if (targetFile && fs.existsSync(targetFile)) {
-      sendBinaryFile(res, targetFile, path.basename(targetFile));
-      return;
+    // An explicit file name is a direct request for that one file.
+    if (requestedFile) {
+      const targetFile = path.join(savedPlacesRoot, normalizeFileName(requestedFile, 'rbxl'));
+      if (fs.existsSync(targetFile) && fs.statSync(targetFile).isFile()) {
+        sendBinaryFile(res, targetFile, path.basename(targetFile));
+        return;
+      }
+      return res.status(404).json({
+        ok: false,
+        error: 'asset-not-found',
+        message: 'No file found for Studio asset request.',
+      });
     }
 
     if (requestedId) {
       const assetRecord = getAssetsDb()[String(requestedId)];
-      if (assetRecord && fs.existsSync(assetRecord.filePath)) {
+      if (assetRecord && assetRecord.filePath && fs.existsSync(assetRecord.filePath)) {
         sendBinaryFile(res, assetRecord.filePath, assetRecord.fileName || path.basename(assetRecord.filePath));
         return;
       }
 
       const placeRecord = getPlacesDb()[String(requestedId)];
-      if (placeRecord && fs.existsSync(placeRecord.filePath)) {
+      if (placeRecord && placeRecord.filePath && fs.existsSync(placeRecord.filePath)) {
         sendBinaryFile(res, placeRecord.filePath, placeRecord.fileName || path.basename(placeRecord.filePath));
         return;
       }
     }
 
-    const fallback = listSavedPlaceFiles()[0];
-    if (fallback) {
-      sendBinaryFile(res, fallback, path.basename(fallback));
-      return;
-    }
-
-    res.status(404).json({ ok: false, message: 'No file found for Studio asset request.' });
+    // Do NOT fall back to "whatever file is first" here. Doing so meant every
+    // unresolvable asset request - including the legacy client's
+    // /asset/?id=<worn item> fetch - received an unrelated stray place file, so
+    // the client could never load a player's avatar. An asset we cannot resolve
+    // is a 404: the client then falls back to the user's saved body colours
+    // instead of trying to parse a .rbxlx as a shirt.
+    return res.status(404).json({
+      ok: false,
+      error: 'asset-not-found',
+      assetId: requestedId ? String(requestedId) : null,
+      message: 'No file found for Studio asset request.',
+    });
   });
 
   app.get('/asset/', (req, res) => {

@@ -258,6 +258,34 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(/^\/assets(?:\/|$)/, express.static(path.join(releaseRoot, 'Assets')));
 app.use('/maps', express.static(mapsRoot));
 
+// Client content: models, meshes, textures, fonts and scripts.
+//
+// Each client's AppSettings.xml sets <ContentFolder>../../shared/content</ContentFolder>,
+// so the client looks for its avatar pipeline (characterR15.rbxm, R6.rbxm,
+// charapp.rbxm, defaultShirt/defaultPants, heads, meshes) under this tree. That
+// folder was never mounted over HTTP, so every content request 404'd and the
+// client could not assemble a player's character - the avatar came out
+// untextured or default regardless of what the account had saved.
+//
+// Mounted at both /Content (what the client asks for) and /content so either
+// casing resolves, and the Content-Type is inferred from the file extension so
+// .rbxm/.rbxmx arrive as binary rather than sniffed text.
+const clientContentRoot = path.join(releaseRoot, 'shared', 'content');
+if (fs.existsSync(clientContentRoot)) {
+  const contentStatic = express.static(clientContentRoot, {
+    fallthrough: true,
+    setHeaders(res, filePath) {
+      const ext = path.extname(filePath).toLowerCase();
+      if (ext === '.rbxm' || ext === '.rbxmx' || ext === '.rbxl' || ext === '.rbxlx') {
+        res.setHeader('Content-Type', 'application/octet-stream');
+      }
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    },
+  });
+  app.use('/Content', contentStatic);
+  app.use('/content', contentStatic);
+}
+
 // Roblox's own game placeholder art (the blocky forest card + the wide banner).
 // The source files have spaces/hashes in their names, so expose them under
 // stable, readable routes that templates can reference directly.
