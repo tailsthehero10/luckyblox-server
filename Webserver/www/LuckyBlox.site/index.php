@@ -1,5 +1,5 @@
 <?php
-header('Location: /LuckBlox.site.tk/home/');
+header('Location: /LuckBlox.site/home/');
 exit;
 
 require_once __DIR__ . '/../api/common.php';
@@ -249,10 +249,10 @@ $featuredMetadata = api_get_place_metadata($featuredPlaceId);
                 <span>LuckyBlox</span>
             </div>
             <div class="nav">
-                <a href="/LuckBlox.site.tk/">Dashboard</a>
-                <a href="/LuckBlox.site.tk/games">Games</a>
-                <a href="/LuckBlox.site.tk/play?placeid=1818">Play</a>
-                <a href="/LuckBlox.site.tk/share">Share</a>
+                <a href="/LuckBlox.site/">Dashboard</a>
+                <a href="/LuckBlox.site/games">Games</a>
+                <a href="/LuckBlox.site/play?placeid=1818">Play</a>
+                <a href="/LuckBlox.site/share">Share</a>
                 <a href="/api/index.php">API</a>
                 <a href="/backend/">Backend</a>
             </div>
@@ -265,9 +265,9 @@ $featuredMetadata = api_get_place_metadata($featuredPlaceId);
                 LuckyBlox is now treated as a public-facing game site. The featured place below is the latest published game on this server, and it stays available for anyone to open, play, and share without the messy dashboard clutter.
             </p>
             <div class="hero-actions">
-                <a class="button" href="/LuckBlox.site.tk/play?placeid=<?php echo (int) $featuredPlaceId; ?>">Play featured game</a>
-                <a class="button secondary" href="/LuckBlox.site.tk/share">Open Share & Play</a>
-                <a class="button secondary" href="/LuckBlox.site.tk/games">Browse games</a>
+                <a class="button" href="/LuckBlox.site/play?placeid=<?php echo (int) $featuredPlaceId; ?>">Play featured game</a>
+                <a class="button secondary" href="/LuckBlox.site/share">Open Share & Play</a>
+                <a class="button secondary" href="/LuckBlox.site/games">Browse games</a>
                 <a class="button secondary" href="/api/launch.php?client=2021m">Launch local client</a>
             </div>
         </div>
@@ -299,11 +299,11 @@ $featuredMetadata = api_get_place_metadata($featuredPlaceId);
             <div class="card">
                 <h2 class="section-title">Quick actions</h2>
                 <div class="quick-links">
-                    <a class="button secondary" href="/LuckBlox.site.tk/play?placeid=1818">Open Play</a>
-                    <a class="button secondary" href="/LuckBlox.site.tk/share">Share & Play</a>
-                    <a class="button secondary" href="/LuckBlox.site.tk/settings">Settings</a>
-                    <a class="button secondary" href="/LuckBlox.site.tk/account">Account</a>
-                    <a class="button secondary" href="/LuckBlox.site.tk/places">Places</a>
+                    <a class="button secondary" href="/LuckBlox.site/play?placeid=1818">Open Play</a>
+                    <a class="button secondary" href="/LuckBlox.site/share">Share & Play</a>
+                    <a class="button secondary" href="/LuckBlox.site/settings">Settings</a>
+                    <a class="button secondary" href="/LuckBlox.site/account">Account</a>
+                    <a class="button secondary" href="/LuckBlox.site/places">Places</a>
                 </div>
             </div>
 

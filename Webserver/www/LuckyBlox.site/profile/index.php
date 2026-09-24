@@ -132,12 +132,12 @@ function lb_color_for_id($id) {
                 <span>LuckyBlox</span>
             </div>
             <nav class="nav">
-                <a href="/LuckBlox.site.tk/home">Home</a>
-                <a href="/LuckBlox.site.tk/games">Games</a>
-                <a href="/LuckBlox.site.tk/users">Users</a>
-                <a href="/LuckBlox.site.tk/profile">Profile</a>
-                <a href="/LuckBlox.site.tk/settings">Settings</a>
-                <a href="/LuckBlox.site.tk/share">Share</a>
+                <a href="/LuckBlox.site/home">Home</a>
+                <a href="/LuckBlox.site/games">Games</a>
+                <a href="/LuckBlox.site/users">Users</a>
+                <a href="/LuckBlox.site/profile">Profile</a>
+                <a href="/LuckBlox.site/settings">Settings</a>
+                <a href="/LuckBlox.site/share">Share</a>
                 <a href="/LuckBlox.site/signin/">Sign In</a>
             </nav>
         </div>
@@ -243,11 +243,11 @@ function lb_color_for_id($id) {
         <div class="profile-card">
             <div class="section-title">Quick links</div>
             <ul style="list-style:none;padding:0;">
-                <li style="margin:8px 0;"><a href="/LuckBlox.site.tk/home">Home</a></li>
-                <li style="margin:8px 0;"><a href="/LuckBlox.site.tk/games">Games (<?php echo $gamesCount; ?>)</a></li>
-                <li style="margin:8px 0;"><a href="/LuckBlox.site.tk/settings">Settings</a></li>
-                <li style="margin:8px 0;"><a href="/LuckBlox.site.tk/share">Share & Play</a></li>
-                <li style="margin:8px 0;"><a href="/LuckBlox.site.tk/account">Account overview</a></li>
+                <li style="margin:8px 0;"><a href="/LuckBlox.site/home">Home</a></li>
+                <li style="margin:8px 0;"><a href="/LuckBlox.site/games">Games (<?php echo $gamesCount; ?>)</a></li>
+                <li style="margin:8px 0;"><a href="/LuckBlox.site/settings">Settings</a></li>
+                <li style="margin:8px 0;"><a href="/LuckBlox.site/share">Share & Play</a></li>
+                <li style="margin:8px 0;"><a href="/LuckBlox.site/account">Account overview</a></li>
             </ul>
         </div>
     </div>

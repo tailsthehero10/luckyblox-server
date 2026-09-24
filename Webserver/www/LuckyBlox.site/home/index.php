@@ -6,10 +6,8 @@ session_start();
 
 $c = lb_get_current_user();
 if (!$c) {
-    $c = lb_find_user_by_id(1);
-    if (!$c) {
-        $c = array('userId' => '1', 'username' => 'LocalPlayer', 'displayName' => 'LocalPlayer', 'membership' => 'Premium', 'robux' => 0, 'bio' => '', 'joinDate' => '');
-    }
+    header('Location: /LuckBlox.site/signin/?redirect=/LuckBlox.site/home');
+    exit;
 }
 
 $username = $c['username'];

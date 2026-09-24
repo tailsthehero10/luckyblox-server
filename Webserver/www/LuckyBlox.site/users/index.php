@@ -102,11 +102,11 @@ function lb_membership_class($membership) {
                 <span>LuckyBlox</span>
             </div>
             <nav class="nav">
-                <a href="/LuckBlox.site.tk/home">Home</a>
-                <a href="/LuckBlox.site.tk/games">Games</a>
-                <a href="/LuckBlox.site.tk/profile">Profile</a>
-                <a href="/LuckBlox.site.tk/settings">Settings</a>
-                <a href="/LuckBlox.site.tk/share">Share</a>
+                <a href="/LuckBlox.site/home">Home</a>
+                <a href="/LuckBlox.site/games">Games</a>
+                <a href="/LuckBlox.site/profile">Profile</a>
+                <a href="/LuckBlox.site/settings">Settings</a>
+                <a href="/LuckBlox.site/share">Share</a>
                 <a href="/LuckBlox.site/signin/">Sign In</a>
             </nav>
         </div>
@@ -164,7 +164,7 @@ function lb_membership_class($membership) {
                         &middot; <strong>Friends:</strong> <?php echo (int) $user['stats']['friends']; ?>
                         &middot; <strong>Badges:</strong> <?php echo (int) $user['stats']['badges']; ?>
                     </div>
-                    <a class="button" style="margin-top:12px;display:inline-block;padding:8px 14px;border-radius:6px;background:#2563eb;color:#fff;font-weight:700;" href="/LuckBlox.site.tk/users/<?php echo (int) $user['userId']; ?>/profile">View profile</a>
+                    <a class="button" style="margin-top:12px;display:inline-block;padding:8px 14px;border-radius:6px;background:#2563eb;color:#fff;font-weight:700;" href="/LuckBlox.site/users/<?php echo (int) $user['userId']; ?>/profile">View profile</a>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -176,7 +176,7 @@ function lb_membership_class($membership) {
         <?php endif; ?>
 
         <div class="footer">
-            LuckyBlox &middot; Local user directory &middot; <a href="/LuckBlox.site.tk/home">Dashboard</a>
+            LuckyBlox &middot; Local user directory &middot; <a href="/LuckBlox.site/home">Dashboard</a>
         </div>
     </div>
 </body>

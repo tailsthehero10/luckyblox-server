@@ -124,8 +124,8 @@ $username = read_setting($settingsRoot . '/username.txt', 'default');
             <p>This local launcher is built for playing, sharing, and enjoying bundled maps quickly. Use the links below to launch the client, open the play page, or load and save state for any installed local place.</p>
             <div style="display:flex;flex-wrap:wrap;gap:12px;">
                 <a class="button" href="/api/launch.php?client=2021m">Launch local client</a>
-                <a class="button secondary" href="/LuckBlox.site.tk/">Open dashboard</a>
-                <a class="button secondary" href="/LuckBlox.site.tk/games">Browse games</a>
+                <a class="button secondary" href="/LuckBlox.site/">Open dashboard</a>
+                <a class="button secondary" href="/LuckBlox.site/games">Browse games</a>
             </div>
         </div>
 
@@ -136,7 +136,7 @@ $username = read_setting($settingsRoot . '/username.txt', 'default');
             </div>
             <div class="card">
                 <div class="label">Main dashboard</div>
-                <div class="value"><a href="/LuckBlox.site.tk/">Open dashboard</a></div>
+                <div class="value"><a href="/LuckBlox.site/">Open dashboard</a></div>
             </div>
             <div class="card">
                 <div class="label">API</div>
@@ -152,7 +152,7 @@ $username = read_setting($settingsRoot . '/username.txt', 'default');
                     <?php $placeName = basename($file); ?>
                     <li>
                         <strong><?php echo htmlspecialchars($placeName); ?></strong><br />
-                        <a href="/LuckBlox.site.tk/play?placeid=<?php echo (int) $placeId; ?>">Play now</a> |
+                        <a href="/LuckBlox.site/play?placeid=<?php echo (int) $placeId; ?>">Play now</a> |
                         <a href="/api/load.php?placeid=<?php echo (int) $placeId; ?>">Load state</a> |
                         <a href="/api/save.php?placeid=<?php echo (int) $placeId; ?>">Save state</a>
                     </li>
@@ -160,7 +160,7 @@ $username = read_setting($settingsRoot . '/username.txt', 'default');
             </ul>
         </div>
 
-        <p style="margin-top:20px;"><a href="/LuckBlox.site.tk/">Back to dashboard</a></p>
+        <p style="margin-top:20px;"><a href="/LuckBlox.site/">Back to dashboard</a></p>
     </div>
     <script src="/legacy-nav.js"></script>
 </body>

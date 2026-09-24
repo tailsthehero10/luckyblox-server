@@ -112,12 +112,12 @@ function lb_membership_label($m) {
                 <span>LuckyBlox</span>
             </div>
             <nav class="nav">
-                <a href="/LuckBlox.site.tk/home">Home</a>
-                <a href="/LuckBlox.site.tk/games">Games</a>
-                <a href="/LuckBlox.site.tk/users">Users</a>
-                <a href="/LuckBlox.site.tk/profile">Profile</a>
-                <a href="/LuckBlox.site.tk/settings">Settings</a>
-                <a href="/LuckBlox.site.tk/share">Share</a>
+                <a href="/LuckBlox.site/home">Home</a>
+                <a href="/LuckBlox.site/games">Games</a>
+                <a href="/LuckBlox.site/users">Users</a>
+                <a href="/LuckBlox.site/profile">Profile</a>
+                <a href="/LuckBlox.site/settings">Settings</a>
+                <a href="/LuckBlox.site/share">Share</a>
                 <a href="/LuckBlox.site/signin/">Sign In</a>
             </nav>
         </div>
@@ -220,12 +220,12 @@ function lb_membership_label($m) {
         <div class="card">
             <h2>Quick links</h2>
             <ul style="list-style:none;padding:0;">
-                <li style="margin:8px 0;"><a href="/LuckBlox.site.tk/home">Home</a></li>
-                <li style="margin:8px 0;"><a href="/LuckBlox.site.tk/games">Games (<?php echo $gamesCount; ?>)</a></li>
-                <li style="margin:8px 0;"><a href="/LuckBlox.site.tk/game?placeid=<?php echo (int) $featuredPlaceId; ?>">Game details</a></li>
-                <li style="margin:8px 0;"><a href="/LuckBlox.site.tk/settings">Settings</a></li>
-                <li style="margin:8px 0;"><a href="/LuckBlox.site.tk/share">Share</a></li>
-                <li style="margin:8px 0;"><a href="/LuckBlox.site.tk/users">All users</a></li>
+                <li style="margin:8px 0;"><a href="/LuckBlox.site/home">Home</a></li>
+                <li style="margin:8px 0;"><a href="/LuckBlox.site/games">Games (<?php echo $gamesCount; ?>)</a></li>
+                <li style="margin:8px 0;"><a href="/LuckBlox.site/game?placeid=<?php echo (int) $featuredPlaceId; ?>">Game details</a></li>
+                <li style="margin:8px 0;"><a href="/LuckBlox.site/settings">Settings</a></li>
+                <li style="margin:8px 0;"><a href="/LuckBlox.site/share">Share</a></li>
+                <li style="margin:8px 0;"><a href="/LuckBlox.site/users">All users</a></li>
             </ul>
         </div>
     </div>

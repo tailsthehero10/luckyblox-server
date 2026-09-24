@@ -5,14 +5,12 @@ $errors = array();
 $success = '';
 
 $currentUser = lb_get_current_user();
-if ($currentUser) {
+$redirect = isset($_GET['redirect']) ? preg_replace('/^[^:\/]*:\/\//', '/', $_GET['redirect']) : '/LuckBlox.site/home';
+if (strpos($redirect, '/') !== 0) {
     $redirect = '/LuckBlox.site/home';
-    if (isset($_GET['redirect'])) {
-        $redirect = preg_replace('/^[^:\/]*:\/\//', '/', $_GET['redirect']);
-        if (strpos($redirect, '/') !== 0) {
-            $redirect = '/LuckBlox.site/home';
-        }
-    }
+}
+
+if ($currentUser) {
     header('Location: ' . $redirect);
     exit;
 }
@@ -110,7 +108,7 @@ $username = htmlspecialchars($_POST['username'] ?? (isset($_GET['username']) ? $
             </div>
         <?php endif; ?>
 
-        <form id="signinForm" method="POST" action="/LuckBlox.site/signin/">
+        <form id="signinForm" method="POST" action="/LuckBlox.site/signin/?redirect=<?php echo rawurlencode($redirect); ?>">
             <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars($csrfToken); ?>" />
 
             <label for="username">Username</label>
@@ -126,7 +124,7 @@ $username = htmlspecialchars($_POST['username'] ?? (isset($_GET['username']) ? $
         </form>
 
         <div class="links">
-            <a href="/LuckBlox.site.tk/home">Back to dashboard</a>
+            <a href="/LuckBlox.site/home">Back to dashboard</a>
         </div>
     </div>
 </body>

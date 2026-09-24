@@ -9,8 +9,8 @@ $apiDocs = array(
     'GET /api/games.php?placeid=1818' => 'List local games and place metadata',
     'GET /api/instance.php?placeid=1818' => 'Get local instance information',
     'GET /api/users.php' => 'List local users/accounts',
-    'GET /LuckBlox.site.tk/signin' => 'Local sign-in page',
-    'GET /LuckBlox.site.tk/signup' => 'Local sign-up page',
+    'GET /LuckBlox.site/signin' => 'Local sign-in page',
+    'GET /LuckBlox.site/signup' => 'Local sign-up page',
     'GET /api/launch.php?client=2021m' => 'Launch the bundled local client',
     'GET /api/player.php?placeid=1818' => 'Load local player state',
     'GET /api/load.php?placeid=1818' => 'Load saved place state',
@@ -66,7 +66,7 @@ $apiDocs = array(
             </ul>
         </div>
 
-        <p><a href="/LuckBlox.site.tk/">Back to dashboard</a></p>
+        <p><a href="/LuckBlox.site/">Back to dashboard</a></p>
     </div>
     <script src="/legacy-nav.js"></script>
 </body>
