@@ -2,10 +2,17 @@
    The native <select> is kept for the form value but hidden; the visible control
    is .lb-select-trigger + .lb-select-menu. Colours follow the current theme. */
 
-.lb-select {
+.lb-select-wrap {
   position: relative;
   width: 100%;
+  min-width: 0;
   display: block;
+  /* Reset anything a page applies to its native <select> (height/padding/
+     min-width/border) so the visible trigger owns the box entirely. */
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .lb-select-native {

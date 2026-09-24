@@ -4312,12 +4312,16 @@ body.lb-auth {
   background: #0f172a !important;
 }
 
-/* Birthday dropdowns must match the 46px field height the page declares. */
-body.lb-auth .birthday-row .lb-select,
-body.lb-auth .birthday-row .lb-select-trigger {
+/* Birthday dropdowns must match the 46px field height the page declares, and
+   must not blow the 3-column grid out of the card (the legacy .lb-select
+   min-width:180px did exactly that). */
+body.lb-auth .birthday-row .lb-select-wrap {
   width: 100% !important;
+  min-width: 0 !important;
 }
 body.lb-auth .birthday-row .lb-select-trigger {
+  width: 100% !important;
+  min-width: 0 !important;
   height: 46px !important;
   border-radius: 8px !important;
 }/* ---------------------------------------------------------------------------

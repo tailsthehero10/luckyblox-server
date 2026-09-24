@@ -41,7 +41,11 @@
     select.dataset.lbEnhanced = '1';
 
     var wrap = document.createElement('div');
-    wrap.className = 'lb-select';
+    // NOTE: the wrapper is NOT classed "lb-select". That name is used elsewhere
+    // for a plain native <select> (height/min-width/padding on the element), and
+    // sharing it made the wrapper inherit `min-width: 180px`, which broke any
+    // grid the control sat in (the signup birthday row overflowed its card).
+    wrap.className = 'lb-select-wrap';
     select.parentNode.insertBefore(wrap, select);
     wrap.appendChild(select);
     select.classList.add('lb-select-native');
