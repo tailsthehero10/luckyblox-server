@@ -2948,6 +2948,27 @@ img.roblox-brand-mark {
 .lb-panel-body,
 .roblox-panel-body { padding: 14px; }
 
+/* --- Create landing hero ------------------------------------------------- *//* Centred headline + sub-line over the actions, the way the 2021 /create page
+   led with its "Make Anything You Can Imagine" block. */
+.lb-create-hero {
+  padding: 40px 24px;
+  text-align: center;
+}
+.lb-create-hero-title {
+  margin: 0 0 8px;
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--lb-ink);
+}
+.lb-create-hero-sub {
+  margin: 0 0 20px;
+  font-size: 16px;
+  color: var(--lb-muted);
+}
+.lb-create-hero .lb-action-row {
+  justify-content: center;
+}
+
 .lb-content-grid,
 .roblox-content-grid {
   display: grid;
@@ -3803,4 +3824,136 @@ img.roblox-brand-mark {
 }
 .lb-presence-online { background: var(--lb-green); }
 .lb-presence-away   { background: var(--lb-amber, #e2a400); }
-.lb-presence-offline { background: #b6bcc2; }
+.lb-presence-offline { background: #b6bcc2; }/* ---------------------------------------------------------------------------
+   Avatar page -- real avatar render + "Currently Wearing"
+   ---------------------------------------------------------------------------
+   The avatar page previously drew a single initial letter. It now shows the
+   account's real avatar (the Roblox full-body render when the account is linked
+   to a Roblox id, otherwise .lb-avatar-figure in the account's own body
+   colours), and lists the equipped items the way the 2021 page did: thumbnail,
+   name, type, and a red X to unequip.
+   --------------------------------------------------------------------------- */
+
+.lb-avatar-render-img {
+  display: block;
+  width: 352px;
+  height: 352px;
+  object-fit: contain;
+  margin: 0 auto;
+}
+
+.lb-wearing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lb-wearing-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--lb-line-soft);
+  border-radius: var(--lb-radius);
+  background: var(--lb-surface);
+}
+
+.lb-wearing-thumb {
+  width: 50px;
+  height: 50px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  background: #f2f4f5;
+  border: 1px solid var(--lb-line-soft);
+  border-radius: 4px;
+  overflow: hidden;
+  font-weight: 700;
+  color: var(--lb-muted);
+}
+
+.lb-wearing-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.lb-wearing-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lb-wearing-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lb-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-wearing-type {
+  font-size: 12px;
+  color: var(--lb-faint);
+}
+
+/* The red unequip X from the 2021 outfit list. */
+.lb-wearing-remove {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border: 1px solid var(--lb-red);
+  border-radius: 4px;
+  background: var(--lb-surface);
+  color: var(--lb-red);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lb-wearing-remove:hover {
+  background: #fdecec;
+}/* ---------------------------------------------------------------------------
+   Loading indicator
+   ---------------------------------------------------------------------------
+   Roblox's own loading spinner (images.rbxcdn.com/059b09408c6b199c.gif), saved
+   to public/img/loading.gif and served from this server rather than hotlinked,
+   so the site keeps working if the CDN moves or blocks the request.
+
+   .lb-loader        - standalone centred spinner
+   .lb-loading-block - a container that shows the spinner until its content
+                       resolves, e.g. a remote thumbnail
+   --------------------------------------------------------------------------- */
+
+.lb-loader {
+  display: block;
+  width: 32px;
+  height: 32px;
+  margin: 0 auto;
+  background: url('/img/loading.gif') center / contain no-repeat;
+}
+
+.lb-loading-block {
+  position: relative;
+  min-height: 40px;
+}
+
+/* The spinner sits over the block while its content is still loading, and is
+   removed once the content has loaded. */
+.lb-loading-block.is-loading::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  background: url('/img/loading.gif') center / contain no-repeat;
+  pointer-events: none;
+}
+
+/* An image that has not finished loading stays dimmed so the spinner reads. */
+.lb-loading-block.is-loading img {
+  opacity: 0;
+}

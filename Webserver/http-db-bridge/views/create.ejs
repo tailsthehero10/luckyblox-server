@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    <%= title %>
+  </title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+<%# Create landing page, rebuilt against the real 2021 page:
+  https://web.archive.org/web/20210801002543/https://www.roblox.com/create The 2021 page was, top to bottom: the hero
+  ("Make Anything You Can Imagine" / "With our FREE and immersive creation engine" ) with a green "Start Creating"
+  action, then the Studio description block, "Reach Millions of Players" , "Earn Serious Cash" , "What Our Creators Are
+  Saying" , the "Developer Hub" promo with its "Continue to the Developer Hub" button, and a closing "Roblox Studio is
+  FREE! Try it out today!" line with a second "Start Creating" button. Copy is kept close to the original; the Studio
+  launch details come from the live runtime config so no host or port is invented here. %>
+
+  <body>
+    <div class="lb-page">
+      <%- include('partials/header', { user: user, currency: currency, activeNav: 'create' }) %>
+
+        <div class="lb-shell">
+          <%- include('partials/sidebar', { user: user, activeNav: 'create' }) %>
+
+            <main class="lb-main">
+              <!-- Hero -->
+              <section class="lb-section">
+                <div class="lb-panel-body lb-create-hero">
+                  <h1 class="lb-create-hero-title">Make Anything You Can Imagine</h1>
+                  <p class="lb-create-hero-sub">With our FREE and immersive creation engine</p>
+                  <div class="lb-action-row">
+                    <a class="lb-btn lb-btn-primary" href="/develop">Start Creating</a>
+                    <a class="lb-btn lb-btn-secondary" href="/develop">Manage my experiences</a>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Feature blocks -->
+              <section class="lb-section">
+                <div class="lb-panel">
+                  <div class="lb-panel-header"><span>Roblox Studio</span></div>
+                  <div class="lb-panel-body">
+                    Roblox Studio lets you create anything and release with one click to smartphones, tablets,
+                    desktops, consoles, and virtual reality devices.
+                  </div>
+                </div>
+              </section>
+
+              <div class="lb-content-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                <section class="lb-panel">
+                  <div class="lb-panel-header"><span>Reach Millions of Players</span></div>
+                  <div class="lb-panel-body">
+                    Connect with a massive audience by tapping into an incredibly enthusiastic and international
+                    community of over 50 million monthly players.
+                  </div>
+                </section>
+
+                <section class="lb-panel">
+                  <div class="lb-panel-header"><span>Earn Serious Cash</span></div>
+                  <div class="lb-panel-body">
+                    Creators like you are getting paid for what they love to do. Our top developers are earning over
+                    $2M a year by providing in-experience purchases.
+                  </div>
+                </section>
+              </div>
+
+              <!-- Studio status: real host/port from the live runtime, never hardcoded. -->
+              <section class="lb-section">
+                <div class="lb-panel">
+                  <div class="lb-panel-header"><span>Studio connection</span></div>
+                  <div class="lb-panel-body">
+                    <% if (studioReady) { %>
+                      <div>
+                        Roblox Studio is ready on this server at
+                        <strong>
+                          <%= studioHost %>:<%= studioPort %>
+                        </strong>.
+                      </div>
+                      <% } else { %>
+                        <div class="lb-muted">
+                          Roblox Studio is not installed on this server. Place and asset publishing still work
+                          through the web APIs.
+                        </div>
+                        <% } %>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Developer Hub -->
+              <section class="lb-section">
+                <div class="lb-panel">
+                  <div class="lb-panel-header"><span>Developer Hub</span></div>
+                  <div class="lb-panel-body">
+                    The Developer Hub is your one-stop shop for publishing on LuckyBlox. Learn from a wide set of
+                    tutorials, connect with other developers, get platform updates, browse our API references, and
+                    much more.
+                    <div class="lb-action-row" style="margin-top:12px;">
+                      <a class="lb-btn lb-btn-secondary" href="/develop">Continue to the Developer Hub</a>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Closing call to action -->
+              <section class="lb-section">
+                <div class="lb-panel-body lb-create-hero">
+                  <h2 class="lb-create-hero-title" style="font-size:22px;">Roblox Studio is FREE! Try it out today!
+                  </h2>
+                  <div class="lb-action-row">
+                    <a class="lb-btn lb-btn-primary" href="/develop">Start Creating</a>
+                  </div>
+                </div>
+              </section>
+            </main>
+        </div>
+    </div>
+    <script src="/legacy-nav.js"></script>
+  </body>
+
+</html>

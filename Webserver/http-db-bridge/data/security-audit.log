@@ -11,3 +11,7 @@
 {"at":"2026-09-24T12:16:14.786Z","event":"signout","ip":"127.0.0.1","sessionId":"lb_991b3915621a00e76c78bb856709124c0c790beb74782ab3"}
 {"at":"2026-09-24T12:16:17.419Z","event":"signout","ip":"127.0.0.1","sessionId":"lb_3cdf4b9c40809ce5e5a586fd12e8b760fd52d74e363bc84c"}
 {"at":"2026-09-24T12:16:20.270Z","event":"signout","ip":"127.0.0.1","sessionId":"lb_4e7136d90c56c93bb67e5ddc707853ae49e53267967f1e73"}
+{"at":"2026-09-24T12:22:12.423Z","event":"signup_success","ip":"127.0.0.1","userId":"11","username":"LegitUser530926"}
+{"at":"2026-09-24T12:22:14.074Z","event":"signout","ip":"127.0.0.1","sessionId":"lb_0f64e78865c149d4e42da77072512ba443053d3d1076692f"}
+{"at":"2026-09-24T12:22:16.856Z","event":"signout","ip":"127.0.0.1","sessionId":"lb_0080fe67ce60fa17dc670fe860501e3f4fe1d1f9a956093f"}
+{"at":"2026-09-24T12:22:19.866Z","event":"signout","ip":"127.0.0.1","sessionId":"lb_479adfd77a510c41e8d15eac969b5bcb52776a8c0155f014"}

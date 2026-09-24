@@ -20,10 +20,20 @@
         <div class="roblox-panel-header">Avatar customization</div>
         <div class="roblox-panel-body">
           <div class="roblox-avatar-stage">
-            <div class="roblox-avatar-render">
-              <div class="roblox-large-avatar"><%= user.username.slice(0, 1).toUpperCase() %></div>
+            <div class="roblox-avatar-render lb-loading-block is-loading">
+              <%# The real avatar, in order of fidelity: the wearer's Roblox full-body
+                  render, then the locally drawn figure in their own body colours.
+                  The letter tile is only a last resort for an account with no
+                  colours at all - it is never the primary render. %>
+              <% if (avatar && avatar.fullBodyUrl) { %>
+                <img class="lb-avatar-render-img" src="<%= avatar.fullBodyUrl %>"
+                  alt="<%= user.username %>'s avatar" width="352" height="352"
+                  onerror="this.style.display='none';" />
+              <% } else { %>
+                <%- lbAvatarFigure(user, 352) %>
+              <% } %>
               <div style="font-weight:700; font-size:1.1rem; margin-top: 12px;"><%= user.username %></div>
-              <div style="color: var(--rbx-muted);">Currently wearing <%= Array.isArray(user.currentlyWearing) ? user.currentlyWearing.length : 0 %> items</div>
+              <div style="color: var(--rbx-muted);">Currently wearing <%= Array.isArray(wearing) ? wearing.length : 0 %> items</div>
             </div>
           </div>
 
@@ -31,6 +41,40 @@
             <button class="roblox-primary-button" id="save-wear" type="button">Save outfit</button>
             <button class="roblox-secondary-button" id="randomize-wear" type="button">Randomize</button>
           </div>
+        </div>
+      </div>
+
+      <%# "Currently Wearing" - one row per equipped item with its real name, its
+          price (or Offsale) and a red X to unequip it, the way the 2021 page
+          listed the outfit. Every row is a real item from the account. %>
+      <div class="roblox-panel">
+        <div class="roblox-panel-header">Currently Wearing</div>
+        <div class="roblox-panel-body">
+          <% if (wearing && wearing.length) { %>
+            <div class="lb-wearing-list">
+              <% wearing.forEach(function (item) { %>
+                <div class="lb-wearing-row">
+                  <div class="lb-wearing-thumb">
+                    <% if (item.thumbnailUrl) { %>
+                      <img src="<%= item.thumbnailUrl %>" alt="<%= item.name %>" loading="lazy"
+                        onerror="this.style.display='none';" />
+                    <% } else { %>
+                      <span><%= String(item.name || '?').slice(0, 1).toUpperCase() %></span>
+                    <% } %>
+                  </div>
+                  <div class="lb-wearing-info">
+                    <div class="lb-wearing-name"><%= item.name %></div>
+                    <div class="lb-wearing-type"><%= item.assetType %></div>
+                  </div>
+                  <button type="button" class="lb-wearing-remove" data-unequip="<%= item.id %>"
+                    title="Unequip <%= item.name %>" aria-label="Unequip <%= item.name %>">X</button>
+                </div>
+              <% }); %>
+            </div>
+            <div class="lb-faint" style="margin-top:8px;">Click the red X to unequip items.</div>
+          <% } else { %>
+            <div class="lb-muted">This account is not wearing anything yet. Pick items below and save your outfit.</div>
+          <% } %>
         </div>
       </div>
 
@@ -61,6 +105,29 @@
     const selected = new Set(<%- JSON.stringify(wearingList || []) %>);
 
     document.addEventListener('click', async (event) => {
+      // Unequip: the red X on a "Currently Wearing" row. Drop the item from the
+      // selected set and save the same way the Save outfit button does, so the
+      // equipped list and Settings/ stay in sync.
+      const unequipButton = event.target.closest('[data-unequip]');
+      if (unequipButton) {
+        const assetId = String(unequipButton.getAttribute('data-unequip'));
+        selected.delete(assetId);
+
+        const response = await fetch('/api/avatar/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assetIds: Array.from(selected) })
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (payload.ok) {
+          window.location.reload();
+        } else {
+          alert((payload && payload.message) || 'Could not unequip that item. Sign in and try again.');
+        }
+        return;
+      }
+
       const assetButton = event.target.closest('[data-select-asset]');
       if (assetButton) {
         const assetId = String(assetButton.getAttribute('data-select-asset'));

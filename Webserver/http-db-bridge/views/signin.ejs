@@ -233,10 +233,10 @@
 
         <form class="signin-form" method="POST" action="/signin" id="signinForm">
           <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>" />
-          <input type="hidden" name="redirect" value="<%= redirect || '' %>" />
+          <input type="hidden" name="redirect" value="<%= typeof redirect !== 'undefined' ? redirect : '' %>" />
           <div class="signin-field">
             <label for="username">Username</label>
-            <input id="username" name="username" type="text" value="<%= username || '' %>" autocomplete="username" required />
+            <input id="username" name="username" type="text" value="<%= typeof username !== 'undefined' ? username : '' %>" autocomplete="username" required />
           </div>
 
           <div class="signin-field">

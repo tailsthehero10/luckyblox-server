@@ -122,6 +122,50 @@
       });
   }
 
+  /**
+   * Show Roblox's loading spinner over remote images until they finish loading.
+   *
+   * The spinner is served from this server (/img/loading.gif, saved locally from
+   * images.rbxcdn.com) so it works offline and does not depend on the CDN. Only
+   * remote images are wrapped - local placeholder art is already instant, and a
+   * spinner over it would just flicker.
+   *
+   * A loading class is used rather than a per-image overlay element, so this
+   * changes nothing about the existing markup or layout.
+   */
+  function decorateLoadingImages() {
+    var images = document.querySelectorAll('img[loading="lazy"], img[src^="http"]');
+
+    images.forEach(function (img) {
+      // Already handled, or nothing to wait for.
+      if (img.getAttribute('data-lb-loader') === '1') return;
+      if (!img.complete && !img.currentSrc) {
+        img.setAttribute('data-lb-loader', '1');
+      } else if (img.complete) {
+        return;
+      } else {
+        img.setAttribute('data-lb-loader', '1');
+      }
+
+      var host = img.parentNode;
+      if (host) {
+        host.classList.add('lb-loading-block', 'is-loading');
+      }
+
+      var clear = function () {
+        if (host) host.classList.remove('is-loading');
+        img.removeAttribute('data-lb-loader');
+      };
+
+      img.addEventListener('load', clear, { once: true });
+      // On error the placeholder/onerror handling takes over; just drop the spinner.
+      img.addEventListener('error', clear, { once: true });
+
+      // A cached image may have completed between the check above and now.
+      if (img.complete) clear();
+    });
+  }
+
   function start() {
     // The pages now render their own complete nav (Home / Games / Create / More)
     // and the home page renders a real sidebar, so this script no longer rewrites
@@ -130,6 +174,21 @@
     // "More pages" dropdown.
     renderStatus(document.querySelector('.legacy-sidebar, .roblox-sidebar'));
     refreshRobux();
+    decorateLoadingImages();
+
+    // Images that arrive after the first paint (lazy ones scrolling into view)
+    // still get the spinner.
+    if (window.MutationObserver) {
+      var pending = null;
+      var observer = new MutationObserver(function () {
+        if (pending) return;
+        pending = window.setTimeout(function () {
+          pending = null;
+          decorateLoadingImages();
+        }, 120);
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
 
     var sidebar = document.querySelector('.legacy-sidebar');
     if (sidebar) {

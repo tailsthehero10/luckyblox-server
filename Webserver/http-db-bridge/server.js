@@ -758,8 +758,8 @@ function serializeUser(userId) {
     displayName: user.username || 'LocalPlayer',
     bio: user.bio || '',
     joinDate: user.joinDate || new Date().toISOString(),
-    membershipStatus: user.membershipStatus || user.membership || 'Premium',
-    membership: user.membership || user.membershipStatus || 'Premium',
+    membershipStatus: user.membershipStatus || user.membership || 'None',
+    membership: user.membership || user.membershipStatus || 'None',
     robux: Number(user.robux) || 0,
     currency: getCurrencyForUser(user),
     avatar: user.avatar || {
@@ -1321,8 +1321,11 @@ function getUser(userId = 1) {
   return {
     ...keyedUser,
     userId: String(keyedUser.userId || userId),
-    membership: keyedUser.membershipStatus || keyedUser.membership || 'Premium',
-    membershipStatus: keyedUser.membershipStatus || keyedUser.membership || 'Premium',
+    // Default to 'None', not 'Premium'. A stored record with no membership field
+    // is an account with no membership; labelling it Premium showed a paying
+    // badge on accounts that never had one.
+    membership: keyedUser.membershipStatus || keyedUser.membership || 'None',
+    membershipStatus: keyedUser.membershipStatus || keyedUser.membership || 'None',
     robux: Number(keyedUser.robux) || 0,
     inventory: Array.isArray(keyedUser.inventory) ? keyedUser.inventory : [],
     currentlyWearing: Array.isArray(keyedUser.currentlyWearing) ? keyedUser.currentlyWearing : [],
@@ -1518,10 +1521,15 @@ function buildNewUserRecord({ userId, username, displayName, passwordHash, passw
     joinDate: now,
     created: now,
     birthday: safeBirthday,
-    membershipStatus: 'Premium',
-    membership: 'Premium',
-    robux: 100,
-    currencies: { robux: 100, coins: 250, tickets: 10 },
+    // A brand new account starts with nothing. This used to hand out Premium
+    // membership, 100 Robux, 250 coins and 10 tickets on signup, which is
+    // currency nobody earned and a membership nobody paid for - and it
+    // contradicted the PHP signup path, which correctly creates new accounts
+    // empty. Real starting state: no money, no membership.
+    membershipStatus: 'None',
+    membership: 'None',
+    robux: 0,
+    currencies: { robux: 0, coins: 0, tickets: 0 },
     inventory: starterInventory,
     currentlyWearing: starterWearing,
     wearing: starterWearing,
@@ -1768,7 +1776,7 @@ function saveUser(userId, nextState) {
     ...nextState,
     userId: String(userId),
     updatedAt: new Date().toISOString(),
-    membershipStatus: nextState.membershipStatus || current.membershipStatus || 'Premium',
+    membershipStatus: nextState.membershipStatus || current.membershipStatus || 'None',
     inventory: Array.isArray(nextState.inventory) ? nextState.inventory : current.inventory,
     currentlyWearing: Array.isArray(nextState.currentlyWearing) ? nextState.currentlyWearing : current.currentlyWearing,
   };
@@ -3303,9 +3311,21 @@ app.get('/groups/:id', (req, res) => {
   });
 });
 
-app.get('/avatar', (req, res) => {
-  const user = getUser(req.query.userId || 1);
+/**
+ * The avatar page, served at /avatar and at the 2021 URL /my/avatar.
+ *
+ * This page used to render a letter in a circle and ignore what the account was
+ * actually wearing. It now resolves the real avatar through the same path the
+ * profile uses (resolveProfileAvatar): the wearer's Roblox full-body render when
+ * the account is linked to a real Roblox id, otherwise the locally drawn figure
+ * built from the account's own bodyColors - plus every equipped item with its
+ * real name, price and thumbnail, which is what the "Currently Wearing" panel
+ * and the unequip buttons need.
+ */
+async function renderAvatarPage2021(req, res, userId) {
+  const user = getUser(userId);
   const assets = Object.values(getAssets());
+  const avatar = await resolveProfileAvatar(user);
 
   res.render('avatar', {
     title: `${user.username} - Avatar | LuckyBlox`,
@@ -3314,6 +3334,115 @@ app.get('/avatar', (req, res) => {
     currency: getCurrencyForUser(user),
     // The wearing list powers the "Selected" state on each asset card.
     wearingList: Array.isArray(user.currentlyWearing) ? user.currentlyWearing : [],
+    // Real avatar data: the render plus one record per equipped item.
+    avatar,
+    wearing: getWearingForUser(user),
+    // 2021 body facts, read from the account rather than invented.
+    avatarType: user.avatarType || (user.avatar && user.avatar.playerAvatarType) || 'R15',
+    bodyColors: (user.avatar && user.avatar.bodyColors) || {},
+    scales: (user.avatar && user.avatar.scales) || { height: 1, width: 1, head: 1, depth: 1, proportion: 0, bodyType: 0 },
+    formatJoinDate,
+    abbreviateCount,
+  });
+}
+
+app.get('/avatar', async (req, res) => {
+  return renderAvatarPage2021(req, res, req.query.userId || 1);
+});
+
+// The 2021 URL for this page was /my/avatar (it showed the signed-in user).
+// Guests without a session fall back to the demo account, matching /avatar.
+app.get('/my/avatar', async (req, res) => {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const userId = sessionUser ? (sessionUser.userId || sessionUser.id) : (req.query.userId || 1);
+  return renderAvatarPage2021(req, res, userId);
+});
+
+/**
+ * /api/avatar_v1 - the avatar model for an account, in the v1 shape
+ * (https://avatar.roblox.com/v1/avatar).
+ *
+ * Mirrors Roblox's own contract so a client that expects the v1 avatar model
+ * can read this server instead:
+ *
+ *   { scales, playerAvatarType, bodyColors{...Id}, assets[{ id, name, assetType,
+ *     currentVersionId }], defaultShirtApplied, defaultPantsApplied, emotes[] }
+ *
+ * Source order: the account's linked Roblox id (a genuine model, v4 then v1),
+ * then the locally stored account record. Both paths go through
+ * normalizeAvatarModel so numeric BrickColor ids and hex colours are returned
+ * consistently - the two Roblox versions use different colour formats.
+ */
+app.get('/api/avatar_v1', async (req, res) => {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const requestedId = req.query.userId || req.query.userid;
+  const userId = sessionUser
+    ? (sessionUser.userId || sessionUser.id)
+    : (requestedId != null ? requestedId : 1);
+
+  const user = getUser(userId);
+
+  // The account's own stored avatar is the fallback for every field, so a
+  // Roblox outage degrades to real local data instead of an empty model.
+  const localFallback = {
+    bodyColors: (user.avatar && user.avatar.bodyColors) || {},
+    scales: (user.avatar && user.avatar.scales) || undefined,
+    playerAvatarType: user.avatarType || (user.avatar && user.avatar.playerAvatarType) || 'R15',
+  };
+
+  let model = null;
+  let source = 'local';
+  const linkedId = Number(user.robloxUserId);
+
+  if (Number.isFinite(linkedId) && linkedId > 0) {
+    // v4 first (current), then v1 for accounts that predate it.
+    model = await robloxApi.getAvatarModel(linkedId, 4);
+    if (!model) model = await robloxApi.getAvatarModel(linkedId, 1);
+    if (model) source = 'roblox';
+  }
+
+  const normalized = robloxApi.normalizeAvatarModel(model, localFallback);
+
+  // When Roblox supplied the model, use its asset list verbatim. Otherwise build
+  // the asset list from the equipped ids this account actually has, resolving
+  // real names and thumbnails so the response is never a list of bare numbers.
+  let assets = normalized.assets;
+  if (!assets.length) {
+    const wearing = Array.isArray(user.currentlyWearing) ? user.currentlyWearing : [];
+    const localAssets = getAssets();
+    assets = await Promise.all(wearing.map(async (rawId) => {
+      const id = Number(rawId);
+      const local = localAssets[String(rawId)] || null;
+      const details = Number.isFinite(id) && id > 0 && source === 'local'
+        ? await robloxApi.getAssetDetails(id)
+        : null;
+      return {
+        id: Number.isFinite(id) ? id : 0,
+        name: (details && details.name) || (local && local.name) || null,
+        assetType: {
+          id: Number((local && (local.assetTypeId || 0)) || 0),
+          name: (local && (local.assetType || local.className)) || 'Asset',
+        },
+        currentVersionId: null,
+      };
+    }));
+  }
+
+  res.json({
+    scales: normalized.scales,
+    playerAvatarType: normalized.playerAvatarType,
+    bodyColors: normalized.bodyColors,
+    // Extra fields this server adds for the site's own renderer. They are
+    // additive - the v1 fields above keep the original names and shapes.
+    bodyColorHex: normalized.bodyColorHex,
+    assets,
+    defaultShirtApplied: normalized.defaultShirtApplied,
+    defaultPantsApplied: normalized.defaultPantsApplied,
+    emotes: Array.isArray(user.emotes) ? user.emotes : [],
+    // Provenance, so a caller can tell a real Roblox model from local data.
+    source,
+    userId: Number(user.userId || userId || 1),
+    username: user.username || null,
   });
 });
 
@@ -3389,6 +3518,44 @@ function renderGamePage2021(req, res, placeId) {
     abbreviateCount,
   });
 }
+
+// The 2021 URL shape for an experience page is
+//   /games/<placeId>/<Title-With-Dashes>
+// (e.g. /games/1818/Classic-Crossroads). The slug is decorative - Roblox
+// resolved the page from the numeric id alone - so it is accepted and ignored.
+// Registered after every /games/<literal> route so /games/<word> paths cannot
+// be swallowed by the numeric pattern.
+app.get('/games/:placeId', (req, res, next) => {
+  if (!/^\d+$/.test(String(req.params.placeId || ''))) return next();
+  return renderGamePage2021(req, res, normalizePlaceId(req.params.placeId));
+});
+
+app.get('/games/:placeId/:slug', (req, res, next) => {
+  if (!/^\d+$/.test(String(req.params.placeId || ''))) return next();
+  return renderGamePage2021(req, res, normalizePlaceId(req.params.placeId));
+});
+
+/**
+ * /create - the 2021 "Create" landing page.
+ *
+ * Rebuilt against https://web.archive.org/web/20210801002543/https://www.roblox.com/create
+ *
+ * In 2021 /create was the Studio launch surface: a hero with the Studio mark, a
+ * "Start Creating" primary action and the download/launch links. It is distinct
+ * from /develop, which is the developer dashboard listing your own places.
+ */
+app.get('/create', (req, res) => {
+  const user = req.sessionUser || getUser(req.query.userId || 1);
+  return res.render('create', {
+    title: 'Create - Roblox',
+    user,
+    currency: getCurrencyForUser(user),
+    basePath: res.locals.basePath || '',
+    studioHost: gameServerHost,
+    studioPort: gamePort,
+    studioReady: fs.existsSync(STUDIO_EXECUTABLE_PATH),
+  });
+});
 
 
 function legacyJoinResponse(req, res) {
@@ -4453,24 +4620,40 @@ app.get('/api/templates', (req, res) => {
 });
 
 app.get('/api/account/info', (req, res) => {
-  const userId = Number(req.query.userId || req.body?.userId || 1);
-  const user = getUser(userId);
+  // Resolve the caller from the session first, then an explicit userId, then
+  // fall back to the guest record. It used to default to user id 1 - the
+  // deployment owner - so an anonymous request was answered with the owner's
+  // identity and full permissions.
+  const requestedId = req.query.userId || (req.body && req.body.userId);
+  const user = req.sessionUser
+    || (requestedId != null ? getUser(requestedId) : null)
+    || getUser(1);
+  const isAdmin = isAdminUser(user);
+  const ownsAccount = isOwnerUser(user);
 
   res.json({
     ok: true,
     user: {
-      userId: Number(user.userId || userId),
+      userId: Number(user.userId || 1),
       username: user.username || 'LocalPlayer',
-      displayName: user.username || 'LocalPlayer',
-      membership: user.membershipStatus || 'Premium',
-      role: 'Creator',
+      displayName: user.displayName || user.username || 'LocalPlayer',
+      membership: user.membershipStatus || user.membership || 'None',
+      // The real stored role, never a blanket 'Creator'. Only the deployment
+      // owner and explicit admins get elevated rights.
+      role: ownsAccount ? 'Owner' : (isAdmin ? 'Admin' : (user.role || 'Player')),
     },
     permissions: {
-      create: true,
-      edit: true,
-      publish: true,
-      inventory: true,
+      // Creating places is open to every signed-in account (as it was on
+      // Roblox), but editing/publishing someone else's work is not. These now
+      // reflect whether the caller is authenticated rather than being true for
+      // anybody who asks.
+      create: Boolean(user),
+      edit: Boolean(user) && (isAdmin || ownsAccount),
+      publish: Boolean(user) && (isAdmin || ownsAccount),
+      inventory: Boolean(user),
     },
+    admin: isAdmin,
+    owner: ownsAccount,
   });
 });
 
@@ -4871,8 +5054,27 @@ app.get('/studio-open-place/v1/openplace', (req, res) => {
 });
 
 app.get('/api/v1/me', (req, res) => {
-  const user = getUser(req.query.userId || req.headers['x-user-id'] || 1);
-  res.json({ ok: true, user: serializeUser(user.userId || 1) });
+  // Prefer the authenticated session. The query/header id is only honoured for
+  // the caller's own id - it used to let any request read another account
+  // (including the owner's) by naming it, and defaulted to id 1 for anonymous
+  // callers, which answered every guest with the deployment owner.
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const claimedId = req.query.userId || req.headers['x-user-id'];
+  const sessionId = sessionUser ? (sessionUser.userId || sessionUser.id) : null;
+
+  // A claimed id that does not match the session is ignored rather than acted on.
+  const effectiveId = sessionId != null
+    ? sessionId
+    : (claimedId != null ? claimedId : 1);
+
+  const user = getUser(effectiveId);
+  res.json({
+    ok: true,
+    signedIn: Boolean(sessionUser),
+    owner: isOwnerUser(user),
+    admin: isAdminUser(user),
+    user: serializeUser(user.userId || effectiveId || 1),
+  });
 });
 
 /**
@@ -5016,7 +5218,7 @@ app.get('/api/v1/account', (req, res) => {
       userId: Number(user.userId || userId),
       username: user.username,
       displayName: user.username,
-      membership: user.membershipStatus || user.membership || 'Premium',
+      membership: user.membershipStatus || user.membership || 'None',
       role: admin ? 'Admin' : 'Creator',
       isVerified: admin,
       isAdmin: admin,
