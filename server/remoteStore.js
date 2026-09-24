@@ -126,10 +126,11 @@ const config = loadConfig();
 /** True when a remote backend is configured and usable. */
 const enabled = config.enabled;
 
-const pendingTimers = new Map();
 // The latest payload queued for each file, so a flush can send it even after
 // the timer has been cleared.
 const pendingData = new Map();
+// One global debounce timer: all changed files are committed together.
+let pushTimer = null;
 
 function log(message) {
   console.log(`[luckyblox:sync] ${message}`);
@@ -450,37 +451,57 @@ function writeLocal(dataDir, fileName, data) {
 }
 
 /**
- * Queue a file for upload. Debounced per file so rapid writes coalesce into one
- * remote commit. Best-effort: failures are logged, never thrown.
+ * Queue a file for upload.
+ *
+ * Debounced GLOBALLY: every changed file is collected and pushed together in a
+ * single commit once the burst of writes stops. This is what keeps GitHub from
+ * receiving one commit per keystroke-level change.
+ *
+ * Best-effort: failures are logged, never thrown into the request path.
  */
 function saveFile(fileName, data) {
   if (!enabled) return;
   if (!isSyncable(fileName)) return;
 
-  const existing = pendingTimers.get(fileName);
-  if (existing) clearTimeout(existing);
-
   pendingData.set(fileName, data);
 
-  pendingTimers.set(fileName, setTimeout(() => {
-    pendingTimers.delete(fileName);
-    const payload = pendingData.get(fileName);
-    pendingData.delete(fileName);
-    pushNow(fileName, payload).catch((error) => warn(`push ${fileName} failed: ${error.message}`));
-  }, PUSH_DEBOUNCE_MS));
+  if (pushTimer) clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => {
+    pushTimer = null;
+    pushPending().catch((error) => warn(`push failed: ${error.message}`));
+  }, PUSH_DEBOUNCE_MS);
 }
 
-/** Push immediately (used at shutdown and by tests). */
+/** Push every queued file in one commit (or one HTTP write). */
+async function pushPending() {
+  if (!enabled || pendingData.size === 0) return { ok: true, pushed: [] };
+
+  // Take a snapshot so writes during the await are not lost.
+  const changes = new Map(pendingData);
+  pendingData.clear();
+
+  if (config.mode === 'http') {
+    if (!httpCache) httpCache = {};
+    for (const [fileName, data] of changes.entries()) httpCache[fileName] = data;
+    await httpPushAll(httpCache);
+    return { ok: true, pushed: Array.from(changes.keys()) };
+  }
+
+  await githubPushBatch(changes);
+  return { ok: true, pushed: Array.from(changes.keys()) };
+}
+
+/** Push one file now (used by tests). */
 async function pushNow(fileName, data) {
   if (!enabled) return { ok: false, reason: 'disabled' };
   if (config.mode === 'http') {
     if (!httpCache) httpCache = {};
     httpCache[fileName] = data;
     await httpPushAll(httpCache);
-    return { ok: true };
+    return { ok: true, pushed: [fileName] };
   }
-  await githubPush(fileName, data);
-  return { ok: true };
+  await githubPushBatch(new Map([[fileName, data]]));
+  return { ok: true, pushed: [fileName] };
 }
 
 /**
@@ -489,25 +510,17 @@ async function pushNow(fileName, data) {
  */
 async function flush() {
   if (!enabled) return { ok: true, enabled: false, pushed: [] };
-
-  const pushed = [];
-  for (const fileName of Array.from(pendingTimers.keys())) {
-    clearTimeout(pendingTimers.get(fileName));
-    pendingTimers.delete(fileName);
+  if (pushTimer) {
+    clearTimeout(pushTimer);
+    pushTimer = null;
   }
-
-  for (const fileName of Array.from(pendingData.keys())) {
-    const payload = pendingData.get(fileName);
-    pendingData.delete(fileName);
-    try {
-      await pushNow(fileName, payload);
-      pushed.push(fileName);
-    } catch (error) {
-      warn(`flush ${fileName} failed: ${error.message}`);
-    }
+  try {
+    const result = await pushPending();
+    return { ok: true, enabled: true, pushed: result.pushed || [] };
+  } catch (error) {
+    warn(`flush failed: ${error.message}`);
+    return { ok: false, enabled: true, pushed: [] };
   }
-
-  return { ok: true, enabled: true, pushed };
 }
 
 function describe() {
@@ -537,6 +550,7 @@ module.exports = {
   loadAll,
   saveFile,
   pushNow,
+  pushPending,
   flush,
   describe,
 };
