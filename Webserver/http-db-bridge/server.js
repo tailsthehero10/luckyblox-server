@@ -51,6 +51,10 @@ const security = require(path.join(releaseRoot, 'server', 'security.js'));
 // All persisted data goes through the storage layer, which honours
 // LUCKYBLOX_DATA_DIR / RENDER_DISK_PATH so accounts survive redeploys.
 const dataDir = storage.dataDir;
+// Normalised for comparison: readJson/writeJson below decide whether a path is a
+// data file (and therefore mirrored to the free remote store) by checking its
+// directory against this.
+const dataDirResolved = path.resolve(dataDir);
 const usersPath = storage.dataPath('users.json');
 const gamesPath = storage.dataPath('games.json');
 const assetsPath = storage.dataPath('assets.json');
@@ -618,6 +622,14 @@ if (!fs.existsSync(mapsRoot)) {
 }
 
 function readJson(filePath, fallback) {
+  // Route through the storage layer so a file restored from the free remote
+  // store on boot is visible here, and the seeding/BOM handling lives in one
+  // place. `fileName` is the basename because every data file lives in dataDir.
+  const fileName = path.basename(filePath);
+  if (path.resolve(path.dirname(filePath)) === dataDirResolved) {
+    return storage.readJson(fileName, fallback);
+  }
+
   try {
     if (!fs.existsSync(filePath)) {
       return fallback;
@@ -634,6 +646,17 @@ function readJson(filePath, fallback) {
 function writeJson(filePath, data) {
   // Atomic write: temp file + rename, so an interrupted write (container
   // restart mid-save) cannot leave a half-written, corrupt data file.
+  //
+  // Data files additionally go through the storage layer, which mirrors them to
+  // the free remote store (server/remoteStore.js). This is the write path the
+  // whole app uses - account creation, game publish/delete, currency changes -
+  // so routing it here is what makes those survive a redeploy.
+  const fileName = path.basename(filePath);
+  if (path.resolve(path.dirname(filePath)) === dataDirResolved) {
+    storage.writeJson(fileName, data);
+    return;
+  }
+
   const tmpPath = `${filePath}.tmp-${process.pid}`;
   try {
     fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
@@ -5625,6 +5648,11 @@ app.post('/dev/create', requireDevAuth, express.urlencoded({ extended: true, lim
     allowHttpRequests: true, visibility: placeData.visibility, genre: placeData.genre, updatedAt: new Date().toISOString(),
   };
   writeJson(path.join(dataDir, 'places.json'), places);
+
+  // Mirror the new place file to the free remote store (opt-in) so the game's
+  // actual content survives a redeploy, not just its index row.
+  storage.pushContentToRemote().catch(() => { /* best effort */ });
+
   res.json({ ok: true, placeId, fileName, filePath });
 });
 
@@ -5759,6 +5787,17 @@ storage.restoreFromRemote()
   .then((result) => {
     if (result && result.enabled) {
       console.log(`[luckyblox] remote sync: restored ${result.loaded.length} file(s) from ${result.mode}`);
+    }
+    // Content folders (place files, maps, settings) are opt-in. When on, pull
+    // them too so created games have their actual content after a redeploy.
+    if (storage.contentSyncEnabled) {
+      return storage.restoreContentFromRemote();
+    }
+    return null;
+  })
+  .then((contentResult) => {
+    if (contentResult && !contentResult.skipped && contentResult.restored) {
+      console.log(`[luckyblox] remote sync: restored ${contentResult.restored} content file(s)`);
     }
   })
   .catch((error) => {

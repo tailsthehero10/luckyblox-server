@@ -3,3 +3,16 @@ Webserver/bin/apache/logs/authdigest_shm.*
 # Local server logs (written when running start.js on a desktop).
 server-out.log
 server-err.log
+
+# Runtime data state. These change as the app is used (accounts, sessions,
+# per-user data) and must NOT be committed here - they can hold password
+# hashes, and they are what the free remote store mirrors instead
+# (server/remoteStore.js -> tailsthehero10/Luckyblox-Storage-1).
+Webserver/http-db-bridge/data/users.json
+Webserver/http-db-bridge/data/sessions.json
+Webserver/http-db-bridge/data/studio-handshakes.json
+Webserver/http-db-bridge/data/site-status.json
+# Per-user <id>.json files (inventory, currency, membership).
+Webserver/http-db-bridge/data/[0-9]*.json
+# The local storage clone, if it is ever nested inside this repo.
+Luckyblox-Storage-1/

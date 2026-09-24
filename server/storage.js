@@ -136,6 +136,43 @@ async function flushRemote() {
   return remoteStore.flush();
 }
 
+/** True when the opt-in content-folder mirroring is enabled. */
+const contentSyncEnabled = remoteStore.contentSyncEnabled;
+
+/**
+ * Restore the content folders (place files, maps, settings) from the remote.
+ * Opt-in via LUCKYBLOX_SYNC_CONTENT=1; a no-op otherwise.
+ */
+async function restoreContentFromRemote() {
+  return remoteStore.loadContent(repoRoot);
+}
+
+/**
+ * Push the content folders to the remote. Called after a place/map/settings
+ * change so a newly created game's content survives a redeploy.
+ */
+async function pushContentToRemote() {
+  if (!contentSyncEnabled) return { ok: true, skipped: true };
+  return remoteStore.pushContent(repoRoot);
+}
+
+/**
+ * Remove a local data file and mirror the deletion to the remote store, so the
+ * file is not restored on the next boot. Silent when the file does not exist.
+ */
+function deleteJson(fileName) {
+  const filePath = dataPath(fileName);
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (error) {
+    console.error(`[luckyblox] deleteJson ${fileName} failed: ${error.message}`);
+  }
+  remoteStore.deleteFile(fileName);
+  return true;
+}
+
 /** Human-readable summary of where data is stored (logged at boot). */
 function describeStorage() {
   const remote = remoteStore.describe();
@@ -162,7 +199,11 @@ module.exports = {
   dataPath,
   readJson,
   writeJson,
+  deleteJson,
   restoreFromRemote,
   flushRemote,
+  contentSyncEnabled,
+  restoreContentFromRemote,
+  pushContentToRemote,
   describeStorage,
 };

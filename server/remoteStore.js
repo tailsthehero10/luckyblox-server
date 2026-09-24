@@ -58,9 +58,30 @@ const FILES = [
   'places.json',
   'players.json',
   'sessions.json',
+  'published-assets.json',
   'site-status.json',
   'studio-handshakes.json',
 ];
+
+/**
+ * Content directories that also get wiped on redeploy.
+ *
+ * The JSON index (games.json, places.json) is always synced. The actual place
+ * files, maps and uploads live in these folders, and a user creating or deleting
+ * a game changes them. Set LUCKYBLOX_SYNC_CONTENT=1 to mirror them too.
+ *
+ * They are opt-in because they can be large: syncing megabytes of .rbxlx/map
+ * files on every change is a different cost profile from a few KB of JSON.
+ *
+ * Paths are relative to the release root.
+ */
+const CONTENT_DIRS = [
+  { key: 'saved_places', dir: 'workspace/saved_places' },
+  { key: 'maps', dir: 'Maps' },
+  { key: 'settings', dir: 'Settings' },
+];
+
+const SYNC_CONTENT = /^(1|true|yes|on)$/i.test(String(process.env.LUCKYBLOX_SYNC_CONTENT || ''));
 
 /**
  * Per-user data files are named <userId>.json and hold inventory, currency and
@@ -129,6 +150,8 @@ const enabled = config.enabled;
 // The latest payload queued for each file, so a flush can send it even after
 // the timer has been cleared.
 const pendingData = new Map();
+// Files queued for REMOVAL from the remote (a deleted account's <id>.json, ...).
+const pendingDeletes = new Set();
 // One global debounce timer: all changed files are committed together.
 let pushTimer = null;
 
@@ -252,8 +275,9 @@ async function githubBranchHead(branch) {
  * Handles the empty-repo case: when no branch exists yet, the first commit is
  * created with no parent, which bootstraps the default branch.
  */
-async function githubPushBatch(changes, branchName) {
-  if (changes.size === 0) return { ok: true, files: 0 };
+async function githubPushBatch(changes, deletions) {
+  const removals = deletions || [];
+  if (changes.size === 0 && removals.length === 0) return { ok: true, files: 0 };
 
   const branch = await resolveWriteBranch();
   const headSha = branch ? await githubBranchHead(branch) : null;
@@ -276,6 +300,16 @@ async function githubPushBatch(changes, branchName) {
       mode: '100644',
       type: 'blob',
       sha: blob.sha,
+    });
+  }
+
+  // Deletions: a tree entry with a null sha removes the path in this commit.
+  for (const fileName of removals) {
+    treeItems.push({
+      path: `${config.dir}/${fileName}`,
+      mode: '100644',
+      type: 'blob',
+      sha: null,
     });
   }
 
@@ -316,11 +350,6 @@ async function githubPushBatch(changes, branchName) {
   if (!refRes.ok) throw new Error(`ref -> ${refRes.status}`);
 
   return { ok: true, files: treeItems.length, commit: commit.sha };
-}
-
-/** Write one file to the repo (creating or updating it). */
-async function githubPush(fileName, data) {
-  return githubPushBatch(new Map([[fileName, data]]));
 }
 
 /* ---------------------------------------------------------------------------
@@ -472,23 +501,48 @@ function saveFile(fileName, data) {
   }, PUSH_DEBOUNCE_MS);
 }
 
+/**
+ * Remove a file from the remote store. Used when a file is deleted locally (for
+ * example a per-user <id>.json after the account is removed) so it is not
+ * restored on the next boot.
+ *
+ * Debounced together with the pushes: the pending entry is dropped and the
+ * deletion is queued in `pendingDeletes`, then applied in the same commit.
+ */
+function deleteFile(fileName) {
+  if (!enabled) return;
+  if (!isSyncable(fileName)) return;
+  pendingData.delete(fileName);
+  pendingDeletes.add(fileName);
+  if (pushTimer) clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => {
+    pushTimer = null;
+    pushPending().catch((error) => warn(`push failed: ${error.message}`));
+  }, PUSH_DEBOUNCE_MS);
+}
+
 /** Push every queued file in one commit (or one HTTP write). */
 async function pushPending() {
-  if (!enabled || pendingData.size === 0) return { ok: true, pushed: [] };
+  if (!enabled || (pendingData.size === 0 && pendingDeletes.size === 0)) {
+    return { ok: true, pushed: [] };
+  }
 
   // Take a snapshot so writes during the await are not lost.
   const changes = new Map(pendingData);
+  const removals = Array.from(pendingDeletes);
   pendingData.clear();
+  pendingDeletes.clear();
 
   if (config.mode === 'http') {
     if (!httpCache) httpCache = {};
     for (const [fileName, data] of changes.entries()) httpCache[fileName] = data;
+    for (const fileName of removals) delete httpCache[fileName];
     await httpPushAll(httpCache);
-    return { ok: true, pushed: Array.from(changes.keys()) };
+    return { ok: true, pushed: Array.from(changes.keys()), removed: removals };
   }
 
-  await githubPushBatch(changes);
-  return { ok: true, pushed: Array.from(changes.keys()) };
+  await githubPushBatch(changes, removals);
+  return { ok: true, pushed: Array.from(changes.keys()), removed: removals };
 }
 
 /** Push one file now (used by tests). */
@@ -540,15 +594,180 @@ function describe() {
     repo: config.mode === 'github' ? config.repo : undefined,
     branch: config.mode === 'github' ? config.branch : undefined,
     path: config.mode === 'github' ? config.dir : undefined,
-    note: `Data is mirrored to a free ${config.mode} store and survives redeploys.`,
+    contentSync: SYNC_CONTENT,
+    contentDirs: SYNC_CONTENT ? CONTENT_DIRS.map((c) => c.dir) : [],
+    note: `Data is mirrored to a free ${config.mode} store and survives redeploys.`
+      + (SYNC_CONTENT ? ' Content folders are mirrored too.' : ''),
   };
+}
+
+/* ---------------------------------------------------------------------------
+ * Content folders (place files, maps, settings) - OPT-IN
+ * ---------------------------------------------------------------------------
+ * Enabled with LUCKYBLOX_SYNC_CONTENT=1. When on, the files a creator creates
+ * or deletes (workspace/saved_places/*.rbxlx, Maps/*, Settings/*) are mirrored
+ * too, so a redeploy keeps the actual game content, not just its index row.
+ *
+ * These can be large, which is why this is off by default: a few KB of JSON per
+ * change has a very different cost from megabytes of place files per change.
+ * ------------------------------------------------------------------------- */
+
+/** Recursively list files under a directory as repo-relative keys. */
+function listContentKeys(releaseRootDir) {
+  const keys = [];
+
+  for (const entry of CONTENT_DIRS) {
+    const root = path.resolve(releaseRootDir, entry.dir);
+    if (!fs.existsSync(root)) continue;
+
+    const walk = (dir) => {
+      let entries;
+      try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+      } catch (error) {
+        return;
+      }
+      for (const item of entries) {
+        const abs = path.join(dir, item.name);
+        if (item.isDirectory()) {
+          walk(abs);
+        } else if (item.isFile()) {
+          const rel = path.relative(root, abs).split(path.sep).join('/');
+          keys.push(`saved_places/${entry.key}/${rel}`);
+        }
+      }
+    };
+
+    walk(root);
+  }
+
+  return keys;
+}
+
+/** Convert a folder key ("saved_places/MyGame.rbxlx") back to a real path. */
+function contentAbsPathForFolderKey(releaseRootDir, folderKey, rel) {
+  const entry = CONTENT_DIRS.find((c) => c.key === folderKey);
+  if (!entry) return null;
+  const base = path.resolve(releaseRootDir, entry.dir);
+  const abs = path.resolve(base, rel);
+  return abs.startsWith(base + path.sep) ? abs : null;
+}
+
+/** Snapshot every content folder and push it as one commit. Opt-in. */
+async function pushContent(releaseRootDir) {
+  if (!enabled || !SYNC_CONTENT) return { ok: true, skipped: true };
+
+  const changes = new Map();
+  for (const key of listContentKeys(releaseRootDir)) {
+    // key looks like "saved_places/<folderKey>/<rel>".
+    const parts = key.split('/');
+    const folderKey = parts[1];
+    const rel = parts.slice(2).join('/');
+    const abs = contentAbsPathForFolderKey(releaseRootDir, folderKey, rel);
+    if (!abs) continue;
+    try {
+      changes.set(`content/${folderKey}/${rel}`, {
+        __base64: fs.readFileSync(abs).toString('base64'),
+      });
+    } catch (error) {
+      warn(`content read ${key} failed: ${error.message}`);
+    }
+  }
+
+  if (changes.size === 0) return { ok: true, files: 0 };
+
+  // A small listing per folder, so a restore knows which paths to fetch from
+  // GitHub (which stores files, not directories).
+  for (const entry of CONTENT_DIRS) {
+    const rels = [];
+    for (const key of changes.keys()) {
+      const prefix = `content/${entry.key}/`;
+      if (key.startsWith(prefix)) rels.push(key.slice(prefix.length));
+    }
+    changes.set(`content/${entry.key}/_index.json`, rels);
+  }
+
+  if (config.mode === 'http') {
+    if (!httpCache) httpCache = {};
+    for (const [key, data] of changes.entries()) httpCache[key] = data;
+    await httpPushAll(httpCache);
+  } else {
+    await githubPushBatch(changes, []);
+  }
+  return { ok: true, files: changes.size };
+}
+
+/** Restore every content folder from the remote store. Opt-in. */
+async function loadContent(releaseRootDir) {
+  if (!enabled || !SYNC_CONTENT) return { ok: true, skipped: true, restored: 0 };
+
+  let restored = 0;
+  const entries = [];
+
+  if (config.mode === 'http') {
+    if (!httpCache) {
+      try {
+        httpCache = await httpPullAll();
+      } catch (error) {
+        return { ok: false, error: error.message, restored: 0 };
+      }
+    }
+    for (const key of Object.keys(httpCache)) {
+      if (!key.startsWith('content/')) continue;
+      if (key.endsWith('/_index.json')) continue;
+      const parts = key.split('/');
+      entries.push({ folderKey: parts[1], rel: parts.slice(2).join('/'), key });
+    }
+  } else {
+    for (const entry of CONTENT_DIRS) {
+      let listing;
+      try {
+        listing = await githubPull(`content/${entry.key}/_index.json`);
+      } catch (error) {
+        listing = null;
+      }
+      if (!Array.isArray(listing)) continue;
+      for (const rel of listing) {
+        if (String(rel) === '_index.json') continue;
+        entries.push({ folderKey: entry.key, rel, key: `content/${entry.key}/${rel}` });
+      }
+    }
+  }
+
+  for (const item of entries) {
+    const abs = contentAbsPathForFolderKey(releaseRootDir, item.folderKey, item.rel);
+    if (!abs) continue;
+    let data = null;
+    try {
+      data = config.mode === 'http' ? httpCache[item.key] : await githubPull(item.key);
+    } catch (error) {
+      warn(`content pull ${item.key} failed: ${error.message}`);
+    }
+    if (data == null) continue;
+    try {
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      const encoded = (data && typeof data === 'object' && typeof data.__base64 === 'string')
+        ? data.__base64
+        : String(data);
+      fs.writeFileSync(abs, Buffer.from(encoded, 'base64'));
+      restored += 1;
+    } catch (error) {
+      warn(`content write ${item.key} failed: ${error.message}`);
+    }
+  }
+
+  return { ok: true, restored };
 }
 
 module.exports = {
   FILES,
   enabled,
+  contentSyncEnabled: SYNC_CONTENT,
   loadAll,
+  loadContent,
   saveFile,
+  deleteFile,
+  pushContent,
   pushNow,
   pushPending,
   flush,

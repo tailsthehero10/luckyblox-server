@@ -136,6 +136,15 @@ function test(name, fn) {
     });
   });
 
+  await test('deleteFile removes a file from the remote store', async () => {
+    // A removed account's file must not be restored on the next boot.
+    assert.ok(store['42.json'], 'the file is in the store first');
+    remoteStore.deleteFile('42.json');
+    const flushed = await remoteStore.flush();
+    assert.ok(flushed.pushed !== undefined, 'flush succeeded');
+    assert.ok(!store['42.json'], 'the file was removed from the store');
+  });
+
   // --- Inert when unconfigured ---------------------------------------------
   await test('is inert when LUCKYBLOX_SYNC is unset', async () => {
     delete process.env.LUCKYBLOX_SYNC;
