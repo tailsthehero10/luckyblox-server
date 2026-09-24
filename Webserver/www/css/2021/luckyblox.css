@@ -1,0 +1,188 @@
+/*
+ * luckyblox.css - additions on top of the real 2021 stylesheets.
+ *
+ * The pages load the actual archived Roblox 2021 CSS (Navigation, Builder,
+ * Avatar, Thumbnails, Footer, NotificationStream) from /css/2021. Those files
+ * style the chrome exactly as roblox.com did in 2021, but they expect a handful
+ * of images that shipped with the site and a couple of layout wrappers the
+ * archive capture left empty. This file supplies only those gaps, so the pages
+ * render correctly without editing the archived stylesheets.
+ */
+
+/* --- tokens the 2021 stylesheets expect but the capture did not carry --- */
+:root {
+  --roblox-blue: #00a2ff;
+  --roblox-blue-hover: #0084d1;
+  --roblox-green: #02b757;
+  --roblox-text: #393b3d;
+  --roblox-muted: #757575;
+  --roblox-border: #e3e3e3;
+}
+
+.lb-classic-body {
+  background: #f2f2f2;
+  color: #393b3d;
+  font-family: "SourceSansPro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  margin: 0;
+}
+
+/* --- the avatar viewport (the archived page's three.js canvas slot) --- */
+.lb-viewport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+  background: #f7f7f7 linear-gradient(180deg, #fbfbfb, #efefef);
+  border: 1px solid var(--roblox-border);
+}
+
+/* The shared blocky figure, scaled to fill the viewport slot. */
+.lb-viewport .lb-avatar-figure {
+  --lb-avatar-scale: 1.45;
+}
+
+/* --- item cards ------------------------------------------------------- */
+/* The 2021 pages laid item cards out in a seven-column stackable grid; the
+   archived CSS expects the list wrapper to carry the grid behaviour. */
+.item-cards-stackable {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item-card.seven-column {
+  width: 14.2857%;
+  min-width: 110px;
+  box-sizing: border-box;
+}
+
+.item-card-thumb-container {
+  display: block;
+  position: relative;
+}
+
+.item-card-thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #ffffff;
+  border: 1px solid var(--roblox-border);
+  box-sizing: border-box;
+}
+
+.item-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.item-card-name {
+  font-size: 12px;
+  line-height: 15px;
+  color: var(--roblox-text);
+}
+
+.item-card-wearing-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(2, 183, 87, 0.92);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  padding: 2px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* --- the right-hand column ------------------------------------------- */
+.right-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.right-wrapper .section-content {
+  background: #ffffff;
+  border: 1px solid var(--roblox-border);
+  padding: 12px 14px;
+}
+
+.right-wrapper h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--roblox-text);
+}
+
+.billing-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.billing-row:last-of-type {
+  border-bottom: 0;
+  margin-bottom: 10px;
+}
+
+.lb-muted {
+  color: var(--roblox-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.btn-secondary-md {
+  display: inline-block;
+  padding: 7px 14px;
+  background: #ffffff;
+  border: 1px solid #c3c3c3;
+  color: var(--roblox-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-secondary-md:hover {
+  border-color: var(--roblox-blue);
+  color: var(--roblox-blue);
+}
+
+/* --- empty states ----------------------------------------------------- */
+.lb-empty-note {
+  padding: 14px;
+  background: #fafafa;
+  border: 1px dashed #d6d6d6;
+  color: var(--roblox-muted);
+  font-size: 13px;
+}
+
+.lb-empty-note a {
+  color: var(--roblox-blue);
+  text-decoration: none;
+}
+
+/* --- responsive: the 2021 grid was fixed-width, so collapse it here --- */
+@media (max-width: 900px) {
+  .item-card.seven-column {
+    width: 33.3333%;
+  }
+}
+
+@media (max-width: 560px) {
+  .item-card.seven-column {
+    width: 50%;
+  }
+
+  .lb-viewport {
+    min-height: 300px;
+  }
+}
