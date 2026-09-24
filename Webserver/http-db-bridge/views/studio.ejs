@@ -97,7 +97,7 @@
         <div class="muted">User: <%= user.username %></div>
         <div class="muted">Membership: <%= user.membershipStatus || user.membership || 'None' %></div>
         <div class="muted">Role: <%= (typeof isAdmin !== 'undefined' && isAdmin) ? 'Admin' : 'Creator' %></div>
-        <div class="muted" style="display:flex;align-items:center;gap:6px;">Robux: <img class="ch-ico ch-ico-sm" src="/icons/robux.svg" alt="Robux" /> <%= (currency && currency.robux) || user.robux || 0 %></div>
+        <div class="muted" style="display:flex;align-items:center;gap:6px;">Robux: <img class="ch-ico ch-ico-sm ch-ico--ink" src="/icons/robux-outline.svg" alt="Robux" /> <%= (currency && currency.robux) || user.robux || 0 %></div>
         <div class="muted" style="margin-top:10px;"><strong>Studio 2022M</strong> connects to:</div>
         <div class="status-chip"><%= typeof studioHost !== 'undefined' ? studioHost : 'localhost' %>:<%= typeof studioPort !== 'undefined' ? studioPort : '53640' %></div>
         <div style="margin-top:16px;">

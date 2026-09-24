@@ -140,6 +140,19 @@
           throw new Error(payload && payload.message ? payload.message : 'Unable to generate launch ticket.');
         }
 
+        // The local client was launched automatically when it is installed.
+        if (payload.nativeLaunch && payload.nativeLaunch.status === 'launched') {
+          return payload;
+        }
+
+        // Not installed: offer the custom installer before falling back.
+        if (payload.client && !payload.client.installed && payload.client.downloadUrl) {
+          if (window.confirm('The LuckyBlox client is not installed.\n\nDownload it now?')) {
+            window.location.href = payload.client.downloadUrl;
+            return payload;
+          }
+        }
+
         if (payload.playUrl) {
           window.location.href = payload.playUrl;
         } else if (payload.launchURI) {

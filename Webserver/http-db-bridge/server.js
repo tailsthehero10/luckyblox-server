@@ -7,6 +7,7 @@ const { buildPlaceCatalogFromMaps, normalizePlaceId: normalizePlaceIdInput, reso
 const { getRobloxProfileTemplateItems } = require('./robloxTemplateSource');
 const robloxApi = require('./robloxApi');
 const { getStudioBuildInfo, getStudioUpdateManifest, STUDIO_EXECUTABLE_PATH, DEFAULT_BASE_URL } = require('./studioBuildInfo');
+const clientLauncher = require(path.join(__dirname, '..', '..', 'server', 'clientLauncher.js'));
 const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'server', 'studioApi.js'));
 const { installTeamCreateRoutes } = require(path.join(__dirname, '..', '..', 'server', 'teamCreate.js'));
 const {
@@ -2062,17 +2063,25 @@ function getTicketStatus(ticket) {
 }
 
 function resolveRobloxPlayerBinary() {
-  const clientPath = path.join(releaseRoot, 'Clients', '2021M', 'RobloxPlayerBeta.exe');
-  return fs.existsSync(clientPath) ? clientPath : null;
+  // Delegates to the shared client launcher, which resolves the client under a
+  // folder named "Luckyblox" (per-user install, portable install or the bundled
+  // Clients/2021M build). Returns null when the client is not installed, so
+  // callers can offer the download instead of failing with a made-up path.
+  return clientLauncher.resolveClientBinary();
 }
 
 function launchLocalRobloxClient({ userId, placeId, port, serverJobId, ticket }) {
   const executablePath = resolveRobloxPlayerBinary();
   if (!executablePath) {
+    // Report the real state so the caller can offer the installer instead.
+    const status = clientLauncher.getClientStatus();
     return {
       ok: false,
-      error: 'roblox-client-not-found',
-      details: 'No RobloxPlayerBeta.exe was found under the local Clients folder.',
+      error: 'client-not-installed',
+      details: status.supported
+        ? `No LuckyBlox client was found in the "${clientLauncher.INSTALL_FOLDER_NAME}" install folder.`
+        : 'The LuckyBlox desktop client is only available on Windows.',
+      downloadUrl: status.downloadUrl,
     };
   }
 
@@ -4463,6 +4472,59 @@ app.post('/v1/launch-client', (req, res) => {
   }
 });
 
+/**
+ * Install state of the content client on the machine running the server. The
+ * Play button polls this so it can decide between "Play" and "Download".
+ */
+app.get('/api/client/status', (req, res) => {
+  res.json({ ok: true, ...clientLauncher.getClientStatus() });
+});
+
+/**
+ * Get the LuckyBlox client installer.
+ *
+ * The installer is a real file the build ships; when it is absent this 404s
+ * rather than streaming something unrelated, so a download link is never lying
+ * about what it points to.
+ */
+app.get('/download/client', (req, res) => {
+  const installer = clientLauncher.installerPath();
+  if (!installer || !fs.existsSync(installer)) {
+    return res.status(404).json({
+      ok: false,
+      error: 'installer-not-available',
+      message: 'The LuckyBlox client installer is not available on this server.',
+    });
+  }
+  return res.download(installer, path.basename(installer));
+});
+
+/**
+ * Launch the installed LuckyBlox client directly, without needing a page
+ * hand-off. Used by the site's Play button once it knows the client exists.
+ */
+app.post('/api/client/launch', (req, res) => {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  if (!sessionUser) {
+    return res.status(401).json({ ok: false, error: 'sign-in-required', message: 'Sign in to play.' });
+  }
+
+  const userId = Number(sessionUser.userId || sessionUser.id) || 1;
+  const placeId = Number(req.body.placeId || req.query.placeId || 1818);
+  const job = createJoinJob(userId, placeId);
+  const ticket = createAuthTicket(userId, placeId, { port: job.port, serverJobId: job.jobId });
+  const result = launchLocalRobloxClient({
+    userId,
+    placeId,
+    port: job.port,
+    serverJobId: job.jobId,
+    ticket: ticket.ticket,
+  });
+
+  const status = clientLauncher.getClientStatus();
+  return res.json({ ok: result.ok, ...result, client: status, placeId, jobId: job.jobId, port: job.port });
+});
+
 app.post('/api/launch-game', (req, res) => {
   const sessionUser = req.sessionUser || resolveSessionUser(req);
 
@@ -4495,6 +4557,18 @@ app.post('/api/launch-game', (req, res) => {
 
     const playUrl = `/play?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket.ticket)}&serverPort=${job.port}&jobId=${encodeURIComponent(job.jobId)}`;
 
+    // Find the installed content client and launch it automatically. When the
+    // client is absent (or the host cannot run it) report the download the site
+    // should offer, so the Play button always leads somewhere real.
+    const launchResult = launchLocalRobloxClient({
+      userId,
+      placeId,
+      port: job.port,
+      serverJobId: job.jobId,
+      ticket: ticket.ticket,
+    });
+    const clientStatus = clientLauncher.getClientStatus();
+
     audit('launch_game', {
       ip: security.clientIp(req),
       userId: String(userId),
@@ -4520,10 +4594,21 @@ app.post('/api/launch-game', (req, res) => {
       expiresAt: new Date(ticket.expiresAt).toISOString(),
       launchURI: playUrl,
       playUrl,
-      nativeLaunch: {
-        status: 'skipped',
-        reason: 'Native Roblox client not reliable in this environment',
-      },
+      // Client install state, so the page can say "launching" or "download".
+      client: clientStatus,
+      nativeLaunch: launchResult.ok
+        ? {
+          status: 'launched',
+          pid: launchResult.pid,
+          executablePath: launchResult.exePath,
+          launchURI: launchResult.launchURI,
+        }
+        : {
+          status: 'not-installed',
+          reason: launchResult.details,
+          error: launchResult.error,
+          downloadUrl: clientStatus.downloadUrl,
+        },
     });
   } catch (error) {
     console.error('Launch failed:', error);

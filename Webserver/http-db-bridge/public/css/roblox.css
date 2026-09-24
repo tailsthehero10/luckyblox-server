@@ -3957,3 +3957,265 @@ img.roblox-brand-mark {
 .lb-loading-block.is-loading img {
   opacity: 0;
 }
+/* ---------------------------------------------------------------------------
+   Permanent left navigation rail  (LuckyBlox 2021 layout)
+   ---------------------------------------------------------------------------
+   The sidebar is the site's persistent left rail. Every page renders the same
+   <header> top bar plus the <aside class="lb-sidebar"> rail, so the rail is the
+   primary navigation and cannot be moved: it is pinned to the left edge with
+   position: fixed and the page content reserves its width with a left margin.
+
+   A distinct rail is used on the creation surfaces (/create and /develop) - see
+   .lb-rail-creator below - which carries everything the user needs to drive
+   Studio, so the creation flow never depends on the general site nav.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --lb-rail-width: 220px;
+  --lb-topbar-height: 50px;
+}
+
+/* The rail is fixed to the viewport left edge and scrolls on its own. It is
+   never a grid track that a page could re-flow, so it cannot be dragged or
+   pushed around by page content. */
+.lb-sidebar,
+.roblox-sidebar {
+  position: fixed !important;
+  top: var(--lb-topbar-height) !important;
+  left: 0 !important;
+  right: auto !important;
+  bottom: 0 !important;
+  width: var(--lb-rail-width) !important;
+  max-width: var(--lb-rail-width) !important;
+  padding: 14px 12px 40px !important;
+  margin: 0 !important;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--lb-surface) !important;
+  border-right: 1px solid var(--lb-line) !important;
+  border-top: 0 !important;
+  border-radius: 0 !important;
+  z-index: 40;
+  align-self: auto !important;
+}
+
+/* The shell no longer needs a left track - the fixed rail supplies it. The
+   single remaining track holds the page content. It is pushed clear of the
+   fixed top bar with padding so a `margin-top: 0` reset cannot pull content
+   under the header. */
+.lb-shell,
+.roblox-shell {
+  display: block !important;
+  grid-template-columns: none !important;
+  max-width: none !important;
+  margin: 0 !important;
+  margin-top: 0 !important;
+  padding-top: var(--lb-topbar-height) !important;
+  padding-left: var(--lb-rail-width) !important;
+}
+
+.lb-main,
+.roblox-main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 16px 24px 48px !important;
+}
+
+/* The top bar keeps the brand and account actions but is shortened to the
+   rail width so the global nav is not duplicated on both axes. */
+.lb-page:has(> .lb-header) > .lb-header,
+.roblox-page:has(> .roblox-topbar) > .roblox-topbar,
+.lb-page > .lb-header,
+.roblox-page > .roblox-topbar {
+  height: var(--lb-topbar-height) !important;
+}
+
+/* The header's own nav links are hidden: navigation now lives in the left rail
+   only, so the site has ONE navigation surface. The brand and the right-side
+   account actions stay. */
+.lb-header-nav,
+.roblox-nav {
+  display: none !important;
+}
+
+/* Left-align the brand block against the rail so the top bar reads as the head
+   of the rail rather than a separate full-width band. */
+.lb-header,
+.roblox-topbar {
+  padding-left: 16px !important;
+}
+
+/* --- Creator rail (used by /create and /develop) -------------------------- */
+.lb-rail-creator {
+  background: #101826 !important;
+  border-right: 1px solid #0a1220 !important;
+}
+.lb-rail-creator .lb-rail-title {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 6px 10px 10px;
+}
+.lb-rail-creator .lb-rail-group {
+  margin-top: 14px;
+}
+.lb-rail-creator .lb-rail-group-label {
+  color: #7f8ea3;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+}
+.lb-rail-creator .lb-sidebar-link,
+.lb-rail-creator .roblox-sidebar-link {
+  color: #cbd5e1 !important;
+}
+.lb-rail-creator .lb-sidebar-link .ch-ico,
+.lb-rail-creator .roblox-sidebar-link .ch-ico {
+  filter: brightness(0) invert(1) !important;
+  opacity: 0.7;
+}
+.lb-rail-creator .lb-sidebar-link:hover,
+.lb-rail-creator .roblox-sidebar-link:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+.lb-rail-creator .lb-sidebar-link.is-active,
+.lb-rail-creator .roblox-sidebar-link.is-active {
+  background: #1f6feb !important;
+  color: #ffffff !important;
+}
+.lb-rail-creator .lb-sidebar-link.is-active .ch-ico,
+.lb-rail-creator .roblox-sidebar-link.is-active .ch-ico {
+  opacity: 1;
+}
+.lb-rail-creator .roblox-sidebar-divider {
+  background: rgba(255, 255, 255, 0.12);
+}
+.lb-rail-creator .roblox-sidebar-username,
+.lb-rail-creator .lb-sidebar-username { color: #ffffff; }
+.lb-rail-creator .roblox-sidebar-status,
+.lb-rail-creator .lb-sidebar-status { color: #94a3b8; }
+.lb-rail-creator .roblox-sidebar-avatar,
+.lb-rail-creator .lb-sidebar-avatar { background: #1f6feb; color: #ffffff; }
+
+/* --- Layout-glitch fixes -------------------------------------------------- */
+/* Some pages nested a second .lb-page inside the shell, which used to be a grid
+   track and therefore broke the content column. The shell is a block now, so a
+   nested page wrapper must not add its own page padding or background. */
+.lb-shell .lb-page,
+.lb-shell .roblox-page,
+.lb-main .lb-page,
+.lb-main .roblox-page {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  min-height: 0 !important;
+}
+
+/* Empty flex/grid children collapse their gap so a page with one column does
+   not leave a phantom blank track on the right. */
+.lb-shell:empty { display: none !important; }
+.lb-content-grid:empty,
+.lb-grid:empty { display: none !important; }
+
+/* Long unbroken strings (place ids, job ids, URLs) must not blow out the
+   content column and produce the horizontally-scrolled "glitched" look. */
+.lb-main,
+.ch-page,
+.lb-panel-body,
+.ch-panel-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1024px) {
+  :root { --lb-rail-width: 200px; }
+}
+@media (max-width: 760px) {
+  :root { --lb-rail-width: 0px; }
+  .lb-sidebar,
+  .roblox-sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.18s ease;
+  }
+  body.lb-rail-open .lb-sidebar,
+  body.lb-rail-open .roblox-sidebar {
+    transform: translateX(0);
+    width: 220px !important;
+    max-width: 220px !important;
+  }
+  body.lb-rail-open { --lb-rail-width: 220px; }
+}
+
+/* ---------------------------------------------------------------------------
+   Play button as a real control
+   ---------------------------------------------------------------------------
+   The Play button is now a <button> (it triggers a client-detect-and-launch
+   fetch rather than navigating to a luckyblox-player: URI), so it needs the
+   anchor styling reset explicitly to keep the exact same look.
+   --------------------------------------------------------------------------- */
+button.roblox-play-button,
+button.lb-btn {
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+button.roblox-play-button:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+/* ---------------------------------------------------------------------------
+   Game page - the 2021 vote bar and Favorite action
+   ---------------------------------------------------------------------------
+   The real 2021 game page put the like/dislike thumbs either side of a single
+   percentage bar, with Favorite as its own button under it, and the meta as two
+   plain rows (Server Size, Genre). These are the controls that used to be split
+   into invented "Votes" / "Server size" cards.
+   --------------------------------------------------------------------------- */
+.lb-vote-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lb-vote-bar-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.lb-vote-pct {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 4px;
+}
+.lb-vote-btn {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--lb-line);
+  border-radius: var(--lb-radius);
+  background: var(--lb-surface);
+  cursor: pointer;
+  padding: 0;
+}
+.lb-vote-btn:hover { background: #eef1f4; }
+.lb-vote-btn .ch-ico { width: 18px; height: 18px; }
+/* The dislike button mirrors the thumbs-up glyph instead of shipping a second
+   near-identical file. */
+.lb-ico-flip { transform: rotate(180deg); }
+
+.lb-fav-btn .ch-ico { width: 16px; height: 16px; }
+
+/* Favorite button toggled state. */
+.lb-fav-btn.is-on {
+  background: #fff4d6;
+  border-color: #f0c040;
+  color: #7a5b00;
+}

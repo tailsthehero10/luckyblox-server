@@ -18,7 +18,7 @@
     <%- include('partials/header', { user: user, currency: currency, activeNav: 'create' }) %>
 
     <div class="lb-shell">
-      <%- include('partials/sidebar', { user: user, activeNav: 'create' }) %>
+      <%- include('partials/creator-rail', { user: user, activeNav: 'develop', studioReady: studioReady }) %>
 
       <div class="lb-main">
 
@@ -295,8 +295,10 @@
 
       var b1 = document.getElementById('launchStudioBtn');
       var b2 = document.getElementById('launchStudioBtn2');
+      var b3 = document.getElementById('railLaunchStudioBtn');
       if (b1) b1.addEventListener('click', function (e) { e.preventDefault(); launchStudio(); });
       if (b2) b2.addEventListener('click', launchStudio);
+      if (b3) b3.addEventListener('click', launchStudio);
 
       // --- Live server / player counts ---------------------------------------
       // Polls the real orchestrator state so the dashboard is dynamic, not a

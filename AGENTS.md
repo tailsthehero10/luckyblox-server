@@ -24,3 +24,14 @@ LuckyBlox is a local Roblox-style game platform served from a release folder. Ap
 - Session cookie: `luckblox_session`, stored in `Webserver/http-db-bridge/data/sessions.json`.
 - PBKDF2-SHA512 password hashing: 210000 iterations, 64-byte key length.
 - Static assets under `Webserver/www/site-icon/` and `Webserver/www/gameplaceholder/`.
+
+## Client install model
+- The content client lives in a folder literally named `Luckyblox` (see `server/clientLauncher.js`).
+  Resolution order: `LUCKYBLOX_CLIENT_PATH` -> `LUCKYBLOX_CLIENT_ROOT\Luckyblox` ->
+  `%LOCALAPPDATA%\Luckyblox` -> `<release>/Luckyblox` -> `<release>/Clients/2021M`.
+  Inside a root the binary is either present directly or under `Versions/<version>/`.
+- The custom installer is served from `GET /download/client`; drop the build at
+  `Luckyblox\LuckybloxInstaller.exe` (or set `LUCKYBLOX_INSTALLER_PATH`). When absent
+  the route 404s and Play reports the client as unavailable instead of dead-linking.
+- Play flow: `POST /api/launch-game` (and `/api/client/launch`) detect the client,
+  auto-launch it, and return `client.downloadUrl` when it is not installed.

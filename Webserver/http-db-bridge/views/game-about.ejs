@@ -15,12 +15,12 @@
   The 2021 layout was a two-column body:
 
     LEFT   the 16:9 thumbnail with the green Play button over it, then the
-           About / Store / Servers underline tabs. Under About: the description
-           panel, then the stat grid (Playing, Visits, Favorites, Created,
-           Updated, Genre, Max Players).
-    RIGHT  the game icon, the title, "By <creator>", the like bar with the
-           percentage and the vote counts, the server-size row, then the
-           detail stat list.
+           About / Store / Servers underline tabs. Under About: the full stat
+           grid (Playing, Visits, Favorites, Created, Updated, Genre).
+    RIGHT  the game icon, the title, "By <creator>", the Playing / Favorites /
+           Visits stats, the like/dislike bar with its percentage, the Favorite
+           button, the Play button, the Server Size and Genre rows, then the
+           Description section.
 
   Every number is real: games.json, places.json, or the live orchestrator.
 %>
@@ -77,7 +77,9 @@
               <section class="lb-panel">
                 <div class="lb-panel-header"><span>About</span></div>
                 <div class="lb-panel-body">
-                  <div class="lb-description"><%= g.description || 'No description has been provided for this experience.' %></div>
+                  <%# The description lives in its own section in the right column,
+                      exactly where the 2021 page put it, so it is not repeated
+                      here. This tab carries the full game-stat grid instead. %>
                   <div class="lb-game-stats">
                     <div class="lb-game-stat">
                       <span class="lb-game-stat-value"><%= abbreviateCount(playing) %></span>
@@ -160,7 +162,8 @@
             <% } %>
           </div>
 
-          <!-- Right: icon, title, byline, votes, server size -->
+          <!-- Right: icon, title, byline, votes, favourite, server size, genre,
+               description - the order the real 2021 page used. -->
           <div class="lb-game-info">
             <div class="lb-game-head">
               <div class="lb-game-icon" style="background-image:url('<%= iconUrl %>');" aria-label="Game icon"></div>
@@ -185,39 +188,52 @@
               </div>
             </div>
 
-            <div class="lb-action-row">
-              <button class="lb-btn lb-btn-primary" type="button" data-launch-place-id="<%= placeId %>">
-                <img class="ch-ico" src="/icons/play.svg" alt="" /> Play
+            <!-- Voting: the 2021 like bar with the thumb buttons and the
+                 percentage, then the separate Favorite action. -->
+            <div class="lb-vote-block">
+              <button class="lb-vote-btn" type="button" title="Vote up" aria-label="Vote up">
+                <img class="ch-ico" src="/icons/like.svg" alt="" />
               </button>
-              <a class="lb-btn lb-btn-secondary" href="/games">Back to Games</a>
+              <div class="lb-vote-bar-wrap">
+                <div class="lb-bar"><div class="lb-bar-fill" style="width:<%= votePct %>%;"></div></div>
+                <div class="lb-vote-pct"><%= votePct %>%</div>
+              </div>
+              <button class="lb-vote-btn" type="button" title="Vote down" aria-label="Vote down">
+                <img class="ch-ico lb-ico-flip" src="/icons/like.svg" alt="" />
+              </button>
+            </div>
+            <% if (voteTotal > 0) { %>
+              <div class="lb-faint">
+                <%= likes %> like<%= likes === 1 ? '' : 's' %> &middot; <%= dislikes %> dislike<%= dislikes === 1 ? '' : 's' %>
+              </div>
+            <% } %>
+
+            <div class="lb-action-row">
+              <button class="lb-btn lb-btn-secondary lb-fav-btn" type="button" id="favBtn">
+                <img class="ch-ico" src="/icons/star.svg" alt="" /> Favorite
+              </button>
             </div>
 
-            <section class="lb-panel" style="margin-top:4px;">
-              <div class="lb-panel-header"><span>Votes</span></div>
+            <div class="lb-action-row">
+              <button class="lb-btn lb-btn-primary roblox-play-button" type="button" data-launch-place-id="<%= placeId %>">
+                <img class="ch-ico" src="/icons/play.svg" alt="" /> Play
+              </button>
+            </div>
+
+            <!-- Server Size and Genre, exactly the two rows the real page used. -->
+            <section class="lb-panel">
               <div class="lb-panel-body">
-                <% if (voteTotal > 0) { %>
-                  <div class="lb-vote-row">
-                    <span>Likes</span>
-                    <div class="lb-bar"><div class="lb-bar-fill" style="width:<%= votePct %>%;"></div></div>
-                    <strong><%= votePct %>%</strong>
-                  </div>
-                  <div class="lb-faint" style="margin-top:8px;">
-                    <%= likes %> like<%= likes === 1 ? '' : 's' %> &middot; <%= dislikes %> dislike<%= dislikes === 1 ? '' : 's' %>
-                  </div>
-                <% } else { %>
-                  <div class="lb-muted">No votes have been cast yet.</div>
-                <% } %>
+                <div class="lb-game-meta-list">
+                  <div class="lb-game-meta-row"><span>Server Size</span><strong><%= maxPlayers %></strong></div>
+                  <div class="lb-game-meta-row"><span>Genre</span><strong><%= genre %></strong></div>
+                </div>
               </div>
             </section>
 
             <section class="lb-panel">
-              <div class="lb-panel-header"><span>Server size</span></div>
+              <div class="lb-panel-header"><span>Description</span></div>
               <div class="lb-panel-body">
-                <div class="lb-stat-list">
-                  <span>Max players</span><strong><%= maxPlayers %></strong>
-                  <span>Active servers</span><strong><%= serverCount %></strong>
-                  <span>Players online</span><strong><%= playing %></strong>
-                </div>
+                <div class="lb-description"><%= g.description || 'No description has been provided for this experience.' %></div>
               </div>
             </section>
           </div>
@@ -226,6 +242,18 @@
     </div>
   </div>
 
+  <script>
+    // Favorite is a local toggle: the data files have no favourites model, so the
+    // button reflects the click instead of pretending a server round-trip.
+    (function () {
+      var fav = document.getElementById('favBtn');
+      if (!fav) return;
+      fav.addEventListener('click', function () {
+        fav.classList.toggle('is-on');
+        fav.lastChild.textContent = fav.classList.contains('is-on') ? ' Favorited' : ' Favorite';
+      });
+    }());
+  </script>
   <script>
     // Launch through the same endpoint and delegated handler the rest of the
     // site uses. The old inline handler posted to /v1/launch-client, which does
@@ -257,6 +285,23 @@
           return;
         }
 
+        // The local client was launched automatically when it is installed.
+        if (data.nativeLaunch && data.nativeLaunch.status === 'launched') {
+          return;
+        }
+
+        // Not installed: offer the custom installer, then the browser hand-off.
+        if (data.client && !data.client.installed && data.client.downloadUrl) {
+          var goDownload = window.confirm(
+            'The LuckyBlox client is not installed.\n\nDownload it now?'
+          );
+          if (goDownload) {
+            window.location.href = data.client.downloadUrl;
+            return;
+          }
+        }
+
+        // Fall back to the play page, which still offers the browser hand-off.
         if (data.playUrl) {
           window.location.href = data.playUrl;
         } else if (data.launchURI) {

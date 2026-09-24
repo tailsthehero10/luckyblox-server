@@ -24,7 +24,7 @@
       <%- include('partials/header', { user: user, currency: currency, activeNav: 'create' }) %>
 
         <div class="lb-shell">
-          <%- include('partials/sidebar', { user: user, activeNav: 'create' }) %>
+          <%- include('partials/creator-rail', { user: user, activeNav: 'create', studioReady: studioReady }) %>
 
             <main class="lb-main">
               <!-- Hero -->
@@ -119,6 +119,29 @@
         </div>
     </div>
     <script src="/legacy-nav.js"></script>
+    <script>
+      // The Creator rail's Studio button opens the desktop Studio app through the
+      // same endpoint /develop uses, so both creation surfaces behave identically.
+      (function () {
+        var btn = document.getElementById('railLaunchStudioBtn');
+        if (!btn) return;
+        btn.addEventListener('click', async function () {
+          try {
+            var res = await fetch('/api/studio/launch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify({})
+            });
+            var data = await res.json();
+            if (!res.ok || !data.ok || !data.launched) {
+              alert((data && data.message) || 'LuckyBlox Studio is not installed on this machine.');
+            }
+          } catch (error) {
+            alert('Could not reach the server to start Studio.');
+          }
+        });
+      }());
+    </script>
   </body>
 
 </html>

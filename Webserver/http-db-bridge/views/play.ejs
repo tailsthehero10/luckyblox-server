@@ -47,7 +47,11 @@
         <div class="roblox-eyebrow">Play</div>
         <div class="roblox-title-block">
           <h1><%= gameName %></h1>
-          <a class="roblox-play-button" href="luckyblox-player:1+launchmode:play+gameinfo:<%= ticket %>&placeId=<%= placeId %>&serverPort=<%= serverPort %>&jobId=<%= jobId %>">Play now</a>
+          <button class="roblox-play-button" type="button" id="playNowBtn"
+                  data-place-id="<%= placeId %>"
+                  data-server-port="<%= serverPort %>"
+                  data-job-id="<%= jobId %>"
+                  data-ticket="<%= ticket %>">Play now</button>
         </div>
 
         <div class="roblox-meta-row">
@@ -58,8 +62,65 @@
         <div class="roblox-description">Launch this experience on your local device.</div>
       </div>
     </section>
+
+    <!-- Client install state, filled by the launch probe below. -->
+    <p class="roblox-description" id="clientStatusLine"></p>
   </div>
 
+  <script>
+    // The Play button finds the installed LuckyBlox client and launches it
+    // automatically. If the client is missing, it offers the custom installer
+    // instead of doing nothing.
+    (function () {
+      var btn = document.getElementById('playNowBtn');
+      var statusLine = document.getElementById('clientStatusLine');
+      if (!btn) return;
+
+      function say(message) {
+        if (statusLine) statusLine.textContent = message;
+      }
+
+      btn.addEventListener('click', async function () {
+        var placeId = Number(btn.getAttribute('data-place-id')) || 1818;
+        btn.disabled = true;
+        say('Checking for the LuckyBlox client\u2026');
+
+        try {
+          var res = await fetch('/api/client/launch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ placeId: placeId })
+          });
+          var data = await res.json();
+
+          if (res.status === 401 || (data && data.error === 'sign-in-required')) {
+            window.location.href = '/signin?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+            return;
+          }
+
+          if (data && data.ok && data.started) {
+            say('LuckyBlox is starting. The client is connecting to your local server\u2026');
+            return;
+          }
+
+          // Not installed - offer the installer.
+          if (data && data.client && data.client.downloadUrl) {
+            say('The LuckyBlox client is not installed.');
+            if (window.confirm('The LuckyBlox client is not installed.\n\nDownload it now?')) {
+              window.location.href = data.client.downloadUrl;
+            }
+            return;
+          }
+
+          say((data && (data.details || data.message)) || 'The LuckyBlox client is not installed on this device.');
+        } catch (error) {
+          say('Could not reach the server to launch the client.');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }());
+  </script>
   <script src="/legacy-nav.js"></script>
 </body>
 </html>
