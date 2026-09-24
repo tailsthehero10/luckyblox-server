@@ -72,6 +72,10 @@
     menu.className = 'lb-select-menu';
     menu.setAttribute('role', 'listbox');
     menu.hidden = true;
+    // The menu must be IN the DOM for it to ever paint. It was created and
+    // populated but never appended, so opening a dropdown did nothing visible -
+    // the options were written into a detached element.
+    wrap.appendChild(menu);
 
     function selectedText() {
       var opt = select.options[select.selectedIndex];
