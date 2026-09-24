@@ -194,17 +194,7 @@ function lb_membership_label($m) {
         <div class="card">
             <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
                 <div class="avatar-stage">
-                    <div class="figure3d" title="<?php echo htmlspecialchars($user['username']); ?> avatar">
-                        <div class="part3d p-head" style="background:<?php echo htmlspecialchars(lb_color_for_id((int) ($bodyColors['headColorId'] ?? 1002))); ?>;">
-                            <div class="p-face">&#128512;</div>
-                            <?php if (!empty($wearingItems)): ?><div class="p-accessory">&#127913;</div><?php endif; ?>
-                        </div>
-                        <div class="part3d p-torso" style="background:<?php echo htmlspecialchars(lb_color_for_id((int) ($bodyColors['torsoColorId'] ?? 1002))); ?>;"></div>
-                        <div class="part3d p-larm" style="background:<?php echo htmlspecialchars(lb_color_for_id((int) ($bodyColors['leftArmColorId'] ?? 1002))); ?>;"></div>
-                        <div class="part3d p-rarm" style="background:<?php echo htmlspecialchars(lb_color_for_id((int) ($bodyColors['rightArmColorId'] ?? 1002))); ?>;"></div>
-                        <div class="part3d p-lleg" style="background:<?php echo htmlspecialchars(lb_color_for_id((int) ($bodyColors['leftLegColorId'] ?? 1002))); ?>;"></div>
-                        <div class="part3d p-rleg" style="background:<?php echo htmlspecialchars(lb_color_for_id((int) ($bodyColors['rightLegColorId'] ?? 1002))); ?>;"></div>
-                    </div>
+                    <?php echo lb_render_avatar_figure($user, 240); ?>
                 </div>
                 <div style="flex:1;min-width:240px;">
                     <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;font-weight:700;">Player profile</div>

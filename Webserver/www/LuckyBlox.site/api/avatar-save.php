@@ -1,18 +1,26 @@
 <?php
-require_once __DIR__ . '/../api/luckyblox-data.php';
+// The data layer lives in Webserver/www/api/, NOT in Webserver/www/LuckBlox.site/api/.
+// The old require pointed at a file that does not exist, so every save fatal-ed
+// and avatar changes were silently lost.
+require_once __DIR__ . '/../../api/luckyblox-data.php';
 
 session_start();
 
 header('Content-Type: application/json');
 
-$userId = (int) ($_POST['userId'] ?? 0);
+// Identity is taken from the signed-in session, never trusted from the body, so
+// one account cannot overwrite another user's avatar.
+$currentUser = lb_get_current_user();
+$postedUserId = (int) ($_POST['userId'] ?? 0);
+$userId = $currentUser ? (int) $currentUser['userId'] : $postedUserId;
 if ($userId < 1) {
-    echo json_encode(array('ok' => false, 'error' => 'missing-userId'));
+    echo json_encode(array('ok' => false, 'error' => 'sign-in-required'));
     exit;
 }
 
 $csrf = $_POST['csrf'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-if (!lb_verify_csrf_token((string)$csrf, $_COOKIE[LB_SESSION_COOKIE] ?? '')) {
+$sessionId = isset($_COOKIE[LB_SESSION_COOKIE]) ? (string) $_COOKIE[LB_SESSION_COOKIE] : '';
+if ($sessionId === '' || !lb_verify_csrf_token((string) $csrf, $sessionId)) {
     echo json_encode(array('ok' => false, 'error' => 'invalid-csrf'));
     exit;
 }

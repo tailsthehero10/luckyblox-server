@@ -1,0 +1,55 @@
+<!--
+  Shared site header - the 2021 roblox.com top bar.
+  Real page: https://web.archive.org/web/20210605202558/https://www.roblox.com/
+
+  The 2021 header was one dark slate bar, left to right:
+    logo | Games . Avatar Shop . Create . Robux | R$ balance (gear) (friends) (avatar)
+
+  The avatar icon on the right IS the profile link - roblox.com had no separate
+  "Profile" text link in the header.
+
+  Expects: user (may be null), currency {robux}, activeNav.
+-->
+<%
+var hUser = (typeof user !== 'undefined' && user) ? user : null;
+var hCurrency = (typeof currency !== 'undefined' && currency) ? currency : { robux: 0 };
+var hActive = (typeof activeNav !== 'undefined' && activeNav) ? activeNav : '';
+var hUserId = hUser ? hUser.userId : null;
+var hRobux = hCurrency.robux != null ? hCurrency.robux : (hUser ? (hUser.robux || 0) : 0);
+%>
+<header class="lb-header roblox-topbar">
+  <a class="lb-brand roblox-brand" href="/" aria-label="LuckyBlox home">
+    <img class="lb-brand-mark roblox-brand-mark" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
+    <span>LuckyBlox</span>
+  </a>
+
+  <nav class="lb-header-nav roblox-nav" aria-label="Main navigation">
+    <div class="lb-header-nav-links roblox-nav-links">
+      <a href="/games" class="<%= hActive === 'games' ? 'active' : '' %>">Games</a>
+      <a href="/catalog" class="<%= hActive === 'catalog' ? 'active' : '' %>">Avatar Shop</a>
+      <a href="/develop" class="<%= hActive === 'create' ? 'active' : '' %>">Create</a>
+      <a href="/upgrades/robux" class="<%= hActive === 'robux' ? 'active' : '' %>">Robux</a>
+    </div>
+  </nav>
+
+  <div class="lb-header-right roblox-right">
+    <a class="lb-robux roblox-robux" href="/upgrades/robux" title="Robux balance"><%= hRobux %></a>
+
+    <a class="lb-icon-button roblox-icon-button" href="/settings" title="Settings" aria-label="Settings">
+      <img class="ch-ico" src="/icons/settings.svg" alt="" />
+    </a>
+<%
+var friendsHref = hUserId ? ('/users/' + hUserId + '/friends') : '/signin';
+%>
+    <a class="lb-icon-button roblox-icon-button" href="<%= friendsHref %>" title="Friends" aria-label="Friends">
+      <img class="ch-ico" src="/icons/friends.svg" alt="" />
+    </a>
+<% if (hUserId) { %>
+    <a class="lb-icon-button roblox-icon-button" href="/users/<%= hUserId %>/profile" title="Profile" aria-label="Profile">
+      <img class="ch-ico" src="/icons/profile.svg" alt="" />
+    </a>
+<% } else { %>
+    <a class="lb-header-action roblox-header-action" href="/signin">Log In</a>
+<% } %>
+  </div>
+</header>

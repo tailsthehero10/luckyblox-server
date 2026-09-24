@@ -177,7 +177,7 @@ $genderLabels = array('NotSpecified' => 'Not specified', 'Male' => 'Male', 'Fema
             <div class="small">Your avatar will use a matching default body color set.</div>
 
             <div class="hint">
-                <strong>New to LuckyBlox?</strong> Your avatar starts with 100 Robux, classic starter items, and a free membership.
+                <strong>New to LuckyBlox?</strong> Create your account to start playing and building.
             </div>
 
             <div class="actions">

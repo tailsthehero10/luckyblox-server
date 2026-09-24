@@ -738,10 +738,12 @@ function lb_build_new_user_record($nextId, $username, $displayName, $gender, $ha
         'joinDate' => $joinDate,
         'created' => $joinDate,
         'birthday' => $birthdayValue,
-        'membershipStatus' => 'Premium',
-        'membership' => 'Premium',
-        'robux' => 100,
-        'currencies' => array('robux' => 100, 'coins' => 250, 'tickets' => 10),
+        // Real starting state - a brand new account has no money and no
+        // membership. Nothing invented.
+        'membershipStatus' => 'None',
+        'membership' => 'None',
+        'robux' => 0,
+        'currencies' => array('robux' => 0, 'coins' => 0, 'tickets' => 0),
         'inventory' => $starterInventory,
         'currentlyWearing' => $starterWearing,
         'wearing' => $starterWearing,
@@ -1197,6 +1199,47 @@ function lb_get_avatar_urls($user) {
         'headshotUrl' => $headshot,
         'fullBodyUrl' => $fullBody,
     );
+}
+
+/**
+ * Render a user's avatar as an R6 blocky figure, the same way on every page.
+ *
+ * This is the single source of truth for avatar rendering: the profile, the
+ * avatar editor and the home page all call it, so a player's character looks
+ * identical everywhere. Body colours come from the saved avatar record, so the
+ * figure always reflects the last save - no letter-circle placeholders.
+ *
+ * @param array  $user      normalized user (needs avatar.bodyColors)
+ * @param int    $size      pixel height of the figure (width scales ~0.5x)
+ * @param string $extraCls  extra CSS classes
+ */
+function lb_render_avatar_figure($user, $size = 240, $extraCls = '') {
+    $avatar = is_array($user['avatar'] ?? null) ? $user['avatar'] : array();
+    $colors = is_array($avatar['bodyColors'] ?? null) ? $avatar['bodyColors'] : array();
+
+    $pick = function($key, $fallback) use ($colors) {
+        $id = (int) ($colors[$key] ?? $fallback);
+        return 'rgb(' . lb_body_color_rgb($id) . ')';
+    };
+
+    $head = $pick('headColorId', 1002);
+    $torso = $pick('torsoColorId', 1002);
+    $rArm = $pick('rightArmColorId', 1002);
+    $lArm = $pick('leftArmColorId', 1002);
+    $rLeg = $pick('rightLegColorId', 1002);
+    $lLeg = $pick('leftLegColorId', 1002);
+
+    $scale = max(0.4, ((int) $size) / 240);
+
+    // The sizes below are the 1x (240px) geometry; the wrapper scales them.
+    return '<div class="lb-avatar-figure ' . htmlspecialchars($extraCls) . '" style="--lb-avatar-scale:' . $scale . ';" role="img" aria-label="Avatar">'
+        . '<div class="lb-af-part lb-af-head" style="background:' . $head . ';"><span class="lb-af-face">:B</span></div>'
+        . '<div class="lb-af-part lb-af-torso" style="background:' . $torso . ';"></div>'
+        . '<div class="lb-af-part lb-af-larm" style="background:' . $lArm . ';"></div>'
+        . '<div class="lb-af-part lb-af-rarm" style="background:' . $rArm . ';"></div>'
+        . '<div class="lb-af-part lb-af-lleg" style="background:' . $lLeg . ';"></div>'
+        . '<div class="lb-af-part lb-af-rleg" style="background:' . $rLeg . ';"></div>'
+        . '</div>';
 }
 
 function lb_get_user_assets($user) {

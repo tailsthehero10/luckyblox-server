@@ -4,248 +4,303 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><%= title %></title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/css/roblox.css" />
 </head>
+<%#
+  Profile page, rebuilt against the real 2021 page structure:
+  https://web.archive.org/web/20210321200603/https://www.roblox.com/users/1/profile/
+
+  What the real page rendered, top to bottom:
+
+    header        avatar headshot, display name + username, then three counters
+                  (Friends / Followers / Following), then Add Friend / Message
+    tab bar       "About" and "Creations" - an underlined tab bar, not pills
+    About tab     About section (bio + Read More + report link),
+                  "Currently Wearing" (avatar figure on the left, an 8-slot
+                  grid of equipped item thumbnails on the right),
+                  then Collections, Groups, Badges and the Statistics section
+    Creations tab a "Games" grid, ~4 tiles per row, each showing the 16:9
+                  thumbnail, the name and a votes% / playing count row
+
+  Every number below comes from users.json / places.json. Nothing is invented.
+%>
+<%
+  var s = user.stats || {};
+  var fCount = (typeof friendsCount !== 'undefined' && friendsCount) ? friendsCount : (Array.isArray(user.friends) ? user.friends.length : 0);
+  var folCount = (typeof followersCount !== 'undefined' && followersCount) ? followersCount : (s.followers || 0);
+  var folgCount = (typeof followingCount !== 'undefined' && followingCount) ? followingCount : (s.following || 0);
+  var visitTotal = (typeof visitsCount !== 'undefined' && visitsCount) ? visitsCount : (s.gameVisits || 0);
+  var wornItems = (typeof wearing !== 'undefined' && wearing) ? wearing : [];
+  var activeTab = (typeof tab !== 'undefined' && tab) ? tab : 'about';
+  var creations = (typeof publishedGames !== 'undefined' && publishedGames) ? publishedGames : [];
+  var badgeList = Array.isArray(user.badges) ? user.badges : [];
+
+  // Avatar sources. resolveProfileAvatar() only fills these when the account is
+  // linked to a real Roblox user id and Roblox answered; otherwise they are null
+  // and the page draws the local blocky figure from the saved body colours.
+  var headshot = (typeof profileAvatar !== 'undefined' && profileAvatar) ? profileAvatar.headshotUrl : null;
+  var fullBody = (typeof profileAvatar !== 'undefined' && profileAvatar) ? profileAvatar.fullBodyUrl : null;
+  var wornFromApi = (typeof profileAvatar !== 'undefined' && profileAvatar && profileAvatar.equipped && profileAvatar.equipped.length)
+    ? profileAvatar.equipped : null;
+  if (wornFromApi) wornItems = wornFromApi;
+%>
 <body>
-  <div class="roblox-page">
-    <header class="roblox-topbar">
-      <a class="roblox-brand" href="/" aria-label="LuckyBlox home">
-        <img class="roblox-brand-mark" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
-        <span>LuckyBlox</span>
-      </a>
+  <div class="lb-page">
+    <%- include('partials/header', {
+      user: user,
+      currency: currency,
+      activeNav: 'profile'
+    }) %>
 
-      <nav class="roblox-nav">
-        <div class="roblox-nav-links">
-          <a href="/">Home</a>
-          <a href="/games">Games</a>
-          <div class="roblox-more-pages">
-            <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
-            <div class="roblox-more-pages-dropdown">
-              <a href="/profile?userId=<%= user.userId %>">Profile</a>
-              <a href="/avatar?userId=<%= user.userId %>">Avatar</a>
-              <a href="/studio">Studio</a>
-              <a href="/settings">Settings</a>
-              <a href="/account">Account</a>
+    <div class="lb-shell">
+      <%- include('partials/sidebar', { user: user, activeNav: 'profile' }) %>
+
+      <main class="lb-main">
+        <!-- Profile header: headshot, name, counters, actions -->
+        <section class="lb-profile-header">
+          <div class="lb-avatar-stage">
+            <% if (headshot || fullBody) { %>
+              <img class="roblox-avatar-image" src="<%= headshot || fullBody %>" alt="<%= user.username %>"
+                   onerror="this.style.display='none';var f=this.parentNode.querySelector('.lb-avatar-figure');if(f)f.style.display='block';" />
+              <div style="display:none;"><%= lbAvatarFigure(user, 150) %></div>
+            <% } else { %>
+              <%= lbAvatarFigure(user, 150) %>
+            <% } %>
+          </div>
+
+          <div>
+            <div class="lb-profile-name">
+              <span><%= user.displayName || user.username %></span>
+              <% if (adminBadge && adminBadge.label) { %>
+                <span class="lb-pill"><%= adminBadge.label %></span>
+              <% } %>
+            </div>
+            <% if ((user.displayName || user.username) !== user.username) { %>
+              <div class="lb-faint">@<%= user.username %></div>
+            <% } %>
+
+            <ul class="lb-counter-row">
+              <li class="lb-counter">
+                <span class="lb-counter-value" title="<%= fCount %>"><%= abbreviateCount(fCount) %></span>
+                <span class="lb-counter-label">Friends</span>
+              </li>
+              <li class="lb-counter">
+                <span class="lb-counter-value" title="<%= folCount %>"><%= abbreviateCount(folCount) %></span>
+                <span class="lb-counter-label">Followers</span>
+              </li>
+              <li class="lb-counter">
+                <span class="lb-counter-value" title="<%= folgCount %>"><%= abbreviateCount(folgCount) %></span>
+                <span class="lb-counter-label">Following</span>
+              </li>
+            </ul>
+
+            <div class="lb-meta-row">
+              <span class="lb-pill">Joined <%= formatJoinDate(user.joinDate) %></span>
+              <span class="lb-pill">ID <%= user.userId %></span>
+              <span class="lb-pill"><%= user.membershipStatus || user.membership || 'None' %></span>
+              <span class="lb-pill">
+                <img class="ch-ico ch-ico-sm ch-ico--ink" src="/icons/robux.svg" alt="" />
+                <%= currency ? currency.robux : (user.robux || 0) %>
+              </span>
+            </div>
+
+            <div class="lb-action-row">
+              <a class="lb-btn lb-btn-secondary" href="/users/<%= user.userId %>/friends">Friends</a>
+              <a class="lb-btn lb-btn-secondary" href="/avatar?userId=<%= user.userId %>">Customize Avatar</a>
+              <a class="lb-btn lb-btn-secondary" href="/account?userId=<%= user.userId %>">Account</a>
             </div>
           </div>
+        </section>
+
+        <!-- Tab bar: About | Creations -->
+        <div class="lb-tabs">
+          <ul class="lb-tabs-inner" role="tablist">
+            <li>
+              <a class="lb-tab <%= activeTab === 'about' ? 'is-active' : '' %>"
+                 role="tab" href="/users/<%= user.userId %>/profile" id="tab-about">About</a>
+            </li>
+            <li>
+              <a class="lb-tab <%= activeTab === 'creations' ? 'is-active' : '' %>"
+                 role="tab" href="/users/<%= user.userId %>/profile?tab=creations" id="tab-creations">Creations</a>
+            </li>
+          </ul>
         </div>
-      </nav>
 
-      <div class="roblox-right">
-        <span class="roblox-robux"><%= currency && currency.robux ? currency.robux : (user.robux || 0) %></span>
-        <a class="roblox-icon-button" href="/account" title="Account settings" aria-label="Account settings"><img class="ch-ico" src="/icons/settings.svg" alt="" /></a>
-        <a class="roblox-icon-button" href="/friends" title="Friends" aria-label="Friends"><img class="ch-ico" src="/icons/friends.svg" alt="" /></a>
-        <a class="roblox-icon-button" href="/profile?userId=<%= user.userId %>" title="Profile" aria-label="Profile"><img class="ch-ico" src="/icons/profile.svg" alt="" /></a>
-      </div>
-    </header>
+        <% if (activeTab === 'creations') { %>
+        <!-- Creations tab -->
+        <section class="lb-panel">
+          <div class="lb-panel-header">
+            <span>Games</span>
+            <span class="lb-faint"><%= creations.length %> public</span>
+          </div>
+          <div class="lb-panel-body">
+            <% if (creations.length) { %>
+              <div class="lb-game-grid">
+                <% creations.forEach(function (game) { %>
+                  <a class="lb-game-card" href="/game/<%= game.placeId %>">
+                    <div class="lb-game-card-thumb">
+                      <% if (game.coverUrl && /^\/|^https?:\/\//.test(game.coverUrl)) { %>
+                        <img src="<%= game.coverUrl %>" alt="<%= game.name %>" loading="lazy"
+                             onerror="this.style.display='none';var p=this.parentNode;if(p)p.classList.add('is-placeholder');" />
+                      <% } %>
+                      <img class="roblox-game-card-placeholder" src="/gameplaceholder/card.png" alt="" loading="lazy" />
+                    </div>
+                    <div class="lb-game-card-title"><%= game.name %></div>
+                    <div class="lb-game-card-sub"><%= game.genre || 'Adventure' %> &middot; <%= Number(game.playerCount) || 0 %> playing</div>
+                  </a>
+                <% }); %>
+              </div>
+            <% } else { %>
+              <div class="lb-muted">This account has not published any public games yet.</div>
+            <% } %>
+          </div>
+        </section>
 
-    <section class="roblox-profile-hero">
-      <div class="roblox-avatar-poster">
-        <% if (typeof profileAvatar !== 'undefined' && profileAvatar && (profileAvatar.fullBodyUrl || profileAvatar.headshotUrl)) { %>
-          <img class="roblox-avatar-image"
-               src="<%= profileAvatar.fullBodyUrl || profileAvatar.headshotUrl %>"
-               alt="<%= user.username %> avatar"
-               onerror="this.style.display='none';var f=this.parentNode.querySelector('.roblox-avatar-big');if(f)f.style.display='grid';" />
-          <div class="roblox-avatar-big" style="display:none;"><%= user.username.slice(0,1).toUpperCase() %></div>
         <% } else { %>
-          <div class="roblox-avatar-big"><%= user.username.slice(0,1).toUpperCase() %></div>
-        <% } %>
-      </div>
-
-      <div>
-        <div class="roblox-eyebrow">Player profile</div>
-        <div class="roblox-profile-title">
-          <%= user.username %>
-          <% if (typeof adminBadge !== 'undefined' && adminBadge) { %>
-            <% if (adminBadge.hasImage) { %>
-              <img src="<%= adminBadge.imageUrl %>" alt="Admin" title="Admin" style="height:22px;width:22px;vertical-align:middle;margin-left:8px;" />
-            <% } else { %>
-              <span class="roblox-meta-pill" style="margin-left:8px;">Admin</span>
-            <% } %>
-          <% } %>
-        </div>
-        <div class="roblox-meta-row">
-          <span class="roblox-meta-pill">Member: <%= user.membership %></span>
-          <span class="roblox-meta-pill">Join date: <%= formatDate(user.joinDate) %></span>
-          <span class="roblox-meta-pill">ID: <%= user.userId %></span>
-          <span class="roblox-meta-pill">Balance: <%= currency && currency.currencySymbol ? currency.currencySymbol : 'R$' %><%= currency ? currency.robux : (user.robux || 0) %></span>
-        </div>
-
-        <div class="roblox-bio-box">
-          <strong style="color: var(--rbx-text); display:block; margin-bottom:8px;">About</strong>
-          <%= user.bio %>
-        </div>
-      </div>
-    </section>
-
-    <section class="roblox-content-grid">
-      <div class="roblox-panel">
-        <div class="roblox-panel-header">Statistics</div>
-        <div class="roblox-panel-body">
-          <div class="roblox-profile-stats-grid">
-            <div class="roblox-stat-tile">
-              <span class="roblox-stat-label">Friends</span>
-              <span class="roblox-stat-value"><%= user.stats.friends %></span>
-            </div>
-            <div class="roblox-stat-tile">
-              <span class="roblox-stat-label">Followers</span>
-              <span class="roblox-stat-value"><%= user.stats.followers %></span>
-            </div>
-            <div class="roblox-stat-tile">
-              <span class="roblox-stat-label">Games Played</span>
-              <span class="roblox-stat-value"><%= user.stats.plays %></span>
-            </div>
-            <div class="roblox-stat-tile">
-              <span class="roblox-stat-label">Created</span>
-              <span class="roblox-stat-value"><%= user.stats.created %></span>
+        <!-- About tab -->
+        <section class="lb-panel">
+          <div class="lb-panel-header"><span>About</span></div>
+          <div class="lb-panel-body">
+            <div class="lb-bio"><%= user.bio || 'This user has not written a description yet.' %></div>
+            <div class="lb-meta-row" style="margin-top:12px;">
+              <span class="lb-pill">Joined <%= formatJoinDate(user.joinDate) %></span>
+              <span class="lb-pill" title="<%= visitTotal %>">Place Visits <%= abbreviateCount(visitTotal) %></span>
             </div>
           </div>
-        </div>
-      </div>
+        </section>
 
-      <div class="roblox-panel">
-        <div class="roblox-panel-header">Currency</div>
-        <div class="roblox-panel-body">
-          <div class="roblox-profile-stats-grid">
-            <div class="roblox-stat-tile">
-              <span class="roblox-stat-label">Robux</span>
-              <span class="roblox-stat-value"><%= currency ? currency.robux : (user.robux || 0) %></span>
-            </div>
-            <div class="roblox-stat-tile">
-              <span class="roblox-stat-label">Coins</span>
-              <span class="roblox-stat-value"><%= currency ? currency.coins : 0 %></span>
-            </div>
-            <div class="roblox-stat-tile">
-              <span class="roblox-stat-label">Tickets</span>
-              <span class="roblox-stat-value"><%= currency ? currency.tickets : 0 %></span>
-            </div>
+        <!-- Currently Wearing: avatar figure + equipped item grid -->
+        <section class="lb-panel">
+          <div class="lb-panel-header">
+            <span>Currently Wearing</span>
+            <span class="lb-faint"><%= wornItems.length %> item<%= wornItems.length === 1 ? '' : 's' %></span>
           </div>
-        </div>
-      </div>
-
-      <div class="roblox-side-stack">
-        <div class="roblox-panel">
-          <div class="roblox-panel-header">Current dressed avatar</div>
-          <div class="roblox-panel-body">
-            <div class="roblox-render-box">
-              <div class="roblox-render-content">
-                <% if (typeof profileAvatar !== 'undefined' && profileAvatar && profileAvatar.fullBodyUrl) { %>
-                  <img class="roblox-avatar-image roblox-avatar-image-large"
-                       src="<%= profileAvatar.fullBodyUrl %>"
-                       alt="<%= user.username %> dressed avatar"
-                       onerror="this.style.display='none';var f=this.parentNode.querySelector('.roblox-large-avatar');if(f)f.style.display='grid';" />
-                  <div class="roblox-large-avatar" style="display:none;"><%= user.username.slice(0,1).toUpperCase() %></div>
-                <% } else { %>
-                  <div class="roblox-large-avatar"><%= user.username.slice(0,1).toUpperCase() %></div>
-                  <div style="color: var(--rbx-muted);">No Roblox account linked yet.</div>
-                <% } %>
-                <div style="font-weight:700; color: var(--rbx-text);"><%= user.username %></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="roblox-content-grid" style="margin-top: 20px;">
-      <div class="roblox-panel" style="grid-column: 1 / -1;">
-        <div class="roblox-panel-header">Friends</div>
-        <div class="roblox-panel-body">
-          <% if (friends && friends.length) { %>
-            <div class="roblox-asset-list">
-              <% friends.forEach((friend) => { %>
-                <a class="roblox-asset-item" href="<%= friend.profileUrl %>">
-                  <div class="roblox-asset-icon"><%= friend.username.slice(0,1).toUpperCase() %></div>
-                  <div>
-                    <div class="roblox-asset-name"><%= friend.username %></div>
-                    <div class="roblox-asset-type"><%= friend.status %> · <%= friend.membership %></div>
-                  </div>
-                  <div class="roblox-asset-tag"><%= friend.online ? 'Live' : (friend.status === 'away' ? 'Away' : 'Offline') %></div>
-                </a>
-              <% }) %>
-            </div>
-          <% } else { %>
-            <div class="roblox-muted">No friends yet.</div>
-          <% } %>
-        </div>
-      </div>
-    </section>
-
-    <section class="roblox-content-grid">
-      <div class="roblox-panel">
-        <div class="roblox-panel-header">Currently wearing</div>
-        <div class="roblox-panel-body">
-          <div class="roblox-asset-list">
-            <% if (typeof profileAvatar !== 'undefined' && profileAvatar && profileAvatar.equipped && profileAvatar.equipped.length) { %>
-              <% profileAvatar.equipped.forEach((item) => { %>
-                <div class="roblox-asset-item">
-                  <% if (item.thumbnailUrl) { %>
-                    <img class="roblox-asset-icon roblox-asset-icon-image" src="<%= item.thumbnailUrl %>" alt="<%= item.name %>" loading="lazy" />
+          <div class="lb-panel-body">
+            <div class="lb-content-grid">
+              <div>
+                <div class="lb-avatar-stage" style="width:100%;height:260px;">
+                  <% if (fullBody) { %>
+                    <img class="roblox-avatar-image roblox-avatar-image-large" src="<%= fullBody %>" alt="<%= user.username %> avatar"
+                         onerror="this.style.display='none';var f=this.parentNode.querySelector('.lb-avatar-figure');if(f)f.style.display='block';" />
                   <% } else { %>
-                    <div class="roblox-asset-icon"><%= item.name.slice(0,1).toUpperCase() %></div>
+                    <%= lbAvatarFigure(user, 220) %>
                   <% } %>
-                  <div>
-                    <div class="roblox-asset-name"><%= item.name %></div>
-                    <div class="roblox-asset-type"><%= item.assetType %><%= item.creatorName ? ' · ' + item.creatorName : '' %></div>
-                  </div>
-                  <div class="roblox-asset-tag"><%= item.price ? 'R$ ' + item.price : 'Equipped' %></div>
                 </div>
-              <% }) %>
+                <div class="lb-faint" style="text-align:center;margin-top:8px;"><%= user.username %></div>
+              </div>
+
+              <div>
+                <% if (wornItems.length) { %>
+                  <%# The real page showed 8 accoutrement slots per page. %>
+                  <% var shown = wornItems.slice(0, 8); %>
+                  <div class="lb-wearing-grid">
+                    <% shown.forEach(function (item) { %>
+                      <div class="lb-wearing-item">
+                        <div class="lb-wearing-thumb">
+                          <% if (item.thumbnailUrl) { %>
+                            <img src="<%= item.thumbnailUrl %>" alt="<%= item.name %>" loading="lazy"
+                                 onerror="this.style.display='none';this.parentNode.textContent='<%= String(item.name || '?').slice(0, 1).toUpperCase() %>';" />
+                          <% } else { %>
+                            <%= String(item.name || '?').slice(0, 1).toUpperCase() %>
+                          <% } %>
+                        </div>
+                        <div class="lb-wearing-name" title="<%= item.name %>"><%= item.name %></div>
+                      </div>
+                    <% }); %>
+                  </div>
+                  <% if (wornItems.length > 8) { %>
+                    <div class="lb-faint" style="margin-top:10px;">
+                      Showing 8 of <%= wornItems.length %> equipped items.
+                    </div>
+                  <% } %>
+                <% } else { %>
+                  <div class="lb-muted">Nothing equipped yet &mdash; open the Avatar page to dress this character.</div>
+                <% } %>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Statistics / Currency -->
+        <div class="lb-content-grid">
+          <section class="lb-panel">
+            <div class="lb-panel-header"><span>Statistics</span></div>
+            <div class="lb-panel-body">
+              <div class="lb-stat-list">
+                <span>Friends</span><strong><%= fCount %></strong>
+                <span>Followers</span><strong><%= folCount %></strong>
+                <span>Following</span><strong><%= folgCount %></strong>
+                <span>Games Played</span><strong><%= Number(s.plays) || 0 %></strong>
+                <span>Place Visits</span><strong><%= visitTotal %></strong>
+                <span>Created</span><strong><%= Number(s.created) || 0 %></strong>
+                <span>Badges</span><strong><%= badgeList.length %></strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="lb-panel">
+            <div class="lb-panel-header"><span>Currency</span></div>
+            <div class="lb-panel-body">
+              <div class="lb-stat-list">
+                <span>Robux</span><strong><%= currency ? currency.robux : (user.robux || 0) %></strong>
+                <span>Coins</span><strong><%= currency ? currency.coins : 0 %></strong>
+                <span>Tickets</span><strong><%= currency ? currency.tickets : 0 %></strong>
+                <span>Inventory</span><strong><%= Array.isArray(user.inventory) ? user.inventory.length : 0 %> items</strong>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section class="lb-panel">
+          <div class="lb-panel-header">
+            <span>Friends</span>
+            <span class="lb-faint">
+              <%= fCount %>
+              <% if (friends && friends.length) { %>(<%= friends.filter(function (f) { return f.online; }).length %> online)<% } %>
+            </span>
+          </div>
+          <div class="lb-panel-body">
+            <% if (friends && friends.length) { %>
+              <div class="lb-asset-list">
+                <% friends.forEach(function (friend) { %>
+                  <a class="lb-asset-item" href="<%= friend.profileUrl %>">
+                    <div class="lb-asset-icon"><%= String(friend.username || 'F').slice(0, 1).toUpperCase() %></div>
+                    <div>
+                      <div class="lb-asset-name"><%= friend.username %></div>
+                      <div class="lb-asset-type"><%= friend.membership %> &middot; <%= friend.status %></div>
+                    </div>
+                    <div class="lb-asset-tag"><%= friend.online ? 'Online' : (friend.status === 'away' ? 'Away' : 'Offline') %></div>
+                  </a>
+                <% }); %>
+              </div>
             <% } else { %>
-              <div class="roblox-muted">Nothing equipped yet — visit the Avatar page to dress this character.</div>
+              <div class="lb-muted">No friends yet.</div>
             <% } %>
           </div>
-        </div>
-      </div>
+        </section>
 
-      <div class="roblox-panel">
-        <div class="roblox-panel-header">Quick links</div>
-        <div class="roblox-panel-body">
-          <div class="roblox-asset-list">
-            <a class="roblox-asset-item" href="/avatar?userId=<%= user.userId %>">
-              <div class="roblox-asset-icon">A</div>
-              <div>
-                <div class="roblox-asset-name">Customize avatar</div>
-                <div class="roblox-asset-type">Outfit and appearance</div>
-              </div>
-              <div class="roblox-asset-tag">Open</div>
-            </a>
-            <a class="roblox-asset-item" href="/games">
-              <div class="roblox-asset-icon">G</div>
-              <div>
-                <div class="roblox-asset-name">Explore games</div>
-                <div class="roblox-asset-type">Launch local experiences</div>
-              </div>
-              <div class="roblox-asset-tag">Browse</div>
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="roblox-content-grid" style="margin-top: 20px;">
-      <div class="roblox-panel" style="grid-column: 1 / -1;">
-        <div class="roblox-panel-header">Publicly published games</div>
-        <div class="roblox-panel-body">
-          <% if (publishedGames && publishedGames.length) { %>
-            <div class="roblox-asset-list">
-              <% publishedGames.forEach((game) => { %>
-                <a class="roblox-asset-item" href="/game/<%= game.placeId %>?userId=<%= user.userId %>">
-                  <div class="roblox-asset-icon"><%= game.name.slice(0,1).toUpperCase() %></div>
-                  <div>
-                    <div class="roblox-asset-name"><%= game.name %></div>
-                    <div class="roblox-asset-type"><%= game.description %></div>
+        <section class="lb-panel">
+          <div class="lb-panel-header"><span>Badges (<%= badgeList.length %>)</span></div>
+          <div class="lb-panel-body">
+            <% if (badgeList.length) { %>
+              <div class="lb-wearing-grid">
+                <% badgeList.forEach(function (badge) { %>
+                  <div class="lb-wearing-item">
+                    <div class="lb-wearing-thumb"><%= String(badge.icon || badge.name || 'B').slice(0, 1).toUpperCase() %></div>
+                    <div class="lb-wearing-name" title="<%= badge.description || '' %>"><%= badge.name %></div>
                   </div>
-                  <div class="roblox-asset-tag">Public</div>
-                </a>
-              <% }) %>
-            </div>
-          <% } else { %>
-            <div class="roblox-muted">No public games yet.</div>
-          <% } %>
-        </div>
-      </div>
-    </section>
+                <% }); %>
+              </div>
+            <% } else { %>
+              <div class="lb-muted">No badges yet.</div>
+            <% } %>
+          </div>
+        </section>
+        <% } %>
+      </main>
+    </div>
   </div>
   <script src="/legacy-nav.js"></script>
 </body>

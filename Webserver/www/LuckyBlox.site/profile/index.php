@@ -82,7 +82,7 @@ function lb_color_for_id($id) {
         .avatar-lg { width:120px; height:120px; border-radius:50%; background:#dbeafe; color:#1d4ed8; display:grid; place-items:center; font-size:2.5rem; font-weight:700; margin-bottom:12px; }
         .profile-card { background:#fff; border:1px solid #cbd5e1; border-radius:12px; padding:28px; box-shadow:0 1px 2px rgba(0,0,0,0.06); margin-bottom:20px; }
         .profile-header { display:flex; align-items:center; gap:24px; }
-        .avatar-preview { width:80px; height:80px; border-radius:50%; background:#dbeafe; display:grid; place-items:center; font-size:2rem; font-weight:700; color:#1d4ed8; margin-right:20px; }
+        .avatar-preview { width:120px; height:200px; display:grid; place-items:center; margin-right:20px; }
         .avatar-colors { display:flex; gap:4px; flex-wrap:wrap; margin-top:10px; }
         .avatar-color { width:24px; height:24px; border:1px solid #cbd5e1; border-radius:4px; }
         .badge-chip { display:inline-flex; align-items:center; gap:4px; padding:4px 8px; border-radius:999px; font-size:0.8rem; font-weight:700; }
@@ -144,7 +144,7 @@ function lb_color_for_id($id) {
 
         <div class="profile-card">
             <div class="profile-header">
-                <div class="avatar-preview" id="avatarPreview"><?php echo htmlspecialchars(strtoupper(substr($user['username'], 0, 1))); ?></div>
+                <div class="avatar-preview" id="avatarPreview"><?php echo lb_render_avatar_figure($user, 160); ?></div>
                 <div style="flex:1;">
                     <h1>
                         <?php echo htmlspecialchars($user['displayName']); ?>

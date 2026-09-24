@@ -354,6 +354,12 @@ app.use((req, res, next) => {
   res.locals.isOwner = isOwnerUser(req.sessionUser);
   // Stable, locale-independent date formatting for every template.
   res.locals.formatDate = formatDate;
+  // 2021 presentation helpers, available to every template: the counts and
+  // dates the real roblox.com rendered, and the shared blocky avatar figure.
+  res.locals.abbreviateCount = abbreviateCount;
+  res.locals.formatGameDate = formatGameDate;
+  res.locals.formatJoinDate = formatJoinDate;
+  res.locals.lbAvatarFigure = renderAvatarFigure;
   next();
 });
 
@@ -862,6 +868,190 @@ function getFriendsForUser(userId) {
       profileUrl: `/users/${Number(friendId || index + 1)}/profile`,
     };
   });
+}
+
+/* ---------------------------------------------------------------------------
+ * 2021 presentation helpers
+ * ---------------------------------------------------------------------------
+ * These exist because roblox.com in 2021 formatted counts, dates and tab state
+ * in specific ways, and the views need the same numbers the real page showed.
+ * They are pure formatting and layout - no invented values.
+ */
+
+/**
+ * The 2019-2021 body colour palette as Roblox published it (IDs 1-24 "classic"
+ * plus the newer 1001+ set). Used by the blocky avatar figure and the avatar
+ * editor, so the swatch labelled "Bright blue" really is brick-colour 1002.
+ */
+var BODY_COLORS = {
+  1:  { name: 'White',         rgb: '242,243,243' },
+  2:  { name: 'Grey',          rgb: '161,165,162' },
+  3:  { name: 'Light yellow',  rgb: '249,233,153' },
+  5:  { name: 'Brick yellow',  rgb: '215,197,154' },
+  6:  { name: 'Light green (Mint)', rgb: '194,218,184' },
+  9:  { name: 'Light reddish violet', rgb: '232,186,200' },
+  11: { name: 'Pastel Blue',   rgb: '128,187,219' },
+  12: { name: 'Light orange brown', rgb: '203,132,66' },
+  18: { name: 'Nougat',        rgb: '204,142,105' },
+  21: { name: 'Bright red',    rgb: '196,40,28' },
+  22: { name: 'Med. reddish violet', rgb: '196,112,160' },
+  23: { name: 'Bright blue',   rgb: '13,105,172' },
+  24: { name: 'Bright yellow', rgb: '245,205,48' },
+  25: { name: 'Earth orange',  rgb: '98,71,50' },
+  26: { name: 'Black',         rgb: '27,42,53' },
+  27: { name: 'Dark grey',     rgb: '109,110,108' },
+  28: { name: 'Dark green',    rgb: '40,127,71' },
+  29: { name: 'Medium green',  rgb: '161,196,140' },
+  36: { name: 'Lig. Yellowich orange', rgb: '243,207,155' },
+  37: { name: 'Bright green',  rgb: '75,151,75' },
+  38: { name: 'Dark orange',   rgb: '160,95,53' },
+  39: { name: 'Light bluish violet', rgb: '193,202,222' },
+  40: { name: 'Transparent',   rgb: '236,236,236' },
+  41: { name: 'Tr. Red',       rgb: '205,84,75' },
+  42: { name: 'Tr. Lg blue',   rgb: '193,223,240' },
+  43: { name: 'Tr. Blue',      rgb: '123,182,232' },
+  44: { name: 'Tr. Yellow',    rgb: '247,241,141' },
+  45: { name: 'Light blue',    rgb: '180,210,228' },
+  47: { name: 'Tr. Flu. Reddish orange', rgb: '217,133,108' },
+  48: { name: 'Tr. Green',     rgb: '132,182,141' },
+  49: { name: 'Tr. Flu. Green', rgb: '248,241,132' },
+  50: { name: 'Phosph. White', rgb: '236,232,222' },
+  1001: { name: 'Institutional white', rgb: '248,248,248' },
+  1002: { name: 'Bright blue',  rgb: '180,210,228' },
+  1003: { name: 'Really black', rgb: '27,42,53' },
+  1004: { name: 'Really red',   rgb: '255,0,0' },
+  1005: { name: 'Lime green',   rgb: '75,151,75' },
+  1006: { name: 'Bright purple', rgb: '170,0,170' },
+  1007: { name: 'Bright bluish green', rgb: '0,143,156' },
+  1008: { name: 'Bright violet', rgb: '98,37,209' },
+  1009: { name: 'Bright orange', rgb: '255,175,0' },
+  1010: { name: 'Bright bluish violet', rgb: '0,255,255' },
+  1011: { name: 'Cool yellow',  rgb: '255,255,204' },
+  1012: { name: 'Bright reddish violet', rgb: '255,0,0' },
+  1013: { name: 'Bright green', rgb: '0,255,0' },
+  1014: { name: 'Bright yellow', rgb: '255,255,0' },
+  1015: { name: 'Bright bluish green', rgb: '0,143,156' },
+  1016: { name: 'Bright red',   rgb: '196,40,28' },
+  1017: { name: 'Bright blue',  rgb: '13,105,172' },
+  1018: { name: 'Dark stone grey', rgb: '99,95,98' },
+  1019: { name: 'Medium stone grey', rgb: '163,162,165' },
+  1020: { name: 'Bright green', rgb: '0,255,0' },
+  1021: { name: 'Bright blue',  rgb: '0,0,255' },
+  1022: { name: 'Bright orange', rgb: '255,128,0' },
+  1023: { name: 'Bright bluish green', rgb: '0,255,255' },
+  1024: { name: 'Bright purple', rgb: '128,0,255' },
+  1025: { name: 'Bright violet', rgb: '255,0,255' },
+  1026: { name: 'Bright yellow', rgb: '255,255,0' },
+  1027: { name: 'Bright green', rgb: '0,255,0' },
+  1028: { name: 'Bright blue',  rgb: '0,0,255' },
+  1029: { name: 'Bright red',   rgb: '255,0,0' },
+  1030: { name: 'Bright bluish violet', rgb: '0,255,0' },
+  1031: { name: 'Bright orange', rgb: '255,128,0' },
+  1032: { name: 'Bright yellow', rgb: '255,255,0' },
+};
+
+function bodyColorRgb(colorId) {
+  const entry = BODY_COLORS[Number(colorId)] || BODY_COLORS[1002];
+  return entry.rgb;
+}
+
+function bodyColorName(colorId) {
+  const entry = BODY_COLORS[Number(colorId)];
+  return entry ? entry.name : 'Unknown';
+}
+
+/** The list the avatar editor iterates: every colour Roblox shipped, named. */
+function bodyColorPalette() {
+  return Object.keys(BODY_COLORS)
+    .map((id) => ({ id: Number(id), name: BODY_COLORS[id].name, rgb: BODY_COLORS[id].rgb }))
+    .sort((a, b) => a.id - b.id);
+}
+
+/**
+ * Render a user's character as the blocky R6 figure roblox.com drew in 2021:
+ * head, torso, two arms, two legs, each filled from the saved body colours.
+ * This is the single source of truth for the figure, so a player looks the same
+ * on the profile, the home page and the avatar editor.
+ *
+ * @param {object} user  normalized user (uses avatar.bodyColors)
+ * @param {number} size  pixel height of the figure (240px = the 1x geometry)
+ */
+function renderAvatarFigure(user, size) {
+  const avatar = (user && user.avatar) || {};
+  const colors = avatar.bodyColors || {};
+  const pick = (key, fallback) => `rgb(${bodyColorRgb(colors[key] != null ? colors[key] : fallback)})`;
+
+  const head = pick('headColorId', 1002);
+  const torso = pick('torsoColorId', 1002);
+  const rightArm = pick('rightArmColorId', 1002);
+  const leftArm = pick('leftArmColorId', 1002);
+  const rightLeg = pick('rightLegColorId', 1002);
+  const leftLeg = pick('leftLegColorId', 1002);
+  const scale = Math.max(0.4, (Number(size) || 240) / 240);
+
+  return `<div class="lb-avatar-figure" style="--lb-avatar-scale:${scale};" role="img" aria-label="Avatar">`
+    + `<div class="lb-af-part lb-af-head" style="background:${head};"><span class="lb-af-face">:B</span></div>`
+    + `<div class="lb-af-part lb-af-torso" style="background:${torso};"></div>`
+    + `<div class="lb-af-part lb-af-larm" style="background:${leftArm};"></div>`
+    + `<div class="lb-af-part lb-af-rarm" style="background:${rightArm};"></div>`
+    + `<div class="lb-af-part lb-af-lleg" style="background:${leftLeg};"></div>`
+    + `<div class="lb-af-part lb-af-rleg" style="background:${rightLeg};"></div>`
+    + `</div>`;
+}
+
+/**
+ * Abbreviate a count the way the 2021 profile header did: the exact number was
+ * exposed via a title attribute, the visible text was shortened (7.6M+, 5.4M+).
+ */
+function abbreviateCount(value) {
+  const n = Number(value) || 0;
+  if (n < 1000) return String(n);
+  if (n < 1000000) {
+    const k = n / 1000;
+    return `${k < 10 ? k.toFixed(1).replace(/\.0$/, '') : Math.round(k)}K+`;
+  }
+  const m = n / 1000000;
+  return `${m < 10 ? m.toFixed(1).replace(/\.0$/, '') : Math.round(m)}M+`;
+}
+
+/** "5/1/2007" - the date format the 2021 game page used for Created / Updated. */
+function formatGameDate(iso) {
+  if (!iso) return 'Unknown';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'Unknown';
+  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+}
+
+/** "Mar 21, 2021" - the join date the 2021 profile showed. */
+function formatJoinDate(iso) {
+  if (!iso) return 'Unknown';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+/**
+ * Resolve the equipped items for a user into real asset records, so "Currently
+ * Wearing" lists actual named items from assets.json instead of letter tiles.
+ */
+function getWearingForUser(user) {
+  const assets = getAssets();
+  const wearing = Array.isArray(user && user.currentlyWearing) ? user.currentlyWearing : [];
+  const result = [];
+
+  wearing.forEach((id) => {
+    const asset = assets[String(id)] || null;
+    if (!asset) return;
+    result.push({
+      id: String(asset.id != null ? asset.id : id),
+      name: asset.name || 'Item',
+      assetType: asset.assetType || asset.className || 'Accessory',
+      thumbnailUrl: asset.thumbnail || asset.image || null,
+    });
+  });
+
+  return result;
 }
 
 function serializeGame(placeId) {
@@ -2453,12 +2643,22 @@ app.post('/luckblox.site.tk/logout', (req, res) => {
 
 app.get('/profile', async (req, res) => {
   const userId = req.query.userId || 1;
+  return renderProfilePage2021(req, res, userId);
+});
+
+/**
+ * Shared renderer for every profile URL. roblox.com served the profile from
+ * three paths (query, path segment, plural) and all three showed the same page.
+ */
+async function renderProfilePage2021(req, res, userId) {
   const user = getUser(userId);
   const assets = Object.values(getAssets());
   const publishedGames = getPublicGamesForUser(userId);
+  const requestedTab = String(req.query.tab || '').toLowerCase();
+  const tab = requestedTab === 'creations' ? 'creations' : 'about';
 
   res.render('profile', {
-    title: `${user.username} Profile`,
+    title: `${user.username} - Profile | LuckyBlox`,
     user,
     assets,
     publishedGames,
@@ -2467,43 +2667,34 @@ app.get('/profile', async (req, res) => {
     adminBadge: getAdminBadge(user),
     games: publishedGames,
     profileAvatar: await resolveProfileAvatar(user),
+    // 2021 page facts.
+    tab,
+    wearing: getWearingForUser(user),
+    friendsCount: Number((user.stats && user.stats.friends) || (Array.isArray(user.friends) ? user.friends.length : 0)) || 0,
+    followersCount: Number((user.stats && (user.stats.followers || user.stats.following)) || 0) || 0,
+    followingCount: Number((user.stats && user.stats.following) || 0) || 0,
+    visitsCount: Number((user.stats && (user.stats.gameVisits || user.stats.plays)) || 0) || 0,
+    formatJoinDate,
+    abbreviateCount,
   });
-});
+}
 
 app.get('/profile/:userId', async (req, res) => {
-  const userId = req.params.userId || 1;
-  const user = getUser(userId);
-  const assets = Object.values(getAssets());
-  const publishedGames = getPublicGamesForUser(userId);
-
-  res.render('profile', {
-    title: `${user.username} Profile`,
-    user,
-    assets,
-    publishedGames,
-    friends: getFriendsForUser(userId),
-    currency: getCurrencyForUser(user),
-    adminBadge: getAdminBadge(user),
-    games: publishedGames,
-    profileAvatar: await resolveProfileAvatar(user),
-  });
+  return renderProfilePage2021(req, res, req.params.userId || 1);
 });
 
-app.get('/users/:id/profile', async (req, res) => {  const userId = req.params.id || 1;
-  const user = getUser(userId);
-  const assets = Object.values(getAssets());
-  const publishedGames = getPublicGamesForUser(userId);
+app.get('/users/:id/profile', async (req, res) => {
+  return renderProfilePage2021(req, res, req.params.id || 1);
+});
 
-  res.render('profile', {
-    title: `${user.username} Profile`,
+app.get('/users/:id/friends', (req, res) => {
+  const userId = req.params.id || 1;
+  const user = getUser(userId);
+  res.render('friends', {
+    title: `${user.username} - Friends | LuckyBlox`,
     user,
-    assets,
-    publishedGames,
     friends: getFriendsForUser(userId),
-    currency: getCurrencyForUser(user),
-    adminBadge: getAdminBadge(user),
-    games: publishedGames,
-    profileAvatar: await resolveProfileAvatar(user),
+    tab: 'friends',
   });
 });
 

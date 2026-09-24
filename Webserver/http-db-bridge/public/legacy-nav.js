@@ -50,12 +50,17 @@
   }
 
   /**
-   * Live site-status block, added only to a sidebar the page already has. Pages
-   * without a sidebar (sign-in, sign-up, game pages) are left untouched, so this
-   * no longer appears everywhere.
+   * Live site-status block. Only injected into a sidebar that explicitly opts in
+   * with data-show-status="1".
+   *
+   * It used to be added to every sidebar, which put a green "SITE STATUS / Open"
+   * panel at the top of the profile and the games pages - something roblox.com
+   * never had there, and which pushed the real content down. Pages that want it
+   * (the status page itself, the owner panel) opt in.
    */
   function renderStatus(sidebar) {
     if (!sidebar || sidebar.querySelector('.legacy-site-status')) return;
+    if (sidebar.getAttribute('data-show-status') !== '1') return;
 
     var block = document.createElement('a');
     block.className = 'legacy-site-status';

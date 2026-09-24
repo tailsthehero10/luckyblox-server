@@ -1,0 +1,46 @@
+<!--
+  Shared left sidebar - the 2021 roblox.com navigation rail.
+  Real page: https://web.archive.org/web/20210605202558/https://www.roblox.com/
+
+  The 2021 sidebar listed Home, Discover, Avatar, Friends, Inventory, Groups,
+  Trade, Create, Robux, Studio, Events, Blog, Shop - each row a 20px icon plus a
+  label, and the current page got a light blue rounded pill. This keeps the
+  entries LuckyBlox actually implements, and points every one of them at a route
+  that exists, so no row is a dead end.
+
+  Expects: user (may be null), activeNav.
+-->
+<%
+var sbUser = (typeof user !== 'undefined' && user) ? user : null;
+var sbActive = (typeof activeNav !== 'undefined' && activeNav) ? activeNav : '';
+var sbUserId = sbUser ? sbUser.userId : null;
+var sbItems = [
+  { key: 'home',      label: 'Home',       href: '/',                                                icon: '/icons/home.svg' },
+  { key: 'games',     label: 'Discover',   href: '/games',                                         icon: '/icons/games.svg' },
+  { key: 'avatar',    label: 'Avatar',     href: sbUserId ? ('/avatar?userId=' + sbUserId) : '/signin', icon: '/icons/avatar.svg' },
+  { key: 'friends',   label: 'Friends',    href: sbUserId ? ('/users/' + sbUserId + '/friends') : '/signin', icon: '/icons/friends.svg' },
+  { key: 'inventory', label: 'Inventory',  href: '/inventory',                                     icon: '/icons/assets.svg' },
+  { key: 'groups',    label: 'Groups',     href: '/search/groups',                                 icon: '/icons/groups.svg' },
+  { key: 'catalog',   label: 'Avatar Shop', href: '/catalog',                                      icon: '/icons/robux.svg' },
+  { key: 'create',    label: 'Create',     href: '/develop',                                       icon: '/icons/develop.svg' }
+];
+%>
+<aside class="lb-sidebar roblox-sidebar" aria-label="Site navigation">
+<% sbItems.forEach(function (item) { %>
+  <a href="<%= item.href %>" class="lb-sidebar-link roblox-sidebar-link <%= sbActive === item.key ? 'is-active' : '' %>">
+    <img class="ch-ico" src="<%= item.icon %>" alt="" />
+    <span><%= item.label %></span>
+  </a>
+<% }); %>
+
+<% if (sbUser) { %>
+  <div class="roblox-sidebar-divider"></div>
+  <div class="lb-sidebar-user roblox-sidebar-user">
+    <div class="lb-sidebar-avatar roblox-sidebar-avatar"><%= String(sbUser.username || 'L').slice(0, 1).toUpperCase() %></div>
+    <div>
+      <div class="lb-sidebar-username roblox-sidebar-username"><%= sbUser.username %></div>
+      <div class="lb-sidebar-status roblox-sidebar-status"><span class="lb-sidebar-dot roblox-sidebar-dot"></span> Online</div>
+    </div>
+  </div>
+<% } %>
+</aside>
