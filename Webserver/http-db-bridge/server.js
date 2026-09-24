@@ -248,7 +248,14 @@ app.use('/LuckBlox.site.tk', serveClientAsset(''));
 app.use(serveClientAsset(''));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use('/assets', express.static(path.join(releaseRoot, 'Assets')));
+
+// NOTE: '/assets' (plural) is a *prefix* mount, and Express matches prefixes on
+// path segments - so it also swallowed '/asset/...' requests. Those are the
+// legacy client's asset fetch (contentUrl is "${origin}/asset/?id=N"), and
+// routing them into this static folder meant the client was handed whatever
+// stray file sat in Assets/ instead of an asset's bytes. The mount is now
+// anchored so only '/assets' itself and '/assets/<file>' match.
+app.use(/^\/assets(?:\/|$)/, express.static(path.join(releaseRoot, 'Assets')));
 app.use('/maps', express.static(mapsRoot));
 
 // Roblox's own game placeholder art (the blocky forest card + the wide banner).
