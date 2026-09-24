@@ -95,10 +95,17 @@
           </div>
         </div>
         <div class="ch-stat">
-          <div class="ch-stat-ico"><img class="ch-ico" src="/icons/globe.svg" alt="" /></div>
+          <div class="ch-stat-ico"><img class="ch-ico" src="/icons/profile.svg" alt="" /></div>
           <div>
-            <div class="ch-stat-value"><%= stats.publicPlaces %></div>
-            <div class="ch-stat-label">Public</div>
+            <div class="ch-stat-value" id="statPlayers"><%= stats.playersOnline %></div>
+            <div class="ch-stat-label">Players online</div>
+          </div>
+        </div>
+        <div class="ch-stat">
+          <div class="ch-stat-ico"><img class="ch-ico" src="/icons/studio.svg" alt="" /></div>
+          <div>
+            <div class="ch-stat-value" id="statServers"><%= stats.liveServers %></div>
+            <div class="ch-stat-label">Live servers</div>
           </div>
         </div>
         <div class="ch-stat">
@@ -137,7 +144,14 @@
                           <%= place.visibility || 'Private' %>
                         </span>
                         <span class="ch-badge ch-badge-type">Place <%= place.placeId %></span>
-                        <span class="ch-badge ch-badge-type"><%= place.visits %> visits</span>
+                        <span class="ch-badge ch-badge-type"><%= place.genre %></span>
+                        <span class="ch-badge ch-badge-type"><%= place.playing %> playing</span>
+                        <span class="ch-badge ch-badge-type"><%= place.serverCount %> server<%= place.serverCount === 1 ? '' : 's' %></span>
+                      </div>
+                      <div class="ch-game-meta" style="margin-top:6px;">
+                        <span class="ch-badge ch-badge-type">Created <%= place.createdAt ? new Date(place.createdAt).toLocaleDateString() : '—' %></span>
+                        <span class="ch-badge ch-badge-type">Updated <%= place.updatedAt ? new Date(place.updatedAt).toLocaleDateString() : '—' %></span>
+                        <span class="ch-badge ch-badge-type"><%= place.hasMap ? 'Map ready' : 'No map file' %></span>
                       </div>
                     </div>
                     <div class="ch-hero-actions">
@@ -187,11 +201,11 @@
                   <div class="ch-action-sub">Start a new place</div>
                 </div>
               </a>
-              <a class="ch-action" href="/studio?userId=<%= user.userId %>">
+              <a class="ch-action" href="#" id="launchStudioBtn">
                 <div class="ch-action-ico"><img class="ch-ico" src="/icons/hammer.svg" alt="" /></div>
                 <div>
-                  <div class="ch-action-name">Open Studio</div>
-                  <div class="ch-action-sub">Build, script and edit</div>
+                  <div class="ch-action-name">Open Studio 2022M</div>
+                  <div class="ch-action-sub"><%= studioReady ? 'Launch the desktop app' : 'Not installed on this host' %></div>
                 </div>
               </a>
               <a class="ch-action" href="/dev/assets">
@@ -219,13 +233,41 @@
           </div>
 
           <div class="ch-panel">
-            <div class="ch-panel-head"><span class="ch-title"><img class="ch-ico" src="/icons/studio.svg" alt="" /> Studio 2022M</span></div>
+            <div class="ch-panel-head"><span class="ch-title"><img class="ch-ico" src="/icons/studio.svg" alt="" /> Studio 2022M</span>
+              <span class="ch-badge <%= studioReady ? 'ch-badge-public' : 'ch-badge-private' %>"><%= studioReady ? 'Ready' : 'Not installed' %></span>
+            </div>
             <div class="ch-panel-body">
               <div class="ch-muted" style="font-size:0.85rem;line-height:1.6;">
-                Connect the desktop client to <strong><%= typeof studioHost !== 'undefined' ? studioHost : 'localhost' %>:<%= typeof studioPort !== 'undefined' ? studioPort : '53640' %></strong> to edit and publish places directly.
+                Studio connects to <strong><%= studioBaseUrl %></strong> and authenticates as <strong><%= user.username %></strong>.
+                The game server listens on <strong><%= studioHost %>:<%= studioPort %></strong>.
               </div>
               <div class="ch-hero-actions" style="margin-top:12px;">
-                <a class="ch-btn ch-btn-blue ch-btn-sm" href="/studio?userId=<%= user.userId %>"><img class="ch-ico ch-ico-sm" src="/icons/studio.svg" alt="" /> Launch Studio</a>
+                <button class="ch-btn ch-btn-blue ch-btn-sm" type="button" id="launchStudioBtn2"><img class="ch-ico ch-ico-sm" src="/icons/studio.svg" alt="" /> Launch Studio</button>
+                <a class="ch-btn ch-btn-light ch-btn-sm" href="/studio?userId=<%= user.userId %>"><img class="ch-ico ch-ico-sm" src="/icons/code.svg" alt="" /> Web tools</a>
+              </div>
+              <div class="ch-muted" id="studioStatus" style="font-size:0.78rem;margin-top:10px;" hidden></div>
+            </div>
+          </div>
+
+          <div class="ch-panel">
+            <div class="ch-panel-head"><span class="ch-title"><img class="ch-ico" src="/icons/profile.svg" alt="" /> Live servers</span>
+              <span class="ch-badge ch-badge-type" id="liveServerCount"><%= stats.liveServers %></span>
+            </div>
+            <div class="ch-panel-body">
+              <div id="liveServerList">
+                <% if (liveServers && liveServers.length) { %>
+                  <% liveServers.forEach((s) => { %>
+                    <div class="ch-action">
+                      <div class="ch-action-ico"><img class="ch-ico" src="/icons/studio.svg" alt="" /></div>
+                      <div>
+                        <div class="ch-action-name">Place <%= s.placeId %></div>
+                        <div class="ch-action-sub"><%= s.playing %>/<%= s.maxPlayers %> players · port <%= s.port %> · <%= s.status %></div>
+                      </div>
+                    </div>
+                  <% }) %>
+                <% } else { %>
+                  <div class="ch-empty">No games running right now.</div>
+                <% } %>
               </div>
             </div>
           </div>
@@ -244,6 +286,85 @@
     </main>
   </div>
   <script src="/legacy-nav.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      // --- Launch Studio 2022M -------------------------------------------------
+      // Asks the server to spawn RobloxStudioBeta.exe with this user's one-time
+      // auth handshake. The server reports whether the desktop app is installed.
+      var statusEl = document.getElementById('studioStatus');
+
+      function showStudioStatus(message, isError) {
+        if (!statusEl) return;
+        statusEl.hidden = false;
+        statusEl.textContent = message;
+        statusEl.style.color = isError ? '#c0392b' : '#008a4a';
+      }
+
+      async function launchStudio() {
+        showStudioStatus('Starting LuckyBlox Studio...', false);
+        try {
+          var response = await fetch('/api/studio/launch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({})
+          });
+          var data = await response.json();
+          if (!response.ok || !data.ok) {
+            showStudioStatus((data && data.message) || 'Could not start Studio.', true);
+            return;
+          }
+          if (data.launched) {
+            showStudioStatus('LuckyBlox Studio is opening. Sign in when it asks.', false);
+          } else {
+            showStudioStatus(data.message || 'Studio is not installed on this machine.', true);
+          }
+        } catch (error) {
+          showStudioStatus('Could not reach the server to start Studio.', true);
+        }
+      }
+
+      var b1 = document.getElementById('launchStudioBtn');
+      var b2 = document.getElementById('launchStudioBtn2');
+      if (b1) b1.addEventListener('click', function (e) { e.preventDefault(); launchStudio(); });
+      if (b2) b2.addEventListener('click', launchStudio);
+
+      // --- Live server / player counts ---------------------------------------
+      // Polls the real orchestrator state so the dashboard is dynamic, not a
+      // snapshot frozen at page render.
+      var playersEl = document.getElementById('statPlayers');
+      var serversEl = document.getElementById('statServers');
+      var countEl = document.getElementById('liveServerCount');
+      var listEl = document.getElementById('liveServerList');
+
+      async function refreshLive() {
+        try {
+          var r = await fetch('/api/develop/live', { headers: { Accept: 'application/json' } });
+          if (!r.ok) return;
+          var d = await r.json();
+          if (!d || !d.ok) return;
+          if (playersEl) playersEl.textContent = d.playersOnline;
+          if (serversEl) serversEl.textContent = d.serverCount;
+          if (countEl) countEl.textContent = d.serverCount;
+          if (listEl) {
+            if (d.servers && d.servers.length) {
+              listEl.innerHTML = d.servers.map(function (s) {
+                return '<div class="ch-action"><div class="ch-action-ico"><img class="ch-ico" src="/icons/studio.svg" alt="" /></div>' +
+                  '<div><div class="ch-action-name">Place ' + s.placeId + '</div>' +
+                  '<div class="ch-action-sub">' + s.playing + '/' + s.maxPlayers + ' players · port ' + s.port + ' · ' + s.status + '</div></div></div>';
+              }).join('');
+            } else {
+              listEl.innerHTML = '<div class="ch-empty">No games running right now.</div>';
+            }
+          }
+        } catch (error) { /* keep the server-rendered values */ }
+      }
+
+      refreshLive();
+      setInterval(refreshLive, 15000);
+    }());
+  </script>
 </body>
 
 </html>

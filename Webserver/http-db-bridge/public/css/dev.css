@@ -389,3 +389,12 @@ body {
 .ch-ico-sm { width: 14px; height: 14px; }
 .ch-robux { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--dev-text); }
 .ch-robux .ch-ico { width: 16px; height: 16px; }
+
+/* The dev hub runs on the dark theme, so its sidebar/topbar icons must be
+   light. The /icons files are SVG <img>s and do not inherit currentColor, so
+   invert them to white the same way the main topbar does. */
+.dev-sidebar img.ch-ico,
+.dev-sidebar-icon img.ch-ico,
+.roblox-topbar img.ch-ico {
+  filter: brightness(0) invert(1);
+}

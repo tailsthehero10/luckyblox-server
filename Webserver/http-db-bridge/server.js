@@ -6,7 +6,7 @@ const { spawn } = require('child_process');
 const { buildPlaceCatalogFromMaps, normalizePlaceId: normalizePlaceIdInput, resolveRequestedPlace } = require('./gameMapResolver');
 const { getRobloxProfileTemplateItems } = require('./robloxTemplateSource');
 const robloxApi = require('./robloxApi');
-const { getStudioBuildInfo, getStudioUpdateManifest } = require('./studioBuildInfo');
+const { getStudioBuildInfo, getStudioUpdateManifest, STUDIO_EXECUTABLE_PATH, DEFAULT_BASE_URL } = require('./studioBuildInfo');
 const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'server', 'studioApi.js'));
 const { installTeamCreateRoutes } = require(path.join(__dirname, '..', '..', 'server', 'teamCreate.js'));
 const {
@@ -2691,21 +2691,36 @@ app.get('/develop', (req, res) => {
   const isOwner = isOwnerUser(user);
   const signedIn = Boolean(sessionUser);
 
-  // Real places from the store, annotated with their own game stats.
+  // Real places from the store, annotated with their own game stats AND the
+  // live server state the orchestrator actually holds (running jobs, players).
   const placesRecords = readJson(placesPath, {});
   const allGames = getGames();
+  const placeCatalog = buildPlaceCatalogFromMaps();
   const places = Object.values(placesRecords)
     .filter((entry) => entry && typeof entry === 'object')
     .map((entry) => {
       const placeId = Number(entry.placeId || entry.universeId || 1818);
       const game = allGames[String(placeId)] || {};
+      const servers = listServersForPlace(placeId);
+      const playing = servers.reduce((sum, s) => sum + Number(s.playing || 0), 0);
+      // A place exists either as a published record or a real map file.
+      const mapEntry = placeCatalog.find((c) => Number(c.placeId) === placeId);
       return {
         placeId,
-        name: entry.name || game.title || `Place ${placeId}`,
+        name: entry.name || game.title || (mapEntry && mapEntry.title) || `Place ${placeId}`,
         description: entry.description || game.description || '',
         visibility: String(entry.visibility || 'Public'),
-        visits: Number(game.playerCount || game.visits || 0),
+        genre: entry.genre || game.genre || 'Adventure',
+        visits: Number(game.visits || 0),
+        playing,
+        serverCount: servers.length,
+        maxPlayers: Number(entry.maxPlayers || game.maxPlayers || 20),
         authorId: Number(entry.authorId || 1),
+        author: entry.author || 'LuckyBlox Studio',
+        icon: '/gameplaceholder/card.png',
+        createdAt: entry.createdAt || entry.publishedAt || game.createdAt || '',
+        updatedAt: entry.updatedAt || entry.publishedAt || game.updatedAt || '',
+        hasMap: Boolean(mapEntry),
       };
     })
     // Own experiences first; the owner sees everything.
@@ -2719,23 +2734,38 @@ app.get('/develop', (req, res) => {
     creatorName: asset.creatorName || 'LuckyBlox Studio',
   }));
 
+  // Live server + player totals from the running orchestrator, not stored.
+  const liveServers = activeGameServers.map((server) => ({
+    jobId: server.serverJobId,
+    placeId: Number(server.placeId),
+    port: Number(server.port),
+    playing: Array.isArray(server.currentPlayers) ? server.currentPlayers.length : 0,
+    maxPlayers: Number(server.maxPlayers || 20),
+    status: server.status || 'running',
+    uptimeSeconds: server.startedAt ? Math.max(0, Math.round((Date.now() - new Date(server.startedAt).getTime()) / 1000)) : 0,
+  }));
+
   const stats = {
     places: places.length,
     publicPlaces: places.filter((p) => p.visibility === 'Public').length,
     privatePlaces: places.filter((p) => p.visibility !== 'Public').length,
     assets: assets.length,
     visits: places.reduce((sum, p) => sum + Number(p.visits || 0), 0),
+    liveServers: liveServers.length,
+    playersOnline: getTotalPlayerCount(),
+    maps: placeCatalog.length,
   };
 
   // Most recently updated places, for the "Recent activity" strip.
-  const recent = Object.values(placesRecords)
-    .filter((entry) => entry && typeof entry === 'object')
-    .sort((a, b) => new Date(b.updatedAt || b.publishedAt || 0) - new Date(a.updatedAt || a.publishedAt || 0))
-    .slice(0, 6)
-    .map((entry) => ({
-      placeId: Number(entry.placeId || entry.universeId || 1818),
-      name: entry.name || `Place ${entry.placeId}`,
-      updatedAt: entry.updatedAt || entry.publishedAt || '',
+  const recent = places
+    .slice()
+    .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
+    .slice(0, 8)
+    .map((p) => ({
+      placeId: p.placeId,
+      name: p.name,
+      updatedAt: p.updatedAt,
+      playing: p.playing,
     }));
 
   res.render('develop', {
@@ -2749,8 +2779,11 @@ app.get('/develop', (req, res) => {
     assets: assets.slice(0, 40),
     stats,
     recent,
+    liveServers,
     studioHost: gameServerHost,
     studioPort: gamePort,
+    studioReady: fs.existsSync(STUDIO_EXECUTABLE_PATH),
+    studioBaseUrl: DEFAULT_BASE_URL,
   });
 });
 
@@ -2919,6 +2952,107 @@ app.get('/v1/studio/authenticate', (req, res) => {
     authTicket: ticket.ticket,
     expiresAt: new Date(ticket.expiresAt).toISOString(),
     isOwner: isOwnerUser(user),
+  });
+});
+
+/**
+ * Launch the desktop Studio (2022M) for the signed-in user.
+ *
+ * This is how Studio actually connects: the client is spawned and told the
+ * base URL + one-time auth ticket, then it opens /v1/studio/authenticate with
+ * the nonce to pick up the session. Returns the real spawn result so the UI can
+ * tell the user whether the desktop app started (e.g. "not installed here" when
+ * the launcher runs on a machine without RobloxStudioBeta.exe).
+ */
+app.post('/api/studio/launch', (req, res) => {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  if (!sessionUser) {
+    return res.status(401).json({ ok: false, error: 'sign-in-required', message: 'Sign in to open Studio.' });
+  }
+
+  const userId = String(sessionUser.userId || sessionUser.id || 1);
+  const placeId = Number(req.body && req.body.placeId) || 1818;
+
+  // Mint a Studio handshake bound to this user so Studio authenticates as them.
+  const nonce = security.generateSessionId();
+  const studioSessions = getStudioHandshakes();
+  studioSessions[nonce] = {
+    nonce,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 10 * 60 * 1000,
+    client: 'studio-2022M',
+    userId,
+    completedAt: Date.now(),
+  };
+  writeJson(studioHandshakePath, studioSessions);
+
+  const authenticateUrl = `${publicOrigin}/v1/studio/authenticate?nonce=${encodeURIComponent(nonce)}`;
+  const executable = STUDIO_EXECUTABLE_PATH;
+
+  audit('studio_launch_requested', { userId, placeId, ip: security.clientIp(req) });
+
+  if (!fs.existsSync(executable)) {
+    // Not an error the user caused - Studio just is not installed on the host
+    // running the server. Return the connect details so the UI can guide them.
+    return res.json({
+      ok: true,
+      launched: false,
+      reason: 'studio-not-installed',
+      message: 'LuckyBlox Studio is not installed on this machine.',
+      executablePath: executable,
+      baseUrl: DEFAULT_BASE_URL,
+      authUrl: `${publicOrigin}/signin?studio=${encodeURIComponent(nonce)}`,
+      authenticateUrl,
+    });
+  }
+
+  try {
+    const child = spawn(executable, [
+      '-a', `${publicOrigin}/signin?studio=${encodeURIComponent(nonce)}`,
+      '-t', String(placeId),
+      '-j', authenticateUrl,
+    ], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false,
+    });
+    child.unref();
+
+    audit('studio_launched', { userId, placeId, pid: child.pid });
+    return res.json({
+      ok: true,
+      launched: true,
+      pid: child.pid,
+      executablePath: executable,
+      baseUrl: DEFAULT_BASE_URL,
+      authenticateUrl,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      launched: false,
+      reason: 'spawn-failed',
+      message: String(error.message || error),
+      executablePath: executable,
+    });
+  }
+});
+
+/** Live server/player state for the develop dashboard, polled by the page. */
+app.get('/api/develop/live', (req, res) => {
+  const servers = activeGameServers.map((server) => ({
+    jobId: server.serverJobId,
+    placeId: Number(server.placeId),
+    port: Number(server.port),
+    playing: Array.isArray(server.currentPlayers) ? server.currentPlayers.length : 0,
+    maxPlayers: Number(server.maxPlayers || 20),
+    status: server.status || 'running',
+  }));
+  res.json({
+    ok: true,
+    playersOnline: getTotalPlayerCount(),
+    serverCount: servers.length,
+    servers,
   });
 });
 

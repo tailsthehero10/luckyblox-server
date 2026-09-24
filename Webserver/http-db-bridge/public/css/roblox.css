@@ -2362,7 +2362,9 @@ a.roblox-brand:hover {
 @media (max-width: 860px) {
   .roblox-shell { grid-template-columns: 1fr; }
   .roblox-sidebar { display: none; }
-}/* --- Game page (2021 style: wide Big_ hero thumbnail + info column) -------- */
+}
+
+/* --- Game page (2021 style: wide Big_ hero thumbnail + info column) -------- */
 .roblox-game-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
@@ -2448,4 +2450,37 @@ a.roblox-brand:hover {
 @media (max-width: 820px) {
   .roblox-game-hero,
   .roblox-game-body { grid-template-columns: 1fr; }
+}
+
+/* ---------------------------------------------------------------------------
+   Topbar icon visibility fix.
+
+   The topbar is #191919. The icon files are SVG <img> elements, and an <img>
+   renders its SVG in isolation - so `fill="currentColor"` inside the file does
+   NOT inherit the page colour and falls back to black, which is why the nav and
+   header icons looked dark/invisible on the dark bar.
+
+   Fix: force every icon shown inside the topbar to pure white. `brightness(0)`
+   flattens any colour to black while keeping the alpha channel, then
+   `invert(1)` turns that black to solid white - regardless of the file's own
+   fill. The Robux balance icon is excluded because it is meant to keep its own
+   two-tone look.
+   --------------------------------------------------------------------------- */
+.roblox-topbar img.ch-ico,
+.roblox-topbar img[src^="/icons/"] {
+  filter: brightness(0) invert(1) !important;
+  opacity: 1 !important;
+}
+
+/* The Robux chip keeps its real Robux mark (dark tile + white R$) and is not
+   inverted; it sits on a green pill, not the flat grey bar. */
+.roblox-robux::before,
+.ch-robux img[src*="robux"],
+.roblox-topbar img[src*="robux"] {
+  filter: none !important;
+}
+
+/* Light hover target stays legible now that the glyph is white. */
+.roblox-icon-button:hover img.ch-ico {
+  filter: brightness(0) invert(1) !important;
 }
