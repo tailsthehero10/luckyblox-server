@@ -70,6 +70,10 @@ const siteStatus = require('./siteStatus').createSiteStatus({
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
+// LuckyBlox SVG icon set (Robux, friends, create, develop, studio, ...). Views
+// reference these by name instead of emoji glyphs so the UI matches Roblox's
+// 2021 look everywhere.
+app.use('/icons', express.static(path.join(__dirname, 'public', 'icons')));
 // Page imagery (e.g. the sign-in background). Kept as a folder so a new image can
 // be dropped in without a code change.
 app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
@@ -1187,6 +1191,26 @@ function getUserByUsername(username = '') {
  * counters, currently-wearing, a starter inventory and a welcome badge. This
  * keeps Node signups identical to the PHP lb_build_new_user_record() record.
  */
+/**
+ * Assemble a YYYY-MM-DD birthday from the three Roblox-style dropdowns
+ * (birthMonth / birthDay / birthYear). Falls back to a single birthday field so
+ * older forms and API clients keep working. Returns null when incomplete.
+ */
+function assembleBirthday(body) {
+  const source = body || {};
+  if (source.birthday && /^\d{4}-\d{2}-\d{2}$/.test(String(source.birthday))) {
+    return String(source.birthday);
+  }
+  const month = Number(source.birthMonth);
+  const day = Number(source.birthDay);
+  const year = Number(source.birthYear);
+  if (month >= 1 && month <= 12 && day >= 1 && day <= 31 && year >= 1900 && year <= new Date().getFullYear()) {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${year}-${pad(month)}-${pad(day)}`;
+  }
+  return null;
+}
+
 function buildNewUserRecord({ userId, username, displayName, passwordHash, passwordSalt, passwordVersion, gender, birthday }) {
   const now = new Date().toISOString();
   const starterInventory = ['1001', '1002', '1003', '1004'];
@@ -2147,7 +2171,7 @@ app.post('/signup', requireCsrf, (req, res) => {
     passwordSalt: salt,
     passwordVersion: version,
     gender: String(req.body.gender || 'NotSpecified'),
-    birthday: req.body.birthday,
+    birthday: assembleBirthday(req.body),
   });
 
   users[String(nextId)] = created;
@@ -2195,7 +2219,7 @@ app.post('/luckblox.site.tk/signup', (req, res) => {
     passwordSalt: salt,
     passwordVersion: version,
     gender: String(req.body.gender || 'NotSpecified'),
-    birthday: req.body.birthday,
+    birthday: assembleBirthday(req.body),
   });
 
   users[String(nextId)] = created;
@@ -2624,6 +2648,15 @@ app.get('/studio', (req, res) => {
     currency: getCurrencyForUser(user),
     isAdmin: isAdminUser(user),
     adminBadge: getAdminBadge(user),
+    // Studio 2022M connection details so the page can show the real host:port
+    // the desktop client connects to, instead of a hardcoded value.
+    studioHost: gameServerHost,
+    studioPort: gamePort,
+    assets: Object.values(getAssets()).map((asset) => ({
+      id: Number(asset.id || asset.assetId) || 0,
+      name: asset.name || 'Asset',
+      assetType: asset.assetType || asset.className || 'Model',
+    })),
   });
 });
 
@@ -2670,18 +2703,35 @@ app.get('/develop', (req, res) => {
   const stats = {
     places: places.length,
     publicPlaces: places.filter((p) => p.visibility === 'Public').length,
+    privatePlaces: places.filter((p) => p.visibility !== 'Public').length,
     assets: assets.length,
     visits: places.reduce((sum, p) => sum + Number(p.visits || 0), 0),
   };
+
+  // Most recently updated places, for the "Recent activity" strip.
+  const recent = Object.values(placesRecords)
+    .filter((entry) => entry && typeof entry === 'object')
+    .sort((a, b) => new Date(b.updatedAt || b.publishedAt || 0) - new Date(a.updatedAt || a.publishedAt || 0))
+    .slice(0, 6)
+    .map((entry) => ({
+      placeId: Number(entry.placeId || entry.universeId || 1818),
+      name: entry.name || `Place ${entry.placeId}`,
+      updatedAt: entry.updatedAt || entry.publishedAt || '',
+    }));
 
   res.render('develop', {
     title: 'Create - LuckyBlox',
     user,
     isOwner,
     signedIn,
+    currency: getCurrencyForUser(user),
+    adminBadge: getAdminBadge(user),
     places: places.slice(0, 40),
     assets: assets.slice(0, 40),
     stats,
+    recent,
+    studioHost: gameServerHost,
+    studioPort: gamePort,
   });
 });
 
@@ -4233,6 +4283,8 @@ app.get('/dev', requireDevAuth, (req, res) => {
     places,
     games,
     assets,
+    currency: getCurrencyForUser(user),
+    adminBadge: getAdminBadge(user),
     welcome: req.query.welcome === '1' || req.query.signedin === '1',
   });
 });
@@ -4242,11 +4294,14 @@ app.get('/dev/create', requireDevAuth, (req, res) => {
   res.render('dev/create', {
     title: 'Create - LuckyBlox Studio',
     user,
+    currency: getCurrencyForUser(user),
+    adminBadge: getAdminBadge(user),
   });
 });
 
 app.post('/dev/create', requireDevAuth, express.urlencoded({ extended: true, limit: '50mb' }), (req, res) => {
   const body = req.body || {};
+  const devUser = getDevUser(req) || {};
   const placeName = String(body.name || req.query.name || 'New Place');
   const fileName = `${placeName.replace(/[^a-zA-Z0-9_. -]/g, '_')}.rbxlx`;
   const savedPlacesDir = path.join(releaseRoot, 'workspace', 'saved_places');
@@ -4264,7 +4319,10 @@ app.post('/dev/create', requireDevAuth, express.urlencoded({ extended: true, lim
   const places = readJson(path.join(dataDir, 'places.json'), {});
   places[String(placeId)] = {
     placeId, universeId: placeId, name: placeName, description: placeData.description,
-    fileName, filePath, version: 1, author: 'LocalPlayer', authorId: 1, maxPlayers: placeData.maxPlayers,
+    fileName, filePath, version: 1,
+    author: String(devUser.username || 'Creator'),
+    authorId: Number(devUser.userId || devUser.id || 1),
+    maxPlayers: placeData.maxPlayers,
     allowHttpRequests: true, visibility: placeData.visibility, genre: placeData.genre, updatedAt: new Date().toISOString(),
   };
   writeJson(path.join(dataDir, 'places.json'), places);
@@ -4284,6 +4342,8 @@ app.get('/dev/game/:placeId/settings', requireDevAuth, (req, res) => {
     title: `${place.name} - Settings`,
     user,
     place,
+    currency: getCurrencyForUser(user),
+    adminBadge: getAdminBadge(user),
   });
 });
 
@@ -4317,6 +4377,8 @@ app.get('/dev/assets', requireDevAuth, (req, res) => {
     user,
     assets,
     uploadedAssets,
+    currency: getCurrencyForUser(user),
+    adminBadge: getAdminBadge(user),
   });
 });
 
@@ -4346,6 +4408,8 @@ app.get('/dev/docs', requireDevAuth, (req, res) => {
   res.render('dev/docs', {
     title: 'API Docs - LuckyBlox Studio',
     user,
+    currency: getCurrencyForUser(user),
+    adminBadge: getAdminBadge(user),
   });
 });
 

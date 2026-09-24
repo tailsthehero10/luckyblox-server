@@ -58,5 +58,25 @@
         "userAgent": "",
         "expiresAt": 1790273042000,
         "createdAt": 1790229842000
+    },
+    "lb_79072f644b670f20573a2b1d804861cc88664aac6b118d6d": {
+        "sessionId": "lb_79072f644b670f20573a2b1d804861cc88664aac6b118d6d",
+        "userId": "11",
+        "username": "SignupTest9688",
+        "csrfToken": "lb_79072f644b670f20573a2b1d804861cc88664aac6b118d6d.5352f127e796229e0cbbe10d9a3d5c39.754dac36ea9effeae20e1152e0645de149d257e551010caad5d95b13a3eb54ea",
+        "ip": "unknown",
+        "userAgent": "",
+        "expiresAt": 1790275960000,
+        "createdAt": 1790232760000
+    },
+    "lb_a4a43e99dc136692c0f63efbd89722f0a1a25de13f87eccf": {
+        "sessionId": "lb_a4a43e99dc136692c0f63efbd89722f0a1a25de13f87eccf",
+        "userId": "11",
+        "username": "CookieTest9687",
+        "csrfToken": "lb_a4a43e99dc136692c0f63efbd89722f0a1a25de13f87eccf.22e4fb8eee5062270d5fe1217c7dd93c.b1c617a65c6af79ffd6ba1cabaf86def3f4300b1e2b954693078d60c26429114",
+        "ip": "unknown",
+        "userAgent": "",
+        "expiresAt": 1790276101000,
+        "createdAt": 1790232901000
     }
 }

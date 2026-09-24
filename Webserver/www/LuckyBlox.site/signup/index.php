@@ -18,7 +18,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $_POST['password'] ?? '';
         $confirmPassword = $_POST['confirmPassword'] ?? '';
         $gender = $_POST['gender'] ?? 'NotSpecified';
-        $birthday = isset($_POST['birthday']) ? trim((string) $_POST['birthday']) : null;
+
+        // Birthday is three separate dropdowns (Month / Day / Year), matching the
+        // Roblox 2021 create-account form. Assemble them into YYYY-MM-DD.
+        $birthMonth = isset($_POST['birthMonth']) ? (int) $_POST['birthMonth'] : 0;
+        $birthDay = isset($_POST['birthDay']) ? (int) $_POST['birthDay'] : 0;
+        $birthYear = isset($_POST['birthYear']) ? (int) $_POST['birthYear'] : 0;
+        $birthday = null;
+        if ($birthMonth >= 1 && $birthMonth <= 12 && $birthDay >= 1 && $birthDay <= 31 && $birthYear >= 1900 && $birthYear <= (int) date('Y')) {
+            $birthday = sprintf('%04d-%02d-%02d', $birthYear, $birthMonth, $birthDay);
+        }
 
         $result = lb_signup($username, $password, $confirmPassword, $displayName, $gender, $birthday);
         if ($result['ok']) {
@@ -33,6 +42,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $csrfToken = lb_get_csrf_token();
 $usernameVal = htmlspecialchars($_POST['username'] ?? '');
 $displayNameVal = htmlspecialchars($_POST['displayName'] ?? '');
+
+$birthMonthVal = isset($_POST['birthMonth']) ? (int) $_POST['birthMonth'] : 0;
+$birthDayVal = isset($_POST['birthDay']) ? (int) $_POST['birthDay'] : 0;
+$birthYearVal = isset($_POST['birthYear']) ? (int) $_POST['birthYear'] : 0;
+$genderVal = $_POST['gender'] ?? 'NotSpecified';
+
+$monthNames = array(
+    1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+    5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+    9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December',
+);
+$currentYear = (int) date('Y');
+$genderLabels = array('NotSpecified' => 'Not specified', 'Male' => 'Male', 'Female' => 'Female');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -44,35 +66,45 @@ $displayNameVal = htmlspecialchars($_POST['displayName'] ?? '');
     <link rel="icon" type="image/png" href="/site-icon/luckyblox.png" />
     <style>
         body {
-            margin: 0; padding: 0; font-family: Arial, sans-serif;
+            margin: 0; padding: 0;
+            font-family: "Gotham SSm", Arimo, "Segoe UI", Arial, sans-serif;
             background: url('/site-icon/BackgroundSigninup/sign page.jpg') no-repeat center center fixed;
             background-size: cover; min-height: 100vh; display: flex; align-items: center; justify-content: center;
         }
         .card {
-            background: rgba(15, 23, 42, 0.92); border: 1px solid #334155; border-radius: 14px;
-            padding: 32px; box-shadow: 0 15px 30px rgba(0,0,0,0.35); width: 100%; max-width: 420px;
+            background: #ffffff; border-radius: 8px;
+            box-shadow: 0 4px 24px rgba(25, 39, 68, 0.25); width: 100%; max-width: 420px;
+            padding: 32px 40px 28px; box-sizing: border-box;
         }
-        .brand { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 24px; }
-        .brand img { width: 32px; height: 32px; }
-        .brand span { font-weight: 700; font-size: 1.5rem; color: #7dd3fc; letter-spacing: 0.04em; }
-        h1 { margin: 0 0 8px; color: #e2e8f0; font-size: 1.5rem; }
-        p.subtitle { margin: 0 0 20px; color: #94a3b8; font-size: 0.9rem; }
+        .brand { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px; }
+        .brand img { width: 40px; height: 40px; }
+        .brand span { font-weight: 800; font-size: 1.6rem; color: #232527; letter-spacing: -0.02em; }
+        h1 { margin: 0 0 4px; color: #393b3d; font-size: 1.6rem; font-weight: 800; text-align: center; }
+        p.subtitle { margin: 0 0 22px; color: #6b6e72; font-size: 0.9rem; text-align: center; line-height: 1.5; }
         form { display: grid; gap: 16px; }
-        label { display: grid; gap: 6px; color: #cbd5e1; font-size: 0.85rem; }
-        input, select { font: inherit; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; width: 100%; box-sizing: border-box; }
-        select:focus, input:focus { outline: none; border-color: #5d8fe2; }
-        button { padding: 12px; border-radius: 8px; border: none; background: #2563eb; color: #fff; font-weight: 700; cursor: pointer; font-size: 0.95rem; transition: background .15s; }
-        button:hover { background: #1d4ed8; }
-        .button.secondary { background: #0f766e; }
-        .button.secondary:hover { background: #0d5b54; }
-        .actions { display: flex; gap: 12px; margin-top: 8px; }
-        .status { margin-top: 14px; min-height: 18px; font-size: 0.9rem; }
-        .status.error { color: #fca5a5; }
-        .hint { margin: 0 0 14px; padding: 8px 12px; border-radius: 8px; background: #eef5ff; border: 1px solid #c9ddff; color: #4a6fa5; font-size: 0.82rem; line-height: 1.5; }
-        a { color: #7dd3fc; text-decoration: none; }
+        label { display: block; color: #393b3d; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; }
+        input, select {
+            font: inherit; padding: 10px 12px; border-radius: 4px;
+            border: 1px solid #b8bcc1; background: #ffffff; color: #232527;
+            width: 100%; box-sizing: border-box; height: 40px;
+        }
+        select { appearance: none; -webkit-appearance: none; background-image: url('/icons/dropdown.svg'); background-repeat: no-repeat; background-position: right 10px center; background-size: 12px; padding-right: 30px; }
+        select:focus, input:focus { outline: none; border-color: #00a2ff; box-shadow: 0 0 0 1px #00a2ff; }
+        .birthday-row { display: grid; grid-template-columns: 1.4fr 1fr 1.1fr; gap: 8px; }
+        .birthday-row select { padding-left: 8px; }
+        button { padding: 11px; border-radius: 4px; border: none; background: #00a2ff; color: #fff; font-weight: 800; cursor: pointer; font-size: 0.95rem; transition: background .15s; }
+        button:hover { background: #0086d6; }
+        .button.secondary { background: #e3e7eb; color: #393b3d; }
+        .button.secondary:hover { background: #d3d9df; }
+        .actions { display: flex; gap: 12px; margin-top: 4px; }
+        .actions button { flex: 1; }
+        .status { margin-top: 0; margin-bottom: 14px; font-size: 0.9rem; }
+        .status.error { color: #d9534f; }
+        .hint { margin: 0; padding: 10px 12px; border-radius: 4px; background: #eef5ff; border: 1px solid #c9ddff; color: #3b5a8a; font-size: 0.82rem; line-height: 1.5; }
+        a { color: #00a2ff; text-decoration: none; }
         a:hover { text-decoration: underline; }
-        .links { margin-top: 18px; text-align: center; font-size: 0.9rem; color: #94a3b8; }
-        .small { font-size: 0.8rem; color: #94a3b8; }
+        .links { margin-top: 18px; text-align: center; font-size: 0.9rem; color: #6b6e72; }
+        .small { font-size: 0.78rem; color: #8b8e92; font-weight: 400; }
     </style>
 </head>
 <body>
@@ -96,32 +128,50 @@ $displayNameVal = htmlspecialchars($_POST['displayName'] ?? '');
         <form id="signupForm" method="POST" action="/LuckBlox.site/signup/">
             <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars($csrfToken); ?>" />
 
+            <label>Birthday *</label>
+            <div class="birthday-row">
+                <select id="birthMonth" name="birthMonth" aria-label="Birth month" required>
+                    <option value="">Month</option>
+                    <?php foreach ($monthNames as $num => $name): ?>
+                        <option value="<?php echo $num; ?>"<?php echo $birthMonthVal === $num ? ' selected' : ''; ?>><?php echo htmlspecialchars($name); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <select id="birthDay" name="birthDay" aria-label="Birth day" required>
+                    <option value="">Day</option>
+                    <?php for ($d = 1; $d <= 31; $d++): ?>
+                        <option value="<?php echo $d; ?>"<?php echo $birthDayVal === $d ? ' selected' : ''; ?>><?php echo $d; ?></option>
+                    <?php endfor; ?>
+                </select>
+                <select id="birthYear" name="birthYear" aria-label="Birth year" required>
+                    <option value="">Year</option>
+                    <?php for ($y = $currentYear; $y >= 1900; $y--): ?>
+                        <option value="<?php echo $y; ?>"<?php echo $birthYearVal === $y ? ' selected' : ''; ?>><?php echo $y; ?></option>
+                    <?php endfor; ?>
+                </select>
+            </div>
+
             <label for="username">Username *</label>
             <input type="text" id="username" name="username" value="<?php echo $usernameVal; ?>"
-                   placeholder="Choose a username" required maxlength="20"
+                   placeholder="Choose a username" required maxlength="20" autocomplete="username"
                    pattern="[A-Za-z0-9_]{3,20}" title="3-20 characters: letters, numbers, and underscores." />
             <div class="small">3-20 characters: letters, numbers, and underscores.</div>
 
-            <label for="displayName">Display name</label>
+            <label for="displayName">Display name (optional)</label>
             <input type="text" id="displayName" name="displayName" value="<?php echo $displayNameVal; ?>"
-                   placeholder="Optional: display name (defaults to username)" maxlength="35" />
+                   placeholder="Defaults to your username" maxlength="35" />
 
             <label for="password">Password *</label>
-            <input type="password" id="password" name="password" placeholder="Create a password" required minlength="8" />
+            <input type="password" id="password" name="password" placeholder="Create a password" required minlength="8" autocomplete="new-password" />
             <div class="small">At least 8 characters with an uppercase letter, lowercase letter, and a number.</div>
 
             <label for="confirmPassword">Confirm password *</label>
-            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required minlength="8" />
-
-            <label for="birthday">Birthday</label>
-            <input type="date" id="birthday" name="birthday" value="<?php echo htmlspecialchars($_POST['birthday'] ?? ''); ?>" max="<?php echo date('Y-m-d'); ?>" />
-            <div class="small">Optional — used for the age-appropriate account settings, like Roblox.</div>
+            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required minlength="8" autocomplete="new-password" />
 
             <label for="gender">Gender (optional)</label>
             <select id="gender" name="gender">
-                <option value="NotSpecified">Prefer not to say</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
+                <?php foreach ($genderLabels as $value => $label): ?>
+                    <option value="<?php echo htmlspecialchars($value); ?>"<?php echo $genderVal === $value ? ' selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
+                <?php endforeach; ?>
             </select>
             <div class="small">Your avatar will use a matching default body color set.</div>
 
@@ -130,7 +180,7 @@ $displayNameVal = htmlspecialchars($_POST['displayName'] ?? '');
             </div>
 
             <div class="actions">
-                <button type="submit">Create account</button>
+                <button type="submit">Sign Up</button>
                 <button type="button" class="secondary" onclick="location.href='/LuckBlox.site/signin/'">Use sign in</button>
             </div>
         </form>
@@ -147,6 +197,9 @@ $displayNameVal = htmlspecialchars($_POST['displayName'] ?? '');
                 var u = document.getElementById('username').value.trim();
                 var p = document.getElementById('password').value;
                 var cp = document.getElementById('confirmPassword').value;
+                var bm = document.getElementById('birthMonth').value;
+                var bd = document.getElementById('birthDay').value;
+                var by = document.getElementById('birthYear').value;
                 var valid = true;
                 var statusDiv = form.querySelector('.status.error');
                 if (!statusDiv) {
@@ -156,6 +209,10 @@ $displayNameVal = htmlspecialchars($_POST['displayName'] ?? '');
                 }
                 statusDiv.innerHTML = '';
 
+                if (!bm || !bd || !by) {
+                    statusDiv.innerHTML += 'Please enter your birthday.<br>';
+                    valid = false;
+                }
                 if (u.length < 3 || u.length > 20 || !/^[A-Za-z0-9_]+$/.test(u)) {
                     statusDiv.innerHTML += 'Username must be 3-20 alphanumeric/underscore characters.<br>';
                     valid = false;

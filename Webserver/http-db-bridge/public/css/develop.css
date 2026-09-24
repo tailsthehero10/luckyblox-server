@@ -1,0 +1,122 @@
+/* LuckyBlox Creator Hub — 2021 Roblox create-page look, refreshed + rebranded.
+   Loaded only on the /develop page. Uses the shared /css/roblox.css variables. */
+
+.ch-page { max-width: 1180px; margin: 0 auto; padding: 20px 18px 64px; }
+
+/* Icon helper: any inline SVG from /icons rendered at text size and tinted. */
+.ch-ico { width: 18px; height: 18px; display: inline-block; vertical-align: middle; flex: 0 0 auto; }
+.ch-ico-sm { width: 14px; height: 14px; }
+.ch-ico-lg { width: 26px; height: 26px; }
+
+/* Robux pill: the real Robux icon + amount, as Roblox shows it. */
+.ch-robux { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--rbx-text); }
+.ch-robux .ch-ico { width: 16px; height: 16px; }
+
+/* ---- Hero ---- */
+.ch-hero {
+  display: flex; align-items: center; gap: 22px;
+  background: linear-gradient(120deg, #2f4f7f 0%, #1a5fb4 55%, #2f6fe0 100%);
+  color: #fff; border-radius: 16px; padding: 26px 28px;
+  box-shadow: 0 12px 30px rgba(26, 95, 180, 0.22);
+}
+.ch-avatar {
+  width: 76px; height: 76px; border-radius: 14px; flex: 0 0 auto;
+  background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.28);
+  display: grid; place-items: center; font-size: 2rem; font-weight: 800;
+  overflow: hidden;
+}
+.ch-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ch-hero-main { flex: 1; min-width: 0; }
+.ch-eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; opacity: 0.85; font-weight: 700; }
+.ch-hero h1 { margin: 4px 0 6px; font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; }
+.ch-hero-meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.85rem; }
+.ch-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 999px; padding: 4px 12px; font-weight: 600;
+}
+.ch-hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ---- Buttons ---- */
+.ch-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: 8px; border: 1px solid transparent;
+  font-weight: 700; font-size: 0.9rem; cursor: pointer; text-decoration: none;
+  transition: filter 0.15s, background 0.15s;
+}
+.ch-btn:hover { filter: brightness(1.06); }
+.ch-btn-primary { background: #00a859; color: #fff; }
+.ch-btn-blue { background: #1a5fb4; color: #fff; }
+.ch-btn-light { background: #fff; color: #1d2433; border-color: #d5dbe2; }
+.ch-btn-ghost { background: rgba(255,255,255,0.16); color: #fff; border-color: rgba(255,255,255,0.3); }
+.ch-btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+
+/* ---- Stat cards ---- */
+.ch-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 22px 0; }
+.ch-stat {
+  background: var(--bg-container); border: 1px solid var(--border-line); border-radius: 12px;
+  padding: 16px 18px; display: flex; align-items: center; gap: 14px;
+}
+.ch-stat-ico { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: #eef4ff; color: #1a5fb4; }
+.ch-stat-ico .ch-ico { width: 22px; height: 22px; }
+.ch-stat-value { font-size: 1.5rem; font-weight: 800; color: var(--rbx-text); line-height: 1; }
+.ch-stat-label { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+
+/* ---- Panels ---- */
+.ch-grid { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
+.ch-panel { background: var(--bg-container); border: 1px solid var(--border-line); border-radius: 12px; margin-bottom: 18px; overflow: hidden; }
+.ch-panel-head {
+  display: flex; align-items: center; gap: 10px; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--border-line); font-weight: 800; font-size: 0.98rem;
+}
+.ch-panel-head .ch-title { display: inline-flex; align-items: center; gap: 8px; }
+.ch-panel-body { padding: 16px 18px; }
+
+/* ---- Game rows ---- */
+.ch-game {
+  display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border-line);
+}
+.ch-game:last-child { border-bottom: none; }
+.ch-game-thumb {
+  width: 72px; height: 72px; border-radius: 10px; flex: 0 0 auto; overflow: hidden;
+  background: #e5edf7; display: grid; place-items: center; color: #1a5fb4; font-weight: 800; font-size: 1.4rem;
+}
+.ch-game-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.ch-game-info { flex: 1; min-width: 0; }
+.ch-game-name { font-weight: 700; color: var(--rbx-text); }
+.ch-game-desc { font-size: 0.82rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch-game-meta { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.ch-badge { font-size: 0.72rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+.ch-badge-public { background: #e3f7ec; color: #008a4a; }
+.ch-badge-private { background: #fdeceb; color: #c0392b; }
+.ch-badge-friends { background: #fff5e0; color: #b57d00; }
+.ch-badge-type { background: #eef1f6; color: #55606f; }
+
+/* ---- Quick actions ------ */
+.ch-action {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px;
+  background: #f7f9fc; border: 1px solid var(--border-line); text-decoration: none; margin-bottom: 10px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ch-action:hover { background: #eef4ff; border-color: #b7d1f7; }
+.ch-action-ico { width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; background: #e7f0ff; color: #1a5fb4; flex: 0 0 auto; }
+.ch-action-name { font-weight: 700; color: var(--rbx-text); font-size: 0.9rem; }
+.ch-action-sub { font-size: 0.76rem; color: var(--text-muted); }
+
+/* ---- Recent strip ---- */
+.ch-recent { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px; }
+.ch-recent-item {
+  flex: 0 0 auto; width: 168px; border: 1px solid var(--border-line); border-radius: 10px;
+  padding: 12px; background: #fff; text-decoration: none;
+}
+.ch-recent-item:hover { border-color: #b7d1f7; }
+.ch-recent-name { font-weight: 700; font-size: 0.85rem; color: var(--rbx-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ch-recent-date { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; }
+
+.ch-empty { color: var(--text-muted); font-size: 0.9rem; padding: 10px 0; }
+.ch-muted { color: var(--text-muted); }
+
+@media (max-width: 860px) {
+  .ch-grid { grid-template-columns: 1fr; }
+  .ch-hero { flex-direction: column; text-align: center; }
+}

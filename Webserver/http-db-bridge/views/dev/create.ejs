@@ -6,6 +6,7 @@
   <title><%= title %></title>
   <link rel="stylesheet" href="/css/roblox.css" />
   <link rel="stylesheet" href="/css/dev.css" />
+  <link rel="stylesheet" href="/css/develop.css" />
 </head>
 <body>
   <header class="roblox-topbar">
@@ -32,10 +33,10 @@
       </div>
     </nav>
     <div class="roblox-right">
-      <span class="roblox-robux"><%= user.robux || 1200 %></span>
-      <span class="roblox-icon-button">&#9881;</span>
-      <span class="roblox-icon-button">&#128276;</span>
-      <span class="roblox-icon-button">@</span>
+      <span class="ch-robux"><img class="ch-ico" src="/icons/robux.svg" alt="Robux" /> <%= (currency && currency.robux) || user.robux || 0 %></span>
+      <span class="roblox-icon-button" title="Account settings"><img class="ch-ico" src="/icons/settings.svg" alt="" /></span>
+      <span class="roblox-icon-button" title="Notifications"><img class="ch-ico" src="/icons/notifications.svg" alt="" /></span>
+      <span class="roblox-icon-button" title="Profile"><img class="ch-ico" src="/icons/profile.svg" alt="" /></span>
       <a class="dev-btn secondary" href="/logout" style="height:32px;padding:0 10px;font-size:12px;display:inline-flex;align-items:center;line-height:1;">Sign Out</a>
     </div>
   </header>

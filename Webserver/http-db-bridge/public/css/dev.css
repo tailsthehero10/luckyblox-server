@@ -382,3 +382,10 @@ body {
 }
 
 .dev-topbar-signout:hover { filter: brightness(1.15); }
+
+/* Icon + Robux helpers shared with the Creator Hub. On the dark dev theme the
+   text icon should follow the current colour so it stays legible. */
+.ch-ico { width: 18px; height: 18px; display: inline-block; vertical-align: middle; flex: 0 0 auto; }
+.ch-ico-sm { width: 14px; height: 14px; }
+.ch-robux { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--dev-text); }
+.ch-robux .ch-ico { width: 16px; height: 16px; }

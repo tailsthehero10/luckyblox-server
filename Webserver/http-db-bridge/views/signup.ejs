@@ -138,6 +138,33 @@
       background: #ffffff;
     }
 
+    /* Birthday: three side-by-side dropdowns (Month / Day / Year), matching the
+       Roblox 2021 create-account form layout. */
+    .birthday-row {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1.1fr;
+      gap: 8px;
+    }
+
+    .birthday-row select {
+      height: 46px;
+      border: 1px solid #ccd7e7;
+      border-radius: 8px;
+      background: #f7f9fc;
+      padding: 0 8px;
+      font-size: 0.95rem;
+      color: #1d2433;
+      outline: none;
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    .birthday-row select:focus {
+      border-color: #5d8fe2;
+      box-shadow: 0 0 0 3px rgba(93, 143, 226, 0.12);
+      background: #ffffff;
+    }
+
     .signin-field input.input-error {
       border-color: #d9534f;
       box-shadow: 0 0 0 3px rgba(217, 83, 79, 0.12);
@@ -230,14 +257,39 @@
         <form class="signin-form" method="POST" action="/signup" id="signupForm">
           <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>" />
           <input type="hidden" name="redirect" value="<%= redirect || '' %>" />
+
+          <div class="signin-field">
+            <label>Birthday</label>
+            <div class="birthday-row">
+              <select id="birthMonth" name="birthMonth" aria-label="Birth month" required>
+                <option value="">Month</option>
+                <% ['January','February','March','April','May','June','July','August','September','October','November','December'].forEach(function(m, i) { %>
+                  <option value="<%= i + 1 %>"><%= m %></option>
+                <% }); %>
+              </select>
+              <select id="birthDay" name="birthDay" aria-label="Birth day" required>
+                <option value="">Day</option>
+                <% for (var d = 1; d <= 31; d++) { %>
+                  <option value="<%= d %>"><%= d %></option>
+                <% } %>
+              </select>
+              <select id="birthYear" name="birthYear" aria-label="Birth year" required>
+                <option value="">Year</option>
+                <% for (var y = new Date().getFullYear(); y >= 1900; y--) { %>
+                  <option value="<%= y %>"><%= y %></option>
+                <% } %>
+              </select>
+            </div>
+          </div>
+
           <div class="signin-field">
             <label for="username">Username</label>
             <input id="username" name="username" type="text" value="<%= username || '' %>" autocomplete="username" required />
           </div>
 
           <div class="signin-field">
-            <label for="displayName">Display name</label>
-            <input id="displayName" name="displayName" type="text" placeholder="Your in-game name" />
+            <label for="displayName">Display name (optional)</label>
+            <input id="displayName" name="displayName" type="text" placeholder="Defaults to your username" />
           </div>
 
           <div class="signin-field">
@@ -251,20 +303,15 @@
           </div>
 
           <div class="signin-field">
-            <label for="birthday">Birthday</label>
-            <input id="birthday" name="birthday" type="date" max="<%= new Date().toISOString().slice(0,10) %>" />
-          </div>
-
-          <div class="signin-field">
             <label for="gender">Gender</label>
             <select id="gender" name="gender">
-              <option value="NotSpecified">Prefer not to say</option>
+              <option value="NotSpecified">Not specified</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
             </select>
           </div>
 
-          <button class="signin-button" type="submit" id="signupSubmit">Create account</button>
+          <button class="signin-button" type="submit" id="signupSubmit">Sign Up</button>
         </form>
 
         <div class="signin-meta">

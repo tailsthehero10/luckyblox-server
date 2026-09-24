@@ -371,9 +371,12 @@ img.roblox-brand-mark {
 }
 
 .roblox-robux::before {
-  content: "R$";
-  font-weight: 800;
-  opacity: 0.9;
+  /* The real Robux icon (same as Roblox's) instead of a text "R$". */
+  content: "";
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  background: url('/icons/robux.svg') center / contain no-repeat;
 }
 
 .roblox-icon-button {

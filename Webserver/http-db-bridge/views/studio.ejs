@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><%= title %></title>
   <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/develop.css" />
   <style>
     body { margin: 0; background: #101214; color: #f3f4f5; font-family: "Gotham SSm", Arimo, Arial, sans-serif; }
     .studio-shell { max-width: 1200px; margin: 0 auto; padding: 28px; }
@@ -53,49 +54,60 @@
 
       <div class="roblox-right">
         <span class="roblox-robux"><%= (currency && currency.robux) || user.robux || 0 %></span>
-        <a class="roblox-icon-button" href="/account" title="Account settings" aria-label="Account settings">&#9881;</a>
-        <a class="roblox-icon-button" href="/friends" title="Friends" aria-label="Friends">&#128101;</a>
-        <a class="roblox-icon-button" href="/profile?userId=<%= user.userId %>" title="Profile" aria-label="Profile">@</a>
+        <a class="roblox-icon-button" href="/account" title="Account settings" aria-label="Account settings"><img class="ch-ico" src="/icons/settings.svg" alt="" /></a>
+        <a class="roblox-icon-button" href="/friends" title="Friends" aria-label="Friends"><img class="ch-ico" src="/icons/friends.svg" alt="" /></a>
+        <a class="roblox-icon-button" href="/profile?userId=<%= user.userId %>" title="Profile" aria-label="Profile"><img class="ch-ico" src="/icons/profile.svg" alt="" /></a>
       </div>
     </header>
 
   <div class="studio-shell">
     <div class="studio-topbar">
-      <div class="studio-brand">LuckyBlox Studio</div>
+      <div class="studio-brand"><img class="ch-ico ch-ico-lg" src="/icons/studio.svg" alt="" style="margin-right:8px;vertical-align:middle;" /> LuckyBlox Studio</div>
       <div class="studio-actions">
-        <button class="studio-button" id="savePlaceBtn">Save</button>
-        <button class="studio-button secondary" id="publishPlaceBtn">Publish</button>
+        <button class="studio-button" id="savePlaceBtn"><img class="ch-ico ch-ico-sm" src="/icons/download.svg" alt="" style="margin-right:6px;vertical-align:middle;" /> Save</button>
+        <button class="studio-button secondary" id="publishPlaceBtn"><img class="ch-ico ch-ico-sm" src="/icons/upload.svg" alt="" style="margin-right:6px;vertical-align:middle;" /> Publish</button>
+        <a class="studio-button secondary" href="/develop?userId=<%= user.userId %>" style="text-decoration:none;"><img class="ch-ico ch-ico-sm" src="/icons/develop.svg" alt="" style="margin-right:6px;vertical-align:middle;" /> Creator Hub</a>
       </div>
     </div>
 
     <div class="studio-grid">
       <div class="studio-panel">
-        <h2 style="margin-top:0;">Places</h2>
+        <h2 style="margin-top:0;"><img class="ch-ico" src="/icons/assets.svg" alt="" style="margin-right:8px;vertical-align:middle;" /> Places</h2>
         <div class="studio-list">
-          <% places.forEach((place) => { %>
-            <div class="studio-place">
-              <h3><%= place.name %></h3>
-              <p><%= place.description %></p>
-              <div class="status-chip">Place ID: <%= place.placeId %></div>
-            </div>
-          <% }) %>
+          <% if (places.length) { %>
+            <% places.forEach((place) => { %>
+              <div class="studio-place">
+                <h3><%= place.name %></h3>
+                <p><%= place.description %></p>
+                <div class="status-chip">Place ID: <%= place.placeId %></div>
+                <div style="margin-top:8px;display:flex;gap:8px;">
+                  <button type="button" class="studio-button secondary open-place-btn" data-place-id="<%= place.placeId %>" data-place-name="<%= place.name %>"><img class="ch-ico ch-ico-sm" src="/icons/edit.svg" alt="" style="margin-right:6px;vertical-align:middle;" /> Open</button>
+                  <a class="studio-button secondary" href="/game/<%= place.placeId %>" style="text-decoration:none;"><img class="ch-ico ch-ico-sm" src="/icons/play.svg" alt="" style="margin-right:6px;vertical-align:middle;" /> Playtest</a>
+                </div>
+              </div>
+            <% }) %>
+          <% } else { %>
+            <div class="muted">No places yet. Publish one to start editing.</div>
+          <% } %>
         </div>
       </div>
 
       <div class="studio-panel">
-        <h2 style="margin-top:0;">Account</h2>
+        <h2 style="margin-top:0;"><img class="ch-ico" src="/icons/profile.svg" alt="" style="margin-right:8px;vertical-align:middle;" /> Account</h2>
         <div class="muted">User: <%= user.username %></div>
         <div class="muted">Membership: <%= user.membershipStatus || user.membership || 'None' %></div>
         <div class="muted">Role: <%= (typeof isAdmin !== 'undefined' && isAdmin) ? 'Admin' : 'Creator' %></div>
-        <div class="muted">Robux: R$ <%= (currency && currency.robux) || user.robux || 0 %></div>
+        <div class="muted" style="display:flex;align-items:center;gap:6px;">Robux: <img class="ch-ico ch-ico-sm" src="/icons/robux.svg" alt="Robux" /> <%= (currency && currency.robux) || user.robux || 0 %></div>
+        <div class="muted" style="margin-top:10px;"><strong>Studio 2022M</strong> connects to:</div>
+        <div class="status-chip"><%= typeof studioHost !== 'undefined' ? studioHost : 'localhost' %>:<%= typeof studioPort !== 'undefined' ? studioPort : '53640' %></div>
         <div style="margin-top:16px;">
-          <button class="studio-button secondary" id="refreshStudioBtn">Refresh account</button>
+          <button class="studio-button secondary" id="refreshStudioBtn"><img class="ch-ico ch-ico-sm" src="/icons/settings.svg" alt="" style="margin-right:6px;vertical-align:middle;" /> Refresh account</button>
         </div>
       </div>
     </div>
 
     <div class="studio-panel" style="margin-top:18px;">
-      <h2 style="margin-top:0;">Game Settings</h2>
+      <h2 style="margin-top:0;"><img class="ch-ico" src="/icons/settings.svg" alt="" style="margin-right:8px;vertical-align:middle;" /> Game Settings</h2>
       <form id="gameSettingsForm" class="settings-form">
         <label>
           Name
@@ -122,8 +134,8 @@
           <input id="settingsMaxPlayers" name="maxPlayers" type="number" min="1" max="100" value="20" />
         </label>
         <div class="settings-actions">
-          <button type="submit" class="studio-button">Apply settings</button>
-          <button type="button" class="studio-button secondary" id="loadSettingsBtn">Reload</button>
+          <button type="submit" class="studio-button"><img class="ch-ico ch-ico-sm" src="/icons/download.svg" alt="" style="margin-right:6px;vertical-align:middle;" /> Apply settings</button>
+          <button type="button" class="studio-button secondary" id="loadSettingsBtn"><img class="ch-ico ch-ico-sm" src="/icons/settings.svg" alt="" style="margin-right:6px;vertical-align:middle;" /> Reload</button>
         </div>
       </form>
     </div>
@@ -131,7 +143,11 @@
   </div>
 
   <script>
-    const placeId = 1818;
+    // Track the place the user is working on: it changes when they open a place.
+    let placeId = <%= (places && places[0] && places[0].placeId) || 1818 %>;
+    let placeName = <%= JSON.stringify((places && places[0] && places[0].name) || 'LuckyBlox Place') %>;
+    const currentUserId = <%= Number(user.userId) || 1 %>;
+    const currentUserName = <%= JSON.stringify(user.username || 'Creator') %>;
 
     async function callApi(path, payload) {
       const response = await fetch(path, {
@@ -155,13 +171,24 @@
       document.getElementById('settingsMaxPlayers').value = settings.maxPlayers || 20;
     }
 
+    // Opening a place makes it the active one and loads its real settings.
+    document.querySelectorAll('.open-place-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        placeId = Number(btn.getAttribute('data-place-id')) || placeId;
+        placeName = btn.getAttribute('data-place-name') || placeName;
+        loadGameSettings();
+        const target = document.getElementById('gameSettingsForm');
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
     document.getElementById('savePlaceBtn').addEventListener('click', async () => {
       const data = await callApi('/api/save-place', {
-        name: 'LuckyBlox Studio Place',
+        name: placeName,
         placeId,
-        description: 'Saved from local Studio workflow.',
-        author: 'LocalPlayer',
-        authorId: 1,
+        description: document.getElementById('settingsDescription').value || 'Saved from local Studio workflow.',
+        author: currentUserName,
+        authorId: currentUserId,
         version: 1,
         data: { mode: 'save', savedAt: new Date().toISOString() }
       });
@@ -170,11 +197,12 @@
 
     document.getElementById('publishPlaceBtn').addEventListener('click', async () => {
       const data = await callApi('/api/publish-place', {
-        name: 'LuckyBlox Studio Publish',
+        name: document.getElementById('settingsName').value || placeName,
         placeId,
-        description: 'Published from local Studio workflow.',
-        author: 'LocalPlayer',
-        authorId: 1,
+        description: document.getElementById('settingsDescription').value || 'Published from local Studio workflow.',
+        visibility: document.getElementById('settingsVisibility').value,
+        author: currentUserName,
+        authorId: currentUserId,
         version: 1,
         data: { mode: 'publish', publishedAt: new Date().toISOString() }
       });
@@ -182,7 +210,7 @@
     });
 
     document.getElementById('refreshStudioBtn').addEventListener('click', async () => {
-      const response = await fetch('/api/account/info?userId=1');
+      const response = await fetch(`/api/account/info?userId=${currentUserId}`);
       const data = await response.json();
       alert(data.ok ? 'Account refreshed successfully.' : 'Account refresh failed.');
     });

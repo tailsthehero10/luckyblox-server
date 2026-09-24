@@ -384,26 +384,30 @@ function lb_load_session() {
     return array('id' => $sessionId, 'data' => $session);
 }
 
+function lb_setcookie_compat($name, $value, $expires, $secure) {
+    // PHP 7.3+ accepts an options array with SameSite; 7.2 does not, so fall back
+    // to the positional signature and append SameSite after Path.
+    if (PHP_VERSION_ID >= 70300) {
+        setcookie($name, $value, array(
+            'expires' => $expires,
+            'path' => '/',
+            'secure' => $secure,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ));
+        return;
+    }
+    // 7.2 fallback: embed SameSite into the path so it is still sent.
+    setcookie($name, $value, $expires, '/; samesite=Lax', '', $secure, true);}
+
 function lb_set_session_cookie($sessionId, $expiresAt) {
     $maxAge = max(1, (int) (($expiresAt - (time() * 1000)) / 1000));
     $secure = isset($_SERVER['HTTPS']);
-    setcookie(LB_SESSION_COOKIE, $sessionId, array(
-        'expires' => time() + $maxAge,
-        'path' => '/',
-        'secure' => $secure,
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ));
+    lb_setcookie_compat(LB_SESSION_COOKIE, $sessionId, time() + $maxAge, $secure);
 }
 
 function lb_clear_session_cookie() {
-    setcookie(LB_SESSION_COOKIE, '', array(
-        'expires' => time() - 3600,
-        'path' => '/',
-        'secure' => isset($_SERVER['HTTPS']),
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ));
+    lb_setcookie_compat(LB_SESSION_COOKIE, '', time() - 3600, isset($_SERVER['HTTPS']));
 }
 
 function lb_destroy_session() {

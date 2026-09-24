@@ -6,11 +6,12 @@
   <title><%= title %></title>
   <link rel="stylesheet" href="/css/roblox.css" />
   <link rel="stylesheet" href="/css/dev.css" />
+  <link rel="stylesheet" href="/css/develop.css" />
 </head>
 <body>
   <header class="roblox-topbar">
     <div class="roblox-brand">
-      <span class="roblox-brand-mark">R</span>
+      <img class="roblox-brand-mark" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
       <span>LuckyBlox Studio</span>
     </div>
     <nav class="roblox-nav" aria-label="Main navigation">
@@ -33,10 +34,9 @@
       </div>
     </nav>
     <div class="roblox-right">
-      <span class="roblox-robux"><%= user.robux || 1200 %></span>
-      <span class="roblox-icon-button">&#9881;</span>
-      <span class="roblox-icon-button">&#128276;</span>
-      <span class="roblox-icon-button">@</span>
+      <span class="ch-robux"><img class="ch-ico" src="/icons/robux.svg" alt="Robux" /> <%= (currency && currency.robux) || user.robux || 0 %></span>
+      <a class="roblox-icon-button" href="/account" title="Account settings" aria-label="Account settings"><img class="ch-ico" src="/icons/settings.svg" alt="" /></a>
+      <a class="roblox-icon-button" href="/profile?userId=<%= user.userId %>" title="Profile" aria-label="Profile"><img class="ch-ico" src="/icons/profile.svg" alt="" /></a>
       <a class="dev-btn secondary" href="/logout" style="height:32px;padding:0 10px;font-size:12px;display:inline-flex;align-items:center;line-height:1;">Sign Out</a>
     </div>
   </header>
@@ -44,11 +44,11 @@
   <div class="dev-shell">
     <aside class="dev-sidebar">
       <div class="dev-sidebar-brand">Studio</div>
-      <a href="/dev" class="active"><span class="dev-sidebar-icon">&#8962;</span> Home</a>
-      <a href="/dev/create"><span class="dev-sidebar-icon">&#43;</span> Create</a>
-      <a href="/dev/game/1818/settings"><span class="dev-sidebar-icon">&#9881;</span> Settings</a>
-      <a href="/dev/assets"><span class="dev-sidebar-icon">&#9638;</span> Assets</a>
-      <a href="/dev/docs"><span class="dev-sidebar-icon">&#8505;</span> API Docs</a>
+      <a href="/dev" class="active"><span class="dev-sidebar-icon"><img class="ch-ico" src="/icons/home.svg" alt="" /></span> Home</a>
+      <a href="/dev/create"><span class="dev-sidebar-icon"><img class="ch-ico" src="/icons/plus.svg" alt="" /></span> Create</a>
+      <a href="/dev/game/1818/settings"><span class="dev-sidebar-icon"><img class="ch-ico" src="/icons/settings.svg" alt="" /></span> Settings</a>
+      <a href="/dev/assets"><span class="dev-sidebar-icon"><img class="ch-ico" src="/icons/assets.svg" alt="" /></span> Assets</a>
+      <a href="/dev/docs"><span class="dev-sidebar-icon"><img class="ch-ico" src="/icons/code.svg" alt="" /></span> API Docs</a>
       <div style="padding: 12px 16px; border-top: 1px solid var(--dev-border); margin-top: 8px;">
         <div style="font-size: 11px; color: var(--dev-muted);">User</div>
         <div style="font-size: 13px; font-weight: 600;"><%= user.username %></div>
