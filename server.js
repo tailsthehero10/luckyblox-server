@@ -199,85 +199,6 @@ function sendJson(res, statusCode, payload) {
   res.end(JSON.stringify(payload));
 }
 
-function serveClientSettingsFile(req, res) {
-  const normalizedPath = normalizeBridgePath(new URL(req.url, 'http://localhost').pathname);
-  const cleanPath = normalizedPath.replace(/^\//, '');
-  const clientDir = resolveClientDir();
-  const clientName = path.basename(clientDir);
-
-  let localFile = null;
-  if (cleanPath === 'AppSettings.xml') {
-    localFile = path.join(clientDir, 'AppSettings.xml');
-  } else if (cleanPath.startsWith('ClientSettings/')) {
-    const requested = path.basename(cleanPath);
-    const own = path.join(clientDir, 'ClientSettings', requested);
-
-    // Not every client ships a ClientSettings folder (2021M does not). Rather
-    // than 404 - which stalls the loading screen - fall back to the default
-    // client's copy when the requested client has none of its own.
-    if (fs.existsSync(own)) {
-      localFile = own;
-    } else {
-      const shared = path.join(clientsRoot, DEFAULT_CLIENT, 'ClientSettings', requested);
-      if (fs.existsSync(shared)) localFile = shared;
-    }
-  }
-
-  if (!localFile || !fs.existsSync(localFile)) {
-    res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({
-      ok: false,
-      error: 'client-settings-not-found',
-      requestedPath: cleanPath,
-      client: clientName,
-    }));
-    return;
-  }
-
-  const extension = path.extname(localFile).toLowerCase();
-  const contentType = extension === '.xml'
-    ? 'application/xml; charset=utf-8'
-    : 'application/json; charset=utf-8';
-
-  fs.readFile(localFile, (error, buffer) => {
-    if (error) {
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ ok: false, error: 'client-settings-read-failed' }));
-      return;
-    }
-
-    let body = buffer;
-
-    // Rewrite <BaseUrl> in AppSettings.xml to the live public deployment URL so
-    // clients connect to the host actually serving them instead of a baked-in
-    // localhost. Each client's own path suffix is preserved: 2021M expects a
-    // trailing /home/ where 2022M does not, and dropping it breaks its routing.
-    if (extension === '.xml') {
-      const origin = publicBaseUrl || 'http://localhost';
-      const suffixMatch = String(buffer).match(/<BaseUrl>[\s\S]*?<\/BaseUrl>/i);
-      const existingPath = suffixMatch
-        ? (suffixMatch[0].match(/LuckBlox\.site\.tk(\/[^<]*)?/i) || [])[1] || '/'
-        : '/';
-      const suffix = existingPath.startsWith('/') ? existingPath : '/' + existingPath;
-
-      body = Buffer.from(
-        String(buffer).replace(
-          /<BaseUrl>[\s\S]*?<\/BaseUrl>/i,
-          `<BaseUrl>${origin}/LuckBlox.site.tk${suffix}</BaseUrl>`,
-        ),
-      );
-    }
-
-    res.writeHead(200, {
-      'Content-Type': contentType,
-      'Cache-Control': 'no-store',
-      'Access-Control-Allow-Origin': '*',
-      'X-LuckyBlox-Client': clientName,
-    });
-    res.end(body);
-  });
-}
-
 function serveHtml(res, html) {
   res.writeHead(200, {
     'Content-Type': 'text/html; charset=utf-8',
@@ -765,8 +686,13 @@ const server = http.createServer((req, res) => {
   // serving a second copy from the proxy's own public/ folder shadowed it and the
   // live site rendered unstyled. Let it fall through to proxyToBridge below.
 
+  // ClientSettings belongs to the bridge too. The bridge resolves the requesting
+  // client (query string or ident header) and rewrites <BaseUrl> per client, so
+  // 2021M and 2022M each connect to the site URL their build expects. Serving
+  // them from here as well meant this proxy's copy answered first and both
+  // clients were handed the same single BaseUrl - let the bridge own it.
   if (pathname === '/AppSettings.xml' || pathname.endsWith('/AppSettings.xml') || pathname.startsWith('/ClientSettings/') || pathname === '/ClientSettings') {
-    serveClientSettingsFile(req, res);
+    proxyToBridge(req, res);
     return;
   }
 
@@ -794,7 +720,7 @@ const HOST = bindHost;
 // can retry with backoff rather than exploding.
 server.on('error', (error) => {
   if (error && error.code === 'EADDRINUSE') {
-    console.error(`[luckyblox] proxy cannot bind ${HOST}:${PORT} — address already in use. `
+    console.error(`[luckyblox] proxy cannot bind ${HOST}:${PORT} â€” address already in use. `
       + 'Another instance is still running, or the port was not released yet.');
     process.exit(1);
   }

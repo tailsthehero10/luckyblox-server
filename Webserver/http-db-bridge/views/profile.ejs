@@ -7,6 +7,12 @@
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/css/roblox.css" />
+  <%# The real 2021 site stylesheets, served from /css/2021. The avatar editor
+      chrome included further down is captured markup and expects these rules. %>
+  <link rel="stylesheet" href="/css/2021/Navigation.css" />
+  <link rel="stylesheet" href="/css/2021/Builder.css" />
+  <link rel="stylesheet" href="/css/2021/Thumbnails.css" />
+  <link rel="stylesheet" href="/css/2021/luckyblox.css" />
 </head>
 <%#
   Profile page, rebuilt against the real 2021 page structure:
@@ -185,7 +191,7 @@
                     <img class="roblox-avatar-image roblox-avatar-image-large" src="<%= fullBody %>" alt="<%= user.username %> avatar"
                          onerror="this.style.display='none';var f=this.parentNode.querySelector('.lb-avatar-figure');if(f)f.style.display='block';" />
                   <% } else { %>
-                    <%= lbAvatarFigure(user, 220) %>
+                    <%- include('partials/avatar-figure', { user: user, size: 220 }) %>
                   <% } %>
                 </div>
                 <div class="lb-faint" style="text-align:center;margin-top:8px;"><%= user.username %></div>
@@ -222,6 +228,17 @@
             </div>
           </div>
         </section>
+
+        <!--
+          The real 2021 avatar editor chrome: the 8 tabs (Character, Avatar,
+          Body Colors, ...), the shape-scale sliders and the item strips.
+          Captured from
+            https://web.archive.org/web/20210321200603/https://www.roblox.com/users/1/profile
+          and kept verbatim, so the DOM matches the reference page rather than an
+          approximation of it. Only the recently-acquired item list is generated
+          here from this account's real inventory.
+        -->
+        <%- include('partials/classic-avatar-shell', { user: user }) %>
 
         <!-- Statistics / Currency -->
         <div class="lb-content-grid">

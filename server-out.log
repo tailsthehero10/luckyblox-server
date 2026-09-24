@@ -1,0 +1,14 @@
+[luckyblox] public port 3002 on 0.0.0.0; bridge on 127.0.0.1:3001
+[luckyblox] restored 5 active session(s)
+LuckyBlox HTTP DB bridge listening on http://0.0.0.0:3001
+LuckyBlox public base URL: http://localhost:3002
+[luckyblox] data dir: E:\LuckyBloxLauncher\NEW LKL\Release\luckyblox-server\Webserver\http-db-bridge\data
+[luckyblox] persistence: OFF - Data is stored in the container filesystem and WILL BE LOST on redeploy. Set LUCKYBLOX_DATA_DIR (or attach a Render Disk) to persist accounts.
+LuckyBlox compatibility server listening on http://0.0.0.0:3002/LuckBlox.site.tk
+LuckyBlox proxy target bridge: http://127.0.0.1:3001
+[LuckyBlox Server:9031488e-e7b4-4573-9d48-e58d1a72fa78] listening on 0.0.0.0:53640
+[LuckyBlox Server:9031488e-e7b4-4573-9d48-e58d1a72fa78] exited code=1 signal=null
+[LuckyBlox Server:9031488e-e7b4-4573-9d48-e58d1a72fa78] listener closed
+[LuckyBlox Server:12410310-6160-4ce1-8816-1267e9918393] listening on 0.0.0.0:53640
+[LuckyBlox Server:12410310-6160-4ce1-8816-1267e9918393] exited code=1 signal=null
+[LuckyBlox Server:12410310-6160-4ce1-8816-1267e9918393] listener closed

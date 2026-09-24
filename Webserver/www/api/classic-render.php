@@ -16,7 +16,6 @@
  * The tabs (Character / Avatar / Body Colors / ...) are part of the captured
  * chrome; the item lists and the viewport are filled in here.
  */
-
 if (!defined('LB_CLASSIC_RENDER')) {
     define('LB_CLASSIC_RENDER', 1);
 }
@@ -174,4 +173,137 @@ function lb_c_sidebar($user)
         . '<a class="btn-secondary-md" href="/catalog">Browse the Catalog</a>'
         . '</div>'
         . '</div>';
+}/* ---------------------------------------------------------------------------
+ * Profile tabs (About / Creations)
+ * ---------------------------------------------------------------------------
+ * The 2021 profile put "About" and "Creations" in one tab strip and switched
+ * between them client-side; the URL stayed on the profile and only the #! hash
+ * changed. Reference:
+ *   https://web.archive.org/web/20210321200603/https://www.roblox.com/users/1/profile/#!/creations
+ *
+ * The strip below is that archive markup: <li class="rbx-tab"> wrapping an
+ * <a class="rbx-tab-heading">, with "Creations" carrying the extra
+ * data-lb-tab hook the page script uses to switch panes without a reload.
+ */
+
+/** The real 2021 two-tab strip (About / Creations). */
+function lb_c_profile_tab_strip($activeTab = 'about')
+{
+    $isAbout = $activeTab === 'about';
+    $isCreations = $activeTab === 'creations';
+
+    return '<div class="profile-tab-strip rbx-tabs-horizontal">'
+        . '<ul id="horizontal-tabs" class="nav nav-tabs" role="tablist">'
+        . '<li class="rbx-tab' . ($isAbout ? ' active' : '') . '">'
+        . '<a class="rbx-tab-heading" href="#!/about" id="tab-about" data-lb-tab="about"'
+        . ' aria-selected="' . ($isAbout ? 'true' : 'false') . '">'
+        . '<span class="text-lead">About</span><span class="rbx-tab-subtitle"></span></a></li>'
+        . '<li class="rbx-tab' . ($isCreations ? ' active' : '') . '">'
+        . '<a class="rbx-tab-heading" href="#!/creations" id="tab-creations" data-lb-tab="creations"'
+        . ' aria-selected="' . ($isCreations ? 'true' : 'false') . '">'
+        . '<span class="text-lead">Creations</span><span class="rbx-tab-subtitle"></span></a></li>'
+        . '</ul></div>';
+}
+
+/**
+ * One real 2021 game card, exactly as the Creations tab rendered it:
+ *
+ *   <li class="list-item game-card game-tile">
+ *     <div class="game-card-container"><a class="game-card-link">
+ *       <div class="game-card-thumb-container"><img class="game-card-thumb"></div>
+ *       <div class="game-card-name game-name-title">…</div>
+ *       <div class="game-card-info">
+ *         <span class="info-label icon-votes-gray"></span>
+ *         <span class="info-label vote-percentage-label">77%</span>
+ *         <span class="info-label icon-playing-counts-gray"></span>
+ *         <span class="info-label playing-counts-label">0</span>
+ *       </div>
+ *     </a></div>
+ *   </li>
+ *
+ * The vote percentage and playing count are computed from this server's real
+ * game record, so a place with no votes shows the page's own "no vote" state
+ * instead of a fabricated percentage.
+ */
+function lb_c_game_card($game)
+{
+    $placeId = (int) ($game['placeId'] ?? 0);
+    $name = (string) ($game['name'] ?? $game['title'] ?? ('Place ' . $placeId));
+    $icon = lb_resolve_game_icon($game);
+
+    $likes = (int) ($game['likes'] ?? 0);
+    $dislikes = (int) ($game['dislikes'] ?? 0);
+    $total = $likes + $dislikes;
+    $playerCount = (int) ($game['playerCount'] ?? 0);
+
+    // The real page showed a percentage when there were votes and hid the
+    // label entirely when there were none.
+    if ($total > 0) {
+        $voteHtml = '<span class="info-label icon-votes-gray"></span>'
+            . '<span class="info-label vote-percentage-label">' . round($likes / $total * 100) . '%</span>'
+            . '<span class="info-label no-vote hidden"></span>';
+    } else {
+        $voteHtml = '<span class="info-label icon-votes-gray hidden"></span>'
+            . '<span class="info-label vote-percentage-label hidden"></span>'
+            . '<span class="info-label no-vote">No votes</span>';
+    }
+
+    $url = '/games/' . $placeId;
+
+    return '<div class="game-container">'
+        . '<li class="list-item game-card game-tile">'
+        . '<div class="game-card-container">'
+        . '<a href="' . lb_c_esc($url) . '" class="game-card-link">'
+        . '<div class="game-card-thumb-container">'
+        . '<img class="game-card-thumb" src="' . lb_c_esc($icon) . '" alt="' . lb_c_esc($name) . '"'
+        . ' onerror="this.src=\'/gameplaceholder/Card_512x512/card.png\';" />'
+        . '</div>'
+        . '<div class="game-card-name game-name-title" title="' . lb_c_esc($name) . '">' . lb_c_esc($name) . '</div>'
+        . '<div class="game-card-info">' . $voteHtml
+        . '<span class="info-label icon-playing-counts-gray"></span>'
+        . '<span class="info-label playing-counts-label" title="' . $playerCount . '">' . $playerCount . '</span>'
+        . '</div></a></div></li></div>';
+}
+
+/**
+ * The Creations tab pane.
+ *
+ * Shows this account's real published places. An account that has not published
+ * anything gets the page's own empty state rather than sample games.
+ */
+function lb_c_creations_pane($creations, $hidden = true)
+{
+    $header = '<div class="container-header"><h3>Games</h3>'
+        . '<div class="container-buttons">'
+        . '<button class="profile-view-selector" title="Grid View" type="button">'
+        . '<span class="icon-grid selected"></span></button>'
+        . '</div></div>';
+
+    if (empty($creations)) {
+        $inner = '<div class="section-content remove-panel">'
+            . '<p class="lb-empty-note">This account has not published any games yet. '
+            . 'Create one from <a href="/develop">Create</a>.</p></div>';
+    } else {
+        $cards = '';
+        foreach ($creations as $creation) {
+            $cards .= lb_c_game_card($creation);
+        }
+        $inner = '<div class="game-grid"><ul class="hlist game-cards">' . $cards . '</ul></div>';
+    }
+
+    return '<div class="tab-pane" id="creations" data-lb-pane="creations"' . ($hidden ? ' hidden' : '') . '>'
+        . '<div class="profile-game">' . $header . $inner
+        . '</div></div>';
+}
+
+/** The About tab pane wrapper (the captured profile column lives inside it). */
+function lb_c_about_pane_open($hidden = false)
+{
+    return '<div class="tab-pane active" id="about" data-lb-pane="about"' . ($hidden ? ' hidden' : '') . '>';
+}
+
+/** Close the About pane. */
+function lb_c_about_pane_close()
+{
+    return '</div>';
 }

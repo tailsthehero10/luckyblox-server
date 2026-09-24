@@ -1,0 +1,23 @@
+<%
+  var figUser = (typeof user !== "undefined" && user) ? user : {};
+  var figAvatar = figUser.avatar || {};
+  var figColors = figAvatar.bodyColors || {};
+  function figRgb(id) {
+    if (typeof bodyColorRgb === "function") return "rgb(" + bodyColorRgb(id) + ")";
+    return "#a3a2a5";
+  }
+  function figPick(key) {
+    var value = figColors[key];
+    return figRgb(value != null ? value : 1002);
+  }
+  var figSize = (typeof size !== "undefined" && size) ? Number(size) : 240;
+  var figScale = Math.max(0.4, figSize / 240);
+-%>
+<div class="lb-avatar-figure" style="--lb-avatar-scale:<%= figScale %>;" role="img" aria-label="Avatar">
+  <div class="lb-af-part lb-af-head" style="background:<%= figPick("headColorId") %>;"><span class="lb-af-face">:B</span></div>
+  <div class="lb-af-part lb-af-torso" style="background:<%= figPick("torsoColorId") %>;"></div>
+  <div class="lb-af-part lb-af-larm" style="background:<%= figPick("leftArmColorId") %>;"></div>
+  <div class="lb-af-part lb-af-rarm" style="background:<%= figPick("rightArmColorId") %>;"></div>
+  <div class="lb-af-part lb-af-lleg" style="background:<%= figPick("leftLegColorId") %>;"></div>
+  <div class="lb-af-part lb-af-rleg" style="background:<%= figPick("rightLegColorId") %>;"></div>
+</div>

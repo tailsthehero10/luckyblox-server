@@ -67,21 +67,49 @@ $followersCount = (int) ($stats['followers'] ?? 0);
 $followingCount = (int) ($stats['following'] ?? count($user['following'] ?? array()));
 
 // This account's published places, read from the store rather than assumed.
+// Merged with the games store so a published experience carries its real icon,
+// votes and live player count into the Creations tab.
+$gamesById = array();
+foreach (lb_get_all_games() as $game) {
+    $gamesById[(int) $game['placeId']] = $game;
+}
+
 $myCreations = array();
 foreach (lb_get_places() as $key => $place) {
     if (!is_array($place)) {
         continue;
     }
     $owner = (string) ($place['authorId'] ?? ($place['creatorId'] ?? ''));
-    if ($owner === (string) $user['userId']) {
+    if ($owner !== (string) $user['userId']) {
+        continue;
+    }
+    $placeId = (int) ($place['placeId'] ?? $key);
+    $name = $place['name'] ?? ('Place ' . $key);
+
+    if (isset($gamesById[$placeId])) {
+        // Enrich the stored place with the game record's live statistics.
+        $myCreations[] = array_merge($gamesById[$placeId], array(
+            'placeId' => $placeId,
+            'title' => $gamesById[$placeId]['title'] ?: $name,
+        ));
+    } else {
         $myCreations[] = array(
-            'placeId' => (int) ($place['placeId'] ?? $key),
-            'name' => $place['name'] ?? ('Place ' . $key),
+            'placeId' => $placeId,
+            'name' => $name,
+            'title' => $name,
             'description' => $place['description'] ?? '',
+            'likes' => 0,
+            'dislikes' => 0,
+            'playerCount' => 0,
         );
     }
 }
 $creationsCount = max((int) ($stats['created'] ?? 0), count($myCreations));
+
+// The requested tab. The 2021 profile switched tabs client-side off #!/hash, so
+// read it from the query string here and let the page script take over after load.
+$requestedTab = strtolower(trim((string) ($_GET['tab'] ?? 'about')));
+$activeTab = $requestedTab === 'creations' ? 'creations' : 'about';
 
 // ---------------------------------------------------------------------------
 // Compose the body: real 2021 chrome + live content.
@@ -152,7 +180,31 @@ $shell = str_replace(
     $shell
 );
 
-$body = lb_classic_profile_head() . $shell . lb_classic_profile_foot();
+// 6. Wrap the captured profile column in the real About tab pane and append the
+//    Creations pane, so the two tabs the 2021 page shipped both exist here.
+$aboutPane = lb_c_about_pane_open($activeTab !== 'about')
+    . '<div class="profile-about">' . $shell . '</div>'
+    . lb_c_about_pane_close();
+
+$tabs = '<div class="profile-tabs">'
+    . lb_c_profile_tab_strip($activeTab)
+    . '<div class="tab-content rbx-tab-content">'
+    . $aboutPane
+    . lb_c_creations_pane($myCreations, $activeTab !== 'creations')
+    . '</div></div>';
+
+// The tab strip replaces the archived page's own tab row if it rendered one;
+// otherwise it is appended to the profile body.
+if (strpos($body, 'id="horizontal-tabs"') !== false) {
+    $body = preg_replace(
+        '#<div class="profile-tab-strip rbx-tabs-horizontal">.*?</div>#s',
+        $tabs,
+        $body,
+        1
+    );
+} else {
+    $body = lb_classic_profile_head() . $tabs . lb_classic_profile_foot();
+}
 
 $head = '<meta name="lb-user-id" content="' . (int) $userId . '" />'
     . '<meta name="lb-username" content="' . lb_c_esc($user['username']) . '" />'

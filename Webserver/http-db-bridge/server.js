@@ -110,17 +110,61 @@ app.get('/sign-background', (req, res) => {
 // fall back to the default when the folder is absent instead of 404ing.
 const DEFAULT_CLIENT_DIR = path.join(releaseRoot, 'Clients', '2022M');
 
-function resolveClientAssetDir() {
+// Every client build we ship, in a stable order. Both 2021M and 2022M connect
+// to the same LuckyBlox site; they differ only in the path suffix their
+// AppSettings.xml points at, so each one is served its own copy.
+const KNOWN_CLIENTS = ['2021M', '2022M'];
+
+/**
+ * The path suffix each client expects after the site origin.
+ *
+ * 2021M was built against a BaseUrl ending in /home/ and routes relative to it;
+ * 2022M was built against the origin root. Getting this wrong does not 404 - the
+ * client just loads the wrong page tree - so it is pinned per client here rather
+ * than inherited from whatever the committed file happens to say.
+ */
+const CLIENT_BASE_SUFFIX = {
+  '2021M': '/home/',
+  '2022M': '/',
+};
+
+function isKnownClient(name) {
+  return KNOWN_CLIENTS.indexOf(name) !== -1;
+}
+
+/**
+ * Which client is this request for?
+ *
+ * The requested client is read from the query string or the client ident header
+ * first, because on a shared server a single SelectedClient.txt cannot describe
+ * two clients talking to the same deployment at once. SelectedClient.txt stays
+ * as the fallback for a local desktop launch, where only one client runs.
+ */
+function resolveRequestedClient(req) {
+  const raw = (req && (req.query.client || req.headers['x-luckyblox-client'])) || '';
+  const value = String(Array.isArray(raw) ? raw[0] : raw).replace(/^\uFEFF/, '').trim();
+  if (isKnownClient(value)) {
+    return value;
+  }
+  return selectedClientName();
+}
+
+/** The locally selected client, used when a request does not name one. */
+function selectedClientName() {
   try {
     const file = path.join(releaseRoot, 'Settings', 'SelectedClient.txt');
-    if (!fs.existsSync(file)) return DEFAULT_CLIENT_DIR;
+    if (!fs.existsSync(file)) return '2022M';
     const value = String(fs.readFileSync(file, 'utf8')).replace(/^\uFEFF/, '').trim();
-    if (!/^[A-Za-z0-9_-]+$/.test(value)) return DEFAULT_CLIENT_DIR;
-    const candidate = path.join(releaseRoot, 'Clients', value);
-    return fs.existsSync(candidate) ? candidate : DEFAULT_CLIENT_DIR;
+    return isKnownClient(value) ? value : '2022M';
   } catch (error) {
-    return DEFAULT_CLIENT_DIR;
+    return '2022M';
   }
+}
+
+function resolveClientAssetDir(clientName) {
+  const name = clientName || selectedClientName();
+  const candidate = path.join(releaseRoot, 'Clients', name);
+  return fs.existsSync(candidate) ? candidate : DEFAULT_CLIENT_DIR;
 }
 
 // The committed AppSettings.xml files carry a baked-in localhost BaseUrl. When
@@ -129,11 +173,16 @@ function resolveClientAssetDir() {
 // live public origin here - the same rewrite server.js does on its own path.
 // Each client's own path suffix is preserved (2021M expects a trailing /home/,
 // 2022M does not) because dropping it breaks the client's routing.
-function rewriteAppSettingsBaseUrl(body, origin) {
+function rewriteAppSettingsBaseUrl(body, origin, clientName) {
   const match = String(body).match(/<BaseUrl>[\s\S]*?<\/BaseUrl>/i);
   if (!match) return body;
-  const existingPath = (match[0].match(/LuckBlox\.site\.tk(\/[^<]*)?/i) || [])[1] || '/';
-  const suffix = existingPath.startsWith('/') ? existingPath : '/' + existingPath;
+  // Prefer the suffix pinned for this client; fall back to whatever path the
+  // committed file already carried so an unknown client still gets a sane URL.
+  let suffix = CLIENT_BASE_SUFFIX[clientName];
+  if (!suffix) {
+    const existingPath = (match[0].match(/LuckBlox\.site\.tk(\/[^<]*)?/i) || [])[1] || '/';
+    suffix = existingPath.startsWith('/') ? existingPath : '/' + existingPath;
+  }
   return String(body).replace(
     /<BaseUrl>[\s\S]*?<\/BaseUrl>/i,
     `<BaseUrl>${origin}/LuckBlox.site.tk${suffix}</BaseUrl>`,
@@ -145,7 +194,8 @@ function rewriteAppSettingsBaseUrl(body, origin) {
 function serveClientAsset(subPath) {
   return (req, res, next) => {
     const relative = String(req.path || '').replace(/^\/+/, '');
-    const clientDir = resolveClientAssetDir();
+    const clientName = resolveRequestedClient(req);
+    const clientDir = resolveClientAssetDir(clientName);
     const own = path.join(clientDir, subPath || '', relative);
 
     let file = null;
@@ -161,12 +211,14 @@ function serveClientAsset(subPath) {
     if (!file) return next();
 
     if (path.basename(file).toLowerCase() === 'appsettings.xml') {
-      const body = rewriteAppSettingsBaseUrl(fs.readFileSync(file, 'utf8'), publicOrigin);
+      const body = rewriteAppSettingsBaseUrl(fs.readFileSync(file, 'utf8'), publicOrigin, clientName);
       res.set('Content-Type', 'application/xml; charset=utf-8');
       res.set('Cache-Control', 'no-store');
+      res.set('X-LuckyBlox-Client', clientName);
       return res.send(body);
     }
 
+    res.set('X-LuckyBlox-Client', clientName);
     return res.sendFile(file);
   };
 }
