@@ -22,7 +22,9 @@ var sbItems = [
   { key: 'inventory', label: 'Inventory',  href: '/inventory',                                     icon: '/icons/assets.svg' },
   { key: 'groups',    label: 'Groups',     href: '/search/groups',                                 icon: '/icons/groups.svg' },
   { key: 'catalog',   label: 'Avatar Shop', href: '/catalog',                                      icon: '/icons/robux.svg' },
-  { key: 'create',    label: 'Create',     href: '/develop',                                       icon: '/icons/develop.svg' }
+  { key: 'create',    label: 'Create',     href: '/develop',                                       icon: '/icons/develop.svg' },
+  { key: 'badges',    label: 'Badges',     href: sbUserId ? ('/badges?userId=' + sbUserId) : '/signin', icon: '/icons/studio.svg' },
+  { key: 'account',   label: 'Settings',   href: '/settings',                                      icon: '/icons/settings.svg' }
 ];
 %>
 <aside class="lb-sidebar roblox-sidebar" aria-label="Site navigation">

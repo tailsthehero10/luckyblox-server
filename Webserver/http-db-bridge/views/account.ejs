@@ -7,38 +7,13 @@
   <link rel="stylesheet" href="/css/roblox.css" />
 </head>
 <body>
-  <div class="roblox-page">
-    <header class="roblox-topbar">
-      <a class="roblox-brand" href="/" aria-label="LuckyBlox home">
-        <img class="roblox-brand-mark" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
-        <span>LuckyBlox</span>
-      </a>
+  <div class="lb-page">
+    <%- include('partials/header', { user: user, currency: currency, activeNav: 'account' }) %>
 
-      <nav class="roblox-nav" aria-label="Main navigation">
-        <div class="roblox-nav-links">
-          <a href="/">Home</a>
-          <a href="/games">Games</a>
-          <div class="roblox-more-pages">
-            <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
-            <div class="roblox-more-pages-dropdown">
-              <a href="/profile?userId=<%= user.userId %>">Profile</a>
-              <a href="/avatar?userId=<%= user.userId %>">Avatar</a>
-              <a href="/friends">Friends</a>
-              <a href="/studio">Studio</a>
-              <a href="/settings">Settings</a>
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div class="lb-shell">
+      <%- include('partials/sidebar', { user: user, activeNav: 'account' }) %>
 
-      <div class="roblox-right">
-        <span class="roblox-robux"><%= (currency && currency.robux) || user.robux || 0 %></span>
-        <a class="roblox-icon-button" href="/account" title="Account settings" aria-label="Account settings"><img class="ch-ico" src="/icons/settings.svg" alt="" /></a>
-        <a class="roblox-icon-button" href="/friends" title="Friends" aria-label="Friends"><img class="ch-ico" src="/icons/friends.svg" alt="" /></a>
-        <a class="roblox-icon-button" href="/profile?userId=<%= user.userId %>" title="Profile" aria-label="Profile"><img class="ch-ico" src="/icons/profile.svg" alt="" /></a>
-      </div>
-    </header>
-
+      <main class="lb-main">
     <section class="roblox-profile-hero">
       <div class="roblox-avatar-poster">
         <div class="roblox-avatar-big"><%= user.username.slice(0, 1).toUpperCase() %></div>
@@ -92,6 +67,8 @@
         </div>
       </div>
     </section>
+      </main>
+    </div>
   </div>
 
   <script src="/legacy-nav.js"></script>

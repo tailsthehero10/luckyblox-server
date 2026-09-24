@@ -2720,15 +2720,45 @@ img.roblox-brand-mark {
 }
 .roblox-more-pages:hover .roblox-more-pages-dropdown,
 .roblox-more-pages:focus-within .roblox-more-pages-dropdown { display: block; }
+
+/*
+  The menu items must be exactly one line each. The older sheet set padding on
+  these anchors in two places (one of them an !important inside a media query),
+  so an un-flagged padding here loses the cascade and the two paddings stack -
+  which is what made every row ~50px tall instead of ~34px and turned a 5-item
+  menu into a 265px slab that spilled over the page content.
+
+  Every value is flagged so this is the single source of truth for the row box.
+*/
 .roblox-more-pages-dropdown a {
-  display: block;
-  height: auto;
-  padding: 8px 14px;
-  border-radius: 0;
+  display: block !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  box-sizing: border-box !important;
+  padding: 8px 14px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  line-height: 18px !important;
+  font-size: 14px !important;
   color: var(--lb-ink) !important;
-  font-size: 14px;
+  white-space: nowrap !important;
 }
 .roblox-more-pages-dropdown a:hover { background: var(--lb-page) !important; color: var(--lb-ink) !important; }
+
+/* Keep the menu anchored to its own button rather than drifting over the page,
+   and never let it run off the right edge of the viewport. */
+.roblox-more-pages-dropdown {
+  left: 0 !important;
+  right: auto !important;
+  min-width: 190px !important;
+  max-width: min(280px, calc(100vw - 24px)) !important;
+  max-height: min(70vh, 420px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 6px 0 !important;
+}
 
 .lb-header-right,
 .roblox-right { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
@@ -3292,15 +3322,22 @@ img.roblox-brand-mark {
 .lb-game-byline,
 .roblox-game-byline { font-size: 14px; color: var(--lb-muted); }
 
-/* Playing / Favorites / Visits / Created / Updated / Max Players / Genre */
+/* Playing / Favorites / Visits / Created / Updated / Genre. A grid rather than
+   a flex row so the columns stay even instead of the last stat orphaning onto
+   its own line, which is what the flex layout did with 6-7 stats. */
 .lb-game-stats,
 .roblox-game-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 22px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 12px 22px;
   padding: 12px 0;
   border-top: 1px solid var(--lb-line-soft);
   border-bottom: 1px solid var(--lb-line-soft);
+}
+
+/* The right-hand column shows only three headline stats; keep them on one row. */
+.lb-game-info .lb-game-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .lb-game-stat,
 .roblox-game-stat { display: flex; flex-direction: column; gap: 2px; }
@@ -3336,12 +3373,13 @@ img.roblox-brand-mark {
 .lb-game-meta-row > span,
 .roblox-game-meta-row > span { color: var(--lb-muted); }
 
-/* Play button overlaid on the thumbnail */
+/* Play button overlaid on the thumbnail. It sits bottom-LEFT, the way the 2021
+   page placed it; centring it collided with the artwork watermark. */
 .lb-game-thumb .roblox-play-button {
   position: absolute;
-  left: 50%;
+  left: 14px;
   bottom: 14px;
-  transform: translateX(-50%);
+  transform: none;
   height: 48px;
   padding: 0 30px;
   font-size: 18px;
@@ -3616,4 +3654,153 @@ img.roblox-brand-mark {
 .roblox-page > .roblox-topbar ~ .roblox-shell .roblox-sidebar,
 .roblox-page > .roblox-topbar ~ .lb-shell .lb-sidebar {
   top: 66px;
+}/* ---------------------------------------------------------------------------
+   Avatar Shop (catalog) tiles
+   ---------------------------------------------------------------------------
+   2021 catalog tiles were 150x150 thumbnails with the name, type and price
+   underneath. Uses auto-fill so the column count adapts to the real viewport
+   instead of being pinned to a number that only fits one screen width.
+   --------------------------------------------------------------------------- */
+.lb-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px 12px;
 }
+
+.lb-catalog-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.lb-catalog-thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--lb-radius);
+  background: #eef1f4;
+  border: 1px solid var(--lb-line-soft);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.lb-catalog-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.lb-catalog-thumb-letter { font-size: 34px; font-weight: 900; color: #9aa1a9; }
+
+.lb-catalog-name {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lb-catalog-type { font-size: 12px; color: var(--lb-muted); }
+.lb-catalog-price { font-size: 13px; font-weight: 700; }
+.lb-catalog-owned { color: var(--lb-green-dark); }
+.lb-catalog-free { color: var(--lb-muted); }
+
+/* The Robux glyph that precedes a price. */
+.lb-robux-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.lb-robux-inline::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  background: url("/icons/robux.svg") center/contain no-repeat;
+  flex: 0 0 auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Group list + group rows
+   --------------------------------------------------------------------------- */
+.lb-group-list { display: flex; flex-direction: column; }
+
+.lb-group-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--lb-line-soft);
+}
+.lb-group-row:last-child { border-bottom: 0; }
+
+/* A group emblem is square. The LuckyBlox mark is a wide logo, so `contain` on a
+   square box squashed it into a distorted black shape. The mark is now displayed
+   at its natural aspect inside a padded, centred box, and any image dropped in
+   later fills the square normally. */
+.lb-group-emblem {
+  width: 90px;
+  height: 90px;
+  flex: 0 0 auto;
+  border-radius: var(--lb-radius);
+  background: #eef1f4;
+  border: 1px solid var(--lb-line-soft);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 18px;
+}
+.lb-group-emblem img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* Logos are wide; keep their real proportions instead of stretching. */
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.lb-group-main { min-width: 0; flex: 1 1 auto; }
+.lb-group-name {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--lb-link);
+  margin-bottom: 3px;
+}
+.lb-group-meta { font-size: 13px; color: var(--lb-muted); margin-bottom: 4px; }
+.lb-group-desc {
+  font-size: 14px;
+  color: var(--lb-ink-2);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* The sort/search rows must wrap on narrow viewports rather than overflow. */
+.lb-sort-row > * { min-width: 0; }
+.lb-search-form { flex-wrap: wrap; align-items: center; }
+.lb-search-input { min-width: 0; flex: 1 1 220px; }
+
+@media (max-width: 560px) {
+  /* Stack the group row so the emblem does not squeeze the text off screen. */
+  .lb-group-row { flex-direction: column; }
+  .lb-group-emblem { width: 72px; height: 72px; }
+}/* ---------------------------------------------------------------------------
+   Presence indicator
+   ---------------------------------------------------------------------------
+   The 2021 friends list showed a coloured dot next to each friend: green for
+   online, amber for away, grey for offline. The dot colours come from the same
+   tokens the rest of the skin uses so they stay consistent.
+   --------------------------------------------------------------------------- */
+.lb-presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lb-presence-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--lb-faint);
+}
+.lb-presence-online { background: var(--lb-green); }
+.lb-presence-away   { background: var(--lb-amber, #e2a400); }
+.lb-presence-offline { background: #b6bcc2; }

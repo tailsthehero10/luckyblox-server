@@ -12,7 +12,10 @@
 -->
 <%
 var hUser = (typeof user !== 'undefined' && user) ? user : null;
-var hCurrency = (typeof currency !== 'undefined' && currency) ? currency : { robux: 0 };
+// Fall back to an empty wallet rather than throwing. A page that forgets to pass
+// `currency` should render "0", not 500 - that is exactly how /friends broke.
+var hCurrency = (typeof currency !== 'undefined' && currency && typeof currency === 'object')
+  ? currency : { robux: 0, coins: 0, tickets: 0 };
 var hActive = (typeof activeNav !== 'undefined' && activeNav) ? activeNav : '';
 var hUserId = hUser ? hUser.userId : null;
 var hRobux = hCurrency.robux != null ? hCurrency.robux : (hUser ? (hUser.robux || 0) : 0);

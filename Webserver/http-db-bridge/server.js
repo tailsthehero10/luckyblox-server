@@ -586,6 +586,14 @@ function createDefaultAssets() {
   };
 }
 
+// The default game icon. This used to be an external Unsplash stock photo (a
+// phone on a desk), hotlinked in seven places. That is third-party art, it is
+// the same picture for every game, and it fails on a host with no outbound
+// network - which is why game icons rendered as empty boxes. Local Roblox
+// placeholder art is used instead and ships with the server.
+const DEFAULT_GAME_ICON = '/gameplaceholder/card.png';
+const DEFAULT_GAME_COVER = '/gameplaceholder/big.png';
+
 function createDefaultUsers() {
   return {
     '1': {
@@ -692,7 +700,7 @@ function createDefaultGames() {
       title: 'LuckyBlox Arena',
       description: 'A local Roblox-style competitive hub with quests, social features, and classic game discovery.',
       developer: 'LuckyBlox Studio',
-      icon: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80',
+      icon: DEFAULT_GAME_ICON,
       genre: 'Adventure',
       // Real counters only. This deployment just started, so a brand new game
       // reports 0 players / 0 likes until actual traffic exists - no invented
@@ -720,7 +728,7 @@ function createDefaultGames() {
       title: entry.title || `Game ${placeId}`,
       description: 'A local map packaged as a playable LuckyBlox experience.',
       developer: 'LuckyBlox Studio',
-      icon: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80',
+      icon: DEFAULT_GAME_ICON,
       genre: 'Adventure',
       // Honest counters: a freshly imported map has no plays yet.
       playerCount: 0,
@@ -1063,7 +1071,7 @@ function serializeGame(placeId) {
     description: game.description || 'Local LuckyBlox demo game',
     developer: game.developer || 'LuckyBlox Studio',
     genre: game.genre || 'Adventure',
-    icon: game.icon || 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80',
+    icon: game.icon || DEFAULT_GAME_ICON,
     playerCount: Number(game.playerCount || 0),
     likes: Number(game.likes || 0),
     favorites: Number(game.favorites || 0),
@@ -1262,7 +1270,7 @@ function getGames() {
         title: entry.title || `Game ${placeId}`,
         description: merged[String(placeId)]?.description || 'A local map packaged as a playable LuckyBlox experience.',
         developer: merged[String(placeId)]?.developer || 'LuckyBlox Studio',
-        icon: merged[String(placeId)]?.icon || 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80',
+        icon: merged[String(placeId)]?.icon || DEFAULT_GAME_ICON,
         genre: merged[String(placeId)]?.genre || 'Adventure',
         playerCount: Number(merged[String(placeId)]?.playerCount || 0),
         likes: Number(merged[String(placeId)]?.likes || 0),
@@ -1407,6 +1415,82 @@ function assembleBirthday(body) {
   return null;
 }
 
+/**
+ * Normalise a username the same way everywhere, so uniqueness can never depend
+ * on case, stray whitespace or a non-breaking space pasted from a browser.
+ *
+ * "Test", "test", " test " and "test\u00a0" all collapse to "test", which is what
+ * makes the taken-name check actually hold rather than pass for a near-miss
+ * variant.
+ */
+function normalizeUsername(value) {
+  return String(value == null ? '' : value)
+    // Strip every Unicode space (including NBSP) and zero-width characters.
+    .replace(/[\s\u00a0\u200b-\u200d\ufeff]/g, '')
+    .toLowerCase();
+}
+
+/**
+ * Is this username already in use? Case- and whitespace-insensitive, and it
+ * checks displayName too, because a display name is what other people see and
+ * two accounts showing the same name is indistinguishable from a duplicate.
+ *
+ * `exceptUserId` lets a rename keep its own name.
+ */
+function isUsernameTaken(username, exceptUserId) {
+  const target = normalizeUsername(username);
+  if (!target) return false;
+
+  const users = getUsers();
+  const except = exceptUserId != null ? String(exceptUserId) : null;
+
+  return Object.values(users).some((user) => {
+    if (!user || typeof user !== 'object') return false;
+    if (except && String(user.userId || user.id || '') === except) return false;
+    return normalizeUsername(user.username) === target
+      || normalizeUsername(user.displayName) === target;
+  });
+}
+
+/**
+ * The next free account id.
+ *
+ * This used to be `Math.max(...ids.map(u => Number(u.userId || u.id || 1))) + 1`.
+ * Falling back to 1 for a record with no id meant a missing id silently read as
+ * "1", and the ids in data/users.json are already non-contiguous (1,3,4,...) so
+ * the max can collide after a deletion. This walks upward from the highest id
+ * until it finds one no record already uses.
+ */
+function nextUserId() {
+  const users = getUsers();
+  const used = new Set();
+  let highest = 0;
+
+  Object.values(users).forEach((user) => {
+    if (!user || typeof user !== 'object') return;
+    const raw = user.userId != null ? user.userId : user.id;
+    const numeric = Number(raw);
+    if (!Number.isFinite(numeric) || numeric <= 0) return;
+    used.add(numeric);
+    if (numeric > highest) highest = numeric;
+  });
+
+  let candidate = highest + 1;
+  while (used.has(candidate)) candidate += 1;
+  return candidate;
+}
+
+/**
+ * A unique group name for an owner.
+ *
+ * Group names come from the owning account, so two accounts can never present
+ * the same group name: the name carries the owner's own unique username, which
+ * is already deduplicated at signup.
+ */
+function groupNameFor(ownerUsername) {
+  return `${ownerUsername}'s Group`;
+}
+
 function buildNewUserRecord({ userId, username, displayName, passwordHash, passwordSalt, passwordVersion, gender, birthday }) {
   const now = new Date().toISOString();
   const starterInventory = ['1001', '1002', '1003', '1004'];
@@ -1528,7 +1612,7 @@ function getPublishedPlaces() {
     fileName: `${entry.title || 'Template'}.rbxlx`,
     source: 'https://www.roblox.com/users/998796/profile#!#creations',
     publishedAt: new Date().toISOString(),
-    coverUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80',
+    coverUrl: DEFAULT_GAME_COVER,
   }));
 
   return [...list, ...profileTemplates]
@@ -1542,7 +1626,7 @@ function getPublishedPlaces() {
       fileName: entry.fileName || `${entry.name || 'Place'}.rbxlx`,
       source: entry.source || '',
       publishedAt: entry.publishedAt || entry.updatedAt || new Date().toISOString(),
-      coverUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80',
+      coverUrl: DEFAULT_GAME_COVER,
     }))
     .filter((entry, index, arr) => arr.findIndex((candidate) => Number(candidate.placeId) === Number(entry.placeId)) === index)
     .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
@@ -1838,7 +1922,7 @@ function getGameEntry(placeId) {
     title: catalogEntry.title || 'LuckyBlox Arena',
     description: 'Local LuckyBlox game',
     developer: 'LuckyBlox Studio',
-    icon: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80',
+    icon: DEFAULT_GAME_ICON,
     genre: 'Adventure',
     playerCount: 0,
     likes: 0,
@@ -2365,12 +2449,14 @@ app.post('/signup', requireCsrf, (req, res) => {
   }
 
   const users = getUsers();
-  const exists = Object.values(users).some((user) => String(user.username || user.displayName || '').toLowerCase() === username.toLowerCase());
-  if (exists) {
+  // Case- and whitespace-insensitive uniqueness, shared with the JSON signup
+  // endpoint so both entry points agree. Comparing raw lowercase strings let a
+  // near-miss variant ("Test" vs "test " with a trailing space) slip through.
+  if (isUsernameTaken(username)) {
     return renderError(409, 'That username is already taken.');
   }
 
-  const nextId = Math.max(1, ...Object.values(users).map((user) => Number(user.userId || user.id || 1))) + 1;
+  const nextId = nextUserId();
   const { hash, salt, version } = hashPassword(password);
   const created = buildNewUserRecord({
     userId: nextId,
@@ -2413,12 +2499,12 @@ app.post('/luckblox.site.tk/signup', (req, res) => {
   }
 
   const users = getUsers();
-  const exists = Object.values(users).some((user) => String(user.username || user.displayName || '').toLowerCase() === username.toLowerCase());
-  if (exists) {
+  // Same shared uniqueness rule as the form signup above.
+  if (isUsernameTaken(username)) {
     return res.status(409).json({ ok: false, error: 'username-taken', message: 'That username is already taken.' });
   }
 
-  const nextId = Math.max(1, ...Object.values(users).map((user) => Number(user.userId || user.id || 1))) + 1;
+  const nextId = nextUserId();
   const { hash, salt, version } = hashPassword(password);
   const created = buildNewUserRecord({
     userId: nextId,
@@ -2694,6 +2780,7 @@ app.get('/users/:id/friends', (req, res) => {
     title: `${user.username} - Friends | LuckyBlox`,
     user,
     friends: getFriendsForUser(userId),
+    currency: getCurrencyForUser(user),
     tab: 'friends',
   });
 });
@@ -2719,14 +2806,19 @@ app.get('/account', (req, res) => {
 });
 
 app.get('/friends', (req, res) => {
-  const userId = Number(req.query.userId || req.query.userid || 1);
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const userId = Number(req.query.userId || req.query.userid
+    || (sessionUser && (sessionUser.userId || sessionUser.id)) || 1);
   const user = getUser(userId);
   const friendUsers = getFriendsForUser(userId);
 
   res.render('friends', {
-    title: 'Friends',
+    title: `${user.username} - Friends | LuckyBlox`,
     user,
     friends: friendUsers,
+    // The 2021 header renders the Robux balance, so every page that includes it
+    // must supply the currency block.
+    currency: getCurrencyForUser(user),
   });
 });
 
@@ -2736,9 +2828,10 @@ app.get('/badges', (req, res) => {
   const badges = Array.isArray(user.badges) ? user.badges : [];
 
   res.render('badges', {
-    title: 'Badges',
+    title: `${user.username} - Badges | LuckyBlox`,
     user,
     badges,
+    currency: getCurrencyForUser(user),
   });
 });
 
@@ -2978,45 +3071,325 @@ app.get('/develop', (req, res) => {
   });
 });
 
+app.get('/catalog', (req, res) => {
+  return renderCatalogPage2021(req, res);
+});
+
+/**
+ * Avatar Shop (catalog).
+ *
+ * Real page: https://web.archive.org/web/20210605211817/https://www.roblox.com/catalog?Category=0
+ *
+ * The 2021 catalog was a sidebar of filters plus a grid of 150x150 item tiles
+ * showing the thumbnail, the name, the creator and the price. Only items that
+ * genuinely exist in assets.json are listed - the account-owned set plus the
+ * local asset store - so nothing here is a made-up listing with an invented
+ * price.
+ */
+function renderCatalogPage2021(req, res) {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const userId = req.query.userId
+    || (sessionUser && (sessionUser.userId || sessionUser.id))
+    || 1;
+  const user = getUser(userId);
+
+  const ownedIds = new Set((Array.isArray(user.inventory) ? user.inventory : []).map(String));
+  const wearingIds = new Set((Array.isArray(user.currentlyWearing) ? user.currentlyWearing : []).map(String));
+
+  const all = Object.values(getAssets());
+
+  const items = all.map((asset) => {
+    const id = String(asset.id != null ? asset.id : (asset.assetId != null ? asset.assetId : ''));
+    return {
+      id,
+      name: asset.name || 'Item',
+      assetType: asset.assetType || asset.className || 'Accessory',
+      price: Number(asset.price) || 0,
+      creatorName: asset.creatorName || 'LuckyBlox Studio',
+      owned: ownedIds.has(id),
+      wearing: wearingIds.has(id),
+      thumbnailUrl: asset.thumbnail || asset.image || null,
+    };
+  });
+
+  // Real filter options, derived from the asset types that actually exist rather
+  // than a hardcoded list that would show empty categories.
+  const categories = ['All Categories'].concat(
+    Array.from(new Set(items.map((i) => i.assetType))).sort()
+  );
+
+  const selected = String(req.query.category || 'All Categories');
+  const filtered = selected === 'All Categories'
+    ? items
+    : items.filter((i) => i.assetType === selected);
+
+  const sort = String(req.query.sort || 'relevance');
+  const sorted = filtered.slice().sort((a, b) => {
+    if (sort === 'price-low') return a.price - b.price;
+    if (sort === 'price-high') return b.price - a.price;
+    if (sort === 'name') return a.name.localeCompare(b.name);
+    if (sort === 'owned') return Number(b.owned) - Number(a.owned);
+    return Number(b.owned) - Number(a.owned) || a.name.localeCompare(b.name);
+  });
+
+  res.render('catalog', {
+    title: 'Avatar Shop - Roblox',
+    user,
+    currency: getCurrencyForUser(user),
+    items: sorted,
+    categories,
+    selectedCategory: selected,
+    selectedSort: sort,
+    totalItems: items.length,
+    ownedCount: items.filter((i) => i.owned).length,
+    abbreviateCount,
+  });
+}
+
+app.get('/search/groups', (req, res) => {
+  return renderGroupSearch2021(req, res);
+});
+
+app.get('/groups', (req, res) => {
+  return renderGroupSearch2021(req, res);
+});
+
+/**
+ * Group search.
+ *
+ * Real page: https://web.archive.org/web/20210901215113/https://www.roblox.com/search/groups
+ *
+ * The 2021 page was a search box, a "Sort by" control (Relevance / Most
+ * Members / Newest) and a list of group rows: 150x150 emblem, the group name,
+ * the member count and a Description line.
+ *
+ * Groups are derived from the accounts that actually exist and the experiences
+ * they have published - there is no groups.json, and inventing group rosters
+ * with fake member counts would be exactly the kind of placeholder that reads as
+ * broken. If no accounts exist yet the page says so.
+ */
+function renderGroupSearch2021(req, res) {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const userId = (sessionUser && (sessionUser.userId || sessionUser.id)) || 1;
+  const user = getUser(userId);
+
+  const query = String(req.query.keyword || req.query.q || '').trim();
+  const sort = String(req.query.sort || 'relevance');
+
+  const users = getUsers();
+  const games = getGames();
+
+  // One group per real creator account.
+  //
+  // The 47 map-derived experiences in games.json are all authored by
+  // "LuckyBlox Studio" with no authorId - they are built-in maps, not user
+  // publications. Attributing them to whichever account happens to be signed in
+  // would be inventing ownership, so a group's experience count only counts
+  // games that carry this account's own authorId or developer name.
+  const groups = Object.values(users)
+    .filter((u) => u && typeof u === 'object' && u.username)
+    .map((u) => {
+      const ownerName = String(u.username);
+      const owned = Object.values(games).filter((g) => {
+        if (!g || typeof g !== 'object') return false;
+        const byId = g.authorId != null && String(g.authorId) === String(u.userId || '');
+        const dev = String(g.developer || '').toLowerCase();
+        // "LuckyBlox Studio" is the built-in placeholder author; it is not a user.
+        const byName = dev !== '' && dev !== 'luckyblox studio' && dev === ownerName.toLowerCase();
+        return byId || byName;
+      });
+
+      return {
+        id: String(u.userId || ''),
+        name: groupNameFor(ownerName),
+        owner: ownerName,
+        ownerId: String(u.userId || ''),
+        memberCount: Array.isArray(u.friends) ? u.friends.length : 0,
+        experienceCount: owned.length,
+        description: owned.length
+          ? `Creator of ${owned.length} experience${owned.length === 1 ? '' : 's'} on this server.`
+          : 'This creator has not published an experience yet.',
+      };
+    })
+    .filter((g) => g.id);
+
+  const matched = query
+    ? groups.filter((g) => g.name.toLowerCase().includes(query.toLowerCase())
+        || g.owner.toLowerCase().includes(query.toLowerCase()))
+    : groups;
+
+  const sorted = matched.slice().sort((a, b) => {
+    if (sort === 'members') return b.memberCount - a.memberCount;
+    if (sort === 'experiences') return b.experienceCount - a.experienceCount;
+    if (sort === 'name') return a.name.localeCompare(b.name);
+    return b.memberCount - a.memberCount;
+  });
+
+  res.render('group-search', {
+    title: query ? `${query} - Groups - Roblox` : 'Groups - Roblox',
+    user,
+    currency: getCurrencyForUser(user),
+    groups: sorted,
+    totalGroups: groups.length,
+    keyword: query,
+    selectedSort: sort,
+  });
+}
+
+app.get('/groups/:id', (req, res) => {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const userId = (sessionUser && (sessionUser.userId || sessionUser.id)) || 1;
+  const user = getUser(userId);
+  const groupId = String(req.params.id || '');
+  const owner = getUser(groupId);
+
+  if (!owner) {
+    return res.status(404).render('group-about', {
+      title: 'Group not found - Roblox',
+      user,
+      currency: getCurrencyForUser(user),
+      group: null,
+      members: [],
+      experiences: [],
+      activeTab: 'about',
+    });
+  }
+
+  const games = getGames();
+  // Same ownership rule as the search page: the built-in "LuckyBlox Studio" maps
+  // are not this account's publications, so they are not listed as its
+  // experiences. Only games carrying this account's authorId or its developer
+  // name count.
+  const experiences = Object.values(games)
+    .filter((g) => {
+      if (!g || typeof g !== 'object') return false;
+      const byId = g.authorId != null && String(g.authorId) === String(owner.userId || '');
+      const dev = String(g.developer || '').toLowerCase();
+      const byName = dev !== '' && dev !== 'luckyblox studio'
+        && dev === String(owner.username).toLowerCase();
+      return byId || byName;
+    })
+    .map((g) => ({
+      placeId: Number(g.placeId) || 0,
+      title: g.title || 'Experience',
+      description: g.description || '',
+      genre: g.genre || 'Adventure',
+      playerCount: Number(g.playerCount) || 0,
+    }))
+    .filter((g) => g.placeId);
+
+  const activeTab = ['about', 'experiences', 'members'].includes(String(req.query.tab || '').toLowerCase())
+    ? String(req.query.tab).toLowerCase() : 'about';
+
+  res.render('group-about', {
+    title: `${groupNameFor(owner.username)} - Roblox`,
+    user,
+    currency: getCurrencyForUser(user),
+    group: {
+      id: String(owner.userId || ''),
+      name: groupNameFor(owner.username),
+      owner: owner.username,
+      ownerId: String(owner.userId || ''),
+      description: owner.bio || 'This group has not written a description yet.',
+      memberCount: Array.isArray(owner.friends) ? owner.friends.length : 0,
+      experienceCount: experiences.length,
+      created: owner.joinDate || '',
+    },
+    members: getFriendsForUser(owner.userId),
+    experiences,
+    activeTab,
+    formatJoinDate,
+    abbreviateCount,
+  });
+});
+
 app.get('/avatar', (req, res) => {
   const user = getUser(req.query.userId || 1);
   const assets = Object.values(getAssets());
 
   res.render('avatar', {
-    title: `${user.username} Avatar`,
+    title: `${user.username} - Avatar | LuckyBlox`,
     user,
     assets,
+    currency: getCurrencyForUser(user),
+    // The wearing list powers the "Selected" state on each asset card.
+    wearingList: Array.isArray(user.currentlyWearing) ? user.currentlyWearing : [],
   });
 });
 
 app.get('/game', (req, res) => {
-  const placeId = normalizePlaceId(req.query.placeId || req.query.placeid || 1818);
-  const user = getUser(req.query.userId || 1);
-  const game = getGameEntry(placeId);
+  return renderGamePage2021(req, res, normalizePlaceId(req.query.placeId || req.query.placeid || 1818));
+});
 
-  // Real lifecycle facts for the game page template. Created On falls back to the
-  // published date, then to the map file's own timestamp - never a made-up value.
-  const createdAt = game.createdAt || game.publishedAt || game.updatedAt || '';
-  const updatedAt = game.updatedAt || game.publishedAt || createdAt;
+/**
+ * Shared renderer for the game (experience) page.
+ *
+ * Rebuilt against https://web.archive.org/web/20210206175524/https://www.roblox.com/games/1818/Classic-Crossroads
+ *
+ * The 2021 page laid out as:
+ *
+ *   left column    the 16:9 thumbnail with the Play button over it, then the
+ *                  "About" / "Store" / "Servers" underline tabs, and under the
+ *                  About tab: a description panel, then the game-stat grid
+ *                  (Playing / Visits / Favorites / Created / Updated / Genre)
+ *   right column   the game icon, the title, the byline "By <creator>", the
+ *                  likes bar (with the percentage and the vote counts), the
+ *                  server-size row, and the detail stat list
+ *
+ * Every integer below comes from games.json, places.json or the live server
+ * orchestrator. Where the server has no datum the page says so rather than
+ * printing an invented number.
+ */
+function renderGamePage2021(req, res, placeId) {
+  const user = getUser(req.query.userId || (req.sessionUser && (req.sessionUser.userId || req.sessionUser.id)) || 1);
+  const game = getGameEntry(placeId);
+  const place = getPlaceSettings(placeId);
+
+  // Real lifecycle facts. Created On falls back to the published date, then to
+  // the map file's own timestamp - never a made-up value.
+  const createdAt = game.createdAt || place.createdAt || game.publishedAt || game.updatedAt || '';
+  const updatedAt = game.updatedAt || game.publishedAt || place.updatedAt || createdAt;
+
+  // Live server state for this place, straight from the orchestrator.
+  const servers = listServersForPlace(placeId);
+  const playing = servers.reduce((sum, s) => sum + Number(s.playing || 0), 0);
+
+  const likes = Number(game.likes) || 0;
+  const dislikes = Number((game.votes && game.votes.dislikes) || 0);
+  const voteTotal = likes + dislikes;
+  const likesPercent = voteTotal > 0 ? Math.round((likes / voteTotal) * 100) : 0;
 
   res.render('game-about', {
-    title: `${game.title} | LuckyBlox`,
+    title: `${game.title} - Roblox`,
     user,
     game,
     placeId,
     currency: getCurrencyForUser(user),
     createdAt,
     updatedAt,
-    // Roblox's own placeholder art: Card_512x512 for the icon, Big_ for the
-    // wide hero thumbnail on the game's own page.
+    // Roblox's own placeholder art: Card_512x512 for the icon, Big_ for the wide
+    // hero thumbnail on the game's own page.
     gameIcon: game.icon && /^\/|^https?:\/\//.test(game.icon) ? game.icon : '/gameplaceholder/card.png',
     gameThumb: '/gameplaceholder/big.png',
     creatorName: game.developer || 'LuckyBlox Studio',
-    playing: Number(game.playerCount) || 0,
-    likes: Number(game.likes) || 0,
+    playing,
+    visits: Number(game.visits) || 0,
+    likes,
+    dislikes,
+    likesPercent,
     favorites: Number(game.favorites) || 0,
+    maxPlayers: Number(game.maxPlayers || place.maxPlayers || 20),
+    genre: game.genre || place.genre || 'Adventure',
+    serverCount: servers.length,
+    servers,
+    activeTab: ['about', 'store', 'servers'].includes(String(req.query.tab || '').toLowerCase())
+      ? String(req.query.tab).toLowerCase() : 'about',
+    // Server-side formatting helpers, so the view stays presentational.
+    formatGameDate,
+    abbreviateCount,
   });
-});
+}
+
 
 function legacyJoinResponse(req, res) {
   const userId = Number(req.query.userId || req.query.userid || req.query.id || 1);
@@ -3328,16 +3701,7 @@ app.get('/2021/game/Join.ashx/', legacyJoinResponse);
 app.get('/game/join', legacyJoinResponse);
 
 app.get('/game/:placeId', (req, res) => {
-  const placeId = normalizePlaceId(req.params.placeId || 1818);
-  const user = getUser(req.query.userId || 1);
-  const game = getGameEntry(placeId);
-
-  res.render('game-about', {
-    title: `${game.title} | LuckyBlox`,
-    user,
-    game,
-    placeId,
-  });
+  return renderGamePage2021(req, res, normalizePlaceId(req.params.placeId || 1818));
 });
 
 app.get('/play', (req, res) => {
@@ -4573,7 +4937,18 @@ app.post('/api/settings', (req, res) => {
   const nextState = {};
 
   if (typeof body.displayName === 'string' && body.displayName.trim()) {
-    nextState.displayName = body.displayName.trim().slice(0, 35);
+    const candidate = body.displayName.trim().slice(0, 35);
+    // A display name is what everyone else sees, so two accounts showing the
+    // same name is indistinguishable from a duplicate account. Reject it the
+    // same way signup does, ignoring this account's own current name.
+    if (isUsernameTaken(candidate, userId)) {
+      return res.status(409).json({
+        ok: false,
+        error: 'display-name-taken',
+        message: 'That display name is already taken. Pick another.',
+      });
+    }
+    nextState.displayName = candidate;
   }
   if (typeof body.bio === 'string') {
     nextState.bio = body.bio.slice(0, 500);

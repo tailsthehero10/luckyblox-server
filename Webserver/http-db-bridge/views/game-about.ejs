@@ -1,130 +1,272 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= title %></title>
-    <link rel="stylesheet" href="/css/roblox.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
 </head>
+<%#
+  Game (experience) page, rebuilt against the real 2021 page:
+  https://web.archive.org/web/20210206175524/https://www.roblox.com/games/1818/Classic-Crossroads
+
+  The 2021 layout was a two-column body:
+
+    LEFT   the 16:9 thumbnail with the green Play button over it, then the
+           About / Store / Servers underline tabs. Under About: the description
+           panel, then the stat grid (Playing, Visits, Favorites, Created,
+           Updated, Genre, Max Players).
+    RIGHT  the game icon, the title, "By <creator>", the like bar with the
+           percentage and the vote counts, the server-size row, then the
+           detail stat list.
+
+  Every number is real: games.json, places.json, or the live orchestrator.
+%>
+<%
+  var g = game || {};
+  var tabs = [
+    { key: 'about',   label: 'About' },
+    { key: 'store',   label: 'Store' },
+    { key: 'servers', label: 'Servers' }
+  ];
+  var currentTab = (typeof activeTab !== 'undefined' && activeTab) ? activeTab : 'about';
+  var iconUrl = (typeof gameIcon !== 'undefined' && gameIcon) ? gameIcon : '/gameplaceholder/card.png';
+  var thumbUrl = (typeof gameThumb !== 'undefined' && gameThumb) ? gameThumb : '/gameplaceholder/big.png';
+  var serverList = (typeof servers !== 'undefined' && servers) ? servers : [];
+  var votePct = (typeof likesPercent !== 'undefined' && likesPercent) ? likesPercent : 0;
+  var voteTotal = (Number(likes) || 0) + (Number(dislikes) || 0);
+%>
 <body>
-    <div class="roblox-page">
-    <header class="roblox-topbar">
-      <a class="roblox-brand" href="/" aria-label="LuckyBlox home">
-        <img class="roblox-brand-mark" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
-        <span>LuckyBlox</span>
-      </a>
+  <div class="lb-page">
+    <%- include('partials/header', {
+      user: user,
+      currency: currency,
+      activeNav: 'games'
+    }) %>
 
-      <nav class="roblox-nav" aria-label="Main navigation">
-        <div class="roblox-nav-links">
-          <a href="/">Home</a>
-          <a href="/games">Games</a>
-        </div>
-      </nav>
+    <div class="lb-shell">
+      <%- include('partials/sidebar', { user: user, activeNav: 'games' }) %>
 
-      <div class="roblox-right">
-        <span class="roblox-robux"><%= (user && (user.robux || 0)) || 0 %></span>
-        <a class="roblox-icon-button" href="/account" title="Account settings" aria-label="Account settings"><img class="ch-ico" src="/icons/settings.svg" alt="" /></a>
-        <a class="roblox-icon-button" href="/friends" title="Friends" aria-label="Friends"><img class="ch-ico" src="/icons/friends.svg" alt="" /></a>
-        <a class="roblox-icon-button" href="/profile?userId=<%= user.userId %>" title="Profile" aria-label="Profile"><img class="ch-ico" src="/icons/profile.svg" alt="" /></a>
-      </div>
-    </header>
-
-    <section class="roblox-game-hero">
-      <div class="roblox-game-thumb" aria-label="Game thumbnail">
-        <img class="roblox-game-thumb-img" src="<%= gameThumb %>" alt="<%= game.title %> thumbnail" onerror="this.style.display='none';" />
-        <button class="roblox-play-button" type="button" data-launch-place-id="<%= placeId %>"><img class="ch-ico" src="/icons/play.svg" alt="" /> Play</button>
-      </div>
-
-      <div class="roblox-game-info">
-        <div class="roblox-game-head">
-          <div class="roblox-game-icon" style="background-image:url('<%= gameIcon %>');" aria-label="Game icon"></div>
+      <main class="lb-main">
+        <div class="lb-game-hero">
+          <!-- Left: the thumbnail with the Play button over it -->
           <div>
-            <h1 class="roblox-game-title"><%= game.title %></h1>
-            <div class="roblox-game-byline">By <strong><%= creatorName %></strong></div>
+            <div class="lb-game-thumb">
+              <img class="roblox-game-thumb-img" src="<%= thumbUrl %>" alt="<%= g.title %> thumbnail"
+                   onerror="this.style.display='none';" />
+              <button class="lb-btn lb-btn-primary roblox-play-button" type="button" data-launch-place-id="<%= placeId %>">
+                <img class="ch-ico" src="/icons/play.svg" alt="" /> Play
+              </button>
+            </div>
+
+            <!-- About / Store / Servers underline tabs -->
+            <div class="lb-tabs" style="margin-top:16px;">
+              <ul class="lb-tabs-inner" role="tablist">
+                <% tabs.forEach(function (t) { %>
+                  <li>
+                    <a class="lb-tab <%= currentTab === t.key ? 'is-active' : '' %>" role="tab"
+                       href="/game/<%= placeId %>?tab=<%= t.key %>"><%= t.label %></a>
+                  </li>
+                <% }); %>
+              </ul>
+            </div>
+
+            <% if (currentTab === 'about') { %>
+              <section class="lb-panel">
+                <div class="lb-panel-header"><span>About</span></div>
+                <div class="lb-panel-body">
+                  <div class="lb-description"><%= g.description || 'No description has been provided for this experience.' %></div>
+                  <div class="lb-game-stats">
+                    <div class="lb-game-stat">
+                      <span class="lb-game-stat-value"><%= abbreviateCount(playing) %></span>
+                      <span class="lb-game-stat-label">Playing</span>
+                    </div>
+                    <div class="lb-game-stat">
+                      <span class="lb-game-stat-value"><%= abbreviateCount(visits) %></span>
+                      <span class="lb-game-stat-label">Visits</span>
+                    </div>
+                    <div class="lb-game-stat">
+                      <span class="lb-game-stat-value"><%= abbreviateCount(favorites) %></span>
+                      <span class="lb-game-stat-label">Favorites</span>
+                    </div>
+                    <div class="lb-game-stat">
+                      <span class="lb-game-stat-value"><%= formatGameDate(createdAt) %></span>
+                      <span class="lb-game-stat-label">Created</span>
+                    </div>
+                    <div class="lb-game-stat">
+                      <span class="lb-game-stat-value"><%= formatGameDate(updatedAt) %></span>
+                      <span class="lb-game-stat-label">Updated</span>
+                    </div>
+                    <div class="lb-game-stat">
+                      <span class="lb-game-stat-value"><%= genre %></span>
+                      <span class="lb-game-stat-label">Genre</span>
+                    </div>
+                  </div>
+
+                  <div class="lb-game-meta-list" style="margin-top:14px;">
+                    <div class="lb-game-meta-row"><span>Place ID</span><strong><%= placeId %></strong></div>
+                    <div class="lb-game-meta-row"><span>Creator</span><strong><%= creatorName %></strong></div>
+                    <div class="lb-game-meta-row"><span>Active servers</span><strong><%= serverCount %></strong></div>
+                  </div>
+
+                  <% if (Array.isArray(g.tags) && g.tags.length) { %>
+                    <div class="lb-meta-row" style="margin-top:12px;">
+                      <% g.tags.forEach(function (tag) { %>
+                        <span class="lb-pill"><%= tag %></span>
+                      <% }); %>
+                    </div>
+                  <% } %>
+                </div>
+              </section>
+
+            <% } else if (currentTab === 'store') { %>
+              <section class="lb-panel">
+                <div class="lb-panel-header"><span>Store</span></div>
+                <div class="lb-panel-body">
+                  <%# Only real, owned assets are listed. The account has no
+                      game-pass model in the data files, so this says so
+                      instead of showing invented passes at invented prices. %>
+                  <div class="lb-muted">This experience does not offer any passes or items for sale yet.</div>
+                </div>
+              </section>
+
+            <% } else { %>
+              <section class="lb-panel">
+                <div class="lb-panel-header">
+                  <span>Servers</span>
+                  <span class="lb-faint"><%= serverCount %> active</span>
+                </div>
+                <div class="lb-panel-body">
+                  <% if (serverList.length) { %>
+                    <div class="lb-asset-list">
+                      <% serverList.forEach(function (srv) { %>
+                        <div class="lb-asset-item">
+                          <div class="lb-asset-icon"><%= srv.playing %></div>
+                          <div>
+                            <div class="lb-asset-name"><%= srv.playing %> of <%= srv.maxPlayers %> players</div>
+                            <div class="lb-asset-type"><%= srv.status || 'running' %> &middot; port <%= srv.port %></div>
+                          </div>
+                          <div class="lb-asset-tag"><%= (srv.jobId || '').slice(0, 8) %></div>
+                        </div>
+                      <% }); %>
+                    </div>
+                  <% } else { %>
+                    <div class="lb-muted">No servers are running for this experience right now. Be the first to play.</div>
+                  <% } %>
+                </div>
+              </section>
+            <% } %>
+          </div>
+
+          <!-- Right: icon, title, byline, votes, server size -->
+          <div class="lb-game-info">
+            <div class="lb-game-head">
+              <div class="lb-game-icon" style="background-image:url('<%= iconUrl %>');" aria-label="Game icon"></div>
+              <div>
+                <h1 class="lb-game-title"><%= g.title %></h1>
+                <div class="lb-game-byline">By <strong><%= creatorName %></strong></div>
+              </div>
+            </div>
+
+            <div class="lb-game-stats">
+              <div class="lb-game-stat">
+                <span class="lb-game-stat-value"><%= abbreviateCount(playing) %></span>
+                <span class="lb-game-stat-label">Playing</span>
+              </div>
+              <div class="lb-game-stat">
+                <span class="lb-game-stat-value"><%= abbreviateCount(favorites) %></span>
+                <span class="lb-game-stat-label">Favorites</span>
+              </div>
+              <div class="lb-game-stat">
+                <span class="lb-game-stat-value"><%= abbreviateCount(visits) %></span>
+                <span class="lb-game-stat-label">Visits</span>
+              </div>
+            </div>
+
+            <div class="lb-action-row">
+              <button class="lb-btn lb-btn-primary" type="button" data-launch-place-id="<%= placeId %>">
+                <img class="ch-ico" src="/icons/play.svg" alt="" /> Play
+              </button>
+              <a class="lb-btn lb-btn-secondary" href="/games">Back to Games</a>
+            </div>
+
+            <section class="lb-panel" style="margin-top:4px;">
+              <div class="lb-panel-header"><span>Votes</span></div>
+              <div class="lb-panel-body">
+                <% if (voteTotal > 0) { %>
+                  <div class="lb-vote-row">
+                    <span>Likes</span>
+                    <div class="lb-bar"><div class="lb-bar-fill" style="width:<%= votePct %>%;"></div></div>
+                    <strong><%= votePct %>%</strong>
+                  </div>
+                  <div class="lb-faint" style="margin-top:8px;">
+                    <%= likes %> like<%= likes === 1 ? '' : 's' %> &middot; <%= dislikes %> dislike<%= dislikes === 1 ? '' : 's' %>
+                  </div>
+                <% } else { %>
+                  <div class="lb-muted">No votes have been cast yet.</div>
+                <% } %>
+              </div>
+            </section>
+
+            <section class="lb-panel">
+              <div class="lb-panel-header"><span>Server size</span></div>
+              <div class="lb-panel-body">
+                <div class="lb-stat-list">
+                  <span>Max players</span><strong><%= maxPlayers %></strong>
+                  <span>Active servers</span><strong><%= serverCount %></strong>
+                  <span>Players online</span><strong><%= playing %></strong>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
-
-        <div class="roblox-game-stats">
-          <div class="roblox-game-stat"><span class="roblox-game-stat-value"><%= playing %></span><span class="roblox-game-stat-label">Playing</span></div>
-          <div class="roblox-game-stat"><span class="roblox-game-stat-value"><%= favorites %></span><span class="roblox-game-stat-label">Favorites</span></div>
-          <div class="roblox-game-stat"><span class="roblox-game-stat-value"><%= likes %></span><span class="roblox-game-stat-label">Likes</span></div>
-        </div>
-
-        <div class="roblox-game-actions">
-          <button class="roblox-play-button" type="button" data-launch-place-id="<%= placeId %>"><img class="ch-ico" src="/icons/play.svg" alt="" /> Play</button>
-          <a class="roblox-secondary-button" href="/games">Back to games</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="roblox-game-body">
-      <div class="roblox-panel">
-        <div class="roblox-panel-header">About</div>
-        <div class="roblox-panel-body">
-          <div class="roblox-description"><%= game.description %></div>
-          <div class="roblox-game-meta-list">
-            <div class="roblox-game-meta-row"><span>Genre</span><strong><%= game.genre %></strong></div>
-            <div class="roblox-game-meta-row"><span>Created</span><strong><%= createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown' %></strong></div>
-            <div class="roblox-game-meta-row"><span>Last updated</span><strong><%= updatedAt ? new Date(updatedAt).toLocaleDateString() : 'Unknown' %></strong></div>
-            <div class="roblox-game-meta-row"><span>Place ID</span><strong><%= placeId %></strong></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="roblox-panel">
-        <div class="roblox-panel-header">Servers</div>
-        <div class="roblox-panel-body">
-          <% if (playing > 0) { %>
-            <div class="roblox-muted"><%= playing %> player<%= playing === 1 ? '' : 's' %> across active servers.</div>
-          <% } else { %>
-            <div class="roblox-muted">No players online right now. Be the first to play!</div>
-          <% } %>
-        </div>
-      </div>
-    </section>
+      </main>
     </div>
+  </div>
 
-    <script>
-        // Launch through the same endpoint and delegated handler the rest of the
-        // site uses. The old inline handler posted to /v1/launch-client, which does
-        // not exist on this server, and hardcoded placeId '2022M' regardless of the
-        // game being viewed.
-        document.addEventListener('click', async (event) => {
-            const trigger = event.target.closest('[data-launch-place-id]');
-            if (!trigger) return;
+  <script>
+    // Launch through the same endpoint and delegated handler the rest of the
+    // site uses. The old inline handler posted to /v1/launch-client, which does
+    // not exist on this server, and hardcoded placeId '2022M' regardless of the
+    // game being viewed.
+    document.addEventListener('click', async (event) => {
+      const trigger = event.target.closest('[data-launch-place-id]');
+      if (!trigger) return;
 
-            try {
-                const placeId = Number(trigger.getAttribute('data-launch-place-id')) || 1818;
-                const response = await fetch('/api/launch-game', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ placeId })
-                });
-
-                const data = await response.json();
-
-                // Playing needs an account: send guests to sign in, then back here.
-                if (response.status === 401 || (data && data.error === 'sign-in-required')) {
-                    const next = encodeURIComponent(window.location.pathname + window.location.search);
-                    window.location.href = '/signin?redirect=' + next;
-                    return;
-                }
-
-                if (!response.ok || !data || !data.ok || !data.ticket) {
-                    alert((data && data.message) || 'Unable to generate a launch ticket.');
-                    return;
-                }
-
-                if (data.playUrl) {
-                    window.location.href = data.playUrl;
-                } else if (data.launchURI) {
-                    window.location.href = data.launchURI;
-                }
-            } catch (error) {
-                alert('LuckyBlox failed to launch.');
-            }
+      try {
+        const placeId = Number(trigger.getAttribute('data-launch-place-id')) || 1818;
+        const response = await fetch('/api/launch-game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ placeId })
         });
-    </script>
-<script src="/legacy-nav.js"></script>
+
+        const data = await response.json();
+
+        // Playing needs an account: send guests to sign in, then back here.
+        if (response.status === 401 || (data && data.error === 'sign-in-required')) {
+          const next = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = '/signin?redirect=' + next;
+          return;
+        }
+
+        if (!response.ok || !data || !data.ok || !data.ticket) {
+          alert((data && data.message) || 'Unable to generate a launch ticket.');
+          return;
+        }
+
+        if (data.playUrl) {
+          window.location.href = data.playUrl;
+        } else if (data.launchURI) {
+          window.location.href = data.launchURI;
+        }
+      } catch (error) {
+        alert('LuckyBlox failed to launch.');
+      }
+    });
+  </script>
+  <script src="/legacy-nav.js"></script>
 </body>
 </html>

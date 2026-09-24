@@ -1,0 +1,5 @@
+[luckyblox] restored 6 active session(s)
+LuckyBlox HTTP DB bridge listening on http://0.0.0.0:3002
+LuckyBlox public base URL: http://localhost:3002
+[luckyblox] data dir: E:\LuckyBloxLauncher\NEW LKL\Release\luckyblox-server\Webserver\http-db-bridge\data
+[luckyblox] persistence: OFF - Data is stored in the container filesystem and WILL BE LOST on redeploy. Set LUCKYBLOX_DATA_DIR (or attach a Render Disk) to persist accounts.

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    <%= title %>
+  </title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+<%# Group page, rebuilt against the real 2021 page:
+  https://web.archive.org/web/20210829173905/https://www.roblox.com/groups/3336691/The-Flamingo-Fan-Club#!/about The
+  2021 group page was a header strip (150x150 emblem, the group name, the member count and a Join/Leave button on the
+  right), then an underlined tab bar for About / Experiences / Members, then the active tab's panel. Everything shown
+  comes from the account record this group represents - the bio is the group description, the member list is that
+  account's real friends, and the Experiences tab lists the games that account actually published. %>
+  <% var tabs=[ { key: 'about' , label: 'About' }, { key: 'experiences' , label: 'Experiences' }, { key: 'members' ,
+    label: 'Members' } ]; var tab=(typeof activeTab !=='undefined' && activeTab) ? activeTab : 'about' ; var
+    memberList=Array.isArray(members) ? members : []; var expList=Array.isArray(experiences) ? experiences : []; %>
+
+    <body>
+      <div class="lb-page">
+        <%- include('partials/header', { user: user, currency: currency, activeNav: 'groups' }) %>
+
+          <div class="lb-shell">
+            <%- include('partials/sidebar', { user: user, activeNav: 'groups' }) %>
+
+              <main class="lb-main">
+                <% if (!group) { %>
+                  <section class="lb-panel">
+                    <div class="lb-panel-header"><span>Group not found</span></div>
+                    <div class="lb-panel-body">
+                      <div class="lb-muted">
+                        No group exists with that id on this server.
+                        <a href="/search/groups">Search groups</a>.
+                      </div>
+                    </div>
+                  </section>
+                  <% } else { %>
+                    <!-- Group header strip -->
+                    <section class="lb-profile-header" style="grid-template-columns: 150px minmax(0, 1fr) auto;">
+                      <div class="lb-avatar-stage" style="width:150px;height:150px;">
+                        <img src="/site-icon/luckyblox.png" alt="<%= group.name %> emblem" />
+                      </div>
+
+                      <div>
+                        <div class="lb-profile-name"><span>
+                            <%= group.name %>
+                          </span></div>
+                        <div class="lb-counter-row">
+                          <div class="lb-counter">
+                            <span class="lb-counter-value" title="<%= group.memberCount %>">
+                              <%= abbreviateCount(group.memberCount) %>
+                            </span>
+                            <span class="lb-counter-label">Members</span>
+                          </div>
+                          <div class="lb-counter">
+                            <span class="lb-counter-value" title="<%= group.experienceCount %>">
+                              <%= abbreviateCount(group.experienceCount) %>
+                            </span>
+                            <span class="lb-counter-label">Experiences</span>
+                          </div>
+                        </div>
+                        <div class="lb-meta-row">
+                          <span class="lb-pill">Owner <a href="/users/<%= group.ownerId %>/profile">
+                              <%= group.owner %>
+                            </a></span>
+                          <% if (group.created) { %>
+                            <span class="lb-pill">Created <%= formatJoinDate(group.created) %></span>
+                            <% } %>
+                        </div>
+                      </div>
+
+                      <div class="lb-action-row" style="margin-top:0;">
+                        <a class="lb-btn lb-btn-primary" href="/users/<%= group.ownerId %>/profile">View Owner</a>
+                      </div>
+                    </section>
+
+                    <!-- About / Experiences / Members tabs -->
+                    <div class="lb-tabs">
+                      <ul class="lb-tabs-inner" role="tablist">
+                        <% tabs.forEach(function (t) { %>
+                          <li>
+                            <a class="lb-tab <%= tab === t.key ? 'is-active' : '' %>" role="tab"
+                              href="/groups/<%= group.id %>?tab=<%= t.key %>">
+                              <%= t.label %>
+                            </a>
+                          </li>
+                          <% }); %>
+                      </ul>
+                    </div>
+
+                    <% if (tab==='about' ) { %>
+                      <section class="lb-panel">
+                        <div class="lb-panel-header"><span>About</span></div>
+                        <div class="lb-panel-body">
+                          <div class="lb-bio">
+                            <%= group.description %>
+                          </div>
+                          <div class="lb-stat-list" style="margin-top:14px;">
+                            <span>Owner</span><strong><a href="/users/<%= group.ownerId %>/profile">
+                                <%= group.owner %>
+                              </a></strong>
+                            <span>Members</span><strong>
+                              <%= group.memberCount %>
+                            </strong>
+                            <span>Experiences</span><strong>
+                              <%= group.experienceCount %>
+                            </strong>
+                            <% if (group.created) { %>
+                              <span>Founded</span><strong>
+                                <%= formatJoinDate(group.created) %>
+                              </strong>
+                              <% } %>
+                          </div>
+                        </div>
+                      </section>
+
+                      <% } else if (tab==='experiences' ) { %>
+                        <section class="lb-panel">
+                          <div class="lb-panel-header">
+                            <span>Experiences</span>
+                            <span class="lb-faint">
+                              <%= expList.length %>
+                            </span>
+                          </div>
+                          <div class="lb-panel-body">
+                            <% if (expList.length) { %>
+                              <div class="lb-game-grid">
+                                <% expList.forEach(function (exp) { %>
+                                  <a class="lb-game-card" href="/game/<%= exp.placeId %>">
+                                    <div class="lb-game-card-thumb">
+                                      <img class="roblox-game-card-placeholder" src="/gameplaceholder/card.png" alt=""
+                                        loading="lazy" />
+                                    </div>
+                                    <div class="lb-game-card-title">
+                                      <%= exp.title %>
+                                    </div>
+                                    <div class="lb-game-card-sub">
+                                      <%= exp.genre %> &middot; <%= exp.playerCount %> playing
+                                    </div>
+                                  </a>
+                                  <% }); %>
+                              </div>
+                              <% } else { %>
+                                <div class="lb-muted">This group has not published any experiences yet.</div>
+                                <% } %>
+                          </div>
+                        </section>
+
+                        <% } else { %>
+                          <section class="lb-panel">
+                            <div class="lb-panel-header">
+                              <span>Members</span>
+                              <span class="lb-faint">
+                                <%= memberList.length %>
+                                  <% if (memberList.length) { %>(<%= memberList.filter(function (m) { return m.online;
+                                      }).length %> online)<% } %>
+                              </span>
+                            </div>
+                            <div class="lb-panel-body">
+                              <% if (memberList.length) { %>
+                                <div class="lb-asset-list">
+                                  <% memberList.forEach(function (member) { %>
+                                    <a class="lb-asset-item" href="<%= member.profileUrl %>">
+                                      <div class="lb-asset-icon">
+                                        <%= String(member.username || 'M' ).slice(0, 1).toUpperCase() %>
+                                      </div>
+                                      <div>
+                                        <div class="lb-asset-name">
+                                          <%= member.username %>
+                                        </div>
+                                        <div class="lb-asset-type">
+                                          <%= member.membership %> &middot; <%= member.status %>
+                                        </div>
+                                      </div>
+                                      <div class="lb-asset-tag">
+                                        <%= member.online ? 'Online' : 'Offline' %>
+                                      </div>
+                                    </a>
+                                    <% }); %>
+                                </div>
+                                <% } else { %>
+                                  <div class="lb-muted">This group has no members yet.</div>
+                                  <% } %>
+                            </div>
+                          </section>
+                          <% } %>
+                            <% } %>
+              </main>
+          </div>
+      </div>
+      <script src="/legacy-nav.js"></script>
+    </body>
+
+</html>

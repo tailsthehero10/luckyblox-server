@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    <%= title %>
+  </title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+<%# Avatar Shop (catalog), rebuilt against the real 2021 page:
+  https://web.archive.org/web/20210605211817/https://www.roblox.com/catalog?Category=0 The 2021 catalog was a left rail
+  of category filters plus a grid of 150x150 item tiles. Each tile showed the thumbnail, the item name, the creator and
+  the price (or "Owned" ). A "Sort by" select sat above the grid. Only items present in assets.json are listed, so no
+  tile is a fabricated listing with an invented price. %>
+  <% var catalogItems=Array.isArray(items) ? items : []; var categoryOptions=Array.isArray(categories) ? categories :
+    ['All Categories']; var sorts=[ { key: 'relevance' , label: 'Relevance' }, { key: 'owned' , label: 'Owned first' },
+    { key: 'price-low' , label: 'Price: Low to High' }, { key: 'price-high' , label: 'Price: High to Low' }, {
+    key: 'name' , label: 'Name' } ]; %>
+
+    <body>
+      <div class="lb-page">
+        <%- include('partials/header', { user: user, currency: currency, activeNav: 'catalog' }) %>
+
+          <div class="lb-shell">
+            <%- include('partials/sidebar', { user: user, activeNav: 'catalog' }) %>
+
+              <main class="lb-main">
+                <div class="lb-sort-row">
+                  <div>
+                    <h1>Avatar Shop</h1>
+                    <div class="lb-faint">
+                      <%= totalItems %> item<%= totalItems===1 ? '' : 's' %> &middot;
+                          <%= ownedCount %> owned by <%= user.username %>
+                    </div>
+                  </div>
+
+                  <form class="lb-search-form" method="GET" action="/catalog">
+                    <% if (selectedCategory && selectedCategory !=='All Categories' ) { %>
+                      <input type="hidden" name="category" value="<%= selectedCategory %>" />
+                      <% } %>
+                        <label class="lb-faint" for="sort" style="align-self:center;">Sort by</label>
+                        <select class="lb-select" id="sort" name="sort" onchange="this.form.submit()">
+                          <% sorts.forEach(function (s) { %>
+                            <option value="<%= s.key %>" <%=selectedSort===s.key ? 'selected' : '' %>><%= s.label %>
+                            </option>
+                            <% }); %>
+                        </select>
+                  </form>
+                </div>
+
+                <div class="lb-content-grid" style="grid-template-columns: 200px minmax(0, 1fr);">
+                  <!-- Category rail, the way the 2021 catalog filtered on the left -->
+                  <aside class="lb-panel">
+                    <div class="lb-panel-header"><span>Category</span></div>
+                    <div class="lb-panel-body" style="padding:6px 0;">
+                      <% categoryOptions.forEach(function (cat) { %>
+                        <a class="lb-sidebar-link <%= selectedCategory === cat ? 'is-active' : '' %>"
+                          href="/catalog?category=<%= encodeURIComponent(cat) %>&sort=<%= selectedSort %>">
+                          <span>
+                            <%= cat %>
+                          </span>
+                        </a>
+                        <% }); %>
+                    </div>
+                  </aside>
+
+                  <section>
+                    <% if (catalogItems.length) { %>
+                      <div class="lb-catalog-grid">
+                        <% catalogItems.forEach(function (item) { %>
+                          <div class="lb-catalog-tile">
+                            <div class="lb-catalog-thumb">
+                              <% if (item.thumbnailUrl) { %>
+                                <img src="<%= item.thumbnailUrl %>" alt="<%= item.name %>" loading="lazy"
+                                  onerror="this.style.display='none';" />
+                                <% } else { %>
+                                  <span class="lb-catalog-thumb-letter">
+                                    <%= String(item.name || '?' ).slice(0, 1).toUpperCase() %>
+                                  </span>
+                                  <% } %>
+                            </div>
+                            <div class="lb-catalog-name" title="<%= item.name %>">
+                              <%= item.name %>
+                            </div>
+                            <div class="lb-catalog-type">
+                              <%= item.assetType %>
+                            </div>
+                            <div class="lb-catalog-price">
+                              <% if (item.owned) { %>
+                                <span class="lb-catalog-owned">Owned</span>
+                                <% } else if (item.price> 0) { %>
+                                  <span class="lb-robux-inline">
+                                    <%= item.price %>
+                                  </span>
+                                  <% } else { %>
+                                    <span class="lb-catalog-free">Free</span>
+                                    <% } %>
+                            </div>
+                          </div>
+                          <% }); %>
+                      </div>
+                      <% } else { %>
+                        <div class="lb-panel">
+                          <div class="lb-panel-body">
+                            <div class="lb-muted">
+                              No items match this filter. Try <a href="/catalog">All Categories</a>.
+                            </div>
+                          </div>
+                        </div>
+                        <% } %>
+                  </section>
+                </div>
+              </main>
+          </div>
+      </div>
+      <script src="/legacy-nav.js"></script>
+    </body>
+
+</html>

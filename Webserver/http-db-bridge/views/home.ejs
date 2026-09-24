@@ -4,176 +4,117 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><%= title %></title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/css/roblox.css" />
 </head>
+<%#
+  Home / Discover. The real 2021 home page was a sidebar plus a grid of game
+  cards under section headings ("Popular", "Top Rated", "Recommended").
+  https://web.archive.org/web/20210605202558/https://www.roblox.com/
+%>
+<%
+  var homeGames = Array.isArray(games) ? games : [];
+%>
 <body>
-  <div class="roblox-page">
-    <header class="roblox-topbar">
-      <a class="roblox-brand" href="/" aria-label="LuckyBlox home">
-        <img class="roblox-brand-mark" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
-        <span>LuckyBlox</span>
-      </a>
+  <div class="lb-page">
+    <%- include('partials/header', { user: user, currency: currency, activeNav: 'home' }) %>
 
-      <nav class="roblox-nav" aria-label="Main navigation">
-        <div class="roblox-nav-links">
-          <a href="/">Home</a>
-          <a href="/games">Games</a>
-          <div class="roblox-more-pages">
-            <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
-            <div class="roblox-more-pages-dropdown">
-              <a href="/profile?userId=<%= user.userId %>">Profile</a>
-              <a href="/avatar?userId=<%= user.userId %>">Avatar</a>
-              <a href="/game?placeId=<%= activePlaceId %>">Game</a>
-              <a href="/studio">Studio</a>
-              <a href="/settings">Settings</a>
-              <a href="/account">Account</a>
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div class="lb-shell">
+      <%- include('partials/sidebar', { user: user, activeNav: 'home' }) %>
 
-      <div class="roblox-right">
-        <span class="roblox-robux"><%= currency && currency.robux ? currency.robux : (user.robux || 0) %></span>
-        <%# Real actions only: the old gear/bell/@ glyphs were non-interactive spans
-            that looked like buttons but did nothing. These are links to pages that
-            exist. %>
-        <a class="roblox-icon-button" href="/account" title="Account settings" aria-label="Account settings"><img class="ch-ico" src="/icons/settings.svg" alt="" /></a>
-        <a class="roblox-icon-button" href="/friends" title="Friends" aria-label="Friends"><img class="ch-ico" src="/icons/friends.svg" alt="" /></a>
-        <a class="roblox-icon-button" href="/profile?userId=<%= user.userId %>" title="Profile" aria-label="Profile"><img class="ch-ico" src="/icons/profile.svg" alt="" /></a>
-      </div>
-    </header>
-
-    <div class="roblox-shell">
-      <aside class="roblox-sidebar" aria-label="Site navigation">
-        <a href="/" class="roblox-sidebar-link is-active">
-          <img class="ch-ico" src="/icons/home.svg" alt="" /> Home
-        </a>
-        <a href="/games" class="roblox-sidebar-link">
-          <img class="ch-ico" src="/icons/games.svg" alt="" /> Discover
-        </a>
-        <a href="/avatar?userId=<%= user.userId %>" class="roblox-sidebar-link">
-          <img class="ch-ico" src="/icons/avatar.svg" alt="" /> Avatar
-        </a>
-        <a href="/develop" class="roblox-sidebar-link">
-          <img class="ch-ico" src="/icons/develop.svg" alt="" /> Create
-        </a>
-        <a href="/studio" class="roblox-sidebar-link">
-          <img class="ch-ico" src="/icons/studio.svg" alt="" /> Studio
-        </a>
-        <a href="/friends" class="roblox-sidebar-link">
-          <img class="ch-ico" src="/icons/friends.svg" alt="" /> Friends
-        </a>
-        <a href="/settings" class="roblox-sidebar-link">
-          <img class="ch-ico" src="/icons/settings.svg" alt="" /> Settings
-        </a>
-
-        <div class="roblox-sidebar-divider"></div>
-        <div class="roblox-sidebar-user">
-          <div class="roblox-sidebar-avatar"><%= String(user.username || 'L').slice(0, 1).toUpperCase() %></div>
+      <main class="lb-main">
+        <section class="lb-hero">
+          <div class="lb-game-icon" style="width:100px;height:100px;background-image:url('<%= (featuredGame.icon && /^\/|^https?:\/\//.test(featuredGame.icon)) ? featuredGame.icon : '/gameplaceholder/card.png' %>');"></div>
           <div>
-            <div class="roblox-sidebar-username"><%= user.username %></div>
-            <div class="roblox-sidebar-status"><span class="roblox-sidebar-dot"></span> Online</div>
-          </div>
-        </div>
-      </aside>
-
-      <div class="roblox-main">
-    <section class="roblox-hero">
-      <div class="roblox-game-icon" style="background-image: url('<%= (featuredGame.icon && /^\/|^https?:\/\//.test(featuredGame.icon)) ? featuredGame.icon : '/gameplaceholder/card.png' %>');"></div>
-
-      <div>
-        <div class="roblox-eyebrow">Featured experience</div>
-        <div class="roblox-title-block">
-          <h1><%= featuredGame.title %></h1>
-          <button class="roblox-play-button" type="button" data-launch-place-id="<%= featuredGame.placeId %>">Play</button>
-        </div>
-
-        <div class="roblox-meta-row">
-          <span class="roblox-meta-pill">Developer: <%= featuredGame.developer %></span>
-          <span class="roblox-meta-pill">Players: <%= Number(featuredGame.playerCount) || 0 %></span>
-          <span class="roblox-meta-pill">Genre: <%= featuredGame.genre %></span>
-          <span class="roblox-meta-pill">Favorites: <%= Number(featuredGame.favorites) || 0 %></span>
-        </div>
-
-        <div class="roblox-description"><%= featuredGame.description %></div>
-
-        <div class="roblox-action-row">
-          <button class="roblox-play-button" type="button" data-launch-place-id="<%= featuredGame.placeId %>">Play now</button>
-          <a class="roblox-secondary-button" href="/game?placeId=<%= featuredGame.placeId %>">About this game</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="roblox-content-grid">
-      <div class="roblox-panel" style="grid-column: 1 / -1;">
-        <div class="roblox-panel-header">Popular games</div>
-        <div class="roblox-panel-body">
-          <%# 2021-style game cards: a 16:9 thumbnail with the real Roblox placeholder
-              art, title underneath and live player count. Not a cramped list row. %>
-          <div class="roblox-game-grid">
-            <% games.forEach((game) => { %>
-              <a class="roblox-game-card" href="/game?placeId=<%= game.placeId %>">
-                <div class="roblox-game-card-thumb">
-                  <% if (game.icon && /^https?:\/\//.test(game.icon)) { %>
-                    <img src="<%= game.icon %>" alt="<%= game.title %>" loading="lazy"
-                         onerror="this.style.display='none';var p=this.parentNode;if(p)p.classList.add('is-placeholder');" />
-                  <% } %>
-                  <img class="roblox-game-card-placeholder" src="/gameplaceholder/card.png" alt="" loading="lazy" />
-                </div>
-                <div class="roblox-game-card-meta">
-                  <div class="roblox-game-card-title"><%= game.title %></div>
-                  <div class="roblox-game-card-sub"><%= game.genre %> · <%= Number(game.playerCount) || 0 %> playing</div>
-                </div>
-              </a>
-            <% }) %>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="roblox-content-grid">
-      <aside class="roblox-side-stack">
-        <div class="roblox-panel">
-          <div class="roblox-panel-header">Current active character</div>
-          <div class="roblox-panel-body">
-            <div class="roblox-render-box">
-              <div class="roblox-render-content">
-                <div class="roblox-large-avatar"><%= user.username.slice(0,1).toUpperCase() %></div>
-                <div style="font-weight:700; color: var(--rbx-text);"><%= user.username %></div>
-                <div style="color: var(--rbx-muted);">Avatar ready</div>
-              </div>
+            <div class="lb-eyebrow">Featured Experience</div>
+            <div class="lb-title-block">
+              <h1><%= featuredGame.title %></h1>
+              <button class="lb-btn lb-btn-primary" type="button" data-launch-place-id="<%= featuredGame.placeId %>">
+                <img class="ch-ico" src="/icons/play.svg" alt="" /> Play
+              </button>
+            </div>
+            <div class="lb-meta-row">
+              <span class="lb-pill">By <%= featuredGame.developer %></span>
+              <span class="lb-pill"><%= Number(featuredGame.playerCount) || 0 %> playing</span>
+              <span class="lb-pill"><%= featuredGame.genre %></span>
+              <span class="lb-pill"><%= Number(featuredGame.favorites) || 0 %> favorites</span>
+            </div>
+            <div class="lb-description"><%= featuredGame.description %></div>
+            <div class="lb-action-row">
+              <a class="lb-btn lb-btn-secondary" href="/game/<%= featuredGame.placeId %>">About this experience</a>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div class="roblox-panel">
-          <div class="roblox-panel-header">Friends</div>
-          <div class="roblox-panel-body">
-            <div class="roblox-asset-list">
-              <div class="roblox-meta-row" style="margin-bottom: 10px;">
-                <span class="roblox-meta-pill"><%= friends ? friends.length : 0 %> friends</span>
-                <span class="roblox-meta-pill"><%= friends ? friends.filter((f) => f.online).length : 0 %> online</span>
-              </div>
-              <% if (friends && friends.length) { %>
-                <% friends.forEach((friend) => { %>
-                  <a class="roblox-asset-item" href="<%= friend.profileUrl %>">
-                    <div class="roblox-asset-icon"><%= friend.username.slice(0,1).toUpperCase() %></div>
-                    <div>
-                      <div class="roblox-asset-name"><%= friend.username %></div>
-                      <div class="roblox-asset-type"><%= friend.status %></div>
+        <section class="lb-panel">
+          <div class="lb-panel-header">
+            <span>Popular</span>
+            <span class="lb-faint"><%= homeGames.length %> experience<%= homeGames.length === 1 ? '' : 's' %></span>
+          </div>
+          <div class="lb-panel-body">
+            <% if (homeGames.length) { %>
+              <div class="lb-game-grid">
+                <% homeGames.forEach(function (game) { %>
+                  <a class="lb-game-card" href="/game/<%= game.placeId %>">
+                    <div class="lb-game-card-thumb">
+                      <% if (game.icon && /^\/|^https?:\/\//.test(game.icon) && game.icon.indexOf('unsplash') === -1) { %>
+                        <img src="<%= game.icon %>" alt="<%= game.title %>" loading="lazy"
+                             onerror="this.style.display='none';var p=this.parentNode;if(p)p.classList.add('is-placeholder');" />
+                      <% } %>
+                      <img class="roblox-game-card-placeholder" src="/gameplaceholder/card.png" alt="" loading="lazy" />
                     </div>
-                    <div class="roblox-asset-tag"><%= friend.online ? 'Live' : (friend.status === 'away' ? 'Away' : 'Offline') %></div>
+                    <div class="lb-game-card-title"><%= game.title %></div>
+                    <div class="lb-game-card-sub"><%= game.genre %> &middot; <%= Number(game.playerCount) || 0 %> playing</div>
                   </a>
-                <% }) %>
+                <% }); %>
+              </div>
+            <% } else { %>
+              <div class="lb-muted">No experiences have been published yet.</div>
+            <% } %>
+          </div>
+        </section>
+
+        <div class="lb-content-grid">
+          <section class="lb-panel">
+            <div class="lb-panel-header"><span>Friends</span></div>
+            <div class="lb-panel-body">
+              <% if (friends && friends.length) { %>
+                <div class="lb-asset-list">
+                  <% friends.forEach(function (friend) { %>
+                    <a class="lb-asset-item" href="<%= friend.profileUrl %>">
+                      <div class="lb-asset-icon"><%= String(friend.username || 'F').slice(0, 1).toUpperCase() %></div>
+                      <div>
+                        <div class="lb-asset-name"><%= friend.username %></div>
+                        <div class="lb-asset-type"><%= friend.status %></div>
+                      </div>
+                      <div class="lb-asset-tag"><%= friend.online ? 'Online' : 'Offline' %></div>
+                    </a>
+                  <% }); %>
+                </div>
               <% } else { %>
-                <div class="roblox-muted">No friends yet — add someone to see them here.</div>
+                <div class="lb-muted">No friends yet.</div>
               <% } %>
             </div>
-          </div>
+          </section>
+
+          <section class="lb-panel">
+            <div class="lb-panel-header"><span>Account</span></div>
+            <div class="lb-panel-body">
+              <div class="lb-stat-list">
+                <span>Username</span><strong><%= user.username %></strong>
+                <span>Membership</span><strong><%= user.membershipStatus || user.membership || 'None' %></strong>
+                <span>Robux</span><strong><%= currency ? currency.robux : (user.robux || 0) %></strong>
+                <span>Friends</span><strong><%= Array.isArray(user.friends) ? user.friends.length : 0 %></strong>
+              </div>
+              <div class="lb-action-row">
+                <a class="lb-btn lb-btn-secondary" href="/users/<%= user.userId %>/profile">View Profile</a>
+                <a class="lb-btn lb-btn-secondary" href="/develop">Create</a>
+              </div>
+            </div>
+          </section>
         </div>
-      </aside>
-    </section>
-      </div>
+      </main>
     </div>
   </div>
 

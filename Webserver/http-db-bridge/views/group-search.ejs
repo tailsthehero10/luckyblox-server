@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    <%= title %>
+  </title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+<%# Group search, rebuilt against the real 2021 page:
+  https://web.archive.org/web/20210901215113/https://www.roblox.com/search/groups The 2021 layout was: a keyword box,
+  a "Sort by" control, then one row per group - a 150x150 emblem on the left, the group name and member count, and a
+  Description line underneath. Groups are derived from the accounts that really exist on this server and the experiences
+  they have published. There is no groups.json; inventing rosters with fabricated member counts is what makes a page
+  read as fake, so this page reports the real creators instead and says plainly when there are none. %>
+  <% var groupList=Array.isArray(groups) ? groups : []; var sorts=[ { key: 'relevance' , label: 'Relevance' }, {
+    key: 'members' , label: 'Most Members' }, { key: 'experiences' , label: 'Most Experiences' }, { key: 'name' ,
+    label: 'Name' } ]; %>
+
+    <body>
+      <div class="lb-page">
+        <%- include('partials/header', { user: user, currency: currency, activeNav: 'groups' }) %>
+
+          <div class="lb-shell">
+            <%- include('partials/sidebar', { user: user, activeNav: 'groups' }) %>
+
+              <main class="lb-main">
+                <div class="lb-sort-row">
+                  <div>
+                    <h1>Groups</h1>
+                    <div class="lb-faint">
+                      <%= totalGroups %> group<%= totalGroups===1 ? '' : 's' %> on this server
+                          <% if (keyword) { %>&middot; results for &ldquo;<%= keyword %>&rdquo;<% } %>
+                    </div>
+                  </div>
+                </div>
+
+                <section class="lb-panel">
+                  <div class="lb-panel-body">
+                    <form class="lb-search-form" method="GET" action="/search/groups">
+                      <input class="lb-search-input" type="text" name="keyword" value="<%= keyword %>"
+                        placeholder="Search all groups" aria-label="Search groups" />
+                      <select class="lb-select" name="sort" aria-label="Sort by">
+                        <% sorts.forEach(function (s) { %>
+                          <option value="<%= s.key %>" <%=selectedSort===s.key ? 'selected' : '' %>><%= s.label %>
+                          </option>
+                          <% }); %>
+                      </select>
+                      <button class="lb-btn lb-btn-primary" type="submit">Search</button>
+                    </form>
+                  </div>
+                </section>
+
+                <% if (groupList.length) { %>
+                  <section class="lb-panel">
+                    <div class="lb-panel-body">
+                      <div class="lb-group-list">
+                        <% groupList.forEach(function (group) { %>
+                          <div class="lb-group-row">
+                            <a class="lb-group-emblem" href="/groups/<%= group.id %>">
+                              <img src="/site-icon/luckyblox.png" alt="" />
+                            </a>
+                            <div class="lb-group-main">
+                              <a class="lb-group-name" href="/groups/<%= group.id %>">
+                                <%= group.name %>
+                              </a>
+                              <div class="lb-group-meta">
+                                <%= group.memberCount %> member<%= group.memberCount===1 ? '' : 's' %>
+                                    &middot; <%= group.experienceCount %> experience<%= group.experienceCount===1 ? ''
+                                        : 's' %>
+                                        &middot; Owner: <a href="/users/<%= group.ownerId %>/profile">
+                                          <%= group.owner %>
+                                        </a>
+                              </div>
+                              <div class="lb-group-desc">
+                                <%= group.description %>
+                              </div>
+                            </div>
+                          </div>
+                          <% }); %>
+                      </div>
+                    </div>
+                  </section>
+                  <% } else { %>
+                    <section class="lb-panel">
+                      <div class="lb-panel-body">
+                        <div class="lb-muted">
+                          <% if (keyword) { %>
+                            No groups matched &ldquo;<%= keyword %>&rdquo;. <a href="/search/groups">Show all
+                                groups</a>.
+                              <% } else { %>
+                                No groups exist on this server yet. A group appears here as soon as an
+                                account creates a group or publishes an experience.
+                                <% } %>
+                        </div>
+                      </div>
+                    </section>
+                    <% } %>
+              </main>
+          </div>
+      </div>
+      <script src="/legacy-nav.js"></script>
+    </body>
+
+</html>
