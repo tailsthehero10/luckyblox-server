@@ -9,10 +9,10 @@
 <body>
   <div class="roblox-page">
     <header class="roblox-topbar">
-      <div class="roblox-brand">
+      <a class="roblox-brand" href="/" aria-label="LuckyBlox home">
         <img class="roblox-brand-mark" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
         <span>LuckyBlox</span>
-      </div>
+      </a>
 
       <nav class="roblox-nav" aria-label="Main navigation">
         <div class="roblox-nav-links">
@@ -25,6 +25,7 @@
               <a href="/avatar?userId=<%= user.userId %>">Avatar</a>
               <a href="/game?placeId=<%= activePlaceId %>">Game</a>
               <a href="/studio">Studio</a>
+              <a href="/settings">Settings</a>
               <a href="/account">Account</a>
             </div>
           </div>
@@ -42,8 +43,43 @@
       </div>
     </header>
 
+    <div class="roblox-shell">
+      <aside class="roblox-sidebar" aria-label="Site navigation">
+        <a href="/" class="roblox-sidebar-link is-active">
+          <img class="ch-ico" src="/icons/home.svg" alt="" /> Home
+        </a>
+        <a href="/games" class="roblox-sidebar-link">
+          <img class="ch-ico" src="/icons/games.svg" alt="" /> Discover
+        </a>
+        <a href="/avatar?userId=<%= user.userId %>" class="roblox-sidebar-link">
+          <img class="ch-ico" src="/icons/avatar.svg" alt="" /> Avatar
+        </a>
+        <a href="/develop" class="roblox-sidebar-link">
+          <img class="ch-ico" src="/icons/develop.svg" alt="" /> Create
+        </a>
+        <a href="/studio" class="roblox-sidebar-link">
+          <img class="ch-ico" src="/icons/studio.svg" alt="" /> Studio
+        </a>
+        <a href="/friends" class="roblox-sidebar-link">
+          <img class="ch-ico" src="/icons/friends.svg" alt="" /> Friends
+        </a>
+        <a href="/settings" class="roblox-sidebar-link">
+          <img class="ch-ico" src="/icons/settings.svg" alt="" /> Settings
+        </a>
+
+        <div class="roblox-sidebar-divider"></div>
+        <div class="roblox-sidebar-user">
+          <div class="roblox-sidebar-avatar"><%= String(user.username || 'L').slice(0, 1).toUpperCase() %></div>
+          <div>
+            <div class="roblox-sidebar-username"><%= user.username %></div>
+            <div class="roblox-sidebar-status"><span class="roblox-sidebar-dot"></span> Online</div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="roblox-main">
     <section class="roblox-hero">
-      <div class="roblox-game-icon" style="background-image: url('<%= featuredGame.icon %>');"></div>
+      <div class="roblox-game-icon" style="background-image: url('<%= (featuredGame.icon && /^\/|^https?:\/\//.test(featuredGame.icon)) ? featuredGame.icon : '/gameplaceholder/card.png' %>');"></div>
 
       <div>
         <div class="roblox-eyebrow">Featured experience</div>
@@ -54,9 +90,9 @@
 
         <div class="roblox-meta-row">
           <span class="roblox-meta-pill">Developer: <%= featuredGame.developer %></span>
-          <span class="roblox-meta-pill">Players: <%= featuredGame.playerCount %></span>
+          <span class="roblox-meta-pill">Players: <%= Number(featuredGame.playerCount) || 0 %></span>
           <span class="roblox-meta-pill">Genre: <%= featuredGame.genre %></span>
-          <span class="roblox-meta-pill">Favorites: <%= featuredGame.favorites %></span>
+          <span class="roblox-meta-pill">Favorites: <%= Number(featuredGame.favorites) || 0 %></span>
         </div>
 
         <div class="roblox-description"><%= featuredGame.description %></div>
@@ -86,7 +122,7 @@
                 </div>
                 <div class="roblox-game-card-meta">
                   <div class="roblox-game-card-title"><%= game.title %></div>
-                  <div class="roblox-game-card-sub"><%= game.genre %> · <%= game.playerCount %> playing</div>
+                  <div class="roblox-game-card-sub"><%= game.genre %> · <%= Number(game.playerCount) || 0 %> playing</div>
                 </div>
               </a>
             <% }) %>
@@ -137,6 +173,8 @@
         </div>
       </aside>
     </section>
+      </div>
+    </div>
   </div>
 
   <script>

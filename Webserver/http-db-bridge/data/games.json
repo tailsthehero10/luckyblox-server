@@ -1,1271 +1,1130 @@
 {
-  "1801": {
-    "placeId": 1801,
-    "title": "2007 - Chaos Canyon",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 101,
-    "likes": 1000,
-    "favorites": 600,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1801": {
+        "placeId": 1801,
+        "title": "2007 - Chaos Canyon",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1802": {
-    "placeId": 1802,
-    "title": "2007 - Community Construction Site",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 118,
-    "likes": 1071,
-    "favorites": 655,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1802": {
+        "placeId": 1802,
+        "title": "2007 - Community Construction Site",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1803": {
-    "placeId": 1803,
-    "title": "2007 - Crossroads",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 135,
-    "likes": 1142,
-    "favorites": 710,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1803": {
+        "placeId": 1803,
+        "title": "2007 - Crossroads",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1804": {
-    "placeId": 1804,
-    "title": "2007 - Haunted Mansion",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 152,
-    "likes": 1213,
-    "favorites": 765,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1804": {
+        "placeId": 1804,
+        "title": "2007 - Haunted Mansion",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1805": {
-    "placeId": 1805,
-    "title": "2007 - Santa's Winter Stronghold",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 169,
-    "likes": 1284,
-    "favorites": 820,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1805": {
+        "placeId": 1805,
+        "title": "2007 - Santa's Winter Stronghold",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1806": {
-    "placeId": 1806,
-    "title": "2008 - ROBLOX World Headquarters",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 186,
-    "likes": 1355,
-    "favorites": 875,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1806": {
+        "placeId": 1806,
+        "title": "2008 - ROBLOX World Headquarters",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1807": {
-    "placeId": 1807,
-    "title": "2008 - Underground Base",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 203,
-    "likes": 1426,
-    "favorites": 930,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1807": {
+        "placeId": 1807,
+        "title": "2008 - Underground Base",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1808": {
-    "placeId": 1808,
-    "title": "2014 - Mad Games",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 220,
-    "likes": 1497,
-    "favorites": 985,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1808": {
+        "placeId": 1808,
+        "title": "2014 - Mad Games",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1809": {
-    "placeId": 1809,
-    "title": "2014 - Muffin Kombat 2014",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 237,
-    "likes": 1568,
-    "favorites": 1040,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1809": {
+        "placeId": 1809,
+        "title": "2014 - Muffin Kombat 2014",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1810": {
-    "placeId": 1810,
-    "title": "2014 - Prison Life",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 254,
-    "likes": 1639,
-    "favorites": 1095,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1810": {
+        "placeId": 1810,
+        "title": "2014 - Prison Life",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1811": {
-    "placeId": 1811,
-    "title": "2015 - Advanced Warfare Tycoon",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 271,
-    "likes": 1710,
-    "favorites": 1150,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1811": {
+        "placeId": 1811,
+        "title": "2015 - Advanced Warfare Tycoon",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1812": {
-    "placeId": 1812,
-    "title": "2015 - Epic Minigames",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 288,
-    "likes": 1781,
-    "favorites": 1205,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1812": {
+        "placeId": 1812,
+        "title": "2015 - Epic Minigames",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1813": {
-    "placeId": 1813,
-    "title": "2015 - Flood escape 1.6.5",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 305,
-    "likes": 1852,
-    "favorites": 1260,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1813": {
+        "placeId": 1813,
+        "title": "2015 - Flood escape 1.6.5",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1814": {
-    "placeId": 1814,
-    "title": "2015 - Twisted Murderer",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 322,
-    "likes": 1923,
-    "favorites": 1315,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1814": {
+        "placeId": 1814,
+        "title": "2015 - Twisted Murderer",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1815": {
-    "placeId": 1815,
-    "title": "2016 - Lumber Tycoon 2",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 339,
-    "likes": 1994,
-    "favorites": 1370,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1815": {
+        "placeId": 1815,
+        "title": "2016 - Lumber Tycoon 2",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1816": {
-    "placeId": 1816,
-    "title": "2016 - Redwood Prison 2016",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 356,
-    "likes": 2065,
-    "favorites": 1425,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1816": {
+        "placeId": 1816,
+        "title": "2016 - Redwood Prison 2016",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1817": {
-    "placeId": 1817,
-    "title": "2016 - Retail Tycoon 1.1.2",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 373,
-    "likes": 2136,
-    "favorites": 1480,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1817": {
+        "placeId": 1817,
+        "title": "2016 - Retail Tycoon 1.1.2",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1818": {
-    "placeId": 1818,
-    "title": "2016 - Whatever floats your boat",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 390,
-    "likes": 2207,
-    "favorites": 1535,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1818": {
+        "placeId": 1818,
+        "title": "2016 - Whatever floats your boat",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1819": {
-    "placeId": 1819,
-    "title": "2017 - Build to Survive (Uncopylocked best)",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 407,
-    "likes": 2278,
-    "favorites": 1590,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1819": {
+        "placeId": 1819,
+        "title": "2017 - Build to Survive (Uncopylocked best)",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1820": {
-    "placeId": 1820,
-    "title": "2017 - Doomspire Brickbattle",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 424,
-    "likes": 2349,
-    "favorites": 1645,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1820": {
+        "placeId": 1820,
+        "title": "2017 - Doomspire Brickbattle",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1821": {
-    "placeId": 1821,
-    "title": "2017 - Hide and seek - By Jetray",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 441,
-    "likes": 2420,
-    "favorites": 1700,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1821": {
+        "placeId": 1821,
+        "title": "2017 - Hide and seek - By Jetray",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1822": {
-    "placeId": 1822,
-    "title": "2017 - Jailbreak",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 458,
-    "likes": 2491,
-    "favorites": 1755,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1822": {
+        "placeId": 1822,
+        "title": "2017 - Jailbreak",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1823": {
-    "placeId": 1823,
-    "title": "2017 - Natural Disaster Survival",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 475,
-    "likes": 2562,
-    "favorites": 1810,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1823": {
+        "placeId": 1823,
+        "title": "2017 - Natural Disaster Survival",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1824": {
-    "placeId": 1824,
-    "title": "2017 - Phantom Forces 2017",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 492,
-    "likes": 2633,
-    "favorites": 1865,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1824": {
+        "placeId": 1824,
+        "title": "2017 - Phantom Forces 2017",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1825": {
-    "placeId": 1825,
-    "title": "2017 - Pokemon Brick Bronze",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 509,
-    "likes": 2704,
-    "favorites": 1920,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1825": {
+        "placeId": 1825,
+        "title": "2017 - Pokemon Brick Bronze",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1826": {
-    "placeId": 1826,
-    "title": "2017 - Polyguns",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 526,
-    "likes": 2775,
-    "favorites": 1975,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1826": {
+        "placeId": 1826,
+        "title": "2017 - Polyguns",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1827": {
-    "placeId": 1827,
-    "title": "2017 - Robot 64",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 543,
-    "likes": 2846,
-    "favorites": 2030,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1827": {
+        "placeId": 1827,
+        "title": "2017 - Robot 64",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1828": {
-    "placeId": 1828,
-    "title": "2017 - RoCitizens",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 560,
-    "likes": 2917,
-    "favorites": 2085,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1828": {
+        "placeId": 1828,
+        "title": "2017 - RoCitizens",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1829": {
-    "placeId": 1829,
-    "title": "2017 - Rocket Arena",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 577,
-    "likes": 2988,
-    "favorites": 2140,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1829": {
+        "placeId": 1829,
+        "title": "2017 - Rocket Arena",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1830": {
-    "placeId": 1830,
-    "title": "2018 - Apocalypse Rising",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 594,
-    "likes": 3059,
-    "favorites": 2195,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1830": {
+        "placeId": 1830,
+        "title": "2018 - Apocalypse Rising",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1831": {
-    "placeId": 1831,
-    "title": "2018 - Assassin",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 611,
-    "likes": 3130,
-    "favorites": 2250,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1831": {
+        "placeId": 1831,
+        "title": "2018 - Assassin",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1832": {
-    "placeId": 1832,
-    "title": "2018 - Booga Booga",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 628,
-    "likes": 3201,
-    "favorites": 2305,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1832": {
+        "placeId": 1832,
+        "title": "2018 - Booga Booga",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1833": {
-    "placeId": 1833,
-    "title": "2018 - Full_mm2_Newest_Game",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 645,
-    "likes": 3272,
-    "favorites": 2360,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1833": {
+        "placeId": 1833,
+        "title": "2018 - Full_mm2_Newest_Game",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1834": {
-    "placeId": 1834,
-    "title": "2018 - minershaven",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 662,
-    "likes": 3343,
-    "favorites": 2415,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1834": {
+        "placeId": 1834,
+        "title": "2018 - minershaven",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1835": {
-    "placeId": 1835,
-    "title": "2018 - The Normal Elevator",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 679,
-    "likes": 3414,
-    "favorites": 2470,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1835": {
+        "placeId": 1835,
+        "title": "2018 - The Normal Elevator",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1836": {
-    "placeId": 1836,
-    "title": "2018 - The streets",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 696,
-    "likes": 3485,
-    "favorites": 2525,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1836": {
+        "placeId": 1836,
+        "title": "2018 - The streets",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1837": {
-    "placeId": 1837,
-    "title": "2018 - theme park tycoon 2",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 713,
-    "likes": 3556,
-    "favorites": 2580,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1837": {
+        "placeId": 1837,
+        "title": "2018 - theme park tycoon 2",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1838": {
-    "placeId": 1838,
-    "title": "2018 - Tower_Of_Hell_Full",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 730,
-    "likes": 3627,
-    "favorites": 2635,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1838": {
+        "placeId": 1838,
+        "title": "2018 - Tower_Of_Hell_Full",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1839": {
-    "placeId": 1839,
-    "title": "2018 - Vampire Hunters 2 Beta 1.9",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 747,
-    "likes": 3698,
-    "favorites": 2690,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1839": {
+        "placeId": 1839,
+        "title": "2018 - Vampire Hunters 2 Beta 1.9",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1840": {
-    "placeId": 1840,
-    "title": "2020 - Meepcity",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 764,
-    "likes": 3769,
-    "favorites": 2745,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1840": {
+        "placeId": 1840,
+        "title": "2020 - Meepcity",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1841": {
-    "placeId": 1841,
-    "title": "2021 - Grow the Flower",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 781,
-    "likes": 3840,
-    "favorites": 2800,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1841": {
+        "placeId": 1841,
+        "title": "2021 - Grow the Flower",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1842": {
-    "placeId": 1842,
-    "title": "2021 - Parkour 2021M",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 798,
-    "likes": 3911,
-    "favorites": 2855,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1842": {
+        "placeId": 1842,
+        "title": "2021 - Parkour 2021M",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1843": {
-    "placeId": 1843,
-    "title": "2021 - Pet Simulator 99",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 815,
-    "likes": 3982,
-    "favorites": 2910,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1843": {
+        "placeId": 1843,
+        "title": "2021 - Pet Simulator 99",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1844": {
-    "placeId": 1844,
-    "title": "2021 - Ragdoll Engine Uncopylocked",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 832,
-    "likes": 4053,
-    "favorites": 2965,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1844": {
+        "placeId": 1844,
+        "title": "2021 - Ragdoll Engine Uncopylocked",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1845": {
-    "placeId": 1845,
-    "title": "2021 - Super Power Training Simulator",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 849,
-    "likes": 4124,
-    "favorites": 3020,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1845": {
+        "placeId": 1845,
+        "title": "2021 - Super Power Training Simulator",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1846": {
-    "placeId": 1846,
-    "title": "2024 - Lazer tag",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 866,
-    "likes": 4195,
-    "favorites": 3075,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
+    "1846": {
+        "placeId": 1846,
+        "title": "2024 - Lazer tag",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
     },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  },
-  "1847": {
-    "placeId": 1847,
-    "title": "Demo - Cars",
-    "description": "A local map packaged as a playable LuckyBlox experience.",
-    "developer": "LuckyBlox Studio",
-    "icon": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80",
-    "genre": "Adventure",
-    "playerCount": 883,
-    "likes": 4266,
-    "favorites": 3130,
-    "activeServers": [
-      "localhost:53640"
-    ],
-    "serverList": [
-      "localhost:53640"
-    ],
-    "votes": {
-      "likes": 78,
-      "dislikes": 22
-    },
-    "tags": [
-      "Community",
-      "Local",
-      "Playtest"
-    ],
-    "updatedAt": "2026-09-09T12:37:05.072Z"
-  }
+    "1847": {
+        "placeId": 1847,
+        "title": "Demo - Cars",
+        "description": "A local map packaged as a playable LuckyBlox experience.",
+        "developer": "LuckyBlox Studio",
+        "icon": "/gameplaceholder/card.png",
+        "genre": "Adventure",
+        "playerCount": 0,
+        "likes": 0,
+        "favorites": 0,
+        "activeServers": [],
+        "serverList": [],
+        "votes": {
+            "likes": 0,
+            "dislikes": 0
+        },
+        "tags": [
+            "Community",
+            "Local",
+            "Playtest"
+        ],
+        "updatedAt": "2026-09-09T12:37:05.072Z",
+        "createdAt": "2026-09-09T12:37:05.072Z"
+    }
 }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Settings>
-  <BaseUrl>http://localhost/</BaseUrl>
+  <BaseUrl>http://localhost/LuckBlox.site.tk/</BaseUrl>
   <ContentFolder>content</ContentFolder>
   <SilentCrashReport>0</SilentCrashReport>
   <HideChatWindow>0</HideChatWindow>

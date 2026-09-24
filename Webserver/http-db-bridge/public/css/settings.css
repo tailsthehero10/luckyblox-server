@@ -1,0 +1,293 @@
+/* LuckyBlox settings page. Supports a full dark theme via .theme-dark on
+   <html>/<body>, which also re-colours the shared roblox.css variables. */
+
+.settings-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px 18px 64px;
+  align-items: start;
+}
+
+.settings-sidebar {
+  position: sticky;
+  top: 84px;
+  background: var(--bg-container);
+  border: 1px solid var(--border-line);
+  border-radius: 12px;
+  padding: 14px 10px;
+}
+
+.settings-sidebar-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 700;
+  padding: 6px 12px 10px;
+}
+
+.settings-nav-link {
+  display: block;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: var(--text-main);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.settings-nav-link:hover {
+  background: rgba(127, 160, 220, 0.12);
+  text-decoration: none;
+}
+
+.settings-nav-link.is-active {
+  background: rgba(26, 95, 180, 0.12);
+  color: var(--rbx-blue);
+}
+
+.settings-main {
+  min-width: 0;
+}
+
+.settings-head h1 {
+  margin: 0 0 4px;
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.settings-sub {
+  margin: 0 0 20px;
+  color: var(--text-muted);
+}
+
+.settings-status {
+  margin-bottom: 16px;
+  padding: 11px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.settings-status.is-ok {
+  background: rgba(0, 168, 89, 0.12);
+  color: #0a7d43;
+  border: 1px solid rgba(0, 168, 89, 0.3);
+}
+
+.settings-status.is-error {
+  background: rgba(217, 83, 79, 0.12);
+  color: #c0392b;
+  border: 1px solid rgba(217, 83, 79, 0.3);
+}
+
+.settings-card {
+  background: var(--bg-container);
+  border: 1px solid var(--border-line);
+  border-radius: 12px;
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.settings-card-head {
+  padding: 14px 20px;
+  font-weight: 800;
+  border-bottom: 1px solid var(--border-line);
+}
+
+.settings-card-body {
+  padding: 18px 20px;
+}
+
+.settings-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 18px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-line);
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding-top: 8px;
+}
+
+.settings-field {
+  min-width: 0;
+}
+
+.settings-field input,
+.settings-field textarea,
+.settings-field select {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-line);
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+.settings-field input:focus,
+.settings-field textarea:focus {
+  outline: none;
+  border-color: var(--rbx-blue);
+  box-shadow: 0 0 0 2px rgba(26, 95, 180, 0.18);
+}
+
+.settings-field input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.settings-help {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.settings-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.settings-summary-item {
+  background: var(--bg-main);
+  border: 1px solid var(--border-line);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.settings-summary-item span {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.settings-summary-item strong {
+  font-size: 1.05rem;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.settings-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.settings-btn.primary {
+  background: #00a859;
+  color: #fff;
+}
+
+.settings-btn.primary:hover {
+  filter: brightness(1.06);
+}
+
+.settings-btn.secondary {
+  background: var(--bg-container);
+  color: var(--text-main);
+  border-color: var(--border-line);
+}
+
+.settings-btn.secondary:hover {
+  background: rgba(127, 160, 220, 0.1);
+}
+
+.settings-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------- Dark theme ---------- */
+html.theme-dark,
+body.theme-dark {
+  --bg-main: #101318 !important;
+  --bg-container: #1a1e25 !important;
+  --border-line: #2c333d !important;
+  --text-main: #e6e9ee !important;
+  --text-muted: #9aa4b2 !important;
+  --rbx-text: #e6e9ee !important;
+  --rbx-muted: #9aa4b2 !important;
+  --rbx-header: #1b2330 !important;
+  --rbx-header-dark: #151b25 !important;
+  background: #101318 !important;
+  color: #e6e9ee !important;
+}
+
+body.theme-dark .settings-card,
+body.theme-dark .settings-sidebar {
+  background: #1a1e25;
+  border-color: #2c333d;
+}
+
+body.theme-dark .settings-nav-link.is-active {
+  background: rgba(90, 160, 255, 0.16);
+  color: #7db8ff;
+}
+
+body.theme-dark .settings-field input,
+body.theme-dark .settings-field textarea,
+body.theme-dark .settings-field select,
+body.theme-dark .settings-summary-item {
+  background: #12161c;
+  border-color: #2c333d;
+  color: #e6e9ee;
+}
+
+body.theme-dark .settings-status.is-ok {
+  color: #4be08e;
+}
+
+body.theme-dark .settings-status.is-error {
+  color: #ff8a84;
+}
+
+body.theme-dark .roblox-topbar {
+  background: #1a1e25 !important;
+  border-color: #2c333d !important;
+}
+
+@media (max-width: 800px) {
+  .settings-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-sidebar {
+    position: static;
+  }
+
+  .settings-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .settings-label {
+    padding-top: 0;
+  }
+}

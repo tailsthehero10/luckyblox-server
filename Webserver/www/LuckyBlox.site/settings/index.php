@@ -13,6 +13,37 @@ if (!$user) {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_profile') {
+    if (!lb_verify_csrf()) {
+        $errors[] = 'Security token missing or invalid. Please reload and try again.';
+    } else {
+        $displayName = trim((string) ($_POST['displayName'] ?? ''));
+        $bio = (string) ($_POST['bio'] ?? '');
+        $theme = (string) ($_POST['theme'] ?? 'light');
+        if (!in_array($theme, array('light', 'dark'), true)) {
+            $theme = 'light';
+        }
+
+        $users = lb_get_users();
+        $key = $user['key'];
+        if (!isset($users[$key]) || !is_array($users[$key])) {
+            $errors[] = 'Could not locate your account record.';
+        } else {
+            $users[$key]['displayName'] = $displayName !== '' ? substr($displayName, 0, 35) : $users[$key]['username'];
+            $users[$key]['bio'] = substr($bio, 0, 500);
+            $users[$key]['theme'] = $theme;
+            $users[$key]['updatedAt'] = date('c');
+            lb_write_json('users.json', $users);
+
+            // Refresh the client-visible identity so clients pick up the change.
+            lb_sync_local_identity(lb_normalize_user($users[$key], $key));
+            $success = 'Profile updated successfully.';
+            // Re-read so the page shows the new values immediately.
+            $user = lb_find_user_by_id($userId);
+        }
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'change_password') {
     if (!lb_verify_csrf()) {
         $errors[] = 'Security token missing or invalid. Please reload and try again.';
@@ -79,6 +110,7 @@ $publicHost = api_get_setting_value($settingsRoot . '/ip.txt', $ip);
     <link rel="icon" href="/site-icon/luckyblox.ico" sizes="any" />
     <link rel="icon" type="image/png" href="/site-icon/luckyblox.png" />
     <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/css/lb-select.css" />
     <style>
         body { font-family: Arial, sans-serif; background: #020617; color: #e2e8f0; margin: 0; padding: 40px; }
         .container { max-width: 900px; margin: 0 auto; }
@@ -157,13 +189,32 @@ $publicHost = api_get_setting_value($settingsRoot . '/ip.txt', $ip);
                         <h2>Account</h2>
                         <span class="settings-status">Signed in</span>
                     </div>
+
+                    <form method="POST" action="/LuckBlox.site/settings/">
+                        <input type="hidden" name="_csrf" value="<?php echo htmlspecialchars($csrfToken); ?>" />
+                        <input type="hidden" name="action" value="save_profile" />
+
+                        <label for="profileDisplayName">Display name</label>
+                        <input type="text" id="profileDisplayName" name="displayName" maxlength="35"
+                               value="<?php echo htmlspecialchars($user['displayName']); ?>" placeholder="Display name" />
+
+                        <label for="profileBio">About</label>
+                        <input type="text" id="profileBio" name="bio" maxlength="500"
+                               value="<?php echo htmlspecialchars($user['bio']); ?>" placeholder="Tell people about yourself" />
+
+                        <label for="profileTheme">Theme</label>
+                        <select class="lb-select" id="profileTheme" name="theme">
+                            <?php $themeVal = $user['theme'] ?? 'light'; ?>
+                            <option value="light"<?php echo $themeVal === 'light' ? ' selected' : ''; ?>>Light</option>
+                            <option value="dark"<?php echo $themeVal === 'dark' ? ' selected' : ''; ?>>Dark</option>
+                        </select>
+
+                        <button type="submit">Save profile</button>
+                    </form>
+
                     <div class="settings-row">
                         <span>Username</span>
                         <strong><?php echo htmlspecialchars($username); ?></strong>
-                    </div>
-                    <div class="settings-row">
-                        <span>Display name</span>
-                        <strong><?php echo htmlspecialchars($user['displayName']); ?></strong>
                     </div>
                     <div class="settings-row">
                         <span>Membership</span>
@@ -180,10 +231,6 @@ $publicHost = api_get_setting_value($settingsRoot . '/ip.txt', $ip);
                     <div class="settings-row">
                         <span>Join date</span>
                         <strong><?php echo htmlspecialchars($joinDate); ?></strong>
-                    </div>
-                    <div class="settings-row">
-                        <span>Bio</span>
-                        <span style="color:#94a3b8;max-width:60%;"><?php echo $bio ? htmlspecialchars($bio) : 'Not set'; ?></span>
                     </div>
                 </section>
 
@@ -234,5 +281,6 @@ $publicHost = api_get_setting_value($settingsRoot . '/ip.txt', $ip);
             </main>
         </div>
     </div>
+    <script src="/lb-select.js"></script>
 </body>
 </html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/lb-select.css" />
+  <link rel="stylesheet" href="/css/settings.css" />
+</head>
+<body>
+  <div class="roblox-page">
+    <header class="roblox-topbar">
+      <a class="roblox-brand" href="/" aria-label="LuckyBlox home">
+        <img class="roblox-brand-mark" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
+        <span>LuckyBlox</span>
+      </a>
+
+      <nav class="roblox-nav" aria-label="Main navigation">
+        <div class="roblox-nav-links">
+          <a href="/">Home</a>
+          <a href="/games">Games</a>
+          <a href="/develop">Create</a>
+          <div class="roblox-more-pages">
+            <button class="roblox-more-pages-btn" type="button">More pages &#9662;</button>
+            <div class="roblox-more-pages-dropdown">
+              <a href="/profile?userId=<%= user.userId %>">Profile</a>
+              <a href="/avatar?userId=<%= user.userId %>">Avatar</a>
+              <a href="/friends">Friends</a>
+              <a href="/studio">Studio</a>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div class="roblox-right">
+        <span class="roblox-robux"><%= (currency && currency.robux) || user.robux || 0 %></span>
+        <a class="roblox-icon-button" href="/settings" title="Settings" aria-label="Settings"><img class="ch-ico" src="/icons/settings.svg" alt="" /></a>
+        <a class="roblox-icon-button" href="/friends" title="Friends" aria-label="Friends"><img class="ch-ico" src="/icons/friends.svg" alt="" /></a>
+        <a class="roblox-icon-button" href="/profile?userId=<%= user.userId %>" title="Profile" aria-label="Profile"><img class="ch-ico" src="/icons/profile.svg" alt="" /></a>
+      </div>
+    </header>
+
+    <div class="settings-shell">
+      <aside class="settings-sidebar">
+        <div class="settings-sidebar-title">Settings</div>
+        <a href="#profile" class="settings-nav-link is-active" data-panel="profile">Profile</a>
+        <a href="#appearance" class="settings-nav-link" data-panel="appearance">Appearance</a>
+        <a href="#privacy" class="settings-nav-link" data-panel="privacy">Privacy</a>
+        <a href="#account" class="settings-nav-link" data-panel="account">Account</a>
+      </aside>
+
+      <main class="settings-main">
+        <div class="settings-head">
+          <h1>Settings</h1>
+          <p class="settings-sub">Manage your LuckyBlox account, profile and appearance.</p>
+        </div>
+
+        <div class="settings-status" id="settingsStatus" role="status" aria-live="polite" hidden></div>
+
+        <form id="settingsForm">
+          <!-- Profile -->
+          <section class="settings-card settings-panel" id="panel-profile">
+            <div class="settings-card-head">Profile</div>
+            <div class="settings-card-body">
+              <div class="settings-row">
+                <label class="settings-label" for="username">Username</label>
+                <div class="settings-field">
+                  <input id="username" type="text" value="<%= user.username %>" disabled />
+                  <div class="settings-help">Your username is permanent and is how others find you.</div>
+                </div>
+              </div>
+
+              <div class="settings-row">
+                <label class="settings-label" for="setDisplayName">Display name</label>
+                <div class="settings-field">
+                  <input id="setDisplayName" name="displayName" type="text" maxlength="35"
+                         value="<%= user.displayName || user.username %>" placeholder="Display name" />
+                  <div class="settings-help">Shown across LuckyBlox. Defaults to your username.</div>
+                </div>
+              </div>
+
+              <div class="settings-row">
+                <label class="settings-label" for="setBio">About</label>
+                <div class="settings-field">
+                  <textarea id="setBio" name="bio" maxlength="500" rows="3" placeholder="Tell people about yourself"><%= user.bio || '' %></textarea>
+                </div>
+              </div>
+
+              <div class="settings-row">
+                <label class="settings-label" for="setEmail">Email</label>
+                <div class="settings-field">
+                  <input id="setEmail" name="email" type="email" maxlength="120"
+                         value="<%= user.email || '' %>" placeholder="you@example.com" />
+                  <div class="settings-help">Used for account recovery only.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Appearance -->
+          <section class="settings-card settings-panel" id="panel-appearance">
+            <div class="settings-card-head">Appearance</div>
+            <div class="settings-card-body">
+              <div class="settings-row">
+                <label class="settings-label" for="setTheme">Theme</label>
+                <div class="settings-field">
+                  <select class="lb-select" id="setTheme" name="theme">
+                    <option value="light" <%= (user.theme || 'light') === 'light' ? 'selected' : '' %>>Light</option>
+                    <option value="dark" <%= user.theme === 'dark' ? 'selected' : '' %>>Dark</option>
+                  </select>
+                  <div class="settings-help">Dark theme applies to your profile and settings pages.</div>
+                </div>
+              </div>
+
+              <div class="settings-row">
+                <label class="settings-label" for="setGender">Gender</label>
+                <div class="settings-field">
+                  <select class="lb-select" id="setGender" name="gender">
+                    <option value="NotSpecified" <%= (user.gender || 'NotSpecified') === 'NotSpecified' ? 'selected' : '' %>>Not specified</option>
+                    <option value="Male" <%= user.gender === 'Male' ? 'selected' : '' %>>Male</option>
+                    <option value="Female" <%= user.gender === 'Female' ? 'selected' : '' %>>Female</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="settings-row">
+                <label class="settings-label" for="setAvatarType">Avatar rig</label>
+                <div class="settings-field">
+                  <select class="lb-select" id="setAvatarType" name="playerAvatarType">
+                    <% var rig = (user.avatar && user.avatar.playerAvatarType) || 'R15'; %>
+                    <option value="R15" <%= rig === 'R15' ? 'selected' : '' %>>R15</option>
+                    <option value="R6" <%= rig === 'R6' ? 'selected' : '' %>>R6</option>
+                  </select>
+                  <div class="settings-help">Change your outfit colours on the <a href="/avatar?userId=<%= user.userId %>">Avatar page</a>.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Privacy -->
+          <section class="settings-card settings-panel" id="panel-privacy">
+            <div class="settings-card-head">Privacy</div>
+            <div class="settings-card-body">
+              <div class="settings-row">
+                <label class="settings-label" for="setAboutMe">Who can see my activity</label>
+                <div class="settings-field">
+                  <select class="lb-select" id="setAboutMe" name="aboutMe">
+                    <option value="everyone">Everyone</option>
+                    <option value="friends">Friends</option>
+                    <option value="nobody">Nobody</option>
+                  </select>
+                  <div class="settings-help">Controls who can see your recent experiences and creations.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Account -->
+          <section class="settings-card settings-panel" id="panel-account">
+            <div class="settings-card-head">Account</div>
+            <div class="settings-card-body">
+              <div class="settings-summary">
+                <div class="settings-summary-item"><span>User ID</span><strong><%= user.userId %></strong></div>
+                <div class="settings-summary-item"><span>Membership</span><strong><%= user.membershipStatus || user.membership || 'None' %></strong></div>
+                <div class="settings-summary-item"><span>Joined</span><strong><%= (user.joinDate || '').slice(0, 10) %></strong></div>
+                <div class="settings-summary-item"><span>Robux</span><strong><%= (currency && currency.robux) || user.robux || 0 %></strong></div>
+              </div>
+              <div class="settings-field" style="margin-top:14px;">
+                <a class="settings-btn secondary" href="/logout">Sign out</a>
+              </div>
+            </div>
+          </section>
+
+          <div class="settings-actions">
+            <button type="submit" class="settings-btn primary" id="settingsSave">Save changes</button>
+            <a class="settings-btn secondary" href="/profile?userId=<%= user.userId %>">View profile</a>
+          </div>
+        </form>
+      </main>
+    </div>
+  </div>
+
+  <script src="/lb-select.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      // --- Theme: apply the saved theme immediately, site-wide via a body class.
+      var root = document.documentElement;
+      var savedTheme = <%= JSON.stringify(user.theme || 'light') %>;
+      function applyTheme(theme) {
+        root.classList.toggle('theme-dark', theme === 'dark');
+        document.body.classList.toggle('theme-dark', theme === 'dark');
+      }
+      applyTheme(savedTheme);
+
+      // --- Sidebar nav switches which panel is visible (all are visible on one
+      // scroll on small screens; on desktop the nav highlights the section).
+      var links = document.querySelectorAll('.settings-nav-link');
+      links.forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          e.preventDefault();
+          var panel = document.getElementById('panel-' + link.getAttribute('data-panel'));
+          if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          links.forEach(function (l) { l.classList.remove('is-active'); });
+          link.classList.add('is-active');
+        });
+      });
+
+      var status = document.getElementById('settingsStatus');
+      var saveBtn = document.getElementById('settingsSave');
+      var form = document.getElementById('settingsForm');
+
+      function showStatus(message, isError) {
+        status.hidden = false;
+        status.textContent = message;
+        status.classList.toggle('is-error', !!isError);
+        status.classList.toggle('is-ok', !isError);
+      }
+
+      form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        var payload = {
+          displayName: document.getElementById('setDisplayName').value,
+          bio: document.getElementById('setBio').value,
+          email: document.getElementById('setEmail').value,
+          theme: document.getElementById('setTheme').value,
+          gender: document.getElementById('setGender').value,
+          playerAvatarType: document.getElementById('setAvatarType').value,
+          aboutMe: document.getElementById('setAboutMe').value,
+        };
+
+        try {
+          var response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          var data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error((data && data.message) || 'Could not save your settings.');
+          }
+          applyTheme(data.user.theme || 'light');
+          showStatus('Your settings have been saved.', false);
+        } catch (error) {
+          showStatus(error.message || 'Could not save your settings.', true);
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save changes';
+        }
+      });
+
+      // Live preview when the theme dropdown changes, before saving.
+      var themeSelect = document.getElementById('setTheme');
+      if (themeSelect) {
+        themeSelect.addEventListener('change', function () { applyTheme(themeSelect.value); });
+      }
+    }());
+  </script>
+</body>
+</html>

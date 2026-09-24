@@ -64,6 +64,7 @@ $genderLabels = array('NotSpecified' => 'Not specified', 'Male' => 'Male', 'Fema
     <title>LuckyBlox Sign Up</title>
     <link rel="icon" href="/site-icon/luckyblox.ico" sizes="any" />
     <link rel="icon" type="image/png" href="/site-icon/luckyblox.png" />
+    <link rel="stylesheet" href="/css/lb-select.css" />
     <style>
         body {
             margin: 0; padding: 0;
@@ -130,19 +131,19 @@ $genderLabels = array('NotSpecified' => 'Not specified', 'Male' => 'Male', 'Fema
 
             <label>Birthday *</label>
             <div class="birthday-row">
-                <select id="birthMonth" name="birthMonth" aria-label="Birth month" required>
+                <select class="lb-select" id="birthMonth" name="birthMonth" aria-label="Birth month" required>
                     <option value="">Month</option>
                     <?php foreach ($monthNames as $num => $name): ?>
                         <option value="<?php echo $num; ?>"<?php echo $birthMonthVal === $num ? ' selected' : ''; ?>><?php echo htmlspecialchars($name); ?></option>
                     <?php endforeach; ?>
                 </select>
-                <select id="birthDay" name="birthDay" aria-label="Birth day" required>
+                <select class="lb-select" id="birthDay" name="birthDay" aria-label="Birth day" required>
                     <option value="">Day</option>
                     <?php for ($d = 1; $d <= 31; $d++): ?>
                         <option value="<?php echo $d; ?>"<?php echo $birthDayVal === $d ? ' selected' : ''; ?>><?php echo $d; ?></option>
                     <?php endfor; ?>
                 </select>
-                <select id="birthYear" name="birthYear" aria-label="Birth year" required>
+                <select class="lb-select" id="birthYear" name="birthYear" aria-label="Birth year" required>
                     <option value="">Year</option>
                     <?php for ($y = $currentYear; $y >= 1900; $y--): ?>
                         <option value="<?php echo $y; ?>"<?php echo $birthYearVal === $y ? ' selected' : ''; ?>><?php echo $y; ?></option>
@@ -168,7 +169,7 @@ $genderLabels = array('NotSpecified' => 'Not specified', 'Male' => 'Male', 'Fema
             <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required minlength="8" autocomplete="new-password" />
 
             <label for="gender">Gender (optional)</label>
-            <select id="gender" name="gender">
+            <select class="lb-select" id="gender" name="gender">
                 <?php foreach ($genderLabels as $value => $label): ?>
                     <option value="<?php echo htmlspecialchars($value); ?>"<?php echo $genderVal === $value ? ' selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
                 <?php endforeach; ?>
@@ -237,5 +238,6 @@ $genderLabels = array('NotSpecified' => 'Not specified', 'Male' => 'Male', 'Fema
             });
         })();
     </script>
+    <script src="/lb-select.js"></script>
 </body>
 </html>

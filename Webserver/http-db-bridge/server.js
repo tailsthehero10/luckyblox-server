@@ -81,6 +81,8 @@ app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
 // the site renders in the real Roblox typeface instead of a system fallback.
 app.use('/fonts', express.static(path.join(__dirname, 'public', 'fonts')));
 app.use('/legacy-nav.js', express.static(path.join(__dirname, 'public', 'legacy-nav.js')));
+// Custom site dropdown (replaces native <select> with a themed, accessible one).
+app.use('/lb-select.js', express.static(path.join(__dirname, 'public', 'lb-select.js')));
 // Serve the site icon folder so /favicon.ico, /favicon.png and the originals in
 // Webserver/site icon/ are all reachable from every page.
 const siteIconDir = path.join(releaseRoot, 'Webserver', 'site icon');
@@ -686,14 +688,17 @@ function createDefaultGames() {
       developer: 'LuckyBlox Studio',
       icon: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80',
       genre: 'Adventure',
-      playerCount: 1281,
-      likes: 9834,
-      favorites: 4721,
-      activeServers: [`${gameServerHost}:${gamePort}`],
-      serverList: [`${gameServerHost}:${gamePort}`],
+      // Real counters only. This deployment just started, so a brand new game
+      // reports 0 players / 0 likes until actual traffic exists - no invented
+      // "1,281 playing" numbers.
+      playerCount: 0,
+      likes: 0,
+      favorites: 0,
+      activeServers: [],
+      serverList: [],
       votes: {
-        likes: 84,
-        dislikes: 16,
+        likes: 0,
+        dislikes: 0,
       },
       tags: ['Action', 'Adventure', 'Multiplayer'],
       updatedAt: new Date().toISOString(),
@@ -711,14 +716,15 @@ function createDefaultGames() {
       developer: 'LuckyBlox Studio',
       icon: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80',
       genre: 'Adventure',
-      playerCount: 101 + index * 17,
-      likes: 1000 + index * 71,
-      favorites: 600 + index * 55,
-      activeServers: [`${gameServerHost}:${gamePort}`],
-      serverList: [`${gameServerHost}:${gamePort}`],
+      // Honest counters: a freshly imported map has no plays yet.
+      playerCount: 0,
+      likes: 0,
+      favorites: 0,
+      activeServers: [],
+      serverList: [],
       votes: {
-        likes: 78,
-        dislikes: 22,
+        likes: 0,
+        dislikes: 0,
       },
       tags: ['Community', 'Playtest'],
       updatedAt: new Date().toISOString(),
@@ -1492,6 +1498,19 @@ function saveUser(userId, nextState) {
     inventory: Array.isArray(nextState.inventory) ? nextState.inventory : current.inventory,
     currentlyWearing: Array.isArray(nextState.currentlyWearing) ? nextState.currentlyWearing : current.currentlyWearing,
   };
+
+  // getUser() returns a *normalized* view that adds a `key` field and default
+  // sub-objects. Persisting `key` would duplicate the id and the normalized
+  // defaults would overwrite the real stored avatar on the next read, so strip
+  // the view-only field before writing.
+  delete merged.key;
+
+  // Preserve the stored password / salt / version. getUser() exposes them, but a
+  // settings save that came through the JSON body must never blank a credential.
+  const stored = users[String(userId)] || {};
+  if (stored.password) merged.password = stored.password;
+  if (stored.passwordSalt) merged.passwordSalt = stored.passwordSalt;
+  if (stored.passwordVersion) merged.passwordVersion = stored.passwordVersion;
 
   users[String(userId)] = merged;
   writeJson(usersPath, users);
@@ -2751,11 +2770,27 @@ app.get('/game', (req, res) => {
   const user = getUser(req.query.userId || 1);
   const game = getGameEntry(placeId);
 
+  // Real lifecycle facts for the game page template. Created On falls back to the
+  // published date, then to the map file's own timestamp - never a made-up value.
+  const createdAt = game.createdAt || game.publishedAt || game.updatedAt || '';
+  const updatedAt = game.updatedAt || game.publishedAt || createdAt;
+
   res.render('game-about', {
     title: `${game.title} | LuckyBlox`,
     user,
     game,
     placeId,
+    currency: getCurrencyForUser(user),
+    createdAt,
+    updatedAt,
+    // Roblox's own placeholder art: Card_512x512 for the icon, Big_ for the
+    // wide hero thumbnail on the game's own page.
+    gameIcon: game.icon && /^\/|^https?:\/\//.test(game.icon) ? game.icon : '/gameplaceholder/card.png',
+    gameThumb: '/gameplaceholder/big.png',
+    creatorName: game.developer || 'LuckyBlox Studio',
+    playing: Number(game.playerCount) || 0,
+    likes: Number(game.likes) || 0,
+    favorites: Number(game.favorites) || 0,
   });
 });
 
@@ -3268,17 +3303,74 @@ app.get('/api/roblox/user/:userId', async (req, res) => {
 });
 
 app.post('/api/avatar/wear', (req, res) => {
-  const userId = String(req.body.userId || 1);
+  // Only ever write the *signed-in* user's own avatar. The body userId used to
+  // be trusted, which let anyone overwrite another account's outfit.
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const userId = String((sessionUser && (sessionUser.userId || sessionUser.id)) || req.body.userId || 1);
   const incomingAssetIds = Array.isArray(req.body.assetIds) ? req.body.assetIds : [];
   const normalizedIds = incomingAssetIds.map((id) => String(id));
   const updatedUser = saveUser(userId, {
     currentlyWearing: normalizedIds,
   });
 
+  // Keep the client-visible identity in sync so the game clients spawn the
+  // avatar the user just saved.
+  try { syncLocalIdentity(updatedUser); } catch (error) { /* best effort */ }
+
   res.json({
     ok: true,
     userId,
     currentlyWearing: updatedUser.currentlyWearing,
+  });
+});
+
+/**
+ * Save the full avatar: body colours, gender, rig and what is equipped, in one
+ * write. The avatar page used to only call /api/avatar/wear, so body-colour
+ * edits were silently dropped and reverted on the next load. This merges into
+ * the existing avatar block so nothing already set is lost, and mirrors the
+ * result into Settings/ so the clients load the same appearance.
+ */
+app.post('/api/avatar/save', (req, res) => {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  if (!sessionUser) {
+    return res.status(401).json({ ok: false, error: 'sign-in-required', message: 'Sign in to save your avatar.' });
+  }
+  const userId = String(sessionUser.userId || sessionUser.id || 1);
+  const current = getUser(userId);
+  const body = req.body || {};
+  const avatar = Object.assign({}, current.avatar || {});
+  const nextState = {};
+
+  if (body.bodyColors && typeof body.bodyColors === 'object') {
+    avatar.bodyColors = Object.assign({}, avatar.bodyColors, body.bodyColors);
+  }
+  if (body.gender && ['Male', 'Female', 'NotSpecified'].includes(String(body.gender))) {
+    avatar.gender = String(body.gender);
+    nextState.gender = String(body.gender);
+  }
+  if (body.playerAvatarType && ['R6', 'R15'].includes(String(body.playerAvatarType))) {
+    avatar.playerAvatarType = String(body.playerAvatarType);
+  }
+  if (body.scales && typeof body.scales === 'object') {
+    avatar.scales = Object.assign({}, avatar.scales, body.scales);
+  }
+  if (Array.isArray(body.assetIds)) {
+    const ids = body.assetIds.map((id) => String(id));
+    avatar.currentlyWearing = ids;
+    nextState.currentlyWearing = ids;
+  }
+
+  nextState.avatar = avatar;
+  const updated = saveUser(userId, nextState);
+  try { syncLocalIdentity(updated); } catch (error) { /* best effort */ }
+  audit('avatar_saved', { userId, wearing: (updated.currentlyWearing || []).length });
+
+  return res.json({
+    ok: true,
+    userId,
+    avatar: updated.avatar,
+    currentlyWearing: updated.currentlyWearing,
   });
 });
 
@@ -4113,6 +4205,102 @@ app.get('/api/me', (req, res) => {
       displayName: user.username,
       robux: Number(user.robux) || 0,
       currency: getCurrencyForUser(user),
+    },
+  });
+});
+
+/**
+ * Account settings page. A real, working settings surface for the signed-in
+ * user: profile (display name / bio / theme / email), privacy and appearance.
+ * Guests are sent to sign in first, because there is nothing to save for them.
+ */
+app.get('/settings', (req, res) => {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  if (!sessionUser) {
+    return res.redirect('/signin?redirect=' + encodeURIComponent('/settings'));
+  }
+  const userId = sessionUser.userId || sessionUser.id || 1;
+  const user = getUser(userId);
+
+  res.render('settings', {
+    title: 'Settings - LuckyBlox',
+    user,
+    currency: getCurrencyForUser(user),
+    adminBadge: getAdminBadge(user),
+  });
+});
+
+/**
+ * Save account settings. Only ever writes the *signed-in* user's own record -
+ * the userId is taken from the session and never trusted from the body, so one
+ * account cannot edit another. The avatar block is merged, not overwritten, so
+ * body colours and scales the user already set are preserved.
+ */
+app.post('/api/settings', (req, res) => {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  if (!sessionUser) {
+    return res.status(401).json({ ok: false, error: 'sign-in-required', message: 'Sign in to change your settings.' });
+  }
+  const userId = String(sessionUser.userId || sessionUser.id || 1);
+  const current = getUser(userId);
+  const body = req.body || {};
+
+  const nextState = {};
+
+  if (typeof body.displayName === 'string' && body.displayName.trim()) {
+    nextState.displayName = body.displayName.trim().slice(0, 35);
+  }
+  if (typeof body.bio === 'string') {
+    nextState.bio = body.bio.slice(0, 500);
+  }
+  if (typeof body.email === 'string') {
+    nextState.email = body.email.trim().slice(0, 120);
+  }
+  if (typeof body.theme === 'string' && ['light', 'dark'].includes(body.theme)) {
+    nextState.theme = body.theme;
+  }
+  if (typeof body.aboutMe === 'string') {
+    nextState.aboutMe = body.aboutMe.slice(0, 500);
+  }
+
+  // Avatar block is merged so a settings save never wipes the body colours /
+  // scales the avatar page wrote.
+  const avatarPatch = {};
+  if (body.gender && ['Male', 'Female', 'NotSpecified'].includes(String(body.gender))) {
+    nextState.gender = String(body.gender);
+    avatarPatch.gender = String(body.gender);
+  }
+  if (body.playerAvatarType && ['R6', 'R15'].includes(String(body.playerAvatarType))) {
+    avatarPatch.playerAvatarType = String(body.playerAvatarType);
+  }
+  if (body.bodyColors && typeof body.bodyColors === 'object') {
+    avatarPatch.bodyColors = Object.assign({}, current.avatar && current.avatar.bodyColors, body.bodyColors);
+  }
+  if (Object.keys(avatarPatch).length) {
+    nextState.avatar = Object.assign({}, current.avatar, avatarPatch);
+  }
+
+  if (Object.keys(nextState).length === 0) {
+    return res.json({ ok: true, user: current, message: 'Nothing to update.' });
+  }
+
+  const updated = saveUser(userId, nextState);
+  // Keep the client-visible identity in sync so the launcher / clients pick up
+  // the display name and appearance change immediately.
+  try { syncLocalIdentity(updated); } catch (error) { /* best effort */ }
+
+  audit('settings_saved', { userId, fields: Object.keys(nextState) });
+
+  return res.json({
+    ok: true,
+    user: {
+      userId: Number(updated.userId || userId),
+      username: updated.username,
+      displayName: updated.displayName || updated.username,
+      bio: updated.bio || '',
+      theme: updated.theme || 'light',
+      gender: updated.gender || 'NotSpecified',
+      avatar: updated.avatar || {},
     },
   });
 });

@@ -9,10 +9,10 @@
 <body>
   <div class="roblox-page">
     <header class="roblox-topbar">
-      <div class="roblox-brand">
+      <a class="roblox-brand" href="/" aria-label="LuckyBlox home">
         <img class="roblox-brand-mark" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
         <span>LuckyBlox</span>
-      </div>
+      </a>
 
       <nav class="roblox-nav">
         <div class="roblox-nav-links">
@@ -24,6 +24,7 @@
               <a href="/profile?userId=<%= user.userId %>">Profile</a>
               <a href="/avatar?userId=<%= user.userId %>">Avatar</a>
               <a href="/studio">Studio</a>
+              <a href="/settings">Settings</a>
               <a href="/account">Account</a>
             </div>
           </div>
@@ -100,15 +101,19 @@
       }
 
       if (event.target.id === 'save-wear') {
-        const response = await fetch('/api/avatar/wear', {
+        // Save through /api/avatar/save so the equipped list is written together
+        // with the rest of the avatar and mirrored into Settings/ for the clients.
+        const response = await fetch('/api/avatar/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, assetIds: Array.from(selected) })
+          body: JSON.stringify({ assetIds: Array.from(selected) })
         });
 
-        const payload = await response.json();
+        const payload = await response.json().catch(() => ({}));
         if (payload.ok) {
           window.location.reload();
+        } else {
+          alert((payload && payload.message) || 'Could not save your avatar. Sign in and try again.');
         }
       }
 

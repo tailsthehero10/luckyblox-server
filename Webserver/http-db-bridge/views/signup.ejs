@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><%= title %></title>
   <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/lb-select.css" />
   <style>
     body {
       margin: 0;
@@ -261,19 +262,19 @@
           <div class="signin-field">
             <label>Birthday</label>
             <div class="birthday-row">
-              <select id="birthMonth" name="birthMonth" aria-label="Birth month" required>
+              <select class="lb-select" id="birthMonth" name="birthMonth" aria-label="Birth month" required>
                 <option value="">Month</option>
                 <% ['January','February','March','April','May','June','July','August','September','October','November','December'].forEach(function(m, i) { %>
                   <option value="<%= i + 1 %>"><%= m %></option>
                 <% }); %>
               </select>
-              <select id="birthDay" name="birthDay" aria-label="Birth day" required>
+              <select class="lb-select" id="birthDay" name="birthDay" aria-label="Birth day" required>
                 <option value="">Day</option>
                 <% for (var d = 1; d <= 31; d++) { %>
                   <option value="<%= d %>"><%= d %></option>
                 <% } %>
               </select>
-              <select id="birthYear" name="birthYear" aria-label="Birth year" required>
+              <select class="lb-select" id="birthYear" name="birthYear" aria-label="Birth year" required>
                 <option value="">Year</option>
                 <% for (var y = new Date().getFullYear(); y >= 1900; y--) { %>
                   <option value="<%= y %>"><%= y %></option>
@@ -304,7 +305,7 @@
 
           <div class="signin-field">
             <label for="gender">Gender</label>
-            <select id="gender" name="gender">
+            <select class="lb-select" id="gender" name="gender">
               <option value="NotSpecified">Not specified</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
@@ -356,5 +357,6 @@
     })();
   </script>
 <script src="/legacy-nav.js"></script>
+<script src="/lb-select.js"></script>
 </body>
 </html>

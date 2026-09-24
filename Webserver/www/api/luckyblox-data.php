@@ -215,6 +215,8 @@ function lb_normalize_user($user, $key = null) {
         ),
         'gender'        => $user['gender'] ?? ($user['avatar']['gender'] ?? 'NotSpecified'),
         'birthday'      => $user['birthday'] ?? null,
+        'theme'         => $user['theme'] ?? 'light',
+        'email'         => $user['email'] ?? '',
         'created'       => $user['created'] ?? ($user['joinDate'] ?? ''),
         'profileUrl'    => $user['profileUrl'] ?? ('/LuckBlox.site/users/' . $id . '/profile'),
         'robloxUserId'  => $user['robloxUserId'] ?? null,

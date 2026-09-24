@@ -515,10 +515,10 @@ $mapCount = count($maps);
 <body>
     <div class="page">
         <header class="topbar">
-            <div class="brand">
+            <a class="brand" href="/LuckBlox.site/home" aria-label="LuckyBlox home">
                 <img src="/site-icon/luckyblox.png" alt="LuckyBlox" />
                 <span>LuckyBlox</span>
-            </div>
+            </a>
 
             <nav class="nav" aria-label="Main navigation">
                 <a class="active" href="/LuckBlox.site/home">Home</a>
@@ -612,7 +612,7 @@ $mapCount = count($maps);
                         <h3><?php echo htmlspecialchars($game['title']); ?></h3>
                         <p><?php echo htmlspecialchars($game['description'] ?: 'A local map packaged as a playable LuckyBlox experience.'); ?></p>
                         <div class="game-links">
-                            <span>Place <?php echo (int) $game['placeId']; ?> • <?php echo (int) $game['playerCount']; ?> players</span>
+                            <span>Place <?php echo (int) $game['placeId']; ?> &bull; <?php echo (int) $game['playerCount']; ?> playing</span>
                             <a class="mini-button" href="/LuckBlox.site/play?placeid=<?php echo (int) $game['placeId']; ?>">Play</a>
                         </div>
                     </div>

@@ -1,0 +1,134 @@
+/* LuckyBlox custom dropdown (see /lb-select.js).
+   The native <select> is kept for the form value but hidden; the visible control
+   is .lb-select-trigger + .lb-select-menu. Colours follow the current theme. */
+
+.lb-select {
+  position: relative;
+  width: 100%;
+  display: block;
+}
+
+.lb-select-native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.lb-select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 4px;
+  border: 1px solid var(--lb-select-border, #b8bcc1);
+  background: var(--lb-select-bg, #ffffff);
+  color: var(--lb-select-text, #232527);
+  font: inherit;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.lb-select-trigger:hover {
+  border-color: var(--lb-select-border-hover, #8f9599);
+}
+
+.lb-select-trigger:focus-visible,
+.lb-select-trigger[aria-expanded="true"] {
+  outline: none;
+  border-color: var(--lb-select-accent, #00a2ff);
+  box-shadow: 0 0 0 2px rgba(0, 162, 255, 0.25);
+}
+
+.lb-select-value {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-select-trigger.is-placeholder .lb-select-value {
+  color: var(--lb-select-muted, #8b8e92);
+}
+
+.lb-select-arrow {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  color: var(--lb-select-muted, #6b6e72);
+  transition: transform 0.15s;
+}
+
+.lb-select-trigger[aria-expanded="true"] .lb-select-arrow {
+  transform: rotate(180deg);
+}
+
+/* Fixed positioning so a scrolling/overflow-hidden card can never clip it. */
+.lb-select-menu {
+  position: fixed;
+  z-index: 9000;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid var(--lb-select-menu-border, #d5dbe2);
+  background: var(--lb-select-menu-bg, #ffffff);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
+  animation: lb-select-in 0.12s ease-out;
+}
+
+@keyframes lb-select-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lb-select-option {
+  padding: 9px 12px;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  color: var(--lb-select-text, #232527);
+  cursor: pointer;
+  user-select: none;
+}
+
+.lb-select-option:hover,
+.lb-select-option.is-active {
+  background: var(--lb-select-option-hover, #eef4ff);
+}
+
+.lb-select-option.is-selected {
+  background: var(--lb-select-accent, #00a2ff);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ----- Dark theme (settings page and any .theme-dark subtree) ----- */
+.theme-dark {
+  --lb-select-bg: #23262c;
+  --lb-select-text: #e8e8ec;
+  --lb-select-border: #3a3e45;
+  --lb-select-border-hover: #4c515a;
+  --lb-select-muted: #9aa0a8;
+  --lb-select-menu-bg: #1c1f24;
+  --lb-select-menu-border: #33373d;
+  --lb-select-option-hover: #2b3038;
+}

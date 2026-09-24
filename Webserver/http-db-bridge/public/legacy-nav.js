@@ -118,8 +118,12 @@
   }
 
   function start() {
-    renderLinks(document.querySelector('.roblox-nav, .roblox-nav-links'));
-    renderStatus(document.querySelector('.legacy-sidebar'));
+    // The pages now render their own complete nav (Home / Games / Create / More)
+    // and the home page renders a real sidebar, so this script no longer rewrites
+    // or injects navigation. It only keeps the live status block and the Robux
+    // figure fresh. Rewriting the nav here is what previously clobbered the
+    // "More pages" dropdown.
+    renderStatus(document.querySelector('.legacy-sidebar, .roblox-sidebar'));
     refreshRobux();
 
     var sidebar = document.querySelector('.legacy-sidebar');
@@ -127,6 +131,7 @@
       document.body.classList.add('legacy-shell');
       markActive(sidebar);
     }
+    markActive(document.querySelector('.roblox-sidebar') || document);
   }
 
   if (document.readyState === 'loading') {
