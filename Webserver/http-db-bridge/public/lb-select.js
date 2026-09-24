@@ -200,11 +200,34 @@
     (root || document).querySelectorAll('select.lb-select:not([data-lb-enhanced])').forEach(enhance);
   }
 
+  /**
+   * Make sure the dropdown stylesheet is present.
+   *
+   * The custom trigger and menu are entirely class-driven, so a page that loads
+   * this script but forgets <link href="/css/lb-select.css"> gets an unstyled,
+   * half-broken control (that is exactly what happened on the catalog and group
+   * pages). Injecting it here means the only thing a page must include is this
+   * one script tag.
+   */
+  function ensureStylesheet() {
+    var href = '/css/lb-select.css';
+    var links = document.querySelectorAll('link[rel="stylesheet"]');
+    for (var i = 0; i < links.length; i++) {
+      var attr = links[i].getAttribute('href') || '';
+      if (attr.indexOf('lb-select.css') !== -1) return;
+    }
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    document.head.appendChild(link);
+  }
+
   window.LBSelect = { enhanceAll: enhanceAll, enhance: enhance };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { enhanceAll(); });
+    document.addEventListener('DOMContentLoaded', function () { ensureStylesheet(); enhanceAll(); });
   } else {
+    ensureStylesheet();
     enhanceAll();
   }
 }());

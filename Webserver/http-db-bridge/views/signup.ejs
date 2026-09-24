@@ -160,6 +160,13 @@
       width: 100%;
     }
 
+    /* The visible control is the custom trigger (see /lb-select.js), so it needs
+       the same 46px height and radius the native select above used to carry. */
+    .birthday-row .lb-select-trigger {
+      height: 46px;
+      border-radius: 8px;
+    }
+
     .birthday-row select:focus {
       border-color: #5d8fe2;
       box-shadow: 0 0 0 3px rgba(93, 143, 226, 0.12);

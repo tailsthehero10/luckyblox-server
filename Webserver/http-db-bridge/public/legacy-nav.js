@@ -166,6 +166,67 @@
     });
   }
 
+  /**
+   * "More pages" dropdown.
+   *
+   * It was CSS-only (:hover / :focus-within). That works with a mouse, but a
+   * touch tap on the button does nothing, and — because the button sits inside
+   * .roblox-nav, which the rail layout now hides — it also disappears entirely
+   * if the whole nav is hidden. This binds a real click toggle so the menu opens
+   * on any input, closes on outside-click and on Escape, and stays put when the
+   * nav's bare links are hidden by CSS.
+   */
+  function bindMorePages() {
+    var wrappers = document.querySelectorAll('.roblox-more-pages');
+
+    wrappers.forEach(function (wrap) {
+      if (wrap.getAttribute('data-lb-bound') === '1') return;
+      wrap.setAttribute('data-lb-bound', '1');
+
+      var btn = wrap.querySelector('.roblox-more-pages-btn');
+      var menu = wrap.querySelector('.roblox-more-pages-dropdown');
+      if (!btn || !menu) return;
+
+      btn.setAttribute('aria-haspopup', 'true');
+      btn.setAttribute('aria-expanded', 'false');
+
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var open = wrap.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+
+      // A click on a link inside the menu should act like a normal navigation,
+      // then the menu can go away.
+      menu.addEventListener('click', function () {
+        wrap.classList.remove('is-open');
+        btn.setAttribute('aria-expanded', 'false');
+      });
+    });
+
+    if (document.documentElement.getAttribute('data-lb-more-bound') === '1') return;
+    document.documentElement.setAttribute('data-lb-more-bound', '1');
+
+    document.addEventListener('click', function (e) {
+      document.querySelectorAll('.roblox-more-pages.is-open').forEach(function (wrap) {
+        if (wrap.contains(e.target)) return;
+        wrap.classList.remove('is-open');
+        var b = wrap.querySelector('.roblox-more-pages-btn');
+        if (b) b.setAttribute('aria-expanded', 'false');
+      });
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      document.querySelectorAll('.roblox-more-pages.is-open').forEach(function (wrap) {
+        wrap.classList.remove('is-open');
+        var b = wrap.querySelector('.roblox-more-pages-btn');
+        if (b) b.setAttribute('aria-expanded', 'false');
+      });
+    });
+  }
+
   function start() {
     // The pages now render their own complete nav (Home / Games / Create / More)
     // and the home page renders a real sidebar, so this script no longer rewrites
@@ -175,6 +236,7 @@
     renderStatus(document.querySelector('.legacy-sidebar, .roblox-sidebar'));
     refreshRobux();
     decorateLoadingImages();
+    bindMorePages();
 
     // Images that arrive after the first paint (lazy ones scrolling into view)
     // still get the spinner.

@@ -2719,7 +2719,8 @@ img.roblox-brand-mark {
   overflow: visible;
 }
 .roblox-more-pages:hover .roblox-more-pages-dropdown,
-.roblox-more-pages:focus-within .roblox-more-pages-dropdown { display: block; }
+.roblox-more-pages:focus-within .roblox-more-pages-dropdown,
+.roblox-more-pages.is-open .roblox-more-pages-dropdown { display: block; }
 
 /*
   The menu items must be exactly one line each. The older sheet set padding on
@@ -4032,9 +4033,20 @@ img.roblox-brand-mark {
 
 /* The header's own nav links are hidden: navigation now lives in the left rail
    only, so the site has ONE navigation surface. The brand and the right-side
-   account actions stay. */
-.lb-header-nav,
-.roblox-nav {
+   account actions stay.
+
+   IMPORTANT: only the bare <a> rows are hidden. The "More pages" dropdown also
+   lives inside .roblox-nav-links, so hiding the whole .roblox-nav (or the whole
+   .roblox-nav-links) removed a working menu - that was the broken dropdown. */
+.lb-header-nav-links > a,
+.roblox-nav-links > a {
+  display: none !important;
+}
+
+/* A nav that contains no dropdown has nothing left to show once its links are
+   hidden, so collapse it rather than leaving an empty gap in the top bar. */
+.roblox-nav:not(:has(.roblox-more-pages)),
+.lb-header-nav:not(:has(.roblox-more-pages)) {
   display: none !important;
 }
 
