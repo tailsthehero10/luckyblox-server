@@ -534,7 +534,7 @@ $mapCount = count($maps);
                 <a href="/LuckBlox.site/signin/">Log In</a>
                 <a href="/LuckBlox.site/signup/">Sign Up</a>
                 <?php else: ?>
-                <a href="/LuckBlox.site.tk/logout">Log Out</a>
+                <a href="/LuckBlox.site/api/logout.php">Log Out</a>
                 <?php endif; ?>
             </nav>
         </header>
@@ -544,7 +544,7 @@ $mapCount = count($maps);
                 <span class="badge">Public home</span>
                 <h1>Build, play, and launch your next favorite local game.</h1>
                 <p class="subtitle">
-                    LuckyBlox is running as a local Roblox-style platform at <strong>http://localhost/LuckyBlox.site</strong>.
+                    LuckyBlox is running as a local Roblox-style platform at <strong>http://localhost/LuckBlox.site</strong>.
                     Browse the live catalog, jump into the featured place, and launch directly from the portal.
                 </p>
                 <div class="cta-row">
@@ -556,14 +556,14 @@ $mapCount = count($maps);
             </div>
 
             <div class="hero-visual">
-                <div class="featured-card">
+                <div class="featured-card" style="background-image: url('<?php echo htmlspecialchars(lb_resolve_game_feat($featuredMetadata)); ?>');">
                     <div class="featured-overlay">
                         <h2 class="featured-title"><?php echo htmlspecialchars($featuredMetadata['name']); ?></h2>
                         <div class="featured-meta">
                             <span>Place ID <?php echo (int) $featuredMetadata['placeId']; ?></span>
-                            <span>•</span>
+                            <span>&bull;</span>
                             <span>Published</span>
-                            <span>•</span>
+                            <span>&bull;</span>
                             <span>Local server ready</span>
                         </div>
                     </div>
@@ -610,7 +610,7 @@ $mapCount = count($maps);
                     foreach ($gamePreview as $game):
                     ?>
                     <div class="game-item">
-                        <div class="game-thumb"></div>
+                        <div class="game-thumb" style="background-image: url('<?php echo htmlspecialchars(lb_resolve_game_icon($game)); ?>');"></div>
                         <h3><?php echo htmlspecialchars($game['title']); ?></h3>
                         <p><?php echo htmlspecialchars($game['description'] ?: 'A local map packaged as a playable LuckyBlox experience.'); ?></p>
                         <div class="game-links">

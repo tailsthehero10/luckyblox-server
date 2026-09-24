@@ -101,7 +101,7 @@ $ip = lb_get_server_ip();
             <?php endif; ?>
         </div>
 
-        <p><a href="/LuckBlox.site.tk/home">Back to dashboard</a> &middot; <a href="/LuckBlox.site/settings">Settings</a> &middot; <a href="/LuckBlox.site/users/<?php echo (int) $c['userId']; ?>/profile">Profile</a></p>
+        <p><a href="/LuckBlox.site/home">Back to dashboard</a> &middot; <a href="/LuckBlox.site/settings">Settings</a> &middot; <a href="/LuckBlox.site/users/<?php echo (int) $c['userId']; ?>/profile">Profile</a></p>
     </div>
     <script src="/legacy-nav.js"></script>
 </body>

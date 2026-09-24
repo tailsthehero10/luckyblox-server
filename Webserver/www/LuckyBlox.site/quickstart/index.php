@@ -19,6 +19,9 @@ $clientPort = read_setting($settingsRoot . '/clientport.txt', '53640');
 <html lang="en">
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/site-icon/luckyblox.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/site-icon/luckyblox.png" />
     <title>Quick Start</title>
     <style>
         body { font-family: Arial, sans-serif; background: #020617; color: #e2e8f0; margin: 0; padding: 40px; }
@@ -38,13 +41,13 @@ $clientPort = read_setting($settingsRoot . '/clientport.txt', '53640');
 
         <div class="card">
             <h2>1. Open the local launcher site</h2>
-            <p>Use <code>http://localhost/LuckBlox.site.tk/</code> as your main local dashboard, then move through the available project pages from the top navigation:</p>
+            <p>Use <code>http://localhost/LuckBlox.site/</code> as your main local dashboard, then move through the available project pages from the top navigation:</p>
             <ul>
-                <li><a href="/LuckBlox.site.tk/">Dashboard</a></li>
-                <li><a href="/LuckBlox.site.tk/settings">Settings</a></li>
-                <li><a href="/LuckBlox.site.tk/account">Account</a></li>
-                <li><a href="/LuckBlox.site.tk/places">Places</a></li>
-                <li><a href="/LuckBlox.site.tk/api">API Docs</a></li>
+                <li><a href="/LuckBlox.site/">Dashboard</a></li>
+                <li><a href="/LuckBlox.site/settings">Settings</a></li>
+                <li><a href="/LuckBlox.site/account">Account</a></li>
+                <li><a href="/LuckBlox.site/places">Places</a></li>
+                <li><a href="/LuckBlox.site/api">API Docs</a></li>
             </ul>
         </div>
 

@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/site-icon/luckyblox.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/site-icon/luckyblox.png" />
     <title>About LuckyBlox</title>
     <style>
         body { margin:0; padding:24px; font-family:Arial, Helvetica, sans-serif; background:#e5e7eb; color:#111827; }
@@ -28,7 +31,7 @@
                 <li>API-backed game data, load/save, stats, services, and publish flows</li>
                 <li>Classic styling that stays simple and familiar instead of app-like</li>
             </ul>
-            <p><a href="/LuckBlox.site.tk/">Back to dashboard</a></p>
+            <p><a href="/LuckBlox.site/">Back to dashboard</a></p>
         </div>
     </div>
     <script src="/legacy-nav.js"></script>

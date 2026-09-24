@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../api/common.php';
 require_once __DIR__ . '/../../api/luckyblox-data.php';
 
 session_start();
@@ -51,14 +52,12 @@ $csrfToken = lb_get_csrf_token();
 $settingsRoot = lb_settings_root();
 $ip = lb_get_server_ip();
 $hostPort = lb_get_host_port();
-$serverPort = ltrim(str_replace(lb_settings_root() . '/', '', api_get_setting_value($settingsRoot . '/serverport.txt', '2005')));
+$serverPort = lb_get_client_port();
 $clientPort = lb_get_client_port();
 
-function lb_setting($path, $default = '') {
-    if (!file_exists($path)) return $default;
-    $value = trim((string) file_get_contents($path));
-    return $value !== '' ? $value : $default;
-}
+$gamesCount = count(lb_get_all_games());
+$mapsRoot = lb_maps_root();
+$mapsCount = is_dir($mapsRoot) ? count(array_filter(glob($mapsRoot . '/*'), 'is_file')) : 0;
 
 $username = $user['username'];
 $membership = $user['membership'];
@@ -68,8 +67,8 @@ $bio = $user['bio'];
 $joinDate = $user['joinDate'] ?: 'Unknown';
 $isAdmin = $user['isAdmin'] || lb_is_owner($user);
 
-$serverName = lb_setting($settingsRoot . '/servername.txt', 'LuckyBlox Server');
-$publicHost = lb_setting($settingsRoot . '/publichost.txt', $ip);
+$serverName = api_get_setting_value($settingsRoot . '/servername.txt', 'LuckyBlox Server');
+$publicHost = api_get_setting_value($settingsRoot . '/ip.txt', $ip);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -124,7 +123,7 @@ $publicHost = lb_setting($settingsRoot . '/publichost.txt', $ip);
                 <h1>Settings</h1>
                 <p style="color:#94a3b8;">Review your LuckyBlox account, server, and client configuration.</p>
             </div>
-            <a style="padding:8px 16px;border-radius:8px;background:#0f766e;border:1px solid #0d5b54;color:#fff;font-weight:700;text-decoration:none;" href="/LuckBlox.site.tk/home">Back to Home</a>
+            <a style="padding:8px 16px;border-radius:8px;background:#0f766e;border:1px solid #0d5b54;color:#fff;font-weight:700;text-decoration:none;" href="/LuckBlox.site/home">Back to Home</a>
         </div>
 
         <?php if (!empty($errors)): ?>

@@ -12,6 +12,9 @@ $text = api_get_text_state($placeId);
 <html lang="en">
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/site-icon/luckyblox.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/site-icon/luckyblox.png" />
     <title>LuckyBlox Launcher Play</title>
     <style>
         body {
@@ -166,7 +169,7 @@ $text = api_get_text_state($placeId);
             </div>
         </div>
 
-        <p style="margin-top:24px;"><a href="/LuckBlox.site.tk/">Back to dashboard</a></p>
+        <p style="margin-top:24px;"><a href="/LuckBlox.site/">Back to dashboard</a></p>
     </div>
     <script src="/legacy-nav.js"></script>
 </body>

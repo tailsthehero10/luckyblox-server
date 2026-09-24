@@ -18,6 +18,9 @@ usort($placeFiles, function($a, $b) {
 <html lang="en">
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/site-icon/luckyblox.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/site-icon/luckyblox.png" />
     <title>Places</title>
     <style>
         body { font-family: Arial, sans-serif; background: #020617; color: #e2e8f0; margin: 0; padding: 40px; }
@@ -43,7 +46,7 @@ usort($placeFiles, function($a, $b) {
             </ul>
         </div>
 
-        <p><a href="/LuckBlox.site.tk/">Back to dashboard</a></p>
+        <p><a href="/LuckBlox.site/">Back to dashboard</a></p>
     </div>
     <script src="/legacy-nav.js"></script>
 </body>

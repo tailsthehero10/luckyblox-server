@@ -190,13 +190,15 @@ function lb_normalize_user($user, $key = null) {
         ),
         'friends'       => is_array($user['friends'] ?? null) ? $user['friends'] : array(),
         'badges'        => is_array($user['badges'] ?? null) ? $user['badges'] : array(),
-        'avatar'        => is_array($user['avatar'] ?? null) ? $user['avatar'] : array(
+         'avatar'        => is_array($user['avatar'] ?? null) ? $user['avatar'] : array(
             'bodyColors' => array(
                 'headColorId' => 1002, 'torsoColorId' => 1002,
                 'rightArmColorId' => 1002, 'leftArmColorId' => 1002,
                 'rightLegColorId' => 1002, 'leftLegColorId' => 1002,
             )
         ),
+        'gender'        => $user['gender'] ?? ($user['avatar']['gender'] ?? 'NotSpecified'),
+        'robloxUserId'  => $user['robloxUserId'] ?? null,
         'admin'         => (bool) ($user['admin'] ?? $user['isAdmin'] ?? false),
         'isAdmin'       => (bool) ($user['admin'] ?? $user['isAdmin'] ?? false),
         'isVerified'    => (bool) ($user['isVerified'] ?? false),
@@ -450,7 +452,7 @@ function lb_verify_csrf() {
     return lb_verify_csrf_token((string) $token, $sessionId);
 }
 
-function lb_signup($username, $password, $confirmPassword, $displayName = null) {
+function lb_signup($username, $password, $confirmPassword, $displayName = null, $gender = 'NotSpecified') {
     $errors = array();
 
     $usernameCheck = lb_check_username_policy($username);
@@ -465,6 +467,11 @@ function lb_signup($username, $password, $confirmPassword, $displayName = null) 
     $policy = lb_check_password_policy($password);
     if (!$policy['ok']) {
         $errors = array_merge($errors, $policy['errors']);
+    }
+
+    $allowedGenders = array('Male', 'Female', 'NotSpecified');
+    if (!in_array($gender, $allowedGenders, true)) {
+        $gender = 'NotSpecified';
     }
 
     if (!empty($errors)) {
@@ -483,17 +490,21 @@ function lb_signup($username, $password, $confirmPassword, $displayName = null) 
     $nextId = max(1, max($existingIds) ?: 0) + 1;
 
     $hashed = lb_hash_password($password);
+
+    $defaultColors = lb_default_body_colors_for_gender($gender);
+
     $user = array(
         'userId' => (string) $nextId,
         'username' => $username,
         'displayName' => $displayName ?: $username,
+        'gender' => $gender,
         'password' => $hashed['hash'],
         'passwordSalt' => $hashed['salt'],
         'passwordVersion' => $hashed['version'],
         'role' => 'player',
         'bio' => 'New LuckyBlox creator account.',
         'joinDate' => date('c'),
-        'membershipStatus' => 'None',
+        'membershipStatus' => 'Premium',
         'robux' => 100,
         'currencies' => array('coins' => 250, 'ticket' => 10),
         'inventory' => array('1001', '1002', '1003', '1004'),
@@ -502,15 +513,14 @@ function lb_signup($username, $password, $confirmPassword, $displayName = null) 
         'friends' => array(),
         'badges' => array(),
         'avatar' => array(
-            'bodyColors' => array(
-                'headColorId' => 1002, 'torsoColorId' => 1002,
-                'rightArmColorId' => 1002, 'leftArmColorId' => 1002,
-                'rightLegColorId' => 1002, 'leftLegColorId' => 1002,
-            )
+            'gender' => $gender,
+            'playerAvatarType' => 'R15',
+            'scales' => array(
+                'height' => 1.0, 'width' => 1.0, 'head' => 1.0,
+                'depth' => 1.0, 'proportion' => 0.0, 'bodyType' => 0.0,
+            ),
+            'bodyColors' => $defaultColors,
         ),
-        'admin' => false,
-        'isAdmin' => false,
-        'isVerified' => false,
         'updatedAt' => date('c'),
     );
 
@@ -765,4 +775,458 @@ function lb_is_admin($user) {
         return true;
     }
     return (bool) ($user['admin'] ?? $user['isAdmin'] ?? false);
+}
+
+function lb_default_body_colors_for_gender($gender) {
+    $nougat = 18;
+    $buttermilk = 341;
+    $lightStoneGrey = 208;
+
+    if ($gender === 'Male') {
+        $skin = $nougat;
+        $shirtColor = 327;
+        $pantsColor = 303;
+    } elseif ($gender === 'Female') {
+        $skin = $buttermilk;
+        $shirtColor = 330;
+        $pantsColor = 327;
+    } else {
+        $skin = $buttermilk;
+        $shirtColor = 328;
+        $pantsColor = 305;
+    }
+
+    return array(
+        'headColorId' => $skin,
+        'torsoColorId' => $skin,
+        'rightArmColorId' => $skin,
+        'leftArmColorId' => $skin,
+        'rightLegColorId' => $pantsColor,
+        'leftLegColorId' => $pantsColor,
+    );
+}
+
+function lb_body_color_palette() {
+    return array(
+        array('id' => 1,    'name' => 'White',                   'rgb' => '242,243,243'),
+        array('id' => 2,    'name' => 'Grey',                     'rgb' => '161,165,162'),
+        array('id' => 18,   'name' => 'Nougat',                   'rgb' => '204,142,105'),
+        array('id' => 21,   'name' => 'Bright Red',               'rgb' => '196,40,28'),
+        array('id' => 23,   'name' => 'Bright Blue',              'rgb' => '13,105,172'),
+        array('id' => 24,   'name' => 'Bright Yellow',            'rgb' => '245,205,48'),
+        array('id' => 26,   'name' => 'Black',                    'rgb' => '27,42,53'),
+        array('id' => 28,   'name' => 'Dark Green',               'rgb' => '40,127,71'),
+        array('id' => 29,   'name' => 'Medium Green',             'rgb' => '161,196,140'),
+        array('id' => 37,   'name' => 'Bright Green',             'rgb' => '75,151,75'),
+        array('id' => 100,  'name' => 'Light Red',                'rgb' => '238,196,182'),
+        array('id' => 101,  'name' => 'Medium Red',               'rgb' => '218,134,122'),
+        array('id' => 102,  'name' => 'Medium Blue',              'rgb' => '110,153,202'),
+        array('id' => 104,  'name' => 'Bright Violet',            'rgb' => '107,50,124'),
+        array('id' => 105,  'name' => 'Br. Yellowish Orange',     'rgb' => '226,155,64'),
+        array('id' => 106,  'name' => 'Bright Orange',            'rgb' => '218,133,65'),
+        array('id' => 107,  'name' => 'Bright Bluish Green',      'rgb' => '0,143,156'),
+        array('id' => 110,  'name' => 'Bright Bluish Violet',     'rgb' => '67,84,147'),
+        array('id' => 125,  'name' => 'Light Orange',             'rgb' => '234,184,146'),
+        array('id' => 127,  'name' => 'Gold',                    'rgb' => '220,188,129'),
+        array('id' => 128,  'name' => 'Dark Nougat',              'rgb' => '174,122,89'),
+        array('id' => 131,  'name' => 'Silver',                  'rgb' => '156,163,168'),
+        array('id' => 135,  'name' => 'Sand Blue',               'rgb' => '116,134,157'),
+        array('id' => 136,  'name' => 'Sand Violet',             'rgb' => '135,124,144'),
+        array('id' => 137,  'name' => 'Medium Orange',           'rgb' => '224,152,100'),
+        array('id' => 140,  'name' => 'Earth Blue',              'rgb' => '32,58,86'),
+        array('id' => 141,  'name' => 'Earth Green',             'rgb' => '39,70,45'),
+        array('id' => 151,  'name' => 'Sand Green',              'rgb' => '120,144,130'),
+        array('id' => 153,  'name' => 'Sand Red',                'rgb' => '149,121,119'),
+        array('id' => 154,  'name' => 'Dark Red',                'rgb' => '123,46,47'),
+        array('id' => 168,  'name' => 'Gun Metallic',            'rgb' => '117,108,98'),
+        array('id' => 176,  'name' => 'Red Flip/Flop',           'rgb' => '151,105,91'),
+        array('id' => 180,  'name' => 'Curry',                   'rgb' => '215,169,75'),
+        array('id' => 190,  'name' => 'Fire Yellow',             'rgb' => '249,214,46'),
+        array('id' => 192,  'name' => 'Reddish Brown',           'rgb' => '105,64,40'),
+        array('id' => 193,  'name' => 'Flame Reddish Orange',    'rgb' => '207,96,36'),
+        array('id' => 194,  'name' => 'Medium Stone Grey',       'rgb' => '163,162,165'),
+        array('id' => 195,  'name' => 'Royal Blue',              'rgb' => '70,103,164'),
+        array('id' => 196,  'name' => 'Dark Royal Blue',         'rgb' => '35,71,139'),
+        array('id' => 198,  'name' => 'Bright Reddish Lilac',    'rgb' => '142,66,133'),
+        array('id' => 199,  'name' => 'Dark Stone Grey',         'rgb' => '99,95,98'),
+        array('id' => 200,  'name' => 'Lemon',                   'rgb' => '130,138,93'),
+        array('id' => 208,  'name' => 'Light Stone Grey',       'rgb' => '229,228,223'),
+        array('id' => 209,  'name' => 'Dark Curry',              'rgb' => '176,142,68'),
+        array('id' => 210,  'name' => 'Faded Green',             'rgb' => '112,149,120'),
+        array('id' => 211,  'name' => 'Turquoise',               'rgb' => '121,181,181'),
+        array('id' => 212,  'name' => 'Light Royal Blue',       'rgb' => '159,195,233'),
+        array('id' => 213,  'name' => 'Medium Royal Blue',      'rgb' => '108,129,183'),
+        array('id' => 216,  'name' => 'Rust',                    'rgb' => '144,76,42'),
+        array('id' => 217,  'name' => 'Brown',                   'rgb' => '124,92,70'),
+        array('id' => 218,  'name' => 'Reddish Lilac',           'rgb' => '150,112,159'),
+        array('id' => 219,  'name' => 'Lilac',                   'rgb' => '107,98,155'),
+        array('id' => 220,  'name' => 'Light Lilac',            'rgb' => '167,169,206'),
+        array('id' => 221,  'name' => 'Bright Purple',          'rgb' => '205,98,152'),
+        array('id' => 222,  'name' => 'Light Purple',           'rgb' => '228,173,200'),
+        array('id' => 223,  'name' => 'Light Pink',             'rgb' => '220,144,149'),
+        array('id' => 224,  'name' => 'Light Brick Yellow',     'rgb' => '240,213,160'),
+        array('id' => 225,  'name' => 'Warm Yellowish Orange',   'rgb' => '235,184,127'),
+        array('id' => 226,  'name' => 'Cool Yellow',            'rgb' => '253,234,141'),
+        array('id' => 232,  'name' => 'Dove Blue',               'rgb' => '125,187,221'),
+        array('id' => 268,  'name' => 'Medium Lilac',           'rgb' => '52,43,117'),
+        array('id' => 301,  'name' => 'Slime Green',             'rgb' => '80,109,84'),
+        array('id' => 302,  'name' => 'Smoky Grey',              'rgb' => '91,93,105'),
+        array('id' => 303,  'name' => 'Dark Blue',               'rgb' => '0,16,176'),
+        array('id' => 304,  'name' => 'Parsley Green',           'rgb' => '44,101,29'),
+        array('id' => 305,  'name' => 'Steel Blue',              'rgb' => '82,124,174'),
+        array('id' => 306,  'name' => 'Storm Blue',              'rgb' => '51,88,130'),
+        array('id' => 307,  'name' => 'Lapis',                   'rgb' => '16,42,220'),
+        array('id' => 308,  'name' => 'Dark Indigo',             'rgb' => '61,21,133'),
+        array('id' => 309,  'name' => 'Sea Green',               'rgb' => '52,142,64'),
+        array('id' => 310,  'name' => 'Shamrock',                'rgb' => '91,154,76'),
+        array('id' => 311,  'name' => 'Fossil',                  'rgb' => '159,161,172'),
+        array('id' => 312,  'name' => 'Mulberry',                'rgb' => '89,34,89'),
+        array('id' => 313,  'name' => 'Forest Green',            'rgb' => '31,128,29'),
+        array('id' => 314,  'name' => 'Cadet Blue',              'rgb' => '159,173,192'),
+        array('id' => 315,  'name' => 'Electric Blue',           'rgb' => '9,137,207'),
+        array('id' => 316,  'name' => 'Eggplant',                'rgb' => '123,0,123'),
+        array('id' => 317,  'name' => 'Moss',                    'rgb' => '124,156,107'),
+        array('id' => 318,  'name' => 'Artichoke',               'rgb' => '138,171,133'),
+        array('id' => 319,  'name' => 'Sage Green',              'rgb' => '185,196,177'),
+        array('id' => 320,  'name' => 'Ghost Grey',              'rgb' => '202,203,209'),
+        array('id' => 321,  'name' => 'Lilac',                   'rgb' => '167,94,155'),
+        array('id' => 322,  'name' => 'Plum',                    'rgb' => '123,47,123'),
+        array('id' => 323,  'name' => 'Olivine',                 'rgb' => '148,190,129'),
+        array('id' => 324,  'name' => 'Laurel Green',            'rgb' => '168,189,153'),
+        array('id' => 325,  'name' => 'Quill Grey',              'rgb' => '223,223,222'),
+        array('id' => 327,  'name' => 'Crimson',                 'rgb' => '151,0,0'),
+        array('id' => 328,  'name' => 'Mint',                    'rgb' => '177,229,166'),
+        array('id' => 329,  'name' => 'Baby Blue',               'rgb' => '152,194,219'),
+        array('id' => 330,  'name' => 'Carnation Pink',          'rgb' => '255,152,220'),
+        array('id' => 331,  'name' => 'Persimmon',               'rgb' => '255,89,89'),
+        array('id' => 332,  'name' => 'Maroon',                  'rgb' => '117,0,0'),
+        array('id' => 333,  'name' => 'Gold',                    'rgb' => '239,184,56'),
+        array('id' => 334,  'name' => 'Daisy Orange',            'rgb' => '248,217,109'),
+        array('id' => 335,  'name' => 'Pearl',                   'rgb' => '231,231,236'),
+        array('id' => 336,  'name' => 'Fog',                     'rgb' => '199,212,228'),
+        array('id' => 337,  'name' => 'Salmon',                  'rgb' => '255,148,148'),
+        array('id' => 338,  'name' => 'Terra Cotta',             'rgb' => '190,104,98'),
+        array('id' => 339,  'name' => 'Cocoa',                   'rgb' => '86,36,36'),
+        array('id' => 340,  'name' => 'Wheat',                   'rgb' => '241,231,199'),
+        array('id' => 341,  'name' => 'Buttermilk',              'rgb' => '254,243,187'),
+        array('id' => 342,  'name' => 'Mauve',                   'rgb' => '224,178,208'),
+        array('id' => 343,  'name' => 'Sunrise',                 'rgb' => '212,144,189'),
+        array('id' => 344,  'name' => 'Tawny',                   'rgb' => '150,85,85'),
+        array('id' => 345,  'name' => 'Rust',                    'rgb' => '143,76,42'),
+        array('id' => 346,  'name' => 'Cashmere',                'rgb' => '211,190,150'),
+        array('id' => 347,  'name' => 'Khaki',                   'rgb' => '226,220,188'),
+        array('id' => 348,  'name' => 'Lily White',              'rgb' => '237,234,234'),
+        array('id' => 349,  'name' => 'Seashell',                'rgb' => '233,218,218'),
+        array('id' => 350,  'name' => 'Burgundy',                'rgb' => '136,62,62'),
+        array('id' => 351,  'name' => 'Cork',                    'rgb' => '188,155,93'),
+        array('id' => 352,  'name' => 'Burlap',                  'rgb' => '199,172,120'),
+        array('id' => 353,  'name' => 'Beige',                   'rgb' => '202,191,163'),
+        array('id' => 354,  'name' => 'Oyster',                  'rgb' => '187,179,178'),
+        array('id' => 355,  'name' => 'Pine Cone',               'rgb' => '108,88,75'),
+        array('id' => 356,  'name' => 'Fawn Brown',              'rgb' => '160,132,79'),
+        array('id' => 357,  'name' => 'Hurricane Grey',         'rgb' => '149,137,136'),
+        array('id' => 358,  'name' => 'Cloudy Grey',             'rgb' => '171,168,158'),
+        array('id' => 359,  'name' => 'Linen',                   'rgb' => '175,148,131'),
+        array('id' => 360,  'name' => 'Copper',                  'rgb' => '150,103,102'),
+        array('id' => 361,  'name' => 'Medium Brown',            'rgb' => '86,66,54'),
+        array('id' => 362,  'name' => 'Bronze',                  'rgb' => '126,104,63'),
+        array('id' => 363,  'name' => 'Flint',                   'rgb' => '105,102,92'),
+        array('id' => 364,  'name' => 'Dark Taupe',              'rgb' => '90,76,66'),
+        array('id' => 365,  'name' => 'Burnt Sienna',            'rgb' => '106,57,9'),
+        array('id' => 1001,'name' => 'Institutional White',     'rgb' => '248,248,248'),
+        array('id' => 1002,'name' => 'Mid Gray',                 'rgb' => '205,205,205'),
+        array('id' => 1003,'name' => 'Really Black',             'rgb' => '17,17,17'),
+        array('id' => 1004,'name' => 'Really Red',               'rgb' => '255,0,0'),
+        array('id' => 1005,'name' => 'Deep Orange',              'rgb' => '255,176,0'),
+        array('id' => 1006,'name' => 'Alder',                    'rgb' => '180,128,255'),
+        array('id' => 1007,'name' => 'Dusty Rose',               'rgb' => '163,75,75'),
+        array('id' => 1008,'name' => 'Olive',                    'rgb' => '193,190,66'),
+        array('id' => 1009,'name' => 'New Yeller',               'rgb' => '255,255,0'),
+        array('id' => 1010,'name' => 'Really Blue',              'rgb' => '0,0,255'),
+        array('id' => 1011,'name' => 'Navy Blue',                'rgb' => '0,32,96'),
+        array('id' => 1012,'name' => 'Deep Blue',                'rgb' => '33,84,185'),
+        array('id' => 1013,'name' => 'Cyan',                     'rgb' => '4,175,236'),
+        array('id' => 1014,'name' => 'CGA Brown',                'rgb' => '170,85,0'),
+        array('id' => 1015,'name' => 'Magenta',                  'rgb' => '170,0,170'),
+        array('id' => 1016,'name' => 'Pink',                     'rgb' => '255,102,204'),
+        array('id' => 1017,'name' => 'Deep Orange',              'rgb' => '255,175,0'),
+        array('id' => 1018,'name' => 'Teal',                     'rgb' => '18,238,212'),
+        array('id' => 1019,'name' => 'Toothpaste',               'rgb' => '0,255,255'),
+        array('id' => 1020,'name' => 'Lime Green',               'rgb' => '0,255,0'),
+        array('id' => 1021,'name' => 'Camo',                     'rgb' => '58,125,21'),
+        array('id' => 1022,'name' => 'Grime',                    'rgb' => '127,142,100'),
+        array('id' => 1023,'name' => 'Lavender',                 'rgb' => '140,91,159'),
+        array('id' => 1024,'name' => 'Pastel Light Blue',        'rgb' => '175,221,255'),
+        array('id' => 1025,'name' => 'Pastel Orange',            'rgb' => '255,201,201'),
+        array('id' => 1026,'name' => 'Pastel Violet',            'rgb' => '177,167,255'),
+        array('id' => 1027,'name' => 'Pastel Blue-Green',       'rgb' => '159,243,233'),
+        array('id' => 1028,'name' => 'Pastel Green',             'rgb' => '204,255,204'),
+        array('id' => 1029,'name' => 'Pastel Yellow',            'rgb' => '255,255,204'),
+        array('id' => 1030,'name' => 'Pastel Brown',             'rgb' => '255,204,153'),
+        array('id' => 1031,'name' => 'Royal Purple',             'rgb' => '98,37,209'),
+        array('id' => 1032,'name' => 'Hot Pink',                 'rgb' => '255,0,191'),
+    );
+}
+
+function lb_body_color_rgb($colorId) {
+    $id = (int) $colorId;
+    $palette = lb_body_color_palette();
+    foreach ($palette as $entry) {
+        if ($entry['id'] === $id) {
+            return $entry['rgb'];
+        }
+    }
+    return '205,205,205';
+}
+
+function lb_body_color_name($colorId) {
+    $id = (int) $colorId;
+    $palette = lb_body_color_palette();
+    foreach ($palette as $entry) {
+        if ($entry['id'] === $id) {
+            return $entry['name'];
+        }
+    }
+    return 'Unknown';
+}
+
+function lb_get_avatar_urls($user) {
+    $robloxUserId = $user['robloxUserId'] ?? null;
+    if (!$robloxUserId) {
+        return array('headshotUrl' => null, 'fullBodyUrl' => null);
+    }
+    $userId = (int) $robloxUserId;
+    if ($userId <= 0) {
+        return array('headshotUrl' => null, 'fullBodyUrl' => null);
+    }
+    $headshot = 'https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=' . $userId . '&size=150x150&format=Png&isCircular=false';
+    $fullBody = 'https://thumbnails.roblox.com/v1/users/avatar?userIds=' . $userId . '&size=420x420&format=Png';
+    return array(
+        'headshotUrl' => $headshot,
+        'fullBodyUrl' => $fullBody,
+    );
+}
+
+function lb_get_user_assets($user) {
+    $assetsDb = lb_get_assets();
+    $wearing = is_array($user['currentlyWearing'] ?? null) ? $user['currentlyWearing'] : array();
+    $wearingSet = array();
+    foreach ($wearing as $id) {
+        $wearingSet[(string) $id] = true;
+    }
+    $result = array();
+    foreach ($assetsDb as $entry) {
+        $assetId = (string) ($entry['id'] ?? '');
+        $thumb = 'https://thumbnails.roblox.com/v1/assets?assetIds=' . $assetId . '&size=150x150&format=Png';
+        $result[] = array(
+            'id' => $assetId,
+            'name' => $entry['name'] ?? 'Asset',
+            'assetType' => $entry['assetType'] ?? 'Accessory',
+            'thumbnailUrl' => $thumb,
+            'price' => (int) ($entry['price'] ?? 0),
+            'isOwned' => true,
+            'isWearing' => isset($wearingSet[$assetId]),
+        );
+    }
+    return $result;
+}
+
+function lb_catalog_items() {
+    $catalogFaces = array(
+        array('id' => 256186, 'name' => 'Smile', 'assetType' => 'Face'),
+        array('id' => 256187, 'name' => 'Oh No', 'assetType' => 'Face'),
+        array('id' => 256188, 'name' => 'Sweating', 'assetType' => 'Face'),
+        array('id' => 256189, 'name' => 'Laugh', 'assetType' => 'Face'),
+        array('id' => 256190, 'name' => 'Eww', 'assetType' => 'Face'),
+    );
+
+    $catalogHats = array(
+        array('id' => 1003, 'name' => 'Robloxian Cap', 'assetType' => 'Hat', 'price' => 0, 'isOwned' => true),
+        array('id' => 10159744, 'name' => 'Classic Hair', 'assetType' => 'Hat', 'price' => 25, 'isOwned' => false),
+        array('id' => 7447592, 'name' => 'Party Hat', 'assetType' => 'Hat', 'price' => 50, 'isOwned' => false),
+        array('id' => 5431853, 'name' => 'Blue Climber', 'assetType' => 'Hat', 'price' => 75, 'isOwned' => false),
+    );
+
+    $catalog = array();
+    foreach ($catalogFaces as $face) {
+        $id = (string) $face['id'];
+        $catalog[] = array(
+            'id' => $id,
+            'name' => $face['name'],
+            'assetType' => $face['assetType'],
+            'thumbnailUrl' => 'https://thumbnails.roblox.com/v1/assets?assetIds=' . $face['id'] . '&size=48x48&format=Png',
+            'thumbnailLargeUrl' => 'https://thumbnails.roblox.com/v1/assets?assetIds=' . $face['id'] . '&size=150x150&format=Png',
+            'price' => 0,
+            'isOwned' => true,
+        );
+    }
+
+    foreach ($catalogHats as $hat) {
+        $id = (string) $hat['id'];
+        $catalog[] = array(
+            'id' => $id,
+            'name' => $hat['name'],
+            'assetType' => $hat['assetType'],
+            'thumbnailUrl' => 'https://thumbnails.roblox.com/v1/assets?assetIds=' . $hat['id'] . '&size=48x48&format=Png',
+            'thumbnailLargeUrl' => 'https://thumbnails.roblox.com/v1/assets?assetIds=' . $hat['id'] . '&size=150x150&format=Png',
+            'price' => (int) $hat['price'],
+            'isOwned' => (bool) $hat['isOwned'],
+        );
+    }
+
+    return $catalog;
+}
+
+function lb_build_avatar_payload($user) {
+    $assets = lb_get_assets();
+    $wearingSet = array();
+    foreach ((array) ($user['currentlyWearing'] ?? array()) as $id) {
+        $wearingSet[(string) $id] = true;
+    }
+
+    $avatarAssets = array();
+    foreach ($assets as $entry) {
+        $assetId = (string) ($entry['id'] ?? '');
+        if (!isset($wearingSet[$assetId])) {
+            continue;
+        }
+        $avatarAssets[] = array(
+            'id' => (int) $entry['id'],
+            'name' => $entry['name'] ?? 'Asset',
+            'assetType' => array(
+                'id' => 1,
+                'name' => $entry['assetType'] ?? 'Accessory',
+            ),
+            'currentVersionId' => (int) ($entry['currentVersionId'] ?? $entry['id'] ?? 0),
+            'meta' => array('order' => 1, 'version' => 1),
+        );
+    }
+
+    if (empty($avatarAssets)) {
+        $avatarAssets[] = array(
+            'id' => 1001,
+            'name' => 'Classic Red Shirt',
+            'assetType' => array('id' => 1, 'name' => 'Shirt'),
+            'currentVersionId' => 1001,
+            'meta' => array('order' => 1, 'version' => 1),
+        );
+    }
+
+    $assetParams = '';
+    foreach ($avatarAssets as $asset) {
+        $assetParams .= 'assetId=' . $asset['id'] . '&assetType=' . urlencode($asset['assetType']['name'] ?? 'Accessory') . '&';
+    }
+    $assetParams = rtrim($assetParams, '&');
+
+    $bodyColors = ($user['avatar']['bodyColors'] ?? null) ?: array(
+        'headColorId' => 1002, 'torsoColorId' => 1002,
+        'rightArmColorId' => 1002, 'leftArmColorId' => 1002,
+        'rightLegColorId' => 1002, 'leftLegColorId' => 1002,
+    );
+
+    return array(
+        'ok' => true,
+        'userId' => (int) ($user['userId'] ?? 1),
+        'placeId' => 1818,
+        'scales' => $user['avatar']['scales'] ?? array(
+            'height' => 1.0, 'width' => 1.0, 'head' => 1.0,
+            'depth' => 1.0, 'proportion' => 0.0, 'bodyType' => 0.0,
+        ),
+        'playerAvatarType' => $user['avatar']['playerAvatarType'] ?? 'R15',
+        'bodyColors' => $bodyColors,
+        'assets' => $avatarAssets,
+        'wearing' => (array) ($user['currentlyWearing'] ?? array()),
+        'assetParams' => $assetParams,
+        'defaultShirtApplied' => false,
+        'defaultPantsApplied' => false,
+        'emotes' => array(
+            array('assetId' => 3360689775, 'assetName' => 'Salute', 'position' => 1),
+            array('assetId' => 3576968026, 'assetName' => 'Shrug', 'position' => 2),
+        ),
+        'isVerified' => (bool) ($user['isVerified'] ?? false),
+        'isAdmin' => lb_is_admin($user),
+        'gender' => $user['gender'] ?? 'NotSpecified',
+        'robloxUserId' => $user['robloxUserId'] ?? null,
+    );
+}
+
+function lb_set_avatar_wearing($userId, $assetIds) {
+    $users = lb_get_users();
+    $key = (string) $userId;
+    $found = false;
+    foreach ($users as $k => $user) {
+        if ((string) ($user['userId'] ?? $user['id'] ?? '') === $key || $k === $key) {
+            $users[$k]['currentlyWearing'] = array_values($assetIds);
+            $users[$k]['updatedAt'] = date('c');
+            if (isset($users[$k]['avatar']) && is_array($users[$k]['avatar'])) {
+                $users[$k]['avatar']['currentlyWearing'] = array_values($assetIds);
+            }
+            $found = true;
+            break;
+        }
+    }
+    if ($found) {
+        lb_write_json('users.json', $users);
+        return true;
+    }
+    return false;
+}
+
+function lb_update_user_avatar_colors($userId, $bodyColors) {
+    $users = lb_get_users();
+    $key = (string) $userId;
+    $found = false;
+    foreach ($users as $k => $user) {
+        if ((string) ($user['userId'] ?? $user['id'] ?? '') === $key || $k === $key) {
+            $users[$k]['avatar']['bodyColors'] = $bodyColors;
+            $users[$k]['updatedAt'] = date('c');
+            $found = true;
+            break;
+        }
+    }
+    if ($found) {
+        lb_write_json('users.json', $users);
+        return true;
+    }
+    return false;
+}
+
+function lb_update_user_gender($userId, $gender) {
+    $allowed = array('Male', 'Female', 'NotSpecified');
+    if (!in_array($gender, $allowed, true)) {
+        $gender = 'NotSpecified';
+    }
+    $users = lb_get_users();
+    $key = (string) $userId;
+    $found = false;
+    foreach ($users as $k => $user) {
+        if ((string) ($user['userId'] ?? $user['id'] ?? '') === $key || $k === $key) {
+            $users[$k]['gender'] = $gender;
+            $users[$k]['avatar']['gender'] = $gender;
+            $users[$k]['updatedAt'] = date('c');
+            $found = true;
+            break;
+        }
+    }
+    if ($found) {
+        lb_write_json('users.json', $users);
+        return true;
+    }
+    return false;
+}
+
+function lb_resolve_game_icon($game) {
+    $icon = $game['icon'] ?? '';
+    if ($icon !== '' && $icon !== null) {
+        return $icon;
+    }
+    return '/gameplaceholder/Card_512x512/card.png';
+}
+
+function lb_resolve_game_feat($game) {
+    $icon = $game['icon'] ?? '';
+    if ($icon !== '' && $icon !== null) {
+        return $icon;
+    }
+    return '/gameplaceholder/Big_/featured.png';
 }

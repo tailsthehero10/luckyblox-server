@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/site-icon/luckyblox.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/site-icon/luckyblox.png" />
     <title>LuckyBlox Help</title>
     <style>
         body { margin:0; padding:24px; font-family:Arial, Helvetica, sans-serif; background:#e5e7eb; color:#111827; }
@@ -22,13 +25,13 @@
             <h1>Help</h1>
             <p>Use the site like a classic local Roblox-style launcher:</p>
             <ul>
-                <li>Visit <a href="/LuckBlox.site.tk/home">Home</a> for the featured game and portal links.</li>
-                <li>Visit <a href="/LuckBlox.site.tk/games">Games</a> to browse all available maps.</li>
-                <li>Open <a href="/LuckBlox.site.tk/play?placeid=1818">Play</a> to view the active place and play-state data.</li>
-                <li>Use <a href="/LuckBlox.site.tk/settings">Settings</a> to inspect local server and launcher configuration.</li>
+                <li>Visit <a href="/LuckBlox.site/home">Home</a> for the featured game and portal links.</li>
+                <li>Visit <a href="/LuckBlox.site/games">Games</a> to browse all available maps.</li>
+                <li>Open <a href="/LuckBlox.site/play?placeid=1818">Play</a> to view the active place and play-state data.</li>
+                <li>Use <a href="/LuckBlox.site/settings">Settings</a> to inspect local server and launcher configuration.</li>
                 <li>Use <a href="/api/index.php">API</a> for the backend endpoints.</li>
             </ul>
-            <p><a href="/LuckBlox.site.tk/">Back to dashboard</a></p>
+            <p><a href="/LuckBlox.site/">Back to dashboard</a></p>
         </div>
     </div>
     <script src="/legacy-nav.js"></script>

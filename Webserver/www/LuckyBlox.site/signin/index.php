@@ -6,9 +6,12 @@ $success = '';
 
 $currentUser = lb_get_current_user();
 if ($currentUser) {
-    $redirect = '/LuckBlox.site.tk/home';
+    $redirect = '/LuckBlox.site/home';
     if (isset($_GET['redirect'])) {
-        $redirect = $_GET['redirect'];
+        $redirect = preg_replace('/^[^:\/]*:\/\//', '/', $_GET['redirect']);
+        if (strpos($redirect, '/') !== 0) {
+            $redirect = '/LuckBlox.site/home';
+        }
     }
     header('Location: ' . $redirect);
     exit;
@@ -23,13 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $result = lb_signin($username, $password);
         if ($result['ok']) {
-            $redirect = '/LuckBlox.site.tk/home';
-            if (isset($_POST['redirect']) && $_POST['redirect'] !== '') {
-                $redirect = preg_replace('/^[^:\/]*:\/\//', '/', $_POST['redirect']);
-                if (strpos($redirect, '/') !== 0) {
-                    $redirect = '/LuckBlox.site.tk/home';
-                }
-            }
             header('Location: ' . $redirect . '?signedin=1');
             exit;
         } else {
