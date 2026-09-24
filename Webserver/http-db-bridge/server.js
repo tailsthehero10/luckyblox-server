@@ -5073,14 +5073,31 @@ app.get('/v1/catalog', (req, res) => {
 });
 
 app.get('/asset/:name', (req, res) => {
-  const names = [req.params.name, `${req.params.name}.rbxl`, `${req.params.name}.rbxm`];
+  // An empty :name (as in "/asset/?id=1001") used to resolve to mapsRoot
+  // itself: path.join(mapsRoot, '') is the directory, existsSync() returned
+  // true, and res.download() then streamed whatever stray file sat there. Every
+  // asset request in the legacy client hit this and received that file instead
+  // of the asset - so the client could never load a player's avatar.
+  //
+  // Require a real .rbxl/.rbxm file, and let a request with no name fall
+  // through to the id-based handler below.
+  const rawName = String(req.params.name || '').trim();
+  if (!rawName || rawName === '.' || rawName === '..') {
+    return res.status(404).json({ ok: false, error: 'asset-not-found', message: 'An asset name is required.' });
+  }
+
+  const names = [rawName, `${rawName}.rbxl`, `${rawName}.rbxm`];
   let filePath = null;
 
   for (const candidate of names) {
     const testPath = path.join(mapsRoot, candidate);
-    if (fs.existsSync(testPath)) {
-      filePath = testPath;
-      break;
+    try {
+      if (fs.existsSync(testPath) && fs.statSync(testPath).isFile()) {
+        filePath = testPath;
+        break;
+      }
+    } catch (error) {
+      // Unreadable candidate - try the next spelling.
     }
   }
 
