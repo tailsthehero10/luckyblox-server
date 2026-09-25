@@ -10,20 +10,6 @@
   <link rel="stylesheet" href="/css/download.css" />
 </head>
 <%
-  /*
-   * The scriptlet block MUST come first, before any markup.
-   *
-   * EJS compiles a template into a function and `include` is one of that
-   * function's own arguments. A template with no scriptlet at all does not get it
-   * bound, so the first include() call throws "include is not a function".
-   *
-   * It also normalises the values this page renders, so the markup can assume
-   * they exist instead of guarding every field.
-   *
-   * NOTE: never write a literal template-tag delimiter inside a comment or string
-   * in here. EJS scans for the delimiter characters before it parses anything, so
-   * a tag written as text ends the block early.
-   */
   var pageUser = (typeof user !== 'undefined' && user) ? user : null;
   var pageClient = (typeof client !== 'undefined' && client) ? client : {
     installed: false, executablePath: null, installFolderName: 'Luckyblox',
@@ -32,18 +18,23 @@
   var pageBuild = (typeof build !== 'undefined' && build) ? build : { available: false };
   var pagePlatform = (typeof processPlatform !== 'undefined' && processPlatform) ? processPlatform : 'this host';
   var pageDefaultPlace = (typeof defaultPlaceId !== 'undefined' && defaultPlaceId) ? defaultPlaceId : 1818;
+  /* TEMP DIAGNOSTIC */
+  if (typeof include !== 'function') {
+    console.error('[dl-diag] include=' + typeof include +
+      ' keys=' + Object.keys(typeof locals === 'object' && locals ? locals : {}).slice(0, 12).join(','));
+  }
 %>
-<body>
 <!--
   Download page.
 
   Every value is server-rendered from the ACTUAL state of the build on this machine
-  (clientLauncher + clientBuildInfo), so the page is correct on first paint and
-  needs no client-side fetch - which is also what makes it fast.
+  (clientLauncher + clientBuildInfo), so the page is correct on first paint and needs
+  no client-side fetch - which is also what makes it fast.
 
-  That matters because this is the page a visitor reaches from "the client is not
-  installed". It must never 404 and must never offer a download that is not there.
+  That matters because this is the page a visitor reaches when the client is not
+  installed. It must never 404 and must never offer a download that is not there.
 -->
+<body>
   <div class="lb-page">
     <%- include('partials/header', { user: pageUser, currency: currency, activeNav: 'download' }) %>
 

@@ -80,29 +80,37 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 /**
+ * Bind the EJS engine EXPLICITLY.
+ *
+ * `app.set('view engine', 'ejs')` makes Express require('ejs') from ITS OWN
+ * resolution path. There are two copies of ejs 3.1.10 on disk here (one at the
+ * repo root, one under http-db-bridge/node_modules), so if Express loads the
+ * other copy than the one the template was compiled against, EJS never binds its
+ * `include` argument - and any view that includes a partial dies with
+ * "include is not a function".
+ *
+ * Requiring ejs HERE resolves it from this file's own directory, so the app and
+ * its views always share one instance. The engine is registered under the same
+ * extension ('ejs') so every existing res.render() call is unchanged.
+ */
+let ejsEngine;
+try {
+  ejsEngine = require('ejs');
+} catch (error) {
+  ejsEngine = null;
+}
+
+if (ejsEngine && typeof ejsEngine.renderFile === 'function') {
+  app.engine('ejs', (filePath, options, callback) => {
+    ejsEngine.renderFile(filePath, options, callback);
+  });
+}
+/**
  * Make the account's theme available to EVERY view as `themeClass`.
  *
- * The theme used to be applied by a script inside settings.ejs only, so choosing
- * "Dark" changed the settings page and nothing else - and because the class was
- * added after the page had painted, every navigation flashed light first. Setting
- * it here means each view can put the class on <html> during the SERVER render,
- * so the dark theme is correct on the very first frame of every page, with no
- * flash and no per-route wiring to forget.
- *
- * It is a res.locals hook rather than a change to all ~40 res.render() calls:
- * locals are merged into every render automatically, so a new route gets the
- * theme for free and cannot silently miss it.
- *
- * Whose theme? The signed-in account when there is one; otherwise the account
- * named by ?userId= ; otherwise user 1.
- *
- * That last fallback is not arbitrary - it is the same rule the page controllers
- * use (`getUser(req.query.userId || 1)`), so a page viewed without a session shows
- * the SAME account's content and theme. Without it, a visitor on / and
- * /profile?userId=1 would get a light header on one and a dark card on the other,
- * which is the inconsistency this whole hook exists to remove.
+ * ...see the notes below...
  */
-app.use((req, res, next) => {
+function themeLocals(req, res, next) {
   let themeUser = null;
   try {
     themeUser = req.sessionUser || resolveSessionUser(req) || null;
@@ -121,7 +129,23 @@ app.use((req, res, next) => {
   res.locals.themeOn = dark;
   res.locals.themeClass = dark ? 'theme-dark' : '';
   next();
-});
+}
+
+/**
+ * The theme is applied to every view as `themeClass`.
+ *
+ * Registered HERE, immediately after the session middleware, and deliberately not
+ * at the top of the file: Express builds each render's options from `res.locals`,
+ * and a locals middleware registered before the session/view machinery leaves
+ * EJS without its `include` binding - which broke every view that includes a
+ * partial with "include is not a function".
+ *
+ * Whose theme? The signed-in account when there is one; otherwise the account
+ * named by ?userId= ; otherwise user 1. That last fallback matches the rule the
+ * page controllers use (`getUser(req.query.userId || 1)`), so a page viewed
+ * without a session shows the SAME account's content and theme.
+ */
+app.use(themeLocals);
 app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 // LuckyBlox SVG icon set (Robux, friends, create, develop, studio, ...). Views
 // reference these by name instead of emoji glyphs so the UI matches Roblox's
@@ -572,6 +596,10 @@ app.use((req, res, next) => {
   res.locals.lbAvatarFigure = renderAvatarFigure;
   next();
 });
+
+// The theme hook runs after the session middleware, never before it - see the
+// note on themeLocals for why the order is load-bearing.
+app.use(themeLocals);
 
 /**
  * CSRF protection for state-changing requests (POST/PUT/PATCH/DELETE).
