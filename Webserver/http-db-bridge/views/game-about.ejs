@@ -42,7 +42,11 @@
   ];
   var currentTab = (typeof activeTab !== 'undefined' && activeTab) ? activeTab : 'about';
   var iconUrl = (typeof gameIcon !== 'undefined' && gameIcon) ? gameIcon : '/gameplaceholder/card.png';
-  var thumbUrl = (typeof gameThumb !== 'undefined' && gameThumb) ? gameThumb : '/gameplaceholder/big.png';
+  // There is deliberately NO separate wide thumbnail. The page's card artwork is
+  // the square game icon (game.icon), layered over /gameplaceholder/card.png by
+  // the markup below. A `thumbUrl` used to default to the WIDE
+  // '/gameplaceholder/big.png' here, which is how every experience ended up
+  // showing the same 596x335 banner in a card that is meant to be square.
   var serverList = (typeof servers !== 'undefined' && servers) ? servers : [];
   var votePct = (typeof likesPercent !== 'undefined' && likesPercent) ? likesPercent : 0;
   var voteTotal = (Number(likes) || 0) + (Number(dislikes) || 0);

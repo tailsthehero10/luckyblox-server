@@ -51,39 +51,47 @@
                   <div class="roblox-panel">
                     <div class="roblox-panel-body">
                       <div class="roblox-avatar-stage">
-                        <div class="roblox-avatar-render lb-loading-block is-loading">
-                          <%# The real avatar, in order of fidelity: the wearer's Roblox
-                              full-body render, then the locally drawn figure in their own
-                              body colours. The letter tile is only a last resort for an
-                              account with no colours at all. %>
-                            <% if (avatar && avatar.fullBodyUrl) { %>
-                              <img class="lb-avatar-render-img" src="<%= avatar.fullBodyUrl %>"
-                                alt="<%= user.username %>'s avatar" width="352" height="352"
-                                onerror="this.style.display='none';" />
-                              <% } else { %>
-                                <%- lbAvatarFigure(user, 352) %>
-                                  <% } %>
-                                    <div class="av-render-name">
-                      <%= user.displayName || user.username %>
-                    </div>
-                    <div class="av-render-sub">
-                      Currently wearing <%= Array.isArray(wearing) ? wearing.length : 0 %> items &middot; rig
-                        <strong id="rigEcho">
-                          <%= avatarType %>
-                        </strong>
-                    </div>
-                </div>
-              </div>
+                        <div class="roblox-avatar-render lb-loading-block is-loading"
+                             style="--lb-loader-size:64px;">
+                          <%#
+                            The local figure is ALWAYS drawn and the remote Roblox
+                            render is layered on top of it.
 
-              <div class="roblox-button-row av-render-actions">
-                <button class="roblox-primary-button" id="save-avatar" type="button">Save avatar</button>
-                <button class="roblox-secondary-button" id="randomize-wear" type="button">Randomize</button>
-              </div>
-            </div>
-          </div>
+                            The old markup was either/or, so when `fullBodyUrl` was
+                            present but the request then failed, the onerror hid the
+                            image and there was nothing underneath - the stage
+                            collapsed and the character vanished. Layering means a
+                            failed remote render simply reveals the local figure.
+                          %>
+                          <div class="lb-avatar-stage-fallback">
+                            <%- lbAvatarFigure(user, 352) %>
+                          </div>
+                          <% if (avatar && avatar.fullBodyUrl) { %>
+                            <img class="lb-avatar-render-img lb-avatar-stage-top"
+                              src="<%= avatar.fullBodyUrl %>"
+                              alt="<%= user.username %>'s avatar"
+                              onerror="this.style.display='none';var b=this.parentNode;if(b)b.classList.remove('is-loading');" />
+                          <% } %>
 
-          <!-- Body / rig: R6 or R15. This is the ONLY place the rig is set. -->
-          <div class="roblox-panel">
+                          <div class="av-render-name">
+                            <%= user.displayName || user.username %>
+                          </div>
+                          <div class="av-render-sub">
+                            Currently wearing <%= Array.isArray(wearing) ? wearing.length : 0 %> items
+                            &middot; rig <strong id="rigEcho"><%= avatarType %></strong>
+                          </div>
+                        </div>
+                      </div>
+
+                  <div class="roblox-button-row av-render-actions">
+                    <button class="roblox-primary-button" id="save-avatar" type="button">Save avatar</button>
+                    <button class="roblox-secondary-button" id="randomize-wear" type="button">Randomize</button>
+                  </div>
+                    </div>
+                  </div>
+
+                  <!-- Body / rig: R6 or R15. This is the ONLY place the rig is set. -->
+                  <div class="roblox-panel">
             <div class="roblox-panel-header">
               <img class="ch-ico ch-ico-sm" src="/icons/avatar.svg" alt="" /> Body
             </div>
@@ -315,6 +323,43 @@
       'use strict';
 
       var selected = new Set(<%- JSON.stringify(wearingList || []) %>);
+
+      // --- Character render: clear the loading spinner -------------------------
+      // The render block is server-rendered with .is-loading so the spinner is up
+      // before the artwork arrives. Nothing used to take it back DOWN on success:
+      // only the <img> onerror did, so a render that loaded normally left the
+      // spinner sitting over the avatar permanently.
+      //
+      // legacy-nav.js cannot help here - it only decorates lazy/remote images, and
+      // this <img> is neither - so the block is cleared explicitly once every
+      // image inside it has settled (loaded, failed, or was already cached).
+      (function () {
+        var block = document.querySelector('.roblox-avatar-render');
+        if (!block) return;
+
+        var images = block.querySelectorAll('img');
+        var clear = function () { block.classList.remove('is-loading'); };
+
+        if (!images.length) {
+          clear();
+          return;
+        }
+
+        var remaining = images.length;
+        images.forEach(function (img) {
+          var settle = function () {
+            remaining -= 1;
+            if (remaining <= 0) clear();
+          };
+          // A cached image has already finished and will not fire load again.
+          if (img.complete) {
+            settle();
+            return;
+          }
+          img.addEventListener('load', settle, { once: true });
+          img.addEventListener('error', settle, { once: true });
+        });
+      }());
 
       // --- Local editor state, seeded from what the account actually saved. ---
       var rig = '<%= avatarType %>';

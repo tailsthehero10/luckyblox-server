@@ -27,8 +27,9 @@
                   "Currently Wearing" (avatar figure on the left, an 8-slot
                   grid of equipped item thumbnails on the right),
                   then Collections, Groups, Badges and the Statistics section
-    Creations tab a "Games" grid, ~4 tiles per row, each showing the 16:9
-                  thumbnail, the name and a votes% / playing count row
+    Creations tab a "Games" grid, each showing the SQUARE game card, the name
+                  and a genre / playing count row. (A game is a square card:
+                  the artwork is the game's square icon, never a wide banner.)
 
   Every number below comes from users.json / places.json. Nothing is invented.
 %>
@@ -67,12 +68,15 @@
         <!-- Profile header: headshot, name, counters, actions -->
         <section class="lb-profile-header">
           <div class="lb-avatar-stage">
-            <% if (headshot || fullBody) { %>
-              <img class="roblox-avatar-image" src="<%= headshot || fullBody %>" alt="<%= user.username %>"
-                   onerror="this.style.display='none';var f=this.parentNode.querySelector('.lb-avatar-figure');if(f)f.style.display='block';" />
-              <div style="display:none;"><%= lbAvatarFigure(user, 150) %></div>
-            <% } else { %>
+            <%# Layered, like the Currently Wearing stage: the local figure is
+                always drawn and the remote headshot sits on top of it, so a
+                failed request reveals the figure rather than an empty circle. %>
+            <div class="lb-avatar-stage-fallback">
               <%= lbAvatarFigure(user, 150) %>
+            </div>
+            <% if (headshot || fullBody) { %>
+              <img class="roblox-avatar-image lb-avatar-stage-top" src="<%= headshot || fullBody %>"
+                   alt="<%= user.username %>" onerror="this.style.display='none';" />
             <% } %>
           </div>
 
@@ -186,12 +190,24 @@
           <div class="lb-panel-body">
             <div class="lb-content-grid">
               <div>
-                <div class="lb-avatar-stage" style="width:100%;height:260px;">
-                  <% if (fullBody) { %>
-                    <img class="roblox-avatar-image roblox-avatar-image-large" src="<%= fullBody %>" alt="<%= user.username %> avatar"
-                         onerror="this.style.display='none';var f=this.parentNode.querySelector('.lb-avatar-figure');if(f)f.style.display='block';" />
-                  <% } else { %>
+                <div class="lb-avatar-stage">
+                  <%#
+                    The local figure is ALWAYS rendered, and the remote render is
+                    layered on top of it when there is one.
+
+                    The old markup was either/or: the fallback figure only existed
+                    in the `else` branch, so when `fullBody` was set but the request
+                    then failed, the onerror hid the <img> and there was nothing
+                    underneath it - the stage collapsed and left a gap. Layering
+                    means a failed remote render simply reveals the local figure.
+                  %>
+                  <div class="lb-avatar-stage-fallback">
                     <%- include('partials/avatar-figure', { user: user, size: 220 }) %>
+                  </div>
+                  <% if (fullBody) { %>
+                    <img class="roblox-avatar-image roblox-avatar-image-large lb-avatar-stage-top"
+                         src="<%= fullBody %>" alt="<%= user.username %> avatar"
+                         onerror="this.style.display='none';" />
                   <% } %>
                 </div>
                 <div class="lb-faint" style="text-align:center;margin-top:8px;"><%= user.username %></div>

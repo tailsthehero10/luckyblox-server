@@ -10,10 +10,28 @@
     var value = figColors[key];
     return figRgb(value != null ? value : 1002);
   }
+  /**
+   * The figure is sized by a font-size on a 10em-tall box, so the requested
+   * height is converted once here and the CSS does the rest.
+   *
+   * A named size class is preferred because it is the same value every page uses
+   * and keeps the drawn size and the reserved layout space in agreement; an
+   * arbitrary pixel height still works by setting font-size directly, so callers
+   * are not restricted to the fixed set.
+   */
   var figSize = (typeof size !== "undefined" && size) ? Number(size) : 240;
-  var figScale = Math.max(0.4, figSize / 240);
+  if (!Number.isFinite(figSize) || figSize <= 0) figSize = 240;
+  // 10em tall: font-size = target height / 10.
+  var figFont = Math.round((figSize / 10) * 1000) / 1000;
+  var figClasses = {
+    150: 'lb-avatar-figure--xs',
+    220: 'lb-avatar-figure--sm',
+    300: 'lb-avatar-figure--md',
+    352: 'lb-avatar-figure--lg'
+  };
+  var figModifier = figClasses[figSize] || '';
 -%>
-<div class="lb-avatar-figure" style="--lb-avatar-scale:<%= figScale %>;" role="img" aria-label="Avatar">
+<div class="lb-avatar-figure <%= figModifier %>" style="font-size:<%= figFont %>px;" role="img" aria-label="Avatar">
   <div class="lb-af-part lb-af-head" style="background:<%= figPick("headColorId") %>;"><span class="lb-af-face">:B</span></div>
   <div class="lb-af-part lb-af-torso" style="background:<%= figPick("torsoColorId") %>;"></div>
   <div class="lb-af-part lb-af-larm" style="background:<%= figPick("leftArmColorId") %>;"></div>

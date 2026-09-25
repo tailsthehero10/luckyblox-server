@@ -774,7 +774,13 @@ function createDefaultAssets() {
 // network - which is why game icons rendered as empty boxes. Local Roblox
 // placeholder art is used instead and ships with the server.
 const DEFAULT_GAME_ICON = '/gameplaceholder/card.png';
-const DEFAULT_GAME_COVER = '/gameplaceholder/big.png';
+// The cover is the SAME square art as the icon, not the wide Big_ image.
+//
+// LuckyBlox shows a game as a square card everywhere (home tiles, the game page
+// thumbnail), and the shipped Big_ placeholder is 596x335 - a banner. Serving it
+// as the default cover is what made every game render as a wide card. A square
+// card needs square art, so the two defaults are one asset.
+const DEFAULT_GAME_COVER = DEFAULT_GAME_ICON;
 
 function createDefaultUsers() {
   return {

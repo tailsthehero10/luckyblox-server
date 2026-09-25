@@ -819,7 +819,11 @@ img.roblox-brand-mark {
 .roblox-game-card-thumb {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  /* SQUARE. This said 16:9, and it is the rule that produced the wide cards:
+     the frame was a banner while the art inside it is a square game icon, so
+     every tile showed grey bars down both sides. A game is a square card, on
+     the home grid and on the game page alike. */
+  aspect-ratio: 1 / 1;
   border-radius: 8px;
   overflow: hidden;
   background: #dfe3e8;
@@ -831,18 +835,20 @@ img.roblox-brand-mark {
   inset: 0;
   width: 100%;
   height: 100%;
-  /* The placeholder art is square (236x236), so `contain` keeps it undistorted
-     inside the 16:9 frame instead of stretching it. Real Roblox icons are 16:9
-     and fill the frame under `cover`. */
+  /* `contain`, never `cover`: the art is a square game icon, and `cover` in a
+     square frame crops the edges off it. Fitting shows the whole card art. */
   object-fit: contain;
+  object-position: center center;
   display: block;
 }
 
-/* A real (16:9) game icon should fill the frame rather than sit letterboxed. */
+/* The game's own artwork is layered over the placeholder. It is NOT cropped to
+   fill the frame - see the `contain` above - so this only needs the stacking
+   order. It used to force object-fit: cover, which cut the square icon's edges
+   off inside the 16:9 banner frame. */
 .roblox-game-card-thumb img:first-child:not(.roblox-game-card-placeholder) {
   z-index: 1;
-  object-fit: cover;
-  background: #dfe3e8;
+  background: transparent;
 }
 
 .roblox-game-card-meta {
@@ -2514,7 +2520,7 @@ a.roblox-brand:hover {
   .roblox-sidebar { display: none; }
 }
 
-/* --- Game page (2021 style: wide Big_ hero thumbnail + info column) -------- */
+/* --- Game page (square card + info column) --------------------------------- */
 .roblox-game-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
@@ -2534,10 +2540,14 @@ a.roblox-brand:hover {
   border: 1px solid var(--border-line);
 }
 
+/* Fit, do not crop. `cover` cut the square game icon's edges off, which is one
+   of the ways the card art looked wrong. The frame is square (see .lb-game-thumb
+   and its 1/1 aspect-ratio), so `contain` shows the whole artwork. */
 .roblox-game-thumb-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center center;
   display: block;
 }
 
@@ -3855,32 +3865,41 @@ button.roblox-sidebar-link { min-height: 34px; }
    blocky R6 figure: a head, torso, two arms and two legs, each a flat-coloured
    box from the player's saved body colours. This reproduces that geometry.
 
-   The sizes below are the 1x (240px tall) layout; --lb-avatar-scale, set by
-   renderAvatarFigure() on the server, shrinks the whole thing proportionally.
+   SIZING: every part is expressed in `em`, and the figure's own font-size is the
+   single knob. One character is 1/10th of the figure's height (240px at 1x = a
+   24px font-size), so the whole figure scales by changing font-size - which is a
+   LAYOUT size, unlike transform.
+
+   This used to be `transform: scale(var(--lb-avatar-scale))` on a fixed 130x240
+   box, which does NOT resize the box: a figure asked for 352px still reserved
+   only 240px of layout, so it spilled over the panel below it and overlapped its
+   neighbours, and the visible size and the space it took disagreed. Sizing in em
+   keeps the drawn figure and the reserved space identical at every size.
    --------------------------------------------------------------------------- */
 .lb-avatar-figure {
   position: relative;
-  width: 130px;
-  height: 240px;
-  transform: scale(var(--lb-avatar-scale, 1));
-  transform-origin: center center;
+  /* 240px tall at 1x. Everything below is a fraction of this. */
+  font-size: 24px;
+  width: 5.4167em;   /* 130 / 24 */
+  height: 10em;      /* 240 / 24 */
   flex: 0 0 auto;
+  margin: 0 auto;
 }
 
 .lb-af-part { position: absolute; }
 
 /* Head: 46x46, centred, with the classic smile face */
 .lb-af-head {
-  left: 42px;
+  left: 1.75em;      /* 42 / 24 */
   top: 0;
-  width: 46px;
-  height: 46px;
-  border-radius: 4px;
+  width: 1.9167em;   /* 46 / 24 */
+  height: 1.9167em;
+  border-radius: 0.1667em;
   display: grid;
   place-items: center;
 }
 .lb-af-face {
-  font-size: 15px;
+  font-size: 0.625em;  /* 15 / 24 - relative to the figure, so it scales too */
   font-weight: 900;
   color: rgba(0, 0, 0, 0.62);
   letter-spacing: -1px;
@@ -3889,26 +3908,89 @@ button.roblox-sidebar-link { min-height: 34px; }
 
 /* Torso: 70x86, centred under the head */
 .lb-af-torso {
-  left: 30px;
-  top: 50px;
-  width: 70px;
-  height: 86px;
-  border-radius: 4px;
+  left: 1.25em;      /* 30 / 24 */
+  top: 2.0833em;     /* 50 / 24 */
+  width: 2.9167em;   /* 70 / 24 */
+  height: 3.5833em;  /* 86 / 24 */
+  border-radius: 0.1667em;
 }
 
 /* Arms: 26x82, one either side of the torso */
-.lb-af-larm { left: 2px;  top: 52px; width: 26px; height: 82px; border-radius: 4px; }
-.lb-af-rarm { left: 102px; top: 52px; width: 26px; height: 82px; border-radius: 4px; }
+.lb-af-larm {
+  left: 0.0833em; top: 2.1667em; width: 1.0833em; height: 3.4167em; border-radius: 0.1667em;
+}
+.lb-af-rarm {
+  left: 4.25em; top: 2.1667em; width: 1.0833em; height: 3.4167em; border-radius: 0.1667em;
+}
 
 /* Legs: 32x96, below the torso */
-.lb-af-lleg { left: 30px;  top: 140px; width: 32px; height: 96px; border-radius: 4px; }
-.lb-af-rleg { left: 68px;  top: 140px; width: 32px; height: 96px; border-radius: 4px; }
+.lb-af-lleg {
+  left: 1.25em; top: 5.8333em; width: 1.3333em; height: 4em; border-radius: 0.1667em;
+}
+.lb-af-rleg {
+  left: 2.8333em; top: 5.8333em; width: 1.3333em; height: 4em; border-radius: 0.1667em;
+}
+
+/* The size scale. A caller passes a target HEIGHT in px; these are the sizes the
+   site actually uses, expressed as a font-size on the same 10em-tall box.
+   (10em * font-size = target height, so font-size = target / 10.) */
+.lb-avatar-figure--xs { font-size: 15px; }   /* 150px - profile thumbnail */
+.lb-avatar-figure--sm { font-size: 22px; }   /* 220px - profile page figure */
+.lb-avatar-figure--md { font-size: 30px; }   /* 300px - home preview */
+.lb-avatar-figure--lg { font-size: 35.2px; } /* 352px - avatar page stage */
 
 /* Inside a poster/stage the figure should sit centred and not be clipped. */
 .lb-avatar-stage .lb-avatar-figure,
 .roblox-avatar-poster .lb-avatar-figure,
 .roblox-large-avatar .lb-avatar-figure {
   margin: 0 auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Layered avatar stage (profile page)
+   ---------------------------------------------------------------------------
+   The local blocky figure is ALWAYS rendered, and a remote Roblox render is
+   positioned on top of it. When the remote image 404s or the account has no
+   linked Roblox id, it hides itself and the figure underneath is revealed.
+
+   The stage used to be either/or - the fallback existed only in the `else`
+   branch - so a failed remote render left an empty gap where the avatar should
+   be, and the stage collapsed to whatever height the missing image left behind.
+   --------------------------------------------------------------------------- */
+.lb-avatar-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Reserve the figure's height so the header does not jump once the remote
+     render resolves (or fails). */
+  min-height: 150px;
+}
+
+.lb-avatar-stage-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 0;
+}
+
+/* The remote render sits over the figure. It is absolutely positioned so it
+   cannot push the stage taller than the figure it is replacing. */
+.lb-avatar-stage-top {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  z-index: 1;
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* In the wider "Currently Wearing" stage the render may be larger than the
+   header avatar, so let that one size from its own box. */
+.lb-panel .lb-avatar-stage {
+  min-height: 260px;
 }/* ---------------------------------------------------------------------------
    Profile name / counter fixes
    ---------------------------------------------------------------------------

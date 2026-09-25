@@ -378,11 +378,28 @@ the currently-wearing outfit on the right. Panel chrome (.roblox-panel / header 
   white-space: nowrap;
 }
 
-.roblox-asset-card .roblox-secondary-button {
+/* The Select button inside an inventory card.
+
+   roblox.css sets .roblox-secondary-button { min-height: 36px !important }, which
+   beats a plain `min-height: 30px` here - so the button rendered 36px tall inside
+   a ~110px-wide card and pushed the card taller than its neighbours, which is
+   what made the inventory grid look ragged. `!important` alone would still lose;
+   the extra specificity (card + button) plus !important is what actually wins. */
+.roblox-asset-card .roblox-secondary-button,
+.roblox-asset-card button.roblox-secondary-button {
   width: 100%;
-  min-height: 30px;
-  padding: 0 8px;
-  font-size: 13px;
+  min-height: 30px !important;
+  height: auto;
+  padding: 0 8px !important;
+  font-size: 13px !important;
+  font-weight: 500;
+  /* A long item name must not push the button wider than its card. */
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  justify-content: center;
 }
 
 /* --- Responsive ------------------------------------------------------------ */

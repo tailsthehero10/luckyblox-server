@@ -91,8 +91,20 @@
         </div>
       </section>
 
+      <!--
+        .ch-grid is a two-column grid. It must have exactly TWO children: the
+        left column (experiences + recent) and the right column (quick actions
+        and the live panels).
+
+        The wrapper <div> below is the left column, and the <div
+        class="ch-grid-side"> further down is the right one. Without them the
+        panels were all direct grid children, so the grid received five items for
+        two columns, wrapped the odd ones onto new rows and gave every panel a
+        half-width track - which is what made the dashboard look mis-sized and
+        mis-ordered rather than a clean two-column layout.
+      -->
       <section class="ch-grid">
-        <div>
+        <div class="ch-grid-main">
           <div class="ch-panel">
             <div class="ch-panel-head">
               <span class="ch-title"><img class="ch-ico" src="/icons/games.svg" alt="" /> Your experiences</span>
@@ -116,8 +128,8 @@
                         <span class="ch-badge ch-badge-type"><%= place.serverCount %> server<%= place.serverCount === 1 ? '' : 's' %></span>
                       </div>
                       <div class="ch-game-meta" style="margin-top:6px;">
-                        <span class="ch-badge ch-badge-type">Created <%= place.createdAt ? new Date(place.createdAt).toLocaleDateString() : 'â€”' %></span>
-                        <span class="ch-badge ch-badge-type">Updated <%= place.updatedAt ? new Date(place.updatedAt).toLocaleDateString() : 'â€”' %></span>
+                        <span class="ch-badge ch-badge-type">Created <%= place.createdAt ? new Date(place.createdAt).toLocaleDateString() : '-' %></span>
+                        <span class="ch-badge ch-badge-type">Updated <%= place.updatedAt ? new Date(place.updatedAt).toLocaleDateString() : '-' %></span>
                         <span class="ch-badge ch-badge-type"><%= place.hasMap ? 'Map ready' : 'No map file' %></span>
                       </div>
                     </div>
@@ -157,7 +169,8 @@
           </div>
         </div>
 
-        <aside>
+        <div class="ch-grid-side">
+          <aside>
           <div class="ch-panel">
             <div class="ch-panel-head"><span class="ch-title"><img class="ch-ico" src="/icons/sparkle.svg" alt="" /> Quick actions</span></div>
             <div class="ch-panel-body">
@@ -228,7 +241,7 @@
                       <div class="ch-action-ico"><img class="ch-ico" src="/icons/studio.svg" alt="" /></div>
                       <div>
                         <div class="ch-action-name">Place <%= s.placeId %></div>
-                        <div class="ch-action-sub"><%= s.playing %>/<%= s.maxPlayers %> players آ· port <%= s.port %> آ· <%= s.status %></div>
+                        <div class="ch-action-sub"><%= s.playing %>/<%= s.maxPlayers %> players &middot; port <%= s.port %> &middot; <%= s.status %></div>
                       </div>
                     </div>
                   <% }) %>
@@ -248,11 +261,12 @@
               </div>
             </div>
           <% } %>
-        </aside>
+          </aside>
+        </div>
       </section>
     </main>
-    </div>
   </div>
+</div>
   <%- include('partials/scripts') %>
   <script>
     (function () {
@@ -322,7 +336,7 @@
               listEl.innerHTML = d.servers.map(function (s) {
                 return '<div class="ch-action"><div class="ch-action-ico"><img class="ch-ico" src="/icons/studio.svg" alt="" /></div>' +
                   '<div><div class="ch-action-name">Place ' + s.placeId + '</div>' +
-                  '<div class="ch-action-sub">' + s.playing + '/' + s.maxPlayers + ' players آ· port ' + s.port + ' آ· ' + s.status + '</div></div></div>';
+                  '<div class="ch-action-sub">' + s.playing + '/' + s.maxPlayers + ' players &middot; port ' + s.port + ' &middot; ' + s.status + '</div></div></div>';
               }).join('');
             } else {
               listEl.innerHTML = '<div class="ch-empty">No games running right now.</div>';
