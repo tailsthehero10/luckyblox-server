@@ -3858,7 +3858,9 @@ button.roblox-sidebar-link { min-height: 34px; }
   .lb-game-grid, .roblox-game-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
   .lb-game-title, .roblox-game-title { font-size: 21px; }
   .lb-profile-name, .roblox-profile-title { font-size: 23px; }
-}/* ---------------------------------------------------------------------------
+}
+
+/* ---------------------------------------------------------------------------
    R6 blocky avatar figure
    ---------------------------------------------------------------------------
    The 2021 roblox.com profile and home page drew the character as the classic
@@ -3991,7 +3993,9 @@ button.roblox-sidebar-link { min-height: 34px; }
    header avatar, so let that one size from its own box. */
 .lb-panel .lb-avatar-stage {
   min-height: 260px;
-}/* ---------------------------------------------------------------------------
+}
+
+/* ---------------------------------------------------------------------------
    Profile name / counter fixes
    ---------------------------------------------------------------------------
    The name on the 2021 profile is a single line of large Black-weight type, and
@@ -4024,7 +4028,9 @@ button.roblox-sidebar-link { min-height: 34px; }
 
 /* The status card only shows on pages that opt in; keep it out of the way of
    the nav rail on every other page. */
-.roblox-sidebar:not([data-show-status="1"]) .legacy-site-status { display: none !important; }/* ---------------------------------------------------------------------------
+.roblox-sidebar:not([data-show-status="1"]) .legacy-site-status { display: none !important; }
+
+/* ---------------------------------------------------------------------------
    Offset the page body below the fixed header
    ---------------------------------------------------------------------------
    .roblox-topbar is position:fixed on this deployment, so it is removed from
@@ -4079,7 +4085,9 @@ button.roblox-sidebar-link { min-height: 34px; }
 .roblox-page > .roblox-topbar + *,
 .roblox-page > .lb-header + * {
   margin-top: 0;
-}/* ---------------------------------------------------------------------------
+}
+
+/* ---------------------------------------------------------------------------
    Avatar Shop (catalog) tiles
    ---------------------------------------------------------------------------
    2021 catalog tiles were 150x150 thumbnails with the name, type and price
@@ -4208,7 +4216,9 @@ button.roblox-sidebar-link { min-height: 34px; }
   /* Stack the group row so the emblem does not squeeze the text off screen. */
   .lb-group-row { flex-direction: column; }
   .lb-group-emblem { width: 72px; height: 72px; }
-}/* ---------------------------------------------------------------------------
+}
+
+/* ---------------------------------------------------------------------------
    Presence indicator
    ---------------------------------------------------------------------------
    The 2021 friends list showed a coloured dot next to each friend: green for
@@ -4230,7 +4240,9 @@ button.roblox-sidebar-link { min-height: 34px; }
 }
 .lb-presence-online { background: var(--lb-green); }
 .lb-presence-away   { background: var(--lb-amber, #e2a400); }
-.lb-presence-offline { background: #b6bcc2; }/* ---------------------------------------------------------------------------
+.lb-presence-offline { background: #b6bcc2; }
+
+/* ---------------------------------------------------------------------------
    Avatar page -- real avatar render + "Currently Wearing"
    ---------------------------------------------------------------------------
    The avatar page previously drew a single initial letter. It now shows the
@@ -4320,7 +4332,9 @@ button.roblox-sidebar-link { min-height: 34px; }
 
 .lb-wearing-remove:hover {
   background: #fdecec;
-}/* ---------------------------------------------------------------------------
+}
+
+/* ---------------------------------------------------------------------------
    Loading indicator
    ---------------------------------------------------------------------------
    Roblox's own loading spinner (images.rbxcdn.com/059b09408c6b199c.gif), saved
@@ -4894,7 +4908,9 @@ body.lb-auth .birthday-row .lb-select-trigger {
   min-width: 0 !important;
   height: 46px !important;
   border-radius: 8px !important;
-}/* ---------------------------------------------------------------------------
+}
+
+/* ---------------------------------------------------------------------------
    Studio page self-layout fix
    ---------------------------------------------------------------------------
    studio.ejs declares its own dark theme inline. roblox.css carries an older
@@ -4938,7 +4954,9 @@ body.lb-studio .studio-place {
 body.lb-studio .studio-brand,
 body.lb-studio .studio-place h3 {
   color: #f3f4f5 !important;
-}/* ---------------------------------------------------------------------------
+}
+
+/* ---------------------------------------------------------------------------
    Header account block + rail identity
    ---------------------------------------------------------------------------
    The 2021 bar showed the signed-in ACCOUNT immediately left of the Robux

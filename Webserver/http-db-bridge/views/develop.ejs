@@ -96,12 +96,12 @@
         left column (experiences + recent) and the right column (quick actions
         and the live panels).
 
-        The wrapper <div> below is the left column, and the <div
-        class="ch-grid-side"> further down is the right one. Without them the
-        panels were all direct grid children, so the grid received five items for
-        two columns, wrapped the odd ones onto new rows and gave every panel a
-        half-width track - which is what made the dashboard look mis-sized and
-        mis-ordered rather than a clean two-column layout.
+        The first child below is the left column wrapper (class ch-grid-main) and
+        the last is the right column wrapper (class ch-grid-side). Without those
+        two wrappers the panels were all direct grid children, so the grid
+        received five items for two columns, wrapped the odd ones onto new rows
+        and gave every panel a half-width track - which is what made the dashboard
+        look mis-sized and mis-ordered rather than a clean two-column layout.
       -->
       <section class="ch-grid">
         <div class="ch-grid-main">
@@ -264,7 +264,8 @@
           </aside>
         </div>
       </section>
-    </main>
+      </main>
+    </div>
   </div>
 </div>
   <%- include('partials/scripts') %>

@@ -963,6 +963,27 @@ async function loadContent(releaseRootDir) {
   return { ok: true, restored };
 }
 
+/**
+ * Test seam: point the GitHub backend at a different API base.
+ *
+ * The github backend's whole risk is the API dance it performs (detect a missing
+ * branch, create blobs, build one tree and one commit, then move the ref). None of
+ * that can be exercised against the real api.github.com in a unit test, so this
+ * lets a test stand up a fake API and drive the real code paths against it.
+ * It is a no-op outside tests.
+ */
+function __setApiBaseForTests(base) {
+  if (config && config.mode === 'github') config.api = base;
+  // The branch/repo lookups cache their results, so a test that changes the API
+  // base must start from a cold cache.
+  cachedDefaultBranch = undefined;
+}
+
+/** Test seam: read one file through the github backend. */
+function __githubPullForTests(fileName) {
+  return githubPull(fileName);
+}
+
 module.exports = {
   FILES,
   enabled,
@@ -976,4 +997,6 @@ module.exports = {
   pushPending,
   flush,
   describe,
+  __setApiBaseForTests,
+  __githubPullForTests,
 };

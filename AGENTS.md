@@ -38,12 +38,18 @@ LuckyBlox is a local Roblox-style game platform served from a release folder. Ap
   - `local` — mirrors straight into a sibling clone of the storage repo
     (`<release>/../Luckyblox-Storage-1`, or `LUCKYBLOX_SYNC_DIR`) and commits
     there with git. No token, no network, no cost; use it when the server runs on
-    the same machine as the clone.
+    the same machine as the clone. NOTE: committing needs `git` on PATH - without
+    it the files are still mirrored, and `describe()` reports `git: false`.
 - `server/storage.js` pulls on boot (`restoreFromRemote`) and pushes on every
   write (debounced, best-effort). Unset `LUCKYBLOX_SYNC` = local-only, unchanged.
 - Per-user `<id>.json` files (inventory, currency, membership) sync too, not just
   the named files in `FILES`.
-- Test: `node tests/remoteStore.test.js`.
+- The storage repo starts EMPTY (no commits), so the first push must bootstrap the
+  `main` branch. `githubPushBatch` handles this: it detects the missing branch and
+  creates a parentless first commit instead of failing with a 422.
+- Tests: `node tests/remoteStore.test.js` (http backend round-trip),
+  `node tests/remoteStore-github.test.js` (empty-repo bootstrap + one-commit
+  batching, against a fake GitHub API).
 
 ## Image / artwork rules
 - Game artwork is a SQUARE card (1:1), everywhere: the game page thumbnail, the
@@ -55,6 +61,30 @@ LuckyBlox is a local Roblox-style game platform served from a release folder. Ap
 - Artwork is always a real `<img>` layered over a placeholder sibling, never a
   CSS `background-image`: the shared loading spinner can only cover an element,
   and a 404 must reveal the placeholder rather than an empty tinted box.
+
+## Layout rules (bugs that read as "glitched")
+- Every `<div>` must be closed. An unclosed one makes each later panel nest inside
+  the previous, and the browser silently auto-corrects it - nothing errors, the
+  page just lays out wrong. `avatar.ejs`, `settings.ejs` and `develop.ejs` each
+  shipped with one; `tests/view-structure.test.js` now guards this.
+- Size the R6 avatar figure with a FONT-SIZE, never `transform: scale()`. The
+  figure is a 10em-tall box whose parts are sized in `em`, so font-size resizes the
+  layout box with the artwork. `transform` draws bigger but reserves the old box,
+  so the figure spills out of its panel and overlaps what follows.
+- Server-rendered `.is-loading` blocks must have a way to clear: an inline
+  `onerror`, or JS that removes the class. Otherwise the spinner covers the
+  content forever.
+- A `.lb-game-thumb`/`.rbx-*` overlay that is `position: absolute` needs an
+  explicit `z-index` above the artwork (the art is layered at 0/1), or the button
+  is painted underneath the image.
+
+## Sheets and source encoding
+- These files are UTF-8. Never write them with a tool that re-encodes to latin-1:
+  `&middot;` and em dashes become mojibake (`آ·`, `â€”`) and render verbatim on the
+  page. `tests/view-structure.test.js` scans for those byte sequences.
+- Avoid a literal `<div>` inside an HTML comment or a JS string when it is not
+  real markup - it defeats naive structure checks and makes the nesting
+  impossible to read by eye.
 
 ## Client install model
 - The content client lives in a folder literally named `Luckyblox` (see `server/clientLauncher.js`).
