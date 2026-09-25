@@ -227,6 +227,47 @@
     });
   }
 
+  /**
+   * The account menu in the top bar.
+   *
+   * A real click toggle rather than a CSS :hover menu, so it opens for a keyboard
+   * user and a touch tap as well as a mouse, and closes on Escape and on an
+   * outside click. Without this the signed-in visitor has no way to sign out.
+   */
+  function bindAccountMenu() {
+    var wrap = document.querySelector('.lb-account-menu');
+    if (!wrap) return;
+    if (wrap.getAttribute('data-lb-bound') === '1') return;
+    wrap.setAttribute('data-lb-bound', '1');
+
+    var btn = document.getElementById('accountMenuBtn');
+    var panel = document.getElementById('accountMenuPanel');
+    if (!btn || !panel) return;
+
+    function close() {
+      wrap.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var open = wrap.classList.toggle('is-open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    // An outside click closes it. Using one document listener rather than a
+    // full-screen backdrop keeps this from swallowing clicks on the page.
+    document.addEventListener('click', function (e) {
+      if (wrap.contains(e.target)) return;
+      close();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') close();
+    });
+  }
+
   function start() {
     // The pages now render their own complete nav (Home / Games / Create / More)
     // and the home page renders a real sidebar, so this script no longer rewrites
@@ -237,6 +278,7 @@
     refreshRobux();
     decorateLoadingImages();
     bindMorePages();
+    bindAccountMenu();
 
     // Images that arrive after the first paint (lazy ones scrolling into view)
     // still get the spinner.

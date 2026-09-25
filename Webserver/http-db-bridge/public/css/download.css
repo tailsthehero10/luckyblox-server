@@ -1,0 +1,92 @@
+/* ---------------------------------------------------------------------------
+   Download page
+   ---------------------------------------------------------------------------
+   Reached from the Play button whenever the client is not installed, so it must
+   read clearly at a glance: what the current state IS, and the one action to
+   take. Everything here is static styling - the page needs no JS to be correct.
+   --------------------------------------------------------------------------- */
+.dl-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--lb-ink);
+  margin: 0 0 8px;
+}
+.dl-lede {
+  font-size: 15px;
+  color: var(--lb-ink-2);
+  max-width: 62ch;
+  margin: 0 0 18px;
+}
+
+/* The status table. Fixed label column so the values line up as a readable
+   column rather than a ragged edge. */
+.dl-status {
+  border: 1px solid var(--lb-line);
+  border-radius: var(--lb-radius);
+  background: var(--lb-surface-alt);
+  padding: 4px 14px;
+  margin-bottom: 18px;
+}
+.dl-status-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--lb-line-soft);
+  font-size: 14px;
+}
+.dl-status-row:last-child { border-bottom: 0; }
+.dl-status-label { color: var(--lb-muted); flex: 0 0 auto; }
+.dl-status-row strong { text-align: right; min-width: 0; }
+
+.dl-ok { color: var(--lb-green-dark); }
+.dl-missing { color: var(--lb-muted); }
+
+/* A filesystem path can be long and has no spaces to break at, so it must be
+   allowed to wrap or it widens the panel past the viewport. */
+.dl-path {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  color: var(--lb-ink-2);
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.dl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.dl-btn { min-height: 42px; padding: 0 20px; font-size: 15px; }
+
+/* The download glyph ships as dark art; on the green primary button it must read
+   white, so it is inverted explicitly rather than relying on a blanket rule. */
+.dl-ico-white { filter: brightness(0) invert(1) !important; opacity: 1 !important; }
+
+.dl-note {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--lb-line);
+  background: var(--lb-surface-alt);
+  color: var(--lb-muted);
+  font-size: 13px;
+  border-radius: 0 var(--lb-radius) var(--lb-radius) 0;
+}
+
+.dl-steps {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--lb-ink-2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.dl-steps li { margin-bottom: 8px; }
+.dl-steps strong { color: var(--lb-ink); }
+
+/* --- Dark theme ------------------------------------------------------------ */
+html.theme-dark .dl-status { background: #12161c !important; border-color: var(--lb-line) !important; }
+html.theme-dark .dl-note { background: #12161c !important; border-left-color: var(--lb-line) !important; }
+html.theme-dark .dl-ok { color: var(--lb-green) !important; }
+html.theme-dark .dl-path { color: var(--lb-ink-2) !important; }

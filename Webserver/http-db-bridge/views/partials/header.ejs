@@ -1,12 +1,28 @@
 <!--
   Shared site header - the 2021 roblox.com top bar.
-  Real page: https://web.archive.org/web/20210605202558/https://www.roblox.com/
 
-  The 2021 header was one dark slate bar, left to right:
-    logo | Games . Avatar Shop . Create . Robux | R$ balance (gear) (friends) (avatar)
+  Structure and colours are taken from the real page's own CSS, not invented:
 
-  The avatar icon on the right IS the profile link - roblox.com had no separate
-  "Profile" text link in the header.
+    .rbx-header                       { height: 90px }
+    .light-theme .rbx-header          { background-color: #dee1e3;
+                                        border-bottom: 1px solid #c7cbce }
+    .dark-theme  .rbx-header          { background-color: #191b1d;
+                                        border-bottom: 1px solid #111214 }
+    .light-theme .text-header         { color: #393b3d }
+    .dark-theme  .text-header         { color: #fff }
+    .light-theme .navbar-search       { background-color: #f2f4f5 }
+    .dark-theme  .navbar-search       { background-color: #232527 }
+    .light-theme .rbx-navbar li:hover { border-bottom: 2px solid #393b3d }
+    .dark-theme  .rbx-navbar li:hover { border-bottom: 2px solid #fff }
+
+  Two things this corrects, both of which were visible on the site:
+
+    1. The 2021 header was NOT a dark slate bar by default. It was a LIGHT bar
+       (#dee1e3) with dark text, switching to #191b1d only for a dark account
+       theme. The bar is now driven by the same theme as the rest of the site.
+
+    2. The top-level nav is Discover / Avatar Shop / Create / Robux, and the
+       signature interaction is a 2px UNDERLINE on hover, not a filled pill.
 
   Expects: user (may be null), currency {robux}, activeNav.
 -->
@@ -19,25 +35,59 @@ var hCurrency = (typeof currency !== 'undefined' && currency && typeof currency 
 var hActive = (typeof activeNav !== 'undefined' && activeNav) ? activeNav : '';
 var hUserId = hUser ? hUser.userId : null;
 var hRobux = hCurrency.robux != null ? hCurrency.robux : (hUser ? (hUser.robux || 0) : 0);
+var hDark = (typeof themeOn !== 'undefined') ? !!themeOn : false;
 %>
-<header class="lb-header roblox-topbar">
-  <a class="lb-brand roblox-brand" href="/" aria-label="LuckyBlox home">
+<header class="lb-header roblox-topbar<%= hDark ? ' dark-theme' : ' light-theme' %>">
+  <a class="lb-brand roblox-brand text-header" href="/" aria-label="LuckyBlox home">
     <img class="lb-brand-mark roblox-brand-mark" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
-    <span>LuckyBlox</span>
+    <span class="lb-brand-word">LuckyBlox</span>
   </a>
 
+  <!--
+    Top-level navigation. `Discover` (not `Games`) is the real label, and it
+    points at /games because that is this site's discover route.
+  -->
   <nav class="lb-header-nav roblox-nav" aria-label="Main navigation">
-    <div class="lb-header-nav-links roblox-nav-links">
-      <a href="/games" class="<%= hActive === 'games' ? 'active' : '' %>">Games</a>
-      <a href="/catalog" class="<%= hActive === 'catalog' ? 'active' : '' %>">Avatar Shop</a>
-      <a href="/create" class="<%= hActive === 'create' ? 'active' : '' %>">Create</a>
-      <a href="/upgrades/robux" class="<%= hActive === 'robux' ? 'active' : '' %>">Robux</a>
-    </div>
+    <ul class="lb-header-nav-links roblox-nav-links">
+      <li><a href="/games" class="nav-menu-title text-header<%= hActive === 'games' || hActive === 'home' ? ' active' : '' %>">Discover</a></li>
+      <li><a href="/catalog" class="nav-menu-title text-header<%= hActive === 'catalog' ? ' active' : '' %>">Avatar Shop</a></li>
+      <li><a href="/create" class="nav-menu-title text-header<%= hActive === 'create' ? ' active' : '' %>">Create</a></li>
+      <li><a href="/upgrades/robux" class="nav-menu-title text-header<%= hActive === 'robux' ? ' active' : '' %>">Robux</a></li>
+    </ul>
   </nav>
+
+  <!--
+    Site search. The real bar had one, with a scope selector (Experiences /
+    People / Avatar Shop / Groups / Library). The scope is a real <select> so it
+    works without JS; /search routes it.
+  -->
+  <form class="lb-header-search navbar-search" method="GET" action="/search" role="search">
+    <label class="lb-header-search-scope" for="searchScope">
+      <span class="lb-visually-hidden">Search scope</span>
+      <select id="searchScope" name="scope" aria-label="Search scope">
+        <option value="experiences">Experiences</option>
+        <option value="people">People</option>
+        <option value="catalog">Avatar Shop</option>
+        <option value="groups">Groups</option>
+      </select>
+    </label>
+    <input class="lb-header-search-input" type="search" name="q" id="navbar-search-input"
+           placeholder="Search" aria-label="Search LuckyBlox" autocomplete="off" />
+    <button class="lb-header-search-btn" type="submit" aria-label="Search">
+      <img class="ch-ico" src="/icons/search.svg" alt="" />
+    </button>
+  </form>
 
   <div class="lb-header-right roblox-right">
     <!--
-      Right-hand cluster, left to right: the ACCOUNT (avatar + username, linked
+      Right-hand cluster, left to right: the ACCOUNT (avatar + username, opening
+      the account menu), then the Robux balance, then the settings and friends
+      shortcuts.
+
+      The account block leads the cluster on purpose - it is the identity the
+      2021 bar showed immediately left of the currency, and it is the only thing
+      in the bar that says WHICH account you are signed in as.
+    -->
       to the profile), then the Robux balance, then settings and friends.
 
       The account block leads the cluster on purpose - it is the identity the
@@ -47,16 +97,94 @@ var hRobux = hCurrency.robux != null ? hCurrency.robux : (hUser ? (hUser.robux |
       visitor could not tell whose account they were looking at.
     -->
 <% if (hUserId) { %>
-    <a class="lb-account roblox-account" href="/users/<%= hUserId %>/profile" title="<%= hUser.username %>">
-      <span class="lb-account-avatar">
-        <% if (hUser.avatar && hUser.avatar.headshotUrl) { %>
-        <img src="<%= hUser.avatar.headshotUrl %>" alt="" />
-        <% } else { %>
-        <%= String(hUser.username || 'L').slice(0, 1).toUpperCase() %>
-        <% } %>
-      </span>
-      <span class="lb-account-name"><%= hUser.username %></span>
-    </a>
+    <!--
+      The ACCOUNT MENU.
+
+      The 2021 bar showed the signed-in identity on the right (avatar + username)
+      and clicking it opened a menu of account actions. It used to be a plain link
+      straight to the profile, so there was nowhere to sign out, switch account or
+      reach the settings - and a signed-in visitor had no way to become a
+      different one.
+
+      The menu is a real button + panel (not a :hover CSS menu) so it opens by
+      click AND by keyboard, and it is closed by Escape or an outside click. That
+      is what legacy-nav.js binds.
+    -->
+    <div class="lb-account-menu">
+      <button class="lb-account roblox-account" type="button" id="accountMenuBtn"
+              aria-haspopup="true" aria-expanded="false"
+              aria-controls="accountMenuPanel" title="<%= hUser.username %>">
+        <span class="lb-account-avatar">
+          <% if (hUser.avatar && hUser.avatar.headshotUrl) { %>
+          <img src="<%= hUser.avatar.headshotUrl %>" alt="" />
+          <% } else { %>
+          <%= String(hUser.username || 'L').slice(0, 1).toUpperCase() %>
+          <% } %>
+        </span>
+        <span class="lb-account-name"><%= hUser.username %></span>
+        <img class="ch-ico lb-account-caret" src="/icons/dropdown.svg" alt="" />
+      </button>
+
+      <div class="lb-account-dropdown" id="accountMenuPanel" role="menu">
+        <div class="lb-account-dropdown-head">
+          <span class="lb-account-dropdown-avatar">
+            <% if (hUser.avatar && hUser.avatar.headshotUrl) { %>
+            <img src="<%= hUser.avatar.headshotUrl %>" alt="" />
+            <% } else { %>
+            <%= String(hUser.username || 'L').slice(0, 1).toUpperCase() %>
+            <% } %>
+          </span>
+          <span class="lb-account-dropdown-identity">
+            <strong><%= hUser.displayName || hUser.username %></strong>
+            <span>@<%= hUser.username %></span>
+          </span>
+        </div>
+
+        <div class="lb-account-dropdown-divider"></div>
+
+        <a class="lb-account-dropdown-item" role="menuitem" href="/users/<%= hUserId %>/profile">
+          <img class="ch-ico" src="/icons/profile.svg" alt="" /> Profile
+        </a>
+        <a class="lb-account-dropdown-item" role="menuitem" href="/avatar?userId=<%= hUserId %>">
+          <img class="ch-ico" src="/icons/avatar.svg" alt="" /> Avatar
+        </a>
+        <a class="lb-account-dropdown-item" role="menuitem" href="/users/<%= hUserId %>/friends">
+          <img class="ch-ico" src="/icons/friends.svg" alt="" /> Friends
+        </a>
+        <a class="lb-account-dropdown-item" role="menuitem" href="/inventory?userId=<%= hUserId %>">
+          <img class="ch-ico" src="/icons/assets.svg" alt="" /> Inventory
+        </a>
+        <a class="lb-account-dropdown-item" role="menuitem" href="/badges?userId=<%= hUserId %>">
+          <img class="ch-ico" src="/icons/studio.svg" alt="" /> Badges
+        </a>
+        <a class="lb-account-dropdown-item" role="menuitem" href="/develop">
+          <img class="ch-ico" src="/icons/develop.svg" alt="" /> My Experiences
+        </a>
+
+        <div class="lb-account-dropdown-divider"></div>
+
+        <a class="lb-account-dropdown-item" role="menuitem" href="/settings">
+          <img class="ch-ico" src="/icons/settings.svg" alt="" /> Settings
+        </a>
+        <a class="lb-account-dropdown-item" role="menuitem" href="/download">
+          <img class="ch-ico" src="/icons/download.svg" alt="" /> Download Client
+        </a>
+
+        <!--
+          Sign out.
+
+          A real POST, not a link: signing out changes state, and a GET would be
+          followed by prefetchers, crawlers and any <img src> pointed at it. The
+          response redirects, so the visitor lands back on the home page signed
+          out. (`redirect` is read by POST /logout.)
+        -->
+        <form class="lb-account-dropdown-form" method="POST" action="/logout?redirect=%2F">
+          <button class="lb-account-dropdown-item lb-account-signout" type="submit" role="menuitem">
+            <img class="ch-ico" src="/icons/lock.svg" alt="" /> Sign Out
+          </button>
+        </form>
+      </div>
+    </div>
 <% } %>
 
     <a class="lb-robux roblox-robux" href="/upgrades/robux" title="Robux balance"><%= hRobux %></a>

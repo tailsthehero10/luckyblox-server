@@ -173,13 +173,36 @@ function installerPath() {
   return candidates.find((candidate) => fs.existsSync(candidate)) || candidates[0];
 }
 
-/** Full description of the local client state, for the launch API and views. */
-function getClientStatus() {
+/**
+ * How long a status reading stays valid.
+ *
+ * resolveClientBinary() stats several directories on every call, and this runs on
+ * every page that shows a Play or Download button - i.e. on nearly every page
+ * view. The answer only changes when somebody installs or removes the client,
+ * which is not something that happens mid-request, so a short cache removes the
+ * repeated filesystem walk from the hot path without ever showing stale state
+ * (5s is far shorter than any install).
+ */
+const STATUS_CACHE_MS = 5000;
+let statusCache = null;
+let statusCachedAt = 0;
+
+/**
+ * Full description of the local client state, for the launch API and views.
+ *
+ * @param {boolean} [fresh] bypass the cache (used after an install/launch)
+ */
+function getClientStatus(fresh) {
+  const now = Date.now();
+  if (!fresh && statusCache && now - statusCachedAt < STATUS_CACHE_MS) {
+    return statusCache;
+  }
+
   const binary = resolveClientBinary();
   const installer = installerPath();
   const installerExists = fs.existsSync(installer);
 
-  return {
+  statusCache = {
     installed: Boolean(binary),
     executablePath: binary,
     // The folder the client lives in when installed, so the UI can say where.
@@ -191,6 +214,8 @@ function getClientStatus() {
     downloadUrl: installerExists ? '/download/client' : null,
     supported: process.platform === 'win32',
   };
+  statusCachedAt = now;
+  return statusCache;
 }
 
 module.exports = {

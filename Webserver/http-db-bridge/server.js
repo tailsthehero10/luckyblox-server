@@ -78,6 +78,50 @@ const siteStatus = require('./siteStatus').createSiteStatus({
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+/**
+ * Make the account's theme available to EVERY view as `themeClass`.
+ *
+ * The theme used to be applied by a script inside settings.ejs only, so choosing
+ * "Dark" changed the settings page and nothing else - and because the class was
+ * added after the page had painted, every navigation flashed light first. Setting
+ * it here means each view can put the class on <html> during the SERVER render,
+ * so the dark theme is correct on the very first frame of every page, with no
+ * flash and no per-route wiring to forget.
+ *
+ * It is a res.locals hook rather than a change to all ~40 res.render() calls:
+ * locals are merged into every render automatically, so a new route gets the
+ * theme for free and cannot silently miss it.
+ *
+ * Whose theme? The signed-in account when there is one; otherwise the account
+ * named by ?userId= ; otherwise user 1.
+ *
+ * That last fallback is not arbitrary - it is the same rule the page controllers
+ * use (`getUser(req.query.userId || 1)`), so a page viewed without a session shows
+ * the SAME account's content and theme. Without it, a visitor on / and
+ * /profile?userId=1 would get a light header on one and a dark card on the other,
+ * which is the inconsistency this whole hook exists to remove.
+ */
+app.use((req, res, next) => {
+  let themeUser = null;
+  try {
+    themeUser = req.sessionUser || resolveSessionUser(req) || null;
+
+    if (!themeUser) {
+      const rawId = req.query.userId || req.query.userid;
+      const id = Number(Array.isArray(rawId) ? rawId[0] : rawId);
+      themeUser = getUser(Number.isFinite(id) && id > 0 ? id : 1);
+    }
+  } catch (error) {
+    // A theme lookup must never take a page down; fall back to light.
+    themeUser = null;
+  }
+
+  const dark = Boolean(themeUser && String(themeUser.theme || '').toLowerCase() === 'dark');
+  res.locals.themeOn = dark;
+  res.locals.themeClass = dark ? 'theme-dark' : '';
+  next();
+});
 app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 // LuckyBlox SVG icon set (Robux, friends, create, develop, studio, ...). Views
 // reference these by name instead of emoji glyphs so the UI matches Roblox's
@@ -317,6 +361,10 @@ if (fs.existsSync(clientContentRoot)) {
 const gamePlaceholderRoot = path.join(releaseRoot, 'Webserver', 'gameplaceholder');
 const GAME_CARD_PLACEHOLDER = path.join(gamePlaceholderRoot, 'Card_512x512', 'c719f9be53f9a41fd34309fe723577a69615962b.png');
 const GAME_BIG_PLACEHOLDER = path.join(gamePlaceholderRoot, 'Big_', 'image (44).png');
+// The game page's BIG 16:9 thumbnail (1680x945), generated from the Big_ art by
+// tools/build-game-artwork.js. Stable filename so a URL never has to encode the
+// original's spaces and parentheses.
+const GAME_THUMB_PLACEHOLDER = path.join(gamePlaceholderRoot, 'game-thumb-1680x945.png');
 
 app.get('/gameplaceholder/card.png', (req, res) => {
   if (!fs.existsSync(GAME_CARD_PLACEHOLDER)) return res.status(404).end();
@@ -328,6 +376,24 @@ app.get('/gameplaceholder/big.png', (req, res) => {
   if (!fs.existsSync(GAME_BIG_PLACEHOLDER)) return res.status(404).end();
   res.set('Cache-Control', 'public, max-age=86400');
   return res.sendFile(GAME_BIG_PLACEHOLDER);
+});
+
+/**
+ * The game page's BIG 16:9 thumbnail placeholder.
+ *
+ * This is the slot the real Roblox game page fills with its 640x360 carousel, so
+ * it is a WIDE image - the square Card_512x512 is the game's ICON and belongs in
+ * the info column, never here. Serving the card for this slot is what put a
+ * square picture in a wide frame.
+ *
+ * Falls back to the original Big_ art if the generated 1680x945 file is absent,
+ * so a fresh checkout still shows something and the page never gets an empty box.
+ */
+app.get('/gameplaceholder/game-thumb.png', (req, res) => {
+  const file = fs.existsSync(GAME_THUMB_PLACEHOLDER) ? GAME_THUMB_PLACEHOLDER : GAME_BIG_PLACEHOLDER;
+  if (!fs.existsSync(file)) return res.status(404).end();
+  res.set('Cache-Control', 'public, max-age=86400');
+  return res.sendFile(file);
 });
 
 app.use('/gameplaceholder', express.static(gamePlaceholderRoot));
@@ -2734,14 +2800,60 @@ app.get('/games', (req, res) => {
   });
 });
 
+/**
+ * Site search.
+ *
+ * The real 2021 header had a search field with a scope selector (Experiences /
+ * People / Avatar Shop / Groups). This routes each scope to the page that already
+ * implements it, so the box in the header works and no scope is a dead end:
+ *
+ *   experiences -> /games        (the discover grid)
+ *   people      -> /profile      (the account being searched for)
+ *   catalog     -> /catalog      (the Avatar Shop)
+ *   groups      -> /search/groups (the existing group search)
+ *
+ * An unknown or empty scope falls back to experiences, because searching is the
+ * common case and a 404 for a malformed query is a worse experience than a
+ * broad result set.
+ */
+app.get('/search', (req, res) => {
+  const scope = String(req.query.scope || 'experiences').toLowerCase();
+  const q = String(req.query.q || '').trim();
+  const query = q ? `?q=${encodeURIComponent(q)}` : '';
+
+  if (scope === 'groups') return res.redirect('/search/groups' + query);
+  if (scope === 'catalog') return res.redirect('/catalog' + query);
+  if (scope === 'people') {
+    // "People" search resolves a username to an account. An unmatched name goes
+    // back to the discover grid rather than to a page for a user that does not
+    // exist, so a typo never produces an invented profile.
+    const users = getUsers();
+    const match = Object.values(users).find(
+      (u) => String(u.username || '').toLowerCase() === q.toLowerCase(),
+    );
+    if (match) {
+      const id = Number(match.userId || match.id || 0);
+      if (id > 0) return res.redirect(`/users/${id}/profile`);
+    }
+    return res.redirect('/');
+  }
+
+  return res.redirect('/games' + query);
+});
+
 app.get('/signin', (req, res) => {
   const errorMessage = req.query.error || '';
   const hintMessage = req.query.hint || '';
   const redirect = req.query.redirect || '';
+
+  // Already signed in: /signin is not enterable. This redirect existed but sent
+  // the visitor to /dev, a developer-only page - so a normal account that
+  // revisited /signin was dropped somewhere irrelevant. It goes home instead, or
+  // back to wherever they were originally headed.
   if (req.sessionUser) {
-    const dest = redirect || '/dev';
-    return res.redirect(dest);
+    return res.redirect(redirect || '/');
   }
+
   res.render('signin', {
     title: 'Sign in - LuckyBlox',
     errorMessage,
@@ -2753,7 +2865,7 @@ app.get('/signin', (req, res) => {
 
 app.get('/login', (req, res) => {
   if (req.sessionUser) {
-    return res.redirect('/dev');
+    return res.redirect('/');
   }
   return res.redirect('/signin');
 });
@@ -2762,9 +2874,14 @@ app.get('/signup', (req, res) => {
   const errorMessage = req.query.error || '';
   const username = req.query.username || '';
   const redirect = req.query.redirect || '';
+
+  // Already signed in: /signup is not enterable either. It previously sent the
+  // visitor to /dev, a developer-only page - and creating a second account while
+  // signed in is not a thing the real site allows, so this goes home.
   if (req.sessionUser) {
-    return res.redirect(redirect || '/dev');
+    return res.redirect(redirect || '/');
   }
+
   res.render('signup', {
     title: 'Create account - LuckyBlox',
     errorMessage,
@@ -4074,17 +4191,21 @@ function renderGamePage2021(req, res, placeId) {
     currency: getCurrencyForUser(user),
     createdAt,
     updatedAt,
-    // Roblox's own placeholder art: the SQUARE card (Card_512x512) is both the
-    // page icon and the page thumbnail, because the game page shows a card.
+    // Two DIFFERENT pieces of artwork, because the page shows two different
+    // shapes - this is the distinction that kept getting lost:
     //
-    // The thumbnail used to be '/gameplaceholder/big.png' - the wide Big_ art,
-    // handed out unconditionally for every game. Two things were wrong with it:
-    // every experience displayed the same 596x335 banner regardless of its own
-    // artwork, and the square card frame could never be satisfied by a wide
-    // image. When a game has its own icon, both fields use it, so the card shows
-    // THAT game's art.
+    //   gameIcon  the game's ICON. Square (Card_512x512). Sits next to the title.
+    //   gameThumb the page's BIG THUMBNAIL. 16:9 - the real page's carousel is
+    //             640x360 with padding-top: 56.25% (9/16), and the shipping asset
+    //             is game-thumb-1680x945.png, generated from the Big_ art.
+    //
+    // The thumbnail used to be the SQUARE card as well, which is why the big slot
+    // on the game page showed a square icon inside a wide frame. When a game has
+    // its own wide artwork it is used; otherwise the 16:9 placeholder stands in.
     gameIcon: game.icon && /^\/|^https?:\/\//.test(game.icon) ? game.icon : '/gameplaceholder/card.png',
-    gameThumb: game.icon && /^\/|^https?:\/\//.test(game.icon) ? game.icon : '/gameplaceholder/card.png',
+    gameThumb: (game.thumbnail && /^\/|^https?:\/\//.test(game.thumbnail))
+      ? game.thumbnail
+      : '/gameplaceholder/game-thumb.png',
     creatorName: game.developer || 'LuckyBlox Studio',
     playing,
     visits: Number(game.visits) || 0,
@@ -5102,6 +5223,34 @@ app.post('/v1/launch-client', (req, res) => {
   } catch (error) {
     return res.status(500).json({ ok: false, error: 'client-launch-failed', clientVersion: '2021M', details: error.message });
   }
+});
+
+/**
+ * The public download page.
+ *
+ * This route existed only as /download/client (the installer file itself), so a
+ * visitor - or the Play button - that pointed at /download hit a 404. It is the
+ * page the site links to when the client is not installed, so it must always
+ * exist and must be FAST: everything it shows is rendered from the real state of
+ * the build on disk, so there is no client-side fetch to wait for.
+ */
+app.get('/download', (req, res) => {
+  const sessionUser = req.sessionUser || resolveSessionUser(req) || null;
+  const user = req.query.userId ? getUser(req.query.userId) : (sessionUser || getUser(1));
+
+  res.render('download', {
+    title: 'Download LuckyBlox - Roblox',
+    user,
+    currency: getCurrencyForUser(user),
+    // The real install state of the machine running this server.
+    client: clientLauncher.getClientStatus(),
+    build: getClientBuildInfo(),
+    // Shown when the host cannot run the desktop client at all (e.g. the Linux
+    // container), so the page explains itself instead of showing a dead button.
+    processPlatform: process.platform,
+    // "Launch player" uses the featured experience as its default target.
+    defaultPlaceId: Number(Object.values(getGames())[0] ? Object.values(getGames())[0].placeId : 1818) || 1818,
+  });
 });
 
 /**

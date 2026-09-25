@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<%= themeClass || '' %>">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -30,23 +30,30 @@
             cards and the game page - one artwork shape everywhere.
 
             It is a real <img> rather than a background-image so the shared loading
-            spinner (decorateLoadingImages in legacy-nav.js) can cover it while it
-            loads.
+            spinner can cover it while it loads.
 
             The placeholder art is a SIBLING under the real art, not an either/or
             branch: the real art is layered on top and, if it 404s, it hides itself
             and the placeholder underneath is revealed. An either/or branch would
             only cover a game with NO icon at all and would leave a game with a
             broken icon URL showing an empty grey box.
+
+            NOTE: the block is marked is-loading on the server so the spinner is up
+            during the first paint, which means something MUST take it off again.
+            It is cleared by the small script at the end of this page (see
+            lb-hero-art handling), NOT by legacy-nav.js - that only decorates images
+            it finds itself, so a pre-marked block would spin forever.
           -->
-          <div class="lb-hero-art lb-loading-block is-loading" style="--lb-loader-size:40px;">
+          <div class="lb-hero-art lb-loading-block is-loading" id="heroArtBlock"
+               style="--lb-loader-size:40px;">
             <% if (featuredGame.icon && /^\/|^https?:\/\//.test(featuredGame.icon)) { %>
-              <img class="lb-hero-art-img lb-hero-art-top" src="<%= featuredGame.icon %>"
+              <img class="lb-hero-art-img lb-hero-art-top" id="heroArt"
+                   src="<%= featuredGame.icon %>"
                    alt="<%= featuredGame.title %>" loading="lazy"
-                   onerror="this.style.display='none';" />
+                   onerror="this.style.display='none';var b=document.getElementById('heroArtBlock');if(b)b.classList.remove('is-loading');" />
             <% } %>
             <img class="lb-hero-art-img lb-hero-art-base" src="/gameplaceholder/card.png"
-                 alt="<%= featuredGame.title %>" loading="lazy" />
+                 alt="<%= featuredGame.title %>" id="heroArtBase" />
           </div>
           <div>
             <div class="lb-eyebrow">Featured Experience</div>
@@ -226,6 +233,38 @@
       const placeId = Number(trigger.getAttribute('data-launch-place-id')) || 1818;
       await launchGame(placeId);
     });
+
+    // --- Featured hero artwork ------------------------------------------------
+    // The block is rendered is-loading so the spinner is up during the first
+    // paint. Something has to take it off, and this is that something: the image
+    // is lazy, so waiting for it is the correct signal, and a cached image that
+    // will never fire `load` is handled by the `complete` check.
+    (function () {
+      var block = document.getElementById('heroArtBlock');
+      if (!block) return;
+
+      var clear = function () { block.classList.remove('is-loading'); };
+      var imgs = block.querySelectorAll('img');
+      var remaining = imgs.length;
+
+      if (remaining === 0) {
+        clear();
+        return;
+      }
+
+      imgs.forEach(function (img) {
+        var settle = function () {
+          remaining -= 1;
+          if (remaining <= 0) clear();
+        };
+        if (img.complete) {
+          settle();
+          return;
+        }
+        img.addEventListener('load', settle, { once: true });
+        img.addEventListener('error', settle, { once: true });
+      });
+    }());
   </script>
 </body>
 </html>

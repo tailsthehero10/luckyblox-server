@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en" class="<%= themeClass || '' %>">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/download.css" />
+</head>
+<%
+  /*
+   * The scriptlet block MUST come first, before any markup.
+   *
+   * EJS compiles a template into a function and `include` is one of that
+   * function's own arguments. A template with no scriptlet at all does not get it
+   * bound, so the first include() call throws "include is not a function".
+   *
+   * It also normalises the values this page renders, so the markup can assume
+   * they exist instead of guarding every field.
+   *
+   * NOTE: never write a literal template-tag delimiter inside a comment or string
+   * in here. EJS scans for the delimiter characters before it parses anything, so
+   * a tag written as text ends the block early.
+   */
+  var pageUser = (typeof user !== 'undefined' && user) ? user : null;
+  var pageClient = (typeof client !== 'undefined' && client) ? client : {
+    installed: false, executablePath: null, installFolderName: 'Luckyblox',
+    installerAvailable: false, downloadUrl: null, supported: false,
+  };
+  var pageBuild = (typeof build !== 'undefined' && build) ? build : { available: false };
+  var pagePlatform = (typeof processPlatform !== 'undefined' && processPlatform) ? processPlatform : 'this host';
+  var pageDefaultPlace = (typeof defaultPlaceId !== 'undefined' && defaultPlaceId) ? defaultPlaceId : 1818;
+%>
+<body>
+<!--
+  Download page.
+
+  Every value is server-rendered from the ACTUAL state of the build on this machine
+  (clientLauncher + clientBuildInfo), so the page is correct on first paint and
+  needs no client-side fetch - which is also what makes it fast.
+
+  That matters because this is the page a visitor reaches from "the client is not
+  installed". It must never 404 and must never offer a download that is not there.
+-->
+  <div class="lb-page">
+    <%- include('partials/header', { user: pageUser, currency: currency, activeNav: 'download' }) %>
+
+    <div class="lb-shell">
+      <%- include('partials/sidebar', { user: pageUser, activeNav: 'download' }) %>
+
+      <main class="lb-main">
+        <section class="lb-panel">
+          <div class="lb-panel-header">
+            <img class="ch-ico ch-ico-sm" src="/icons/download.svg" alt="" /> Download LuckyBlox
+          </div>
+          <div class="lb-panel-body">
+            <h1 class="dl-title">Play LuckyBlox on your computer</h1>
+            <p class="dl-lede">
+              The LuckyBlox client runs the experiences on this site. Installing it lets
+              the Play button launch a game directly, on your machine.
+            </p>
+
+            <!--
+              Current state, read from disk at render time. The button below is only
+              rendered as an install link when the installer actually exists; when it
+              does not, the page says so instead of offering a link that 404s.
+            -->
+            <div class="dl-status">
+              <div class="dl-status-row">
+                <span class="dl-status-label">Player client</span>
+                <strong class="<%= pageClient.installed ? 'dl-ok' : 'dl-missing' %>">
+                  <%= pageClient.installed ? 'Installed' : 'Not installed' %>
+                </strong>
+              </div>
+              <% if (pageClient.installed && pageClient.executablePath) { %>
+                <div class="dl-status-row">
+                  <span class="dl-status-label">Installed at</span>
+                  <strong class="dl-path"><%= pageClient.executablePath %></strong>
+                </div>
+              <% } %>
+              <div class="dl-status-row">
+                <span class="dl-status-label">Published build</span>
+                <strong class="<%= pageBuild.available ? 'dl-ok' : 'dl-missing' %>">
+                  <%= pageBuild.available ? (pageBuild.version || 'Unknown') : 'None published' %>
+                </strong>
+              </div>
+              <div class="dl-status-row">
+                <span class="dl-status-label">Install folder</span>
+                <strong class="dl-path"><%= pageClient.installFolderName %>/Versions/[version]/</strong>
+              </div>
+            </div>
+
+            <div class="dl-actions">
+              <% if (pageClient.downloadUrl) { %>
+                <a class="lb-btn lb-btn-primary dl-btn" href="<%= pageClient.downloadUrl %>">
+                  <img class="ch-ico dl-ico-white" src="/icons/download.svg" alt="" />
+                  Download installer
+                </a>
+              <% } else { %>
+                <button class="lb-btn lb-btn-primary dl-btn" type="button" disabled>
+                  Installer unavailable
+                </button>
+              <% } %>
+
+              <% if (pageClient.installed) { %>
+                <button class="lb-btn lb-btn-secondary dl-btn" type="button" id="launchPlayerBtn">
+                  <img class="ch-ico" src="/icons/play.svg" alt="" /> Launch player
+                </button>
+              <% } %>
+            </div>
+
+            <% if (!pageClient.downloadUrl) { %>
+              <div class="dl-note">
+                No installer is published on this server, so there is nothing to download
+                yet. The Play button on any experience will report this rather than
+                sending you to a dead link.
+              </div>
+            <% } %>
+
+            <% if (!pageClient.supported) { %>
+              <div class="dl-note">
+                The LuckyBlox client is a Windows application. This server is running on
+                <%= pagePlatform %>, so the desktop client cannot be installed here -
+                the site itself works normally.
+              </div>
+            <% } %>
+          </div>
+        </section>
+
+        <section class="lb-panel">
+          <div class="lb-panel-header"><span>How it works</span></div>
+          <div class="lb-panel-body">
+            <ol class="dl-steps">
+              <li>Download and run the installer. It installs to
+                <strong><%= pageClient.installFolderName %>\Versions\&lt;version&gt;\</strong>, the
+                same layout the Roblox client uses.</li>
+              <li>Sign in on the site, open any experience and press
+                <strong>Play</strong>.</li>
+              <li>The site finds the installed client and launches it against the
+                experience, with your account already signed in.</li>
+            </ol>
+            <div class="dl-note">
+              The installer only ever repoints the current version after a download is
+              verified, so a failed update can never leave a broken install, and older
+              versions are kept for rollback.
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <%- include('partials/scripts') %>
+  <script>
+    // "Launch player" starts the installed client against the default place. It
+    // posts to the same /api/launch-game endpoint the Play buttons use, so there
+    // is one launch path rather than a second, parallel one.
+    (function () {
+      var btn = document.getElementById('launchPlayerBtn');
+      var loading = window.LBLoading;
+      if (!btn) return;
+
+      btn.addEventListener('click', async function () {
+        btn.disabled = true;
+        if (loading) loading.button(btn, true);
+        try {
+          var res = await fetch('/api/launch-game', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ placeId: <%= Number(pageDefaultPlace) || 1818 %> }),
+          });
+
+          if (res.status === 401) {
+            window.location.href = '/signin?redirect=' + encodeURIComponent('/download');
+            return;
+          }
+
+          var data = await res.json().catch(function () { return {}; });
+          if (data && data.nativeLaunch && data.nativeLaunch.status === 'launched') return;
+          alert((data && data.message) || 'The client could not be launched.');
+        } catch (error) {
+          alert('Could not reach the server to launch the client.');
+        } finally {
+          if (loading) loading.button(btn, false);
+          btn.disabled = false;
+        }
+      });
+    }());
+  </script>
+</body>
+</html>

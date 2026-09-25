@@ -1,0 +1,105 @@
+/* ---------------------------------------------------------------------------
+   In-page join panel (game page)
+   ---------------------------------------------------------------------------
+   Pressing Play used to navigate to a separate /play page, so joining an
+   experience meant leaving it. The whole join flow - finding the client, starting
+   it, and telling the visitor to download it when it is missing - now happens in
+   this panel, on the page the experience lives on.
+
+   The states are visually distinct because they mean different things:
+     .is-working  waiting on the server (spinner)
+     .is-playing  success, the client is opening
+     .is-missing  no client installed - a normal, actionable state, so it reads as
+                  information (blue) rather than as a failure (red)
+     .is-error    something failed
+   --------------------------------------------------------------------------- */
+.lb-join-panel {
+  margin-top: 14px;
+  border: 1px solid var(--lb-line);
+  border-left-width: 3px;
+  border-radius: var(--lb-radius);
+  background: var(--lb-surface);
+  overflow: hidden;
+}
+.lb-join-panel[hidden] { display: none; }
+
+.lb-join-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px 0;
+}
+.lb-join-panel-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--lb-ink);
+}
+.lb-join-panel-body {
+  padding: 6px 14px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--lb-ink-2);
+}
+.lb-join-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+.lb-join-panel-actions[hidden] { display: none; }
+.lb-join-action { min-height: 36px; padding: 0 16px; font-size: 14px; }
+
+/* The waiting spinner: the site's own loading glyph, inline, so the panel can
+   report progress without a full-page veil covering the experience. */
+.lb-join-spinner {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  background: url('/img/loading.gif') center / contain no-repeat;
+}
+.lb-join-spinner[hidden] { display: none; }
+
+/* --- States ---------------------------------------------------------------- */
+.lb-join-panel.is-working { border-left-color: var(--lb-muted); }
+
+.lb-join-panel.is-playing {
+  border-left-color: var(--lb-green);
+  background: #f0fbf5;
+}
+.lb-join-panel.is-playing .lb-join-panel-title { color: #10633f; }
+.lb-join-panel.is-playing .lb-join-panel-body { color: #1c6b4a; }
+
+.lb-join-panel.is-missing { border-left-color: var(--lb-blue); background: #f2f9ff; }
+.lb-join-panel.is-missing .lb-join-panel-title { color: #0b5c8a; }
+.lb-join-panel.is-missing .lb-join-panel-body { color: #245f80; }
+
+.lb-join-panel.is-error {
+  border-left-color: var(--lb-red);
+  background: #fdecec;
+}
+.lb-join-panel.is-error .lb-join-panel-title { color: #7d1d1d; }
+.lb-join-panel.is-error .lb-join-panel-body { color: #8c2b2b; }
+
+/* --- Dark theme ------------------------------------------------------------ */
+html.theme-dark .lb-join-panel {
+  background: var(--lb-surface) !important;
+  border-color: var(--lb-line) !important;
+}
+html.theme-dark .lb-join-panel.is-playing {
+  background: #0f2a1d !important;
+  border-left-color: var(--lb-green) !important;
+}
+html.theme-dark .lb-join-panel.is-playing .lb-join-panel-title { color: #7ee2ab !important; }
+html.theme-dark .lb-join-panel.is-playing .lb-join-panel-body { color: #9edcbc !important; }
+html.theme-dark .lb-join-panel.is-missing {
+  background: #0d2233 !important;
+  border-left-color: var(--lb-blue) !important;
+}
+html.theme-dark .lb-join-panel.is-missing .lb-join-panel-title { color: #7cc9ff !important; }
+html.theme-dark .lb-join-panel.is-missing .lb-join-panel-body { color: #a5cde6 !important; }
+html.theme-dark .lb-join-panel.is-error {
+  background: #2c1414 !important;
+  border-left-color: var(--lb-red) !important;
+}
+html.theme-dark .lb-join-panel.is-error .lb-join-panel-title { color: #ff9b95 !important; }
+html.theme-dark .lb-join-panel.is-error .lb-join-panel-body { color: #e8a9a4 !important; }

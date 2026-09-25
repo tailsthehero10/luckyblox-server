@@ -64,9 +64,13 @@
      rail's `top` offset, so the two can never drift apart: the top bar is sized
      from it and the rail starts below it. --lb-rail-width is the width the page
      content reserves for the rail. Both are narrowed at <=1024px and the rail
-     slides away at <=760px. */
+     slides away at <=760px.
+
+     90px is the real 2021 header height (`#header.rbx-header { height: 90px }`).
+     Every consumer reads this variable, so changing it here moves the bar AND the
+     rail together - which is the point. */
   --lb-rail-width: 220px;
-  --lb-topbar-height: 50px;
+  --lb-topbar-height: 90px;
 
   /* Back-compat aliases. Views across the project still read the old token
      names; mapping them here means every page picks up the 2021 palette
@@ -1464,10 +1468,11 @@ body {
   left: 0 !important;
   right: 0 !important;
   z-index: 100 !important;
-  min-height: 50px !important;
+  /* Height comes from the token so the bar and the rail can never drift. This
+     used to hardcode 50px, from the older dark bar this file was written for. */
+  min-height: var(--lb-topbar-height, 90px) !important;
   margin: 0 !important;
-  padding: 0 28px !important;
-  background: #191919 !important;
+  padding: 0 22px !important;
   border-bottom: 1px solid #333333 !important;
   box-shadow: none !important;
 }
@@ -1990,8 +1995,10 @@ pre,
 }
 
 /* --- Header --------------------------------------------------------------
-   2021: fixed 50px black (#191919) bar, white wordmark, 13px uppercase-ish
-   nav, and Sign Up / Log In actions pinned right. */
+   Geometry and colours are owned by the "2021 HEADER" block at the end of this
+   file, which reads them from the real page. This block keeps only the layout
+   facts (fixed, full width, flex) and deliberately sets NO height or background -
+   it previously hardcoded a 50px black bar, which fought the real 90px light one. */
 .roblox-topbar {
   position: fixed !important;
   top: 0 !important;
@@ -2000,11 +2007,8 @@ pre,
   z-index: 100 !important;
   display: flex !important;
   align-items: center !important;
-  min-height: 50px !important;
-  height: 50px !important;
-  padding: 0 26px !important;
-  background: #191919 !important;
-  border-bottom: 0 !important;
+  height: var(--lb-topbar-height, 90px) !important;
+  padding: 0 22px !important;
   box-shadow: none !important;
 }
 
@@ -2062,9 +2066,11 @@ pre,
 }
 
 /* --- Page shell ----------------------------------------------------------
-   The topbar is fixed at 50px, so the page must clear it. */
+   The topbar is FIXED and its height is the --lb-topbar-height token (90px, from
+   the real 2021 header). Hardcoding 50px here left the first 40px of every such
+   page underneath the bar. */
 .roblox-page {
-  padding: 50px 0 40px !important;
+  padding: var(--lb-topbar-height, 90px) 0 40px !important;
   background: #f2f2f2 !important;
   max-width: none !important;
 }
@@ -2431,7 +2437,9 @@ a.roblox-brand:hover {
   gap: 22px;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 68px 18px 40px;
+  /* The shell starts below the FIXED bar. 68px was the old 50px bar plus its
+     gutter; it is now derived from the token so it tracks the real 90px header. */
+  padding: calc(var(--lb-topbar-height, 90px) + 18px) 18px 40px;
   align-items: start;
 }
 
@@ -2536,17 +2544,18 @@ a.roblox-brand:hover {
   border-radius: 12px;
   overflow: hidden;
   background: #1f2937;
-  min-height: 300px;
   border: 1px solid var(--border-line);
 }
 
-/* Fit, do not crop. `cover` cut the square game icon's edges off, which is one
-   of the ways the card art looked wrong. The frame is square (see .lb-game-thumb
-   and its 1/1 aspect-ratio), so `contain` shows the whole artwork. */
+/* The BIG thumbnail is a wide 16:9 render and FILLS its frame, so `cover` is
+   correct here. This used to be `contain` with a comment about the square icon -
+   that was fixing the wrong problem: a square icon was being placed in the wide
+   slot. The slot now gets a 16:9 image, so nothing needs fitting. The square
+   placeholder layered underneath is fitted separately (see .roblox-game-thumb-base). */
 .roblox-game-thumb-img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center center;
   display: block;
 }
@@ -2687,13 +2696,12 @@ select:focus-visible {
   display: flex;
   align-items: center;
   gap: 16px;
-  /* The top bar is a FIXED 50px band (declared with !important in the header
-     block above). This copy used to say sticky/48px and the two disagreed, and
-     the fixed rail's `top: var(--lb-topbar-height)` depends on the bar actually
-     being 50px - a 48px bar left a 2px sliver of rail behind the header. */
-  min-height: var(--lb-topbar-height, 50px);
-  height: var(--lb-topbar-height, 50px);
-  padding: 0 16px;
+  /* The top bar is a FIXED band whose height is --lb-topbar-height (90px, the
+     real 2021 header). Both the bar and the rail read that one token, so they
+     cannot drift apart - this used to hardcode 50px and disagree with the bar. */
+  min-height: var(--lb-topbar-height, 90px);
+  height: var(--lb-topbar-height, 90px);
+  padding: 0 22px;
   box-sizing: border-box;
   background: linear-gradient(180deg, var(--lb-header) 0%, var(--lb-header-2) 100%) !important;
   border-bottom: 1px solid var(--lb-header-line);
@@ -3393,13 +3401,25 @@ button.roblox-sidebar-link { min-height: 34px; }
 .lb-asset-tag,
 .roblox-asset-tag { margin-left: auto; font-size: 12px; color: var(--lb-muted); flex: 0 0 auto; }
 
-/* --- Game cards ---------------------------------------------------------- */
-/* Square tiles need a wider minimum than the old 16:9 ones did: at 168px a
-   square card is only 168px tall as well, which crowds the title and subtitle
-   underneath it. 160px keeps 5-6 tiles per row on a desktop column while leaving
-   the caption room to breathe. */
+/* --- Game cards ----------------------------------------------------------
+   Geometry taken from the real 2013 Roblox sheet rather than invented:
+
+     Games.css  .game-item        { width: 192px; height: 144px }
+                .game-item-image  { width: 192px; height: 108px }
+
+   192x108 is 16:9, so a game card's image is a WIDE card, not a square. This is
+   the opposite of the game's ICON (Card_512x512), which is square and appears in
+   the info column of the game page. Sizing both the same way is what made the
+   cards look wrong.
+
+   The tile keeps a fixed card width so the grid columns match the 2013 sheet
+   instead of stretching to fill the viewport. */
 .lb-game-grid,
-.roblox-game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 18px 14px; }
+.roblox-game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(192px, 1fr));
+  gap: 18px 14px;
+}
 .lb-game-card,
 .roblox-game-card { display: block; color: var(--lb-ink); }
 .lb-game-card:hover,
@@ -3409,11 +3429,8 @@ button.roblox-sidebar-link { min-height: 34px; }
 .roblox-game-card-thumb {
   position: relative;
   width: 100%;
-  /* A game's art is its square Card_512x512 icon, so the card frame is square.
-     It was 16:9, which is the shape of the wide Big_ art and NOT the shape of a
-     game icon - a square icon in a 16:9 frame letterboxes into grey bars on both
-     sides and reads as a half-broken image. */
-  aspect-ratio: 1 / 1;
+  /* 192 x 108 - the real 2013 .game-item-image, i.e. 16:9. */
+  aspect-ratio: 16 / 9;
   border-radius: var(--lb-radius);
   overflow: hidden;
   background: #e3e6ea;
@@ -3507,15 +3524,19 @@ button.roblox-sidebar-link { min-height: 34px; }
 .roblox-game-thumb {
   position: relative;
   width: 100%;
-  /* A CARD, not a wide banner. The game art is the square Card_512x512 icon, so
-     the frame is square (1:1) and the art is fitted inside it.
+  /*
+     A WIDE card, not a square. Real 2013 geometry:
 
-     This used to be aspect-ratio: 16/9. The placeholder art that ships in the
-     repo is NOT 512x512 - Card_512x512/...png is 236x236 (square, but small) and
-     Big_/image (44).png is 596x335 (wide) - so a 16:9 frame made the square icon
-     letterbox into two grey bars and made the wide Big_ art fill the box. Neither
-     looked like the square game card the real page shows. */
-  aspect-ratio: 1 / 1;
+       GamePage.css  #Thumbnail_Place { width: 420px; border: solid 1px #eee }
+
+     The square asset (`Card_512x512`) is the game's ICON, which sits in the info
+     column next to the title - it is NOT this thumbnail. Treating the icon as the
+     thumbnail is what forced a square frame here and letterboxed the real art.
+
+     16:9 matches .game-item-image (192x108) and the 420px-wide place thumbnail.
+  */
+  aspect-ratio: 16 / 9;
+  max-width: none;
   border-radius: var(--lb-radius);
   overflow: hidden;
   background: #e3e6ea;
@@ -3524,27 +3545,25 @@ button.roblox-sidebar-link { min-height: 34px; }
   justify-content: center;
 }
 
-/* Fit the WHOLE artwork inside the square frame - never crop it. The source art
-   is whatever shape it is (236x236 square, or 596x335 wide), so `cover` would
-   cut the edges off the square icon and `contain` on a wide image would leave
-   bars. `contain` is correct for both: the square icon fills the square exactly,
-   and any wider art is scaled down to fit with the frame's own grey as the
-   matte rather than an invented crop. */
+/* The thumbnail art FILLS its frame. It is a wide render, so `cover` is correct
+   here - the earlier `contain` was a workaround for a square icon being placed in
+   a 16:9 frame, which no longer happens. */
 .roblox-game-thumb-img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center center;
   display: block;
 }
 
-/* The placeholder card sits UNDERNEATH the game's own artwork. The real art is
-   absolutely positioned on top of it, so a game with no artwork (or one whose
-   artwork 404s) shows the placeholder card instead of an empty frame. */
+/* The placeholder card and the real art are layered so a missing/broken render
+   reveals the placeholder rather than an empty box. The placeholder is SQUARE
+   art, so it is fitted (contain) inside the wide frame instead of being cropped. */
 .roblox-game-thumb-base {
   position: absolute;
   inset: 0;
   z-index: 0;
+  object-fit: contain;
 }
 .roblox-game-thumb-top {
   position: relative;
@@ -4052,7 +4071,7 @@ button.roblox-sidebar-link { min-height: 34px; }
 .roblox-page:has(> .lb-header):not(:has(.lb-shell)),
 .lb-page:has(> .lb-header):not(:has(.lb-shell)),
 .lb-page:has(> .roblox-topbar):not(:has(.lb-shell)) {
-  padding-top: var(--lb-topbar-height, 50px) !important;
+  padding-top: var(--lb-topbar-height, 90px) !important;
 }
 
 /* With a shell present, the shell owns the offset, so the page contributes none
@@ -5071,4 +5090,800 @@ body.lb-studio .studio-place h3 {
 .roblox-sidebar > .roblox-sidebar-user:first-child {
   margin-top: 0;
   padding: 6px 10px 10px;
+}
+
+/* ===========================================================================
+   SITE-WIDE DARK THEME
+   ---------------------------------------------------------------------------
+   The account's theme (Settings -> Appearance) used to apply to the settings
+   page alone, and never to /create, /develop or any other page. This makes it a
+   first-class theme for the WHOLE site.
+
+   How it works, and why it is written this way:
+
+     1. `themeClass` is set server-side in server.js (a res.locals hook), so
+        <html class="theme-dark"> is correct on the FIRST frame. The old approach
+        added the class from a script after paint, so every page flashed light
+        before turning dark.
+
+     2. Every value below is driven by the tokens in :root above. Only the tokens
+        are redefined for dark, so a component that uses `var(--lb-surface)`
+        follows the theme automatically. Components that hardcode #ffffff are
+        listed explicitly, because an earlier layer in this same file pinned them
+        with !important.
+
+     3. The overriding rules use `html.theme-dark` (not `body.theme-dark`) for
+        higher specificity, plus !important, because the legacy layer is
+        `background: #ffffff !important`. Specificity is what makes this win
+        without having to delete the legacy rules - which are still needed for
+        the light theme.
+   =========================================================================== */
+
+html.theme-dark {
+  /* --- Surfaces ---------------------------------------------------------- */
+  --lb-page: #0f1216;
+  --lb-surface: #171b21;
+  --lb-surface-alt: #1c2129;
+  --lb-ink: #e8ebf0;
+  --lb-ink-2: #c3cad4;
+  --lb-muted: #99a3b0;
+  --lb-faint: #78828f;
+  --lb-line: #2a313b;
+  --lb-line-soft: #222831;
+
+  /* --- Header stays dark, one step deeper than the page ----------------- */
+  --lb-header: #121820;
+  --lb-header-2: #0d1218;
+  --lb-header-line: #05070a;
+  --lb-header-text: #f2f5f9;
+  --lb-header-muted: #b3bdca;
+
+  /* --- Accents get a touch brighter to hold up on dark ------------------ */
+  --lb-blue: #35b2ff;
+  --lb-blue-dark: #1a8fe0;
+  --lb-link: #59b8ff;
+  --lb-green: #22c47d;
+  --lb-green-dark: #16a263;
+  --lb-red: #ff5f57;
+
+  --lb-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --lb-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+
+  /* --- The back-compat aliases, so older rules follow too --------------- */
+  --bg-main: var(--lb-page);
+  --bg-container: var(--lb-surface);
+  --border-line: var(--lb-line);
+  --text-main: var(--lb-ink);
+  --text-muted: var(--lb-muted);
+  --rbx-green: var(--lb-green);
+  --rbx-blue: var(--lb-link);
+  --rbx-header: var(--lb-header);
+  --rbx-header-dark: var(--lb-header-2);
+  --rbx-text: var(--lb-ink);
+  --rbx-muted: var(--lb-muted);
+
+  /* Tell the browser to render native controls (scrollbars, range tracks,
+     checkbox/radio, the select popup) dark as well. Without this a dark page
+     still gets a glaring white scrollbar and a white native select menu. */
+  color-scheme: dark;
+
+  background: var(--lb-page) !important;
+  color: var(--lb-ink) !important;
+}
+
+/* The older token block is `:root { --bg-main: #f2f2f5 !important }` and beats a
+   plain custom-property declaration. Redefining the tokens ON html.theme-dark with
+   !important is what makes the values above actually apply. */
+html.theme-dark {
+  --bg-main: #0f1216 !important;
+  --bg-container: #171b21 !important;
+  --border-line: #2a313b !important;
+  --text-main: #e8ebf0 !important;
+  --text-muted: #99a3b0 !important;
+  --rbx-text: #e8ebf0 !important;
+  --rbx-muted: #99a3b0 !important;
+  --rbx-header: #121820 !important;
+  --rbx-header-dark: #0d1218 !important;
+  --rbx-blue: #59b8ff !important;
+  --rbx-green: #22c47d !important;
+}
+
+/* --- Base ------------------------------------------------------------------ */
+html.theme-dark body,
+body.theme-dark {
+  background: var(--lb-page) !important;
+  color: var(--lb-ink) !important;
+}
+
+html.theme-dark a,
+html.theme-dark a:link,
+html.theme-dark a:visited { color: var(--lb-link) !important; }
+html.theme-dark a:hover { color: var(--lb-blue) !important; }
+
+/* --- Panels, sections, cards ----------------------------------------------
+   These are the components the legacy layer pinned to #ffffff !important. The
+   html.theme-dark prefix raises specificity above those rules without touching
+   them, so the light theme is byte-for-byte unchanged. */
+html.theme-dark .lb-panel,
+html.theme-dark .roblox-panel,
+html.theme-dark .lb-section,
+html.theme-dark .roblox-section,
+html.theme-dark .lb-game-hero,
+html.theme-dark .roblox-game-hero,
+html.theme-dark .lb-hero,
+html.theme-dark .roblox-hero,
+html.theme-dark .lb-game-card,
+html.theme-dark .roblox-game-card,
+html.theme-dark .lb-catalog-tile,
+html.theme-dark .lb-stat-tile,
+html.theme-dark .lb-bio-box,
+html.theme-dark .roblox-asset-card,
+html.theme-dark .roblox-asset-item,
+html.theme-dark .roblox-store-item,
+html.theme-dark .roblox-stat-tile,
+html.theme-dark .roblox-bio-box,
+html.theme-dark .account-shell .small-box,
+html.theme-dark .studio-place,
+html.theme-dark .ch-panel,
+html.theme-dark .ch-panel-body,
+html.theme-dark .settings-summary-item,
+html.theme-dark .lb-group-row,
+html.theme-dark .lb-wearing-row,
+html.theme-dark .lb-catalog-item,
+html.theme-dark .lb-friend-row,
+html.theme-dark .lb-badge-row {
+  background: var(--lb-surface) !important;
+  border-color: var(--lb-line) !important;
+  color: var(--lb-ink) !important;
+}
+
+/* Panel headers were a light grey bar with dark text. */
+html.theme-dark .lb-panel-header,
+html.theme-dark .roblox-panel-header,
+html.theme-dark .ch-panel-head {
+  background: var(--lb-surface-alt) !important;
+  color: var(--lb-ink) !important;
+  border-bottom-color: var(--lb-line) !important;
+}
+
+html.theme-dark .lb-panel-body,
+html.theme-dark .roblox-panel-body,
+html.theme-dark .ch-panel-body { color: var(--lb-ink-2) !important; }
+
+/* --- Page + shell ---------------------------------------------------------- */
+html.theme-dark .lb-page,
+html.theme-dark .roblox-page,
+html.theme-dark .lb-main,
+html.theme-dark .roblox-main,
+html.theme-dark .lb-shell,
+html.theme-dark .roblox-shell,
+html.theme-dark .ch-page,
+html.theme-dark .ch-shell { background: transparent !important; color: var(--lb-ink) !important; }
+
+html.theme-dark .lb-page,
+html.theme-dark .roblox-page { background: var(--lb-page) !important; }
+
+/* --- The left rail --------------------------------------------------------- */
+html.theme-dark .lb-sidebar,
+html.theme-dark .roblox-sidebar {
+  background: var(--lb-surface) !important;
+  border-right-color: var(--lb-line) !important;
+}
+html.theme-dark .lb-rail-creator {
+  background: var(--lb-surface) !important;
+  border-right-color: var(--lb-line) !important;
+}
+html.theme-dark .lb-sidebar-link,
+html.theme-dark .roblox-sidebar-link { color: var(--lb-ink-2) !important; }
+html.theme-dark .lb-sidebar-link:hover,
+html.theme-dark .roblox-sidebar-link:hover { background: var(--lb-surface-alt) !important; }
+html.theme-dark .lb-sidebar-link.is-active,
+html.theme-dark .roblox-sidebar-link.is-active {
+  background: #15334a !important;
+  color: #7cc9ff !important;
+}
+html.theme-dark .roblox-sidebar-divider { background: var(--lb-line) !important; }
+html.theme-dark .lb-sidebar-username,
+html.theme-dark .roblox-sidebar-username { color: var(--lb-ink) !important; }
+html.theme-dark .lb-sidebar-status,
+html.theme-dark .roblox-sidebar-status { color: var(--lb-muted) !important; }
+
+/* Rail icons are dark art on a light rail; on a dark rail they must be light. */
+html.theme-dark .lb-sidebar .ch-ico,
+html.theme-dark .roblox-sidebar .ch-ico,
+html.theme-dark .lb-rail-creator .ch-ico {
+  filter: brightness(0) invert(1) !important;
+  opacity: 0.85;
+}
+
+/* --- Buttons ---------------------------------------------------------------
+   The secondary button was white with a grey border; on dark it needs to lift
+   off the surface instead. */
+html.theme-dark .lb-btn-secondary,
+html.theme-dark .roblox-secondary-button,
+html.theme-dark .secondary-button,
+html.theme-dark .settings-btn.secondary,
+html.theme-dark .ch-btn-light {
+  background: var(--lb-surface-alt) !important;
+  border-color: var(--lb-line) !important;
+  color: var(--lb-ink) !important;
+}
+html.theme-dark .lb-btn-secondary:hover,
+html.theme-dark .roblox-secondary-button:hover { background: #232a34 !important; }
+
+/* A secondary button's icon is dark art on a light button - invert it here. */
+html.theme-dark .lb-btn-secondary .ch-ico,
+html.theme-dark .roblox-secondary-button .ch-ico,
+html.theme-dark .settings-btn.secondary .ch-ico,
+html.theme-dark .ch-btn-light .ch-ico { filter: brightness(0) invert(1) !important; }
+
+/* Primary (green) stays green - it is the call to action on both themes. Its
+   icon must remain white, which is how the art already ships. */
+html.theme-dark .lb-btn-primary .ch-ico[src*="play"],
+html.theme-dark .roblox-play-button .ch-ico { filter: none !important; }
+
+/* --- Forms ----------------------------------------------------------------- */
+html.theme-dark input,
+html.theme-dark textarea,
+html.theme-dark select,
+html.theme-dark .lb-input,
+html.theme-dark .lb-search-input,
+html.theme-dark .settings-field input,
+html.theme-dark .settings-field textarea,
+html.theme-dark .av-scale-input,
+html.theme-dark .ch-input {
+  background: #12161c !important;
+  border-color: var(--lb-line) !important;
+  color: var(--lb-ink) !important;
+}
+html.theme-dark input::placeholder,
+html.theme-dark textarea::placeholder { color: var(--lb-faint) !important; }
+html.theme-dark input:disabled,
+html.theme-dark textarea:disabled,
+html.theme-dark select:disabled {
+  background: #191d24 !important;
+  color: #7d8794 !important;
+}
+
+/* --- Tables / lists -------------------------------------------------------- */
+html.theme-dark .lb-game-meta-row,
+html.theme-dark .roblox-game-meta-row,
+html.theme-dark .settings-row,
+html.theme-dark .lb-asset-item,
+html.theme-dark .lb-group-row,
+html.theme-dark .lb-wearing-row,
+html.theme-dark .lb-vote-row { border-color: var(--lb-line-soft) !important; }
+
+html.theme-dark .lb-game-meta-row > span,
+html.theme-dark .lb-stat-label,
+html.theme-dark .lb-muted,
+html.theme-dark .lb-faint { color: var(--lb-muted) !important; }
+
+/* --- Tabs ------------------------------------------------------------------ */
+html.theme-dark .lb-tab { color: var(--lb-muted) !important; }
+html.theme-dark .lb-tab.is-active { color: var(--lb-ink) !important; }
+html.theme-dark .lb-tabs-inner { border-bottom-color: var(--lb-line) !important; }
+
+/* --- The vote bar ---------------------------------------------------------- */
+html.theme-dark .lb-bar { background: #262d37 !important; }
+html.theme-dark .lb-vote-btn {
+  background: var(--lb-surface-alt) !important;
+  border-color: var(--lb-line) !important;
+}
+html.theme-dark .lb-vote-btn .ch-ico { filter: brightness(0) invert(1) !important; }
+
+/* --- Game / catalog thumbnails --------------------------------------------- */
+html.theme-dark .lb-game-thumb,
+html.theme-dark .roblox-game-thumb,
+html.theme-dark .lb-game-card-thumb,
+html.theme-dark .roblox-game-card-thumb,
+html.theme-dark .lb-catalog-thumb,
+html.theme-dark .lb-hero-art,
+html.theme-dark .roblox-asset-preview,
+html.theme-dark .lb-wearing-thumb {
+  background: #20262f !important;
+  border-color: var(--lb-line-soft) !important;
+}
+
+/* --- The dropdown menu ----------------------------------------------------- */
+html.theme-dark .roblox-more-pages-dropdown {
+  background: var(--lb-surface) !important;
+  border-color: var(--lb-line) !important;
+}
+html.theme-dark .roblox-more-pages-dropdown a { color: var(--lb-ink) !important; }
+html.theme-dark .roblox-more-pages-dropdown a:hover { background: var(--lb-surface-alt) !important; }
+
+/* --- Custom select (lb-select) --------------------------------------------
+   The trigger and menu are drawn by CSS, so they need dark values too or they
+   stay white blocks in the middle of a dark page. */
+html.theme-dark .lb-select-trigger {
+  background: #12161c !important;
+  border-color: var(--lb-line) !important;
+  color: var(--lb-ink) !important;
+}
+html.theme-dark .lb-select-menu {
+  background: var(--lb-surface) !important;
+  border-color: var(--lb-line) !important;
+  color: var(--lb-ink) !important;
+}
+html.theme-dark .lb-select-option { color: var(--lb-ink) !important; }
+html.theme-dark .lb-select-option:hover,
+html.theme-dark .lb-select-option.is-active { background: var(--lb-surface-alt) !important; }
+html.theme-dark .lb-select-caret { filter: brightness(0) invert(1) !important; }
+
+/* --- Panels inside /create and /develop (the Creator Hub) ------------------ */
+html.theme-dark .ch-title,
+html.theme-dark .ch-heading,
+html.theme-dark .ch-sub { color: var(--lb-ink) !important; }
+html.theme-dark .ch-muted { color: var(--lb-muted) !important; }
+html.theme-dark .ch-card,
+html.theme-dark .ch-stat,
+html.theme-dark .ch-list-item {
+  background: var(--lb-surface) !important;
+  border-color: var(--lb-line) !important;
+  color: var(--lb-ink) !important;
+}
+
+/* --- The settings window --------------------------------------------------- */
+html.theme-dark .settings-window {
+  background: var(--lb-surface) !important;
+  border-color: var(--lb-line) !important;
+}
+html.theme-dark .settings-sidebar { border-right-color: var(--lb-line) !important; }
+html.theme-dark .settings-nav-link { color: var(--lb-ink-2) !important; }
+html.theme-dark .settings-nav-link:hover { background: var(--lb-surface-alt) !important; }
+html.theme-dark .settings-nav-link.is-active {
+  background: #15334a !important;
+  color: #7cc9ff !important;
+}
+html.theme-dark .settings-help,
+html.theme-dark .settings-sub,
+html.theme-dark .settings-meta { color: var(--lb-muted) !important; }
+html.theme-dark .settings-btn.secondary .ch-ico { filter: brightness(0) invert(1) !important; }
+
+/* --- The role/admin badge and status pills --------------------------------- */
+html.theme-dark .lb-pill,
+html.theme-dark .roblox-tag,
+html.theme-dark .roblox-meta-pill {
+  background: var(--lb-surface-alt) !important;
+  border-color: var(--lb-line) !important;
+  color: var(--lb-ink-2) !important;
+}
+
+/* --- Loading spinner veil on a dark page ----------------------------------- */
+html.theme-dark .lb-loading-overlay.is-loading::after { background-color: rgba(15, 18, 22, 0.75) !important; }
+html.theme-dark .lb-loading-page { background: rgba(15, 18, 22, 0.95) !important; }
+html.theme-dark .lb-loading-page-text { color: var(--lb-muted) !important; }
+
+/* --- The footer ------------------------------------------------------------ */
+html.theme-dark .lb-footer { border-top-color: var(--lb-line) !important; color: var(--lb-muted) !important; }
+html.theme-dark .lb-footer-links a { color: var(--lb-ink-2) !important; }/* ---------------------------------------------------------------------------
+   Account menu (top-right of the header)
+   ---------------------------------------------------------------------------
+   The signed-in identity used to be a plain link to the profile, so there was
+   nowhere to sign out or reach account actions. This makes it a real menu.
+
+   It is a button + panel rather than a CSS :hover menu, because a :hover menu
+   cannot be opened by a keyboard or a touch tap and cannot be closed with
+   Escape. The open/close behaviour is bound in legacy-nav.js.
+   --------------------------------------------------------------------------- */
+.lb-account-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The trigger keeps the 2021 look it already had; only the button reset and the
+   caret are new, so the bar is visually unchanged apart from the affordance. */
+.lb-account-menu .lb-account {
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.lb-account-caret {
+  width: 12px !important;
+  height: 12px !important;
+  margin-left: 2px;
+  opacity: 0.85;
+  /* Dark art on a dark bar. */
+  filter: brightness(0) invert(1) !important;
+  transition: transform 0.15s ease;
+}
+.lb-account-menu.is-open .lb-account-caret { transform: rotate(180deg); }
+
+.lb-account-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: auto;
+  z-index: 1200;
+  min-width: 240px;
+  max-width: min(300px, calc(100vw - 20px));
+  padding: 6px 0;
+  background: var(--lb-surface) !important;
+  border: 1px solid var(--lb-line) !important;
+  border-radius: var(--lb-radius) !important;
+  box-shadow: var(--lb-shadow-lg) !important;
+  overflow: visible;
+}
+.lb-account-menu.is-open .lb-account-dropdown { display: block; }
+
+/* The identity header, so the menu says which account it belongs to. */
+.lb-account-dropdown-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 8px;
+}
+.lb-account-dropdown-avatar {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #3a3f47;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+.lb-account-dropdown-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.lb-account-dropdown-identity {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.lb-account-dropdown-identity strong {
+  font-size: 14px;
+  color: var(--lb-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lb-account-dropdown-identity span {
+  font-size: 12px;
+  color: var(--lb-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-account-dropdown-divider {
+  height: 1px;
+  background: var(--lb-line-soft);
+  margin: 6px 0;
+}
+
+/* Every row is one line at a fixed height: an un-flagged padding stacking with a
+   later ruleset is what previously turned a menu into a tall slab. */
+.lb-account-dropdown-item {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 9px 14px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--lb-ink) !important;
+  font-family: inherit;
+  font-size: 14px !important;
+  line-height: 18px !important;
+  text-align: left;
+  text-decoration: none !important;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lb-account-dropdown-item:hover,
+.lb-account-dropdown-item:focus-visible {
+  background: var(--lb-surface-alt) !important;
+  color: var(--lb-ink) !important;
+}
+
+.lb-account-dropdown-item .ch-ico {
+  width: 18px !important;
+  height: 18px !important;
+  /* Dark art on a light menu. */
+  filter: none !important;
+  opacity: 0.8;
+}
+
+/* Sign out sits apart and reads as the one destructive action. */
+.lb-account-dropdown-form { margin: 0; }
+.lb-account-signout { color: var(--lb-red) !important; }
+.lb-account-signout:hover { background: #fdecec !important; }
+.lb-account-signout .ch-ico { opacity: 1; }
+
+/* --- Dark theme ------------------------------------------------------------ */
+html.theme-dark .lb-account-dropdown {
+  background: var(--lb-surface) !important;
+  border-color: var(--lb-line) !important;
+}
+html.theme-dark .lb-account-dropdown-item { color: var(--lb-ink) !important; }
+html.theme-dark .lb-account-dropdown-item .ch-ico { filter: brightness(0) invert(1) !important; }
+html.theme-dark .lb-account-dropdown-item:hover,
+html.theme-dark .lb-account-dropdown-item:focus-visible { background: var(--lb-surface-alt) !important; }
+html.theme-dark .lb-account-dropdown-divider { background: var(--lb-line) !important; }
+html.theme-dark .lb-account-signout { color: #ff8a84 !important; }
+html.theme-dark .lb-account-signout:hover { background: #2c1414 !important; }/* ===========================================================================
+   2021 HEADER — real structure and colours
+   ---------------------------------------------------------------------------
+   Every value below is taken from the real page's own stylesheet:
+
+     #header.rbx-header                { height: 90px }
+     .light-theme .rbx-header          { background: #dee1e3;
+                                         border-bottom: 1px solid #c7cbce }
+     .dark-theme  .rbx-header          { background: #191b1d;
+                                         border-bottom: 1px solid #111214 }
+     .light-theme .text-header         { color: #393b3d }
+     .dark-theme  .text-header         { color: #fff }
+     .light-theme .navbar-search       { background: #f2f4f5 }
+     .dark-theme  .navbar-search       { background: #232527 }
+     .light-theme .rbx-navbar li:hover { border-bottom: 2px solid #393b3d }
+     .dark-theme  .rbx-navbar li:hover { border-bottom: 2px solid #fff }
+     .nav-menu-title                   { padding: 6px 9px }
+
+   The site previously modelled the header as a fixed dark slate bar with filled
+   pill hovers. The real thing is LIGHT by default (#dee1e3 with dark text),
+   goes dark-only for a dark theme, and its signature interaction is a 2px
+   underline on hover.
+
+   These rules win on specificity (`header.lb-header.light-theme`), which is what
+   lets them override the older dark-bar rules further up this file without
+   deleting them.
+   =========================================================================== */
+
+header.lb-header,
+header.roblox-topbar {
+  height: 90px !important;
+  min-height: 90px !important;
+  box-sizing: border-box;
+  gap: 18px !important;
+  padding: 0 22px !important;
+  box-shadow: none !important;
+}
+
+/* --- Colours, per theme ---------------------------------------------------- */
+header.lb-header.light-theme {
+  background: #dee1e3 !important;
+  border-bottom: 1px solid #c7cbce !important;
+  color: #393b3d !important;
+}
+header.lb-header.dark-theme {
+  background: #191b1d !important;
+  border-bottom: 1px solid #111214 !important;
+  color: #ffffff !important;
+}
+
+/* The wordmark and nav text follow the bar's own theme. */
+header.lb-header.light-theme .text-header,
+header.lb-header.light-theme .lb-brand,
+header.lb-header.light-theme .roblox-brand,
+header.lb-header.light-theme .lb-header-nav a,
+header.lb-header.light-theme .roblox-nav a { color: #393b3d !important; }
+
+header.lb-header.dark-theme .text-header,
+header.lb-header.dark-theme .lb-brand,
+header.lb-header.dark-theme .roblox-brand,
+header.lb-header.dark-theme .lb-header-nav a,
+header.lb-header.dark-theme .roblox-nav a { color: #ffffff !important; }
+
+/* --- Brand ----------------------------------------------------------------- */
+header.lb-header .lb-brand-word {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+header.lb-header .lb-brand-mark,
+header.lb-header img.roblox-brand-mark {
+  width: 30px !important;
+  height: 30px !important;
+}
+
+/* --- Top-level navigation --------------------------------------------------
+   Rows are inline and the hover state is a 2px UNDERLINE, which is what the real
+   bar did - not a filled pill. The underline is drawn as a border-bottom so it
+   sits flush under the row rather than offset like an underline decoration. */
+header.lb-header .lb-header-nav { flex: 1 1 auto; }
+header.lb-header .lb-header-nav-links,
+header.lb-header .roblox-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+  height: 100%;
+}
+header.lb-header .lb-header-nav-links > li { display: flex; height: 100%; align-items: center; }
+
+header.lb-header .nav-menu-title,
+header.lb-header .lb-header-nav-links > li > a {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  padding: 6px 9px;
+  border-bottom: 2px solid transparent;
+  background: transparent !important;
+  font-size: 15px;
+  font-weight: 400;
+  text-decoration: none !important;
+  white-space: nowrap;
+}
+header.lb-header .nav-menu-title:hover,
+header.lb-header .lb-header-nav-links > li > a:hover { text-decoration: none !important; }
+
+header.lb-header.light-theme .nav-menu-title:hover,
+header.lb-header.light-theme .lb-header-nav-links > li > a:hover,
+header.lb-header.light-theme .nav-menu-title.active,
+header.lb-header.light-theme .lb-header-nav-links > li > a.active {
+  border-bottom-color: #393b3d !important;
+  color: #393b3d !important;
+}
+header.lb-header.dark-theme .nav-menu-title:hover,
+header.lb-header.dark-theme .lb-header-nav-links > li > a:hover,
+header.lb-header.dark-theme .nav-menu-title.active,
+header.lb-header.dark-theme .lb-header-nav-links > li > a.active {
+  border-bottom-color: #ffffff !important;
+  color: #ffffff !important;
+}
+header.lb-header .nav-menu-title.active,
+header.lb-header .lb-header-nav-links > li > a.active { font-weight: 700; }
+
+/* --- Site search ----------------------------------------------------------- */
+header.lb-header .lb-header-search {
+  display: flex;
+  align-items: center;
+  flex: 0 1 340px;
+  min-width: 0;
+  height: 38px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+header.lb-header.light-theme .lb-header-search { background: #f2f4f5 !important; }
+header.lb-header.dark-theme .lb-header-search { background: #232527 !important; }
+
+/* The scope selector. A native <select> is used so the search works with no JS;
+   it is styled to sit flush inside the field. */
+header.lb-header .lb-header-search-scope { flex: 0 0 auto; height: 100%; }
+header.lb-header .lb-header-search-scope select {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 0 6px;
+  font-size: 13px;
+  cursor: pointer;
+  max-width: 130px;
+}
+header.lb-header.light-theme .lb-header-search-scope select {
+  background: #f2f4f5 !important;
+  color: #393b3d !important;
+}
+header.lb-header.dark-theme .lb-header-search-scope select {
+  background: #232527 !important;
+  color: #ffffff !important;
+}
+
+header.lb-header .lb-header-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0 8px;
+  font-size: 14px;
+}
+header.lb-header.light-theme .lb-header-search-input { color: #393b3d !important; }
+header.lb-header.dark-theme .lb-header-search-input { color: #ffffff !important; }
+header.lb-header.light-theme .lb-header-search-input::placeholder { color: #6d7278 !important; }
+header.lb-header.dark-theme .lb-header-search-input::placeholder { color: #9aa4b2 !important; }
+
+header.lb-header .lb-header-search-btn {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+header.lb-header .lb-header-search-btn .ch-ico { width: 16px; height: 16px; }
+/* The search glyph is dark art and must read on BOTH bars. */
+header.lb-header.dark-theme .lb-header-search-btn .ch-ico { filter: brightness(0) invert(1) !important; }
+header.lb-header.light-theme .lb-header-search-btn .ch-ico { filter: none !important; }
+
+/* --- Right-hand cluster ---------------------------------------------------- */
+header.lb-header .lb-header-right,
+header.lb-header .roblox-right { gap: 6px !important; }
+
+/* The harness icon buttons sit on the bar, so their hover must not be a bright
+   white wash on an already-light bar. */
+header.lb-header.light-theme .lb-icon-button:hover,
+header.lb-header.light-theme .roblox-icon-button:hover { background: rgba(0, 0, 0, 0.07) !important; }
+header.lb-header.dark-theme .lb-icon-button:hover,
+header.lb-header.dark-theme .roblox-icon-button:hover { background: rgba(255, 255, 255, 0.1) !important; }
+
+/* Header icons follow the bar's own theme, not the page's. */
+header.lb-header.light-theme .ch-ico,
+header.lb-header.light-theme img[src^="/icons/"] { filter: none !important; opacity: 0.85; }
+header.lb-header.dark-theme .ch-ico,
+header.lb-header.dark-theme img[src^="/icons/"] { filter: brightness(0) invert(1) !important; opacity: 1; }
+
+/* The Robux mark keeps its own colours on either bar. */
+header.lb-header .roblox-robux::before,
+header.lb-header img[src*="robux"] { filter: none !important; }
+
+/* Account chip text follows the bar. */
+header.lb-header.light-theme .lb-account,
+header.lb-header.light-theme .roblox-account { color: #393b3d !important; }
+header.lb-header.dark-theme .lb-account,
+header.lb-header.dark-theme .roblox-account { color: #ffffff !important; }
+header.lb-header.light-theme .lb-account:hover,
+header.lb-header.light-theme .roblox-account:hover { background: rgba(0, 0, 0, 0.07) !important; }
+header.lb-header .lb-account-caret { filter: none !important; opacity: 0.75; }
+header.lb-header.dark-theme .lb-account-caret { filter: brightness(0) invert(1) !important; }
+
+/* Signed-out Log In button: on the light bar it needs the dark fill. */
+header.lb-header.light-theme .lb-header-action,
+header.lb-header.light-theme .roblox-header-action {
+  background: #393b3d !important;
+  color: #ffffff !important;
+  border: 0;
+}
+header.lb-header.dark-theme .lb-header-action,
+header.lb-header.dark-theme .roblox-header-action {
+  background: #ffffff !important;
+  color: #191b1d !important;
+  border: 0;
+}
+
+/* --- Responsive ------------------------------------------------------------
+   The search field is the first thing to go: at narrow widths the nav and the
+   account cluster matter more, and a squeezed search input is unusable. */
+@media (max-width: 1100px) {
+  header.lb-header .lb-header-search { flex-basis: 220px; }
+  header.lb-header .lb-header-search-scope { display: none; }
+}
+@media (max-width: 900px) {
+  header.lb-header .lb-header-search { display: none; }
+}
+@media (max-width: 760px) {
+  header.lb-header,
+  header.roblox-topbar {
+    height: auto !important;
+    min-height: 64px !important;
+    padding: 8px 12px !important;
+    flex-wrap: wrap;
+  }
+  header.lb-header .lb-header-nav-links,
+  header.lb-header .roblox-nav-links { gap: 0; }
+  header.lb-header .nav-menu-title { font-size: 14px; padding: 6px 7px; }
+  header.lb-header .lb-brand-word { display: none; }
+}
+
+/* Screen-reader-only label, used for the search scope select. */
+.lb-visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }

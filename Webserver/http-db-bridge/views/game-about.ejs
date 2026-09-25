@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<%= themeClass || '' %>">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,6 +7,7 @@
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/join-status.css" />
 </head>
 <%#
   Game (experience) page, rebuilt against the real 2021 page:
@@ -42,11 +43,12 @@
   ];
   var currentTab = (typeof activeTab !== 'undefined' && activeTab) ? activeTab : 'about';
   var iconUrl = (typeof gameIcon !== 'undefined' && gameIcon) ? gameIcon : '/gameplaceholder/card.png';
-  // There is deliberately NO separate wide thumbnail. The page's card artwork is
-  // the square game icon (game.icon), layered over /gameplaceholder/card.png by
-  // the markup below. A `thumbUrl` used to default to the WIDE
-  // '/gameplaceholder/big.png' here, which is how every experience ended up
-  // showing the same 596x335 banner in a card that is meant to be square.
+  // The page's BIG THUMBNAIL is the wide 16:9 artwork, not the square icon. They
+  // are two different images for two different slots:
+  //   iconUrl  square (Card_512x512)  -> the icon beside the title
+  //   thumbUrl 16:9 (1680x945)        -> the big carousel slot
+  // The real page's carousel is 640x360 with padding-top: 56.25% (9/16).
+  var thumbUrl = (typeof gameThumb !== 'undefined' && gameThumb) ? gameThumb : '/gameplaceholder/game-thumb.png';
   var serverList = (typeof servers !== 'undefined' && servers) ? servers : [];
   var votePct = (typeof likesPercent !== 'undefined' && likesPercent) ? likesPercent : 0;
   var voteTotal = (Number(likes) || 0) + (Number(dislikes) || 0);
@@ -75,23 +77,45 @@
             -->
             <div class="lb-game-thumb lb-loading-block is-loading" id="gameThumbBlock" style="--lb-loader-size:64px;">
               <!--
-                The card art, layered like the home hero: the game's own artwork on
-                top of the placeholder. If the game's art 404s it hides itself and
-                the placeholder under it is revealed, instead of leaving the square
-                frame as an empty grey box.
+                The BIG 16:9 thumbnail, layered over the wide placeholder so a
+                broken render reveals artwork rather than an empty frame.
+
+                This slot is deliberately NOT the square game icon: the real game
+                page shows a 640x360 (16:9) carousel here, and the square
+                Card_512x512 is the icon in the info column to the right.
               -->
-              <% if (game.icon && /^\/|^https?:\/\//.test(game.icon)) { %>
-                <img class="roblox-game-thumb-img roblox-game-thumb-top" src="<%= game.icon %>"
-                     alt="<%= g.title %> card"
+              <img class="roblox-game-thumb-img roblox-game-thumb-base" src="/gameplaceholder/game-thumb.png"
+                   alt="<%= g.title %>" id="gameThumbFallback" />
+              <% if (thumbUrl && thumbUrl !== '/gameplaceholder/game-thumb.png') { %>
+                <img class="roblox-game-thumb-img roblox-game-thumb-top" src="<%= thumbUrl %>"
+                     alt="<%= g.title %> thumbnail"
                      id="gameThumb"
                      onerror="this.style.display='none';var b=document.getElementById('gameThumbBlock');if(b)b.classList.remove('is-loading');" />
               <% } %>
-              <img class="roblox-game-thumb-img roblox-game-thumb-base" src="/gameplaceholder/card.png"
-                   alt="<%= g.title %>" id="gameThumbFallback" />
               <button class="lb-btn lb-btn-primary roblox-play-button" type="button"
                       id="playBtn" data-launch-place-id="<%= placeId %>">
                 <img class="ch-ico" src="/icons/play.svg" alt="" /> Play
               </button>
+            </div>
+
+            <!--
+              Where the result of pressing Play appears.
+
+              A game page is a place you STAY on: joining is reported here rather
+              than by navigating anywhere, so the visitor never loses the
+              experience they were looking at. Hidden until there is something to
+              say, and filled by showJoinStatus() below.
+
+              aria-live so a screen reader is told the outcome without a page
+              change.
+            -->
+            <div class="lb-join-panel" id="joinStatus" role="status" aria-live="polite" hidden>
+              <div class="lb-join-panel-head">
+                <span class="lb-join-spinner" id="joinSpinner" aria-hidden="true"></span>
+                <strong class="lb-join-panel-title" id="joinTitle">Starting…</strong>
+              </div>
+              <div class="lb-join-panel-body" id="joinBody"></div>
+              <div class="lb-join-panel-actions" id="joinActions" hidden></div>
             </div>
 
             <!-- About / Store / Servers underline tabs -->
@@ -393,74 +417,130 @@
     // site uses. The old inline handler posted to /v1/launch-client, which does
     // not exist on this server, and hardcoded placeId '2022M' regardless of the
     // game being viewed.
+    /**
+     * The in-page join panel.
+     *
+     * Pressing Play reports its outcome HERE. It used to hand off to /play, a
+     * second page whose only job was to offer the client hand-off - so joining an
+     * experience navigated away from that experience. A game page should be the
+     * one place a game lives, including the moment it starts.
+     *
+     * Four states, because they are genuinely different situations:
+     *
+     *   working  - finding the client / starting it
+     *   playing  - the client launched and is connecting
+     *   missing  - no client on this computer, so offer the download
+     *   error    - something failed; say what
+     *
+     * @param {string}  state  'working' | 'playing' | 'missing' | 'error'
+     * @param {string}  title  short headline
+     * @param {string}  body   explanation
+     * @param {Array}   actions [{ label, href?, onClick?, primary? }]
+     */
+    function showJoinState(state, title, body, actions) {
+      var panel = document.getElementById('joinStatus');
+      var titleEl = document.getElementById('joinTitle');
+      var bodyEl = document.getElementById('joinBody');
+      var actionsEl = document.getElementById('joinActions');
+      var spinner = document.getElementById('joinSpinner');
+      if (!panel || !titleEl || !bodyEl || !actionsEl) return;
+
+      panel.hidden = false;
+      panel.className = 'lb-join-panel is-' + state;
+      titleEl.textContent = title;
+      bodyEl.textContent = body || '';
+
+      // The spinner belongs to the waiting states only.
+      if (spinner) spinner.hidden = !(state === 'working' || state === 'playing');
+
+      actionsEl.textContent = '';
+      if (Array.isArray(actions) && actions.length) {
+        actionsEl.hidden = false;
+        actions.forEach(function (a) {
+          var el;
+          if (a.href) {
+            el = document.createElement('a');
+            el.href = a.href;
+          } else {
+            el = document.createElement('button');
+            el.type = 'button';
+            if (a.onClick) el.addEventListener('click', a.onClick);
+          }
+          el.className = 'lb-btn ' + (a.primary ? 'lb-btn-primary' : 'lb-btn-secondary')
+            + ' lb-join-action';
+          el.textContent = a.label;
+          actionsEl.appendChild(el);
+        });
+      } else {
+        actionsEl.hidden = true;
+      }
+
+      panel.scrollIntoView({ block: 'nearest' });
+    }
+
     document.addEventListener('click', async (event) => {
       const trigger = event.target.closest('[data-launch-place-id]');
       if (!trigger) return;
 
       const loading = window.LBLoading;
+      const placeId = Number(trigger.getAttribute('data-launch-place-id')) || 1818;
 
-      // The launch call starts the client AND the match the ticket belongs to,
-      // which takes a moment. During it the whole page is waiting, so the big
-      // spinner comes up with a status line instead of the button appearing to
-      // do nothing until the client window finally opens.
-      if (loading) loading.show('Starting LuckyBlox\u2026');
+      // The panel is used for the whole flow, so the page itself never has to be
+      // covered by a full-screen veil - the visitor keeps seeing the experience.
       if (loading) loading.button(trigger, true);
+      showJoinState('working', 'Looking for the LuckyBlox client…',
+        'Checking this computer for an installed client.');
 
       try {
-        const placeId = Number(trigger.getAttribute('data-launch-place-id')) || 1818;
         const response = await fetch('/api/launch-game', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ placeId })
         });
 
-        const data = await response.json();
+        const data = await response.json().catch(function () { return {}; });
 
-        // Playing needs an account: send guests to sign in, then back here.
+        // Playing needs an account. Send them to sign in and straight back here.
         if (response.status === 401 || (data && data.error === 'sign-in-required')) {
-          if (loading) loading.hideAll();
           const next = encodeURIComponent(window.location.pathname + window.location.search);
           window.location.href = '/signin?redirect=' + next;
           return;
         }
 
         if (!response.ok || !data || !data.ok || !data.ticket) {
-          if (loading) loading.hideAll();
-          alert((data && data.message) || 'Unable to generate a launch ticket.');
+          showJoinState('error', 'Could not start this experience',
+            (data && data.message) || 'The server did not return a launch ticket.');
           return;
         }
 
-        // The local client was launched automatically when it is installed.
+        // The client was found and launched.
         if (data.nativeLaunch && data.nativeLaunch.status === 'launched') {
-          // Leave the veil up briefly: the client is still connecting to the
-          // game server, so dropping it instantly reads as "nothing happened".
-          if (loading) loading.hideAll();
+          showJoinState('playing', 'LuckyBlox is opening',
+            'Your client is connecting to this experience. It may take a few seconds to appear.');
           return;
         }
 
-        // Not installed: offer the custom installer, then the browser hand-off.
-        if (data.client && !data.client.installed && data.client.downloadUrl) {
-          if (loading) loading.hideAll();
-          var goDownload = window.confirm(
-            'The LuckyBlox client is not installed.\n\nDownload it now?'
-          );
-          if (goDownload) {
-            window.location.href = data.client.downloadUrl;
-            return;
-          }
+        // No client on this computer: say so and offer the ONE download page.
+        // Not a redirect to a different download page, and not a dead link -
+        // /download renders the real install state for this machine.
+        var clientMissing = data.client && !data.client.installed;
+        if (clientMissing) {
+          var installerThere = Boolean(data.client.downloadUrl);
+          showJoinState('missing', 'Download LuckyBlox to play',
+            installerThere
+              ? 'The LuckyBlox client is not installed on this computer. Install it and press Play again to join.'
+              : 'The LuckyBlox client is not installed on this computer, and no installer is published yet.',
+            [{ label: 'Go to the download page', href: '/download', primary: true }]);
+          return;
         }
 
-        // Fall back to the play page, which still offers the browser hand-off.
-        if (data.playUrl) {
-          window.location.href = data.playUrl;
-        } else if (data.launchURI) {
-          window.location.href = data.launchURI;
-        } else if (loading) {
-          loading.hideAll();
-        }
+        // The client exists but the server could not start it.
+        showJoinState('error', 'Could not start the client',
+          (data && data.message)
+            || 'The LuckyBlox client was found but the server could not launch it for this experience.');
       } catch (error) {
-        if (loading) loading.hideAll();
-        alert('LuckyBlox failed to launch.');
+        showJoinState('error', 'Could not reach the server',
+          'The launch request failed. Check your connection and try again.');
       } finally {
         if (loading) loading.button(trigger, false);
       }
