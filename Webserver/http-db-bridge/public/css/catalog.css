@@ -1,0 +1,191 @@
+/* ---------------------------------------------------------------------------
+   LuckyBlox - Avatar Shop (catalog), item page and inventory
+   ---------------------------------------------------------------------------
+   2021 reference:
+     catalog  https://web.archive.org/web/20210605211817/https://www.roblox.com/catalog?Category=0
+     item     https://web.archive.org/web/2021*/
+https: //www.roblox.com/catalog/<id>/<slug>
+
+Tiles were 150x150 thumbnails with the name,
+type and price underneath;
+the item page was the large image on the left with the identity and Buy action on the right. Panel chrome comes from roblox.css - this sheet only owns the shop pieces. --------------------------------------------------------------------------- */
+
+/* --- Item tile (also used by the inventory grid) --------------------------- */
+a.lb-catalog-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+a.lb-catalog-tile:hover {
+  text-decoration: none;
+}
+
+a.lb-catalog-tile:hover .lb-catalog-thumb {
+  border-color: #00a2ff;
+  box-shadow: 0 0 0 1px #00a2ff;
+}
+
+a.lb-catalog-tile:hover .lb-catalog-name {
+  color: #0b6fa4;
+}
+
+.lb-catalog-price {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.lb-catalog-owned {
+  color: #0a7d43;
+}
+
+.lb-catalog-free {
+  color: #0a7d43;
+}
+
+/* The item's real Roblox price, kept as a reference next to Free. */
+.lb-catalog-was {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--lb-muted);
+  text-decoration: line-through;
+}
+
+/* --- Item detail page ------------------------------------------------------ */
+.lb-catalog-item {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.ci-media {
+  min-width: 0;
+}
+
+.ci-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  background: #eef1f4;
+  border: 1px solid var(--lb-line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ci-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.ci-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ci-title {
+  margin: 0 0 4px;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.ci-byline {
+  font-size: 14px;
+  color: var(--lb-muted);
+  margin-bottom: 14px;
+}
+
+.ci-price-block {
+  padding: 12px 0;
+  border-top: 1px solid var(--lb-line-soft);
+  border-bottom: 1px solid var(--lb-line-soft);
+  margin-bottom: 14px;
+}
+
+.ci-price {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.ci-price-free {
+  color: #0a7d43;
+}
+
+.ci-price-owned {
+  color: var(--lb-ink);
+  font-size: 17px;
+}
+
+.ci-price-was {
+  font-size: 12px;
+  color: var(--lb-muted);
+  margin-top: 3px;
+}
+
+.ci-actions {
+  margin-top: 0;
+}
+
+/* --- Inventory filter bar -------------------------------------------------- */
+.inv-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.inv-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--lb-line);
+  border-radius: 2px;
+  background: #ffffff;
+  color: var(--lb-ink-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.inv-filter-btn:hover {
+  background: #f2f4f5;
+  text-decoration: none;
+}
+
+.inv-filter-btn.is-active {
+  background: #eef7ff;
+  border-color: #00a2ff;
+  color: #0b6fa4;
+}
+
+.inv-filter-count {
+  font-weight: 400;
+  color: var(--lb-muted);
+  font-size: 12px;
+}
+
+.inv-filter-btn.is-active .inv-filter-count {
+  color: #0b6fa4;
+}
+
+/* --- Responsive ------------------------------------------------------------ */
+@media (max-width: 720px) {
+  .lb-catalog-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ci-image {
+    max-width: 320px;
+  }
+}

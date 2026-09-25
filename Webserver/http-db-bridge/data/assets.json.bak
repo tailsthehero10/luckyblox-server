@@ -1,0 +1,50 @@
+{
+    "1029025":  {
+                    "id":  "1029025",
+                    "assetId":  1029025,
+                    "name":  "The Classic ROBLOX Fedora",
+                    "description":  "A black felt fedora. Ideal for 1920s journalists, detectives, and Linux hackers. This hat demonstrates good taste and exudes class.",
+                    "assetType":  "Hat",
+                    "assetTypeId":  8,
+                    "price":  900,
+                    "isForSale":  false,
+                    "creatorName":  "Roblox",
+                    "creatorId":  1,
+                    "thumbnail":  "/asset-cache/1029025.png",
+                    "thumbnailSource":  "https://tr.rbxcdn.com/180DAY-1de084fa35fdeace0b12fd5b21077677/420/420/Hat/Png/noFilter",
+                    "source":  "roblox:fetched",
+                    "fetchedAt":  "2026-09-25T10:28:43.2473858Z"
+                },
+    "607702162":  {
+                      "id":  "607702162",
+                      "assetId":  607702162,
+                      "name":  "Roblox Baseball Cap",
+                      "description":  "Powering Imagination!",
+                      "assetType":  "Hat",
+                      "assetTypeId":  8,
+                      "price":  0,
+                      "isForSale":  true,
+                      "creatorName":  "Roblox",
+                      "creatorId":  1,
+                      "thumbnail":  "/asset-cache/607702162.png",
+                      "thumbnailSource":  "https://tr.rbxcdn.com/180DAY-16f1aec1c5df1d078d2c65e4df786d91/420/420/Hat/Png/noFilter",
+                      "source":  "roblox:fetched",
+                      "fetchedAt":  "2026-09-25T10:28:42.6553422Z"
+                  },
+    "25330901":  {
+                     "id":  "25330901",
+                     "assetId":  25330901,
+                     "name":  "Plad  Short Shorts (Blue)",
+                     "description":  "Summers right around the corner so get the best shorts out there",
+                     "assetType":  "Pants",
+                     "assetTypeId":  12,
+                     "price":  1,
+                     "isForSale":  false,
+                     "creatorName":  "xgomanx",
+                     "creatorId":  990896,
+                     "thumbnail":  "/asset-cache/25330901.png",
+                     "thumbnailSource":  null,
+                     "source":  "roblox:fetched",
+                     "fetchedAt":  "2026-09-25T10:28:43.7338155Z"
+                 }
+}

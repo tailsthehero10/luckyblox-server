@@ -73,7 +73,10 @@
                     <% if (catalogItems.length) { %>
                       <div class="lb-catalog-grid">
                         <% catalogItems.forEach(function (item) { %>
-                          <div class="lb-catalog-tile">
+                          <!-- The whole tile is the link, as on the 2021 catalog.
+                               Before this the tiles were plain <div>s, so nothing
+                               in the Avatar Shop could be opened. -->
+                          <a class="lb-catalog-tile" href="/catalog/<%= item.id %>">
                             <div class="lb-catalog-thumb">
                               <% if (item.thumbnailUrl) { %>
                                 <img src="<%= item.thumbnailUrl %>" alt="<%= item.name %>" loading="lazy"
@@ -93,15 +96,17 @@
                             <div class="lb-catalog-price">
                               <% if (item.owned) { %>
                                 <span class="lb-catalog-owned">Owned</span>
-                                <% } else if (item.price> 0) { %>
-                                  <span class="lb-robux-inline">
-                                    <%= item.price %>
-                                  </span>
-                                  <% } else { %>
-                                    <span class="lb-catalog-free">Free</span>
+                                <% } else { %>
+                                  <%# Nothing costs Robux here, so the shop price is
+                                      always Free. The item's real Roblox price is
+                                      kept and shown as a struck-through reference. %>
+                                  <span class="lb-catalog-free">Free</span>
+                                  <% if (item.originalPrice > 0) { %>
+                                    <span class="lb-catalog-was">was <%= item.originalPrice %></span>
                                     <% } %>
+                                  <% } %>
                             </div>
-                          </div>
+                          </a>
                           <% }); %>
                       </div>
                       <% } else { %>

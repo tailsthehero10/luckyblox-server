@@ -214,11 +214,15 @@
               </button>
             </div>
 
-            <div class="lb-action-row">
-              <button class="lb-btn lb-btn-primary roblox-play-button" type="button" data-launch-place-id="<%= placeId %>">
-                <img class="ch-ico" src="/icons/play.svg" alt="" /> Play
-              </button>
-            </div>
+            <!--
+              There is deliberately NO second Play button here.
+
+              The real 2021 game page had exactly ONE: the green button overlaid
+              on the thumbnail (see .lb-game-thumb above). This column carried the
+              Favorite action only. A duplicate Play button here meant two
+              controls doing the same thing at different sizes, which is not what
+              the reference page looked like.
+            -->
 
             <!-- Server Size and Genre, exactly the two rows the real page used. -->
             <section class="lb-panel">

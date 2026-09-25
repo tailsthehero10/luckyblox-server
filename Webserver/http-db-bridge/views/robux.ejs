@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    <%= title %>
+  </title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+<%# Robux landing page. /upgrades/robux is linked from the header on every page, but no route existed, so it was a dead
+  link site-wide. LuckyBlox does not sell currency, so this page does not pretend to: it states the real balance and
+  where Robux actually comes from here. Inventing a store with fake bundles would be worse than an honest page. %>
+
+  <body>
+    <div class="lb-page">
+      <%- include('partials/header', { user: user, currency: currency, activeNav: 'robux' }) %>
+
+        <div class="lb-shell">
+          <%- include('partials/sidebar', { user: user, activeNav: 'catalog' }) %>
+
+            <main class="lb-main">
+              <div class="roblox-panel">
+                <div class="roblox-panel-header">
+                  <img class="ch-ico ch-ico-sm" src="/icons/robux.svg" alt="" /> Robux
+                </div>
+                <div class="roblox-panel-body">
+                  <h1 style="margin:0 0 8px; font-size:24px; font-weight:700;">Your balance</h1>
+                  <div
+                    style="display:flex;align-items:center;gap:8px;font-size:32px;font-weight:700;margin-bottom:14px;">
+                    <img class="ch-ico" src="/icons/robux.svg" alt="" style="width:28px;height:28px;" />
+                    <%= (currency && currency.robux) || user.robux || 0 %>
+                  </div>
+
+                  <p style="color:#555555;margin:0 0 16px;">
+                    LuckyBlox is a local platform and does not sell Robux. There is no
+                    purchase flow here and no card is ever charged.
+                  </p>
+
+                  <div class="roblox-panel" style="margin:0;">
+                    <div class="roblox-panel-body">
+                      <div class="lb-game-meta-list">
+                        <div class="lb-game-meta-row"><span>Account</span><strong>
+                            <%= user.username %>
+                          </strong></div>
+                        <div class="lb-game-meta-row"><span>Membership</span><strong>
+                            <%= user.membershipStatus || user.membership || 'None' %>
+                          </strong></div>
+                        <div class="lb-game-meta-row"><span>Coins</span><strong>
+                            <%= (currency && currency.coins) || 0 %>
+                          </strong></div>
+                        <div class="lb-game-meta-row"><span>Tickets</span><strong>
+                            <%= (currency && currency.tickets) || 0 %>
+                          </strong></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="lb-action-row" style="margin-top:16px;">
+                    <a class="lb-btn lb-btn-primary" href="/catalog">Browse the Avatar Shop</a>
+                    <a class="lb-btn lb-btn-secondary" href="/avatar?userId=<%= user.userId %>">Customize Avatar</a>
+                  </div>
+                </div>
+              </div>
+            </main>
+        </div>
+    </div>
+    <script src="/legacy-nav.js"></script>
+  </body>
+
+</html>

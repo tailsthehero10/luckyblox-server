@@ -86,7 +86,20 @@ function readJson(fileName, fallback) {
     if (!fs.existsSync(filePath)) {
       return fallback;
     }
-    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    // Strip a UTF-8 BOM before parsing.
+    //
+    // fs.readFileSync(path, 'utf8') keeps a leading BOM as U+FEFF, and JSON.parse
+    // rejects it with "Unexpected token \uFEFF in JSON at position 0". That is not
+    // hypothetical: editing a data file with a Windows editor or PowerShell's
+    // `Set-Content -Encoding UTF8` (which writes a BOM in PowerShell 5.1) makes
+    // EVERY read of that file fail, and the server then silently serves fallback
+    // data - so games vanish from the site with no obvious cause.
+    //
+    // A BOM is only ever a signature, never content, so dropping it is always
+    // correct and lets a file written by any tool load.
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const text = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
+    const parsed = JSON.parse(text);
     return parsed && typeof parsed === 'object' ? parsed : fallback;
   } catch (error) {
     console.error(`[luckyblox] readJson ${fileName} failed: ${error.message}`);

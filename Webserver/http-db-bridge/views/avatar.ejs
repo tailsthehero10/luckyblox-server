@@ -185,6 +185,11 @@
               <img class="ch-ico ch-ico-sm" src="/icons/edit.svg" alt="" /> Body Scale
             </div>
             <div class="roblox-panel-body">
+              <%# R6 has no scales, so the sliders are disabled on an R6 character -
+                  the real behaviour from js/My/Character.js. %>
+              <div class="av-help" id="scaleR6Note" style="margin:0 0 10px;" <%= avatarType === 'R6' ? '' : 'hidden' %>>
+                Body scales apply to the <strong>R15</strong> rig only. Switch the rig to R15 to use them.
+              </div>
               <%
                 // Ranges match the real avatar-rules the client reads (see
                 // /v1/avatar-rules in clientApi.js), so a value saved here is
@@ -348,6 +353,22 @@
 
       // --- Rig picker ---------------------------------------------------------
       // (R6/R15 is set HERE and only here - Settings no longer offers it.)
+      //
+      // Real 2013 behaviour, from js/My/Character.js line 44: choosing R15 enables
+      // the scale sliders, choosing R6 DISABLES and greys them, because an R6
+      // character has no scales. This re-evaluates on every rig change.
+      function applyRigToScales() {
+        var isR15 = rig === 'R15';
+        document.querySelectorAll('[data-scale]').forEach(function (input) {
+          input.disabled = !isR15;
+        });
+        document.querySelectorAll('.av-scale-row').forEach(function (row) {
+          row.classList.toggle('is-disabled', !isR15);
+        });
+        var note = document.getElementById('scaleR6Note');
+        if (note) note.hidden = isR15;
+      }
+
       document.querySelectorAll('[data-rig]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           rig = btn.getAttribute('data-rig');
@@ -358,9 +379,13 @@
           });
           var echo = document.getElementById('rigEcho');
           if (echo) echo.textContent = rig;
+          applyRigToScales();
           markDirty();
         });
       });
+
+      // Apply the initial state so an R6 account loads with its sliders disabled.
+      applyRigToScales();
 
       // --- Gender picker ------------------------------------------------------
       document.querySelectorAll('[data-gender]').forEach(function (btn) {

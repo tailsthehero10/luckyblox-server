@@ -230,15 +230,33 @@
         </section>
 
         <!--
-          The real 2021 avatar editor chrome: the 8 tabs (Character, Avatar,
-          Body Colors, ...), the shape-scale sliders and the item strips.
-          Captured from
-            https://web.archive.org/web/20210321200603/https://www.roblox.com/users/1/profile
-          and kept verbatim, so the DOM matches the reference page rather than an
-          approximation of it. Only the recently-acquired item list is generated
-          here from this account's real inventory.
+          Avatar editing lives on the Avatar page and ONLY there.
+
+          This used to embed the archived 2021 avatar-editor chrome
+          (partials/classic-avatar-shell.ejs) - a 59 KB minified blob of the
+          captured React DOM with foundation-web-* utility classes, data-testid
+          hooks and radix-slider widgets. None of that markup had a React runtime
+          or the archived stylesheets behind it here, so it rendered as unstyled,
+          broken controls in the middle of a profile. It was also a SECOND place
+          to edit an avatar, which is exactly the duplication the Avatar page is
+          meant to own.
+
+          The render above (Currently Wearing) stays: it only DISPLAYS the
+          character. Editing is one link away.
         -->
-        <%- include('partials/classic-avatar-shell', { user: user }) %>
+        <section class="lb-panel">
+          <div class="lb-panel-header"><span>Avatar</span></div>
+          <div class="lb-panel-body">
+            <div class="lb-action-row">
+              <a class="lb-btn lb-btn-primary" href="/avatar?userId=<%= user.userId %>">
+                <img class="ch-ico" src="/icons/avatar.svg" alt="" /> Customize Avatar
+              </a>
+              <span class="lb-faint" style="align-self:center;">
+                Rig, body colours, scales and outfit are all edited there.
+              </span>
+            </div>
+          </div>
+        </section>
 
         <!-- Statistics / Currency -->
         <div class="lb-content-grid">

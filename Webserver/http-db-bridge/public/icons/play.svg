@@ -1,3 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="Play">
-  <path fill="currentColor" d="M7 4.5 19 12 7 19.5z" />
+  <!-- Solid white play triangle.
+
+       This was fill="currentColor", which does NOT work for an <img src="...">:
+       the SVG loads as its own document with no parent context, so currentColor
+       resolved to black. CSS then had to guess with a filter, and no single
+       filter is right for both a white and a green button.
+
+       The play glyph only ever sits on a dark or green surface, so it is white
+       in the file itself and needs no filter at all. -->
+  <path fill="#ffffff" d="M7 4.5 19 12 7 19.5z" />
 </svg>

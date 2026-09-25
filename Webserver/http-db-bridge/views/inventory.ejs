@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    <%= title %>
+  </title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/catalog.css" />
+</head>
+<%# A user's inventory.
+  Real page: https://web.archive.org/web/2021*/https://www.roblox.com/users/<id>/inventory
+
+  The 2021 inventory was a filter bar (category + sort) over a grid of owned item
+  tiles. Only items the account actually owns are listed - the rows come from the
+  account's real `inventory` array resolved against the asset store, so nothing
+  here is a placeholder.
+%>
+
+  <body>
+    <div class="lb-page">
+      <%- include('partials/header', { user: user, currency: currency, activeNav: 'inventory' }) %>
+
+        <div class="lb-shell">
+          <%- include('partials/sidebar', { user: user, activeNav: 'inventory' }) %>
+
+            <main class="lb-main">
+              <div class="lb-sort-row">
+                <div>
+                  <h1 style="margin:0 0 4px; font-size:24px; font-weight:700;">
+                    <%= isSelf ? 'My Inventory' : (ownerName + "'s Inventory") %>
+                  </h1>
+                  <div class="lb-faint">
+                    <%= itemCount %> item<%= itemCount === 1 ? '' : 's' %><% if (typeLabel) { %>
+                      &middot; filtered to <%= typeLabel %><% } %>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Category filter. Only the types this account actually owns are
+                   offered, so no filter can lead to an empty grid. -->
+              <div class="lb-panel">
+                <div class="lb-panel-body">
+                  <div class="inv-filter">
+                    <% typeOptions.forEach(function (t) { %>
+                      <a class="inv-filter-btn <%= selectedType === t.key ? 'is-active' : '' %>"
+                        href="/users/<%= ownerId %>/inventory<%= t.key ? ('?type=' + t.key) : '' %>">
+                        <%= t.label %>
+                        <span class="inv-filter-count">
+                          <%= t.count %>
+                        </span>
+                      </a>
+                      <% }); %>
+                  </div>
+                </div>
+              </div>
+
+              <% if (items.length) { %>
+                <div class="lb-catalog-grid">
+                  <% items.forEach(function (item) { %>
+                    <a class="lb-catalog-tile" href="/catalog/<%= item.id %>">
+                      <div class="lb-catalog-thumb">
+                        <% if (item.thumbnailUrl) { %>
+                          <img src="<%= item.thumbnailUrl %>" alt="<%= item.name %>" loading="lazy"
+                            onerror="this.style.display='none';" />
+                          <% } else { %>
+                            <span class="lb-catalog-thumb-letter">
+                              <%= String(item.name || '?').slice(0, 1).toUpperCase() %>
+                            </span>
+                            <% } %>
+                      </div>
+                      <div class="lb-catalog-name" title="<%= item.name %>">
+                        <%= item.name %>
+                      </div>
+                      <div class="lb-catalog-type">
+                        <%= item.assetType %>
+                      </div>
+                      <div class="lb-catalog-price">
+                        <% if (item.wearing) { %>
+                          <span class="lb-catalog-owned">Wearing</span>
+                          <% } else { %>
+                            <span class="lb-catalog-free">Owned</span>
+                            <% } %>
+                      </div>
+                    </a>
+                    <% }); %>
+                </div>
+                <% } else { %>
+                  <div class="lb-panel">
+                    <div class="lb-panel-body">
+                      <div class="lb-muted">
+                        <% if (selectedType) { %>
+                          No <%= typeLabel.toLowerCase() %> items in this inventory.
+                          <a href="/users/<%= ownerId %>/inventory">Show everything</a>.
+                          <% } else { %>
+                            This inventory is empty. Visit the
+                            <a href="/catalog">Avatar Shop</a> to get items.
+                            <% } %>
+                      </div>
+                    </div>
+                  </div>
+                  <% } %>
+            </main>
+        </div>
+    </div>
+    <script src="/legacy-nav.js"></script>
+  </body>
+
+</html>

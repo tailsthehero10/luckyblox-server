@@ -451,13 +451,15 @@ img.roblox-brand-mark {
   font-variant-numeric: tabular-nums;
 }
 
-.roblox-robux::before {
-  /* The real Robux icon (same as Roblox's) instead of a text "R$". */
+.roblox-robux::before,
+.lb-robux::before {
   content: "";
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
-  background: url('/icons/robux.svg') center / contain no-repeat;
+  background-color: currentColor;
+  -webkit-mask: url('/icons/robux.svg') center / contain no-repeat;
+  mask: url('/icons/robux.svg') center / contain no-repeat;
 }
 
 .roblox-icon-button {
@@ -2838,13 +2840,40 @@ img.roblox-brand-mark {
   font-size: 14px;
   font-weight: 700;
 }
+/*
+  The Robux glyph.
+
+  robux.svg is now RECOLOURABLE: it uses fill="currentColor" through a mask, so
+  it follows the surrounding text colour - white on the dark header, black/dark
+  on a light surface. It no longer needs an invert filter, and the old
+  filter:none exceptions are gone because there is nothing to neutralise.
+
+  These are ::before pseudo-elements, so the icon cannot inherit color from the
+  element directly - a background SVG is its own document and currentColor does
+  not resolve. It is applied as a CSS MASK instead, painted with
+  background-color: currentColor. That is what makes one file work on light and
+  dark surfaces with no filter.
+*/
 .roblox-robux::before,
 .lb-robux::before {
   content: "";
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
-  background: url("/icons/robux.svg") center/contain no-repeat;
+  background-color: currentColor;
+  -webkit-mask: url("/icons/robux.svg") center / contain no-repeat;
+  mask: url("/icons/robux.svg") center / contain no-repeat;
+}
+
+/* The inline price glyph uses the same mask technique. */
+.lb-robux-inline::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  background-color: currentColor;
+  -webkit-mask: url("/icons/robux.svg") center / contain no-repeat;
+  mask: url("/icons/robux.svg") center / contain no-repeat;
 }
 
 .lb-icon-button,
@@ -3331,14 +3360,39 @@ img.roblox-brand-mark {
 .roblox-game-card-thumb {
   position: relative;
   width: 100%;
+  /* The 2021 card art is 16:9, but a game's ICON is square (Card_512x512).
+     The frame stays 16:9; the image below is fitted rather than cropped so the
+     whole thumbnail is visible. */
   aspect-ratio: 16 / 9;
   border-radius: var(--lb-radius);
   overflow: hidden;
   background: #e3e6ea;
   margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
+/* Fit the whole thumbnail inside the card - do NOT crop it.
+   object-fit: cover cut the edges off a square game icon (the real Roblox icon
+   shape) because the frame is 16:9, which is what made card art look wrong. */
 .lb-game-card-thumb img,
-.roblox-game-card-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.roblox-game-card-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* Keep it centred and never stretched. */
+  object-position: center center;
+}
+
+/* A wide 16:9 hero image should still fill the frame edge to edge - only a
+   square/portrait icon needs the letterboxed fit above. */
+.lb-game-card-thumb img.lb-thumb-wide,
+.roblox-game-card-thumb img.lb-thumb-wide {
+  object-fit: cover;
+}
 .roblox-game-card-placeholder { z-index: 0; }
 .roblox-game-card-thumb img + img { z-index: 1; }
 .roblox-game-card-thumb.is-placeholder img:first-child { display: none; }
@@ -3372,6 +3426,27 @@ img.roblox-brand-mark {
   margin-bottom: 16px;
 }
 
+/*
+  The LEFT column: thumbnail, then the About/Store/Servers tabs, then the panel.
+
+  It is an explicit vertical stack. Without this the column's children were laid
+  out as loose grid/block items, so the tab bar and the About panel did not read
+  as one continuous column and the About content did not flow downward under the
+  tabs the way the 2021 page did.
+*/
+.lb-game-hero > div:first-child {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+}
+
+/* The tab bar must sit flush under the thumbnail, not float in the flex gap. */
+.lb-game-hero > div:first-child > .lb-tabs {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
 .lb-game-thumb,
 .roblox-game-thumb {
   position: relative;
@@ -3384,7 +3459,7 @@ img.roblox-brand-mark {
 .roblox-game-thumb-img { width: 100%; height: 100%; object-fit: cover; }
 
 .lb-game-info,
-.roblox-game-info { display: flex; flex-direction: column; gap: 10px; }
+.roblox-game-info { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
 .lb-game-head,
 .roblox-game-head { display: flex; gap: 12px; align-items: center; }
 
@@ -3465,6 +3540,54 @@ img.roblox-brand-mark {
   padding: 0 30px;
   font-size: 18px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+
+/*
+  Icons on a green/blue primary button.
+
+  The play glyph ships as solid white in play.svg (fill="#ffffff"), because an
+  <img src="..."> cannot inherit currentColor - the SVG is its own document, so
+  currentColor resolved to black and CSS had to compensate with a filter that was
+  wrong on one of the two button colours.
+
+  So: an explicit EXCEPTION list is used rather than a blanket invert. Any other
+  icon that must read white on a primary button is named here.
+*/
+.lb-btn-primary .ch-ico[src*="play"],
+.roblox-play-button .ch-ico[src*="play"],
+.btn-common-play-game-lg .ch-ico[src*="play"],
+.lb-game-thumb .roblox-play-button .ch-ico[src*="play"] {
+  /* Already white in the file - no filter, or it would invert to black. */
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+/* Any NON-play icon dropped into a primary button is dark art, so it is inverted
+   to white. This keeps add/plus/upload icons legible on green without touching
+   the play glyph. */
+.lb-btn-primary .ch-ico:not([src*="play"]),
+.roblox-primary-button .ch-ico:not([src*="play"]),
+.settings-btn.primary .ch-ico:not([src*="play"]),
+.ch-btn-primary .ch-ico:not([src*="play"]),
+.ch-btn-blue .ch-ico:not([src*="play"]) {
+  filter: brightness(0) invert(1) !important;
+  opacity: 1 !important;
+}
+
+/*
+  The inverse case: a SECONDARY (white) button must keep a DARK icon.
+  This is what keeps the white Favorite button's star visible instead of turning
+  it white-on-white.
+*/
+.lb-btn-secondary .ch-ico,
+.roblox-secondary-button .ch-ico,
+.settings-btn.secondary .ch-ico,
+.ch-btn-light .ch-ico,
+.ch-btn-ghost .ch-ico,
+.lb-fav-btn .ch-ico,
+.lb-btn-secondary.roblox-play-button .ch-ico {
+  filter: none !important;
+  opacity: 1 !important;
 }
 
 /* Like / dislike bar */
@@ -3791,8 +3914,10 @@ img.roblox-brand-mark {
   content: "";
   width: 12px;
   height: 12px;
-  background: url("/icons/robux.svg") center/contain no-repeat;
   flex: 0 0 auto;
+  background-color: currentColor;
+  -webkit-mask: url("/icons/robux.svg") center / contain no-repeat;
+  mask: url("/icons/robux.svg") center / contain no-repeat;
 }
 
 /* ---------------------------------------------------------------------------

@@ -10,6 +10,7 @@ const { getStudioBuildInfo, getStudioUpdateManifest, STUDIO_EXECUTABLE_PATH, DEF
 const clientLauncher = require(path.join(__dirname, '..', '..', 'server', 'clientLauncher.js'));
 const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'server', 'studioApi.js'));
 const { installClientApi } = require('./clientApi.js');
+const assetFetcher = require(path.join(__dirname, '..', '..', 'server', 'assetFetcher.js'));
 const { installTeamCreateRoutes } = require(path.join(__dirname, '..', '..', 'server', 'teamCreate.js'));
 const {
   allocatePlayerToServer,
@@ -93,6 +94,18 @@ app.use('/lb-select.js', express.static(path.join(__dirname, 'public', 'lb-selec
 // Webserver/site icon/ are all reachable from every page.
 const siteIconDir = path.join(releaseRoot, 'Webserver', 'site icon');
 app.use('/site-icon', express.static(siteIconDir));
+
+// Roblox asset images downloaded to this server's own disk by
+// server/assetFetcher.js. Serving them locally means the avatar page renders
+// from our files instead of hotlinking thumbnails.roblox.com, so it keeps
+// working offline and cannot break when Roblox moves its CDN.
+const assetCacheDir = path.join(releaseRoot, 'Webserver', 'www', 'asset-cache');
+try {
+  fs.mkdirSync(assetCacheDir, { recursive: true });
+} catch (error) {
+  console.warn(`[luckyblox] could not create asset cache dir: ${error.message}`);
+}
+app.use('/asset-cache', express.static(assetCacheDir, { fallthrough: false, maxAge: '7d' }));
 
 // The real archived 2021 stylesheets (Navigation, Builder, Thumbnails, Avatar,
 // Footer, NotificationStream) plus the small luckyblox.css that fills the few
@@ -524,7 +537,7 @@ function isOwnerUser(user) {
 }
 
 /**
- * The Roblox admin badge. There is exactly ONE admin badge — you either have
+ * The Roblox admin badge. There is exactly ONE admin badge â€” you either have
  * admin or you don't. The image ships in Assets/roles/admin.png (extracted from
  * the bundled 2021M client) and is served at /assets/roles/admin.png.
  *
@@ -674,46 +687,65 @@ function writeJson(filePath, data) {
 }
 
 function createDefaultAssets() {
+  // The starter wearables, using REAL Roblox asset ids verified against
+  // economy.roblox.com. The previous ids (1001..1004) do not exist on Roblox at
+  // all: the economy API 404s for them and their thumbnails return BrokenImage,
+  // so a client asking for them got nothing and the character stayed default.
+  //
+  // These three are genuine and were fetched with tools/fetch-roblox-assets.js;
+  // their images live in Webserver/www/asset-cache and are served locally.
+  const now = new Date().toISOString();
   return {
-    '1001': {
-      id: 1001,
-      name: 'Classic Red Shirt',
-      assetType: 'Shirt',
-      path: 'assets/1001.shirt',
-      currentVersionId: 1001,
-      className: 'Shirt',
-      price: 0,
-      createdAt: new Date().toISOString(),
-    },
-    '1002': {
-      id: 1002,
-      name: 'Classic Blue Pants',
-      assetType: 'Pants',
-      path: 'assets/1002.pants',
-      currentVersionId: 1002,
-      className: 'Pants',
-      price: 0,
-      createdAt: new Date().toISOString(),
-    },
-    '1003': {
-      id: 1003,
-      name: 'Robloxian Cap',
+    '607702162': {
+      id: '607702162',
+      assetId: 607702162,
+      name: 'Roblox Baseball Cap',
+      description: 'A classic Roblox cap.',
       assetType: 'Hat',
-      path: 'assets/1003.hat',
-      currentVersionId: 1003,
+      assetTypeId: 8,
+      path: null,
+      currentVersionId: 607702162,
       className: 'Hat',
       price: 0,
-      createdAt: new Date().toISOString(),
+      isForSale: true,
+      creatorName: 'Roblox',
+      thumbnail: '/asset-cache/607702162.png',
+      source: 'roblox:fetched',
+      createdAt: now,
     },
-    '1004': {
-      id: 1004,
-      name: 'Classic Backpack',
-      assetType: 'BackAccessory',
-      path: 'assets/1004.backpack',
-      currentVersionId: 1004,
-      className: 'BackAccessory',
-      price: 0,
-      createdAt: new Date().toISOString(),
+    '1029025': {
+      id: '1029025',
+      assetId: 1029025,
+      name: 'The Classic ROBLOX Fedora',
+      description: 'The hat that started it all.',
+      assetType: 'Hat',
+      assetTypeId: 8,
+      path: null,
+      currentVersionId: 1029025,
+      className: 'Hat',
+      price: 900,
+      isForSale: true,
+      creatorName: 'Roblox',
+      thumbnail: '/asset-cache/1029025.png',
+      source: 'roblox:fetched',
+      createdAt: now,
+    },
+    '25330901': {
+      id: '25330901',
+      assetId: 25330901,
+      name: 'Plad Short Shorts (Blue)',
+      description: 'Classic blue plaid shorts.',
+      assetType: 'Pants',
+      assetTypeId: 12,
+      path: null,
+      currentVersionId: 25330901,
+      className: 'Pants',
+      price: 1,
+      isForSale: true,
+      creatorName: 'Roblox',
+      thumbnail: '/asset-cache/25330901.png',
+      source: 'roblox:fetched',
+      createdAt: now,
     },
   };
 }
@@ -737,8 +769,8 @@ function createDefaultUsers() {
       membership: 'Premium',
       membershipStatus: 'Premium',
       robux: 1200,
-      inventory: ['1001', '1002', '1003', '1004'],
-      currentlyWearing: ['1001', '1002', '1003'],
+      inventory: ['607702162', '1029025', '25330901'],
+      currentlyWearing: ['607702162'],
       stats: {
         friends: 128,
         created: 42,
@@ -787,8 +819,8 @@ function createDefaultUsers() {
       membership: 'Premium',
       membershipStatus: 'Premium',
       robux: 500,
-      inventory: ['1001', '1002', '1003', '1004'],
-      currentlyWearing: ['1001', '1002', '1003'],
+      inventory: ['607702162', '1029025', '25330901'],
+      currentlyWearing: ['607702162'],
       stats: {
         friends: 42,
         created: 1,
@@ -1297,7 +1329,7 @@ function ensureSeedData() {
 
   // Migrate any legacy plaintext password to a salted hash at boot. The login
   // route only accepts salted hashes, so without this the default account (and
-  // any account created before hashing) can never sign in — and on a fresh
+  // any account created before hashing) can never sign in â€” and on a fresh
   // container the seed data is regenerated every deploy, so this must run here
   // rather than relying on someone calling /luckblox-salt-setup by hand.
   upgradeLegacyPasswords();
@@ -1631,8 +1663,12 @@ function groupNameFor(ownerUsername) {
 
 function buildNewUserRecord({ userId, username, displayName, passwordHash, passwordSalt, passwordVersion, gender, birthday }) {
   const now = new Date().toISOString();
-  const starterInventory = ['1001', '1002', '1003', '1004'];
-  const starterWearing = ['1001', '1002', '1003'];
+  // Real, verified Roblox asset ids - the same three the default asset store
+  // carries. The old 1001..1004 were invented ids that do not exist on Roblox,
+  // so every new account was handed items the client could never load, which is
+  // why a fresh avatar always came out default.
+  const starterInventory = ['607702162', '1029025', '25330901'];
+  const starterWearing = ['607702162'];
   const safeBirthday = typeof birthday === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(birthday) ? birthday : null;
   const bodyColors = {
     headColorId: 1002,
@@ -1945,7 +1981,10 @@ function buildAvatarPayload(userId, placeId = 1818) {
       id: Number(asset.id),
       name: asset.name,
       assetType: {
-        id: 1,
+        // The asset's real AssetTypeId, not a hardcoded 1. A client uses this to
+        // decide which slot the item occupies; 1 (Image) is not a wearable slot,
+        // so every item was being classified wrongly.
+        id: Number(asset.assetTypeId || 0),
         name: asset.assetType,
       },
       currentVersionId: Number(asset.currentVersionId || asset.id),
@@ -1955,34 +1994,37 @@ function buildAvatarPayload(userId, placeId = 1818) {
       },
     }));
 
-  if (avatarAssets.length === 0) {
-    avatarAssets.push({
-      id: 1001,
-      name: 'Classic Red Shirt',
-      assetType: { id: 1, name: 'Shirt' },
-      currentVersionId: 1001,
-      meta: { order: 1, version: 1 },
-    });
-  }
+  // No fallback item is invented here. Previously an account wearing nothing was
+  // handed a made-up asset 1001 ("Classic Red Shirt") that does not exist on
+  // Roblox, so the client requested a non-existent asset and the character came
+  // out default. An empty outfit is a valid state - the client applies its own
+  // default clothing, which is what really happens on Roblox too.
 
   const assetParams = avatarAssets
     .map((asset) => `assetId=${asset.id}&assetType=${encodeURIComponent(asset.assetType.name || 'Accessory')}`)
     .join('&');
+
+  // The account's OWN saved avatar facts. These were hardcoded (scales all 1.0 and
+  // the rig always 'R6'), so a player who chose R15, resized their character or
+  // picked body colours still joined as a default R6 - the client never saw the
+  // saved values. Read them from the record instead.
+  const savedAvatar = (user.avatar && typeof user.avatar === 'object') ? user.avatar : {};
+  const savedScales = (savedAvatar.scales && typeof savedAvatar.scales === 'object') ? savedAvatar.scales : {};
 
   return {
     ok: true,
     userId: Number(user.userId),
     placeId: Number(placeId),
     scales: {
-      height: 1.0,
-      width: 1.0,
-      head: 1.0,
-      depth: 1.0,
-      proportion: 0.0,
-      bodyType: 0.0,
+      height: Number(savedScales.height != null ? savedScales.height : 1.0),
+      width: Number(savedScales.width != null ? savedScales.width : 1.0),
+      head: Number(savedScales.head != null ? savedScales.head : 1.0),
+      depth: Number(savedScales.depth != null ? savedScales.depth : 1.0),
+      proportion: Number(savedScales.proportion != null ? savedScales.proportion : 0.0),
+      bodyType: Number(savedScales.bodyType != null ? savedScales.bodyType : 0.0),
     },
-    playerAvatarType: 'R6',
-    bodyColors: user.avatar && user.avatar.bodyColors ? user.avatar.bodyColors : {
+    playerAvatarType: savedAvatar.playerAvatarType || user.avatarType || 'R15',
+    bodyColors: (savedAvatar.bodyColors && typeof savedAvatar.bodyColors === 'object') ? savedAvatar.bodyColors : {
       headColorId: 1002,
       torsoColorId: 1002,
       rightArmColorId: 1002,
@@ -2278,7 +2320,7 @@ function isPreviewAllowed(reqPath) {
   return PREVIEW_ALLOWLIST.some((rx) => rx.test(reqPath));
 }
 
-/** Real status for the preview page — computed from live server state. */
+/** Real status for the preview page â€” computed from live server state. */
 function getPreviewStatus() {
   let players = 0;
   for (const server of activeGameServers) {
@@ -2309,14 +2351,14 @@ app.get('/api/preview-status', (req, res) => {
 
 app.get('/preview', (req, res) => {
   res.render('preview', {
-    title: 'LuckyBlox — Live Preview',
+    title: 'LuckyBlox â€” Live Preview',
     stage: PREVIEW_STAGE,
     teasers: PREVIEW_TEASERS,
   });
 });
 
 // ---------------------------------------------------------------------------
-// Site status — public status page + owner open/close controls
+// Site status â€” public status page + owner open/close controls
 // ---------------------------------------------------------------------------
 // The owner can flip the site between open, work in progress, maintenance and
 // closed without editing code or redeploying. /sitestat always shows the real
@@ -2383,7 +2425,7 @@ app.get('/api/site-status', (req, res) => {
 app.get('/sitestat', (req, res) => {
   const user = req.sessionUser || null;
   res.render('sitestat', {
-    title: 'LuckyBlox — Site status',
+    title: 'LuckyBlox â€” Site status',
     status: siteStatusPayload(),
     user,
     isOwner: Boolean(user && isOwnerUser(user)),
@@ -2467,7 +2509,7 @@ app.use((req, res, next) => {
   }
 
   return res.status(503).render('closed', {
-    title: 'LuckyBlox — ' + state.label,
+    title: 'LuckyBlox â€” ' + state.label,
     status: siteStatusPayload(),
   });
 });
@@ -3019,7 +3061,7 @@ app.get('/badges', (req, res) => {
 
 /**
  * Owner-only gate. Any route wrapped with this only runs for the deployment
- * owner (ID 1 / tailsthehero10). Everyone else gets 403 — enforced server-side,
+ * owner (ID 1 / tailsthehero10). Everyone else gets 403 â€” enforced server-side,
  * not just hidden in the UI.
  */
 function requireOwner(req, res, next) {
@@ -3146,7 +3188,7 @@ app.get('/studio', (req, res) => {
 });
 
 /**
- * Creator Hub — the LuckyBlox equivalent of create.roblox.com. Shows the real
+ * Creator Hub â€” the LuckyBlox equivalent of create.roblox.com. Shows the real
  * experiences and assets belonging to the signed-in account, plus live counts.
  * Guests can view it but publishing actions prompt them to sign in.
  */
@@ -3258,6 +3300,205 @@ app.get('/catalog', (req, res) => {
 });
 
 /**
+ * A single Avatar Shop item.
+ *
+ * The catalog grid links every tile to /catalog/<id>, but no such route existed,
+ * so every item in the shop was a dead link. Roblox also accepted a decorative
+ * /catalog/<id>/<slug> path; the slug is ignored, exactly as the numeric game
+ * routes ignore theirs.
+ */
+function renderCatalogItemPage(req, res, assetId) {
+  const user = req.sessionUser || getUser(req.query.userId || 1);
+  const assets = getAssets();
+  const asset = assets[String(assetId)] || null;
+
+  if (!asset) {
+    return res.status(404).render('not-found', {
+      title: 'Item not found - LuckyBlox',
+      user,
+      currency: getCurrencyForUser(user),
+      requestedPath: req.originalUrl || req.path,
+    });
+  }
+
+  const id = String(asset.id != null ? asset.id : asset.assetId);
+  const ownedIds = new Set((Array.isArray(user.inventory) ? user.inventory : []).map(String));
+
+  return res.render('catalog-item', {
+    title: `${asset.name || 'Item'} - Roblox`,
+    user,
+    currency: getCurrencyForUser(user),
+    item: {
+      id,
+      name: asset.name || 'Item',
+      description: asset.description || '',
+      assetType: asset.assetType || asset.className || 'Accessory',
+      // Shop price is always 0; the real Roblox price is shown as a reference.
+      price: 0,
+      originalPrice: Number(asset.originalPrice != null ? asset.originalPrice : asset.price) || 0,
+      creatorName: asset.creatorName || 'LuckyBlox Studio',
+      owned: ownedIds.has(id),
+      thumbnailUrl: asset.thumbnail || asset.image || null,
+      source: asset.source || 'local',
+    },
+  });
+}
+
+app.get('/catalog/:assetId', (req, res, next) => {
+  if (!/^\d+$/.test(String(req.params.assetId || ''))) return next();
+  return renderCatalogItemPage(req, res, req.params.assetId);
+});
+
+app.get('/catalog/:assetId/:slug', (req, res, next) => {
+  if (!/^\d+$/.test(String(req.params.assetId || ''))) return next();
+  return renderCatalogItemPage(req, res, req.params.assetId);
+});
+
+/**
+ * Add a catalog item to the signed-in account's inventory.
+ *
+ * Every item is free (price 0), so there is no currency check - but the asset
+ * must genuinely exist and must be a wearable type, or it would be possible to
+ * add an image/badge asset to a wardrobe where the client cannot use it.
+ */
+const WEARABLE_ASSET_TYPES = new Set([
+  'Hat', 'Shirt', 'Pants', 'TShirt',
+  'HairAccessory', 'FaceAccessory', 'NeckAccessory', 'ShoulderAccessory',
+  'FrontAccessory', 'BackAccessory', 'WaistAccessory',
+  'TShirtAccessory', 'ShirtAccessory', 'PantsAccessory', 'JacketAccessory',
+  'SweaterAccessory', 'ShortsAccessory', 'LeftShoeAccessory', 'RightShoeAccessory',
+]);
+
+app.post('/api/catalog/buy', (req, res) => {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  if (!sessionUser) {
+    return res.status(401).json({ ok: false, error: 'sign-in-required', message: 'Sign in to get items.' });
+  }
+
+  const body = req.body || {};
+  const assetId = String(body.assetId || body.id || '').trim();
+  if (!assetId) {
+    return res.status(400).json({ ok: false, error: 'missing-asset-id', message: 'No item was specified.' });
+  }
+
+  const assets = getAssets();
+  const asset = assets[assetId];
+  if (!asset) {
+    return res.status(404).json({ ok: false, error: 'asset-not-found', message: 'That item does not exist.' });
+  }
+
+  // Guard the wardrobe: only real wearable types can be added.
+  const type = String(asset.assetType || asset.className || '');
+  if (!WEARABLE_ASSET_TYPES.has(type)) {
+    return res.status(400).json({
+      ok: false,
+      error: 'not-wearable',
+      message: `"${asset.name || 'That item'}" is a ${type || 'non-wearable'} asset and cannot be worn.`,
+    });
+  }
+
+  const userId = String(sessionUser.userId || sessionUser.id || 1);
+  const current = getUser(userId);
+  const inventory = Array.isArray(current.inventory) ? current.inventory.map(String) : [];
+
+  if (inventory.includes(assetId)) {
+    return res.json({ ok: true, alreadyOwned: true, assetId, inventory });
+  }
+
+  inventory.push(assetId);
+  const updated = saveUser(userId, { inventory });
+  try { syncLocalIdentity(updated); } catch (error) { /* best effort */ }
+  audit('catalog_item_added', { userId, assetId, type });
+
+  return res.json({ ok: true, assetId, inventory });
+});
+
+/**
+ * The sign-in landing page for buying Robux.
+ *
+ * /upgrades/robux is linked from the header on EVERY page, but no route existed,
+ * so it was a site-wide dead link. LuckyBlox does not sell currency, so this says
+ * so honestly and shows the real balance instead of showing a fake store.
+ */
+app.get('/upgrades/robux', (req, res) => {
+  const user = req.sessionUser || getUser(req.query.userId || 1);
+  res.render('robux', {
+    title: 'Robux - LuckyBlox',
+    user,
+    currency: getCurrencyForUser(user),
+  });
+});
+
+/**
+ * A user's inventory, at the 2021 path /users/<id>/inventory.
+ *
+ * Resolves the account's real `inventory` array against the asset store and
+ * offers only the categories that account actually owns, so no filter can lead
+ * to an empty grid.
+ */
+function renderInventoryPage(req, res, ownerId) {
+  const viewer = req.sessionUser || resolveSessionUser(req) || getUser(req.query.userId || 1);
+  const owner = getUser(ownerId);
+  const assets = getAssets();
+
+  const ownedIds = (Array.isArray(owner.inventory) ? owner.inventory : []).map(String);
+  const wearingIds = new Set((Array.isArray(owner.currentlyWearing) ? owner.currentlyWearing : []).map(String));
+
+  // Resolve owned ids to real records. An id with no record is skipped rather
+  // than shown as a blank tile.
+  const owned = ownedIds
+    .map((id) => assets[id])
+    .filter((a) => a && typeof a === 'object')
+    .map((a) => {
+      const id = String(a.id != null ? a.id : a.assetId);
+      return {
+        id,
+        name: a.name || 'Item',
+        assetType: a.assetType || a.className || 'Accessory',
+        thumbnailUrl: a.thumbnail || a.image || null,
+        wearing: wearingIds.has(id),
+      };
+    });
+
+  const selectedType = String(req.query.type || '').trim();
+  const items = selectedType ? owned.filter((i) => i.assetType === selectedType) : owned;
+
+  // Real category counts, including an "All" entry.
+  const typeCounts = new Map();
+  owned.forEach((i) => typeCounts.set(i.assetType, (typeCounts.get(i.assetType) || 0) + 1));
+  const typeOptions = [{ key: '', label: 'All', count: owned.length }]
+    .concat(Array.from(typeCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, count]) => ({ key: label, label, count })));
+
+  return res.render('inventory', {
+    title: `${owner.username} - Inventory | LuckyBlox`,
+    user: viewer,
+    currency: getCurrencyForUser(viewer),
+    ownerId: String(owner.userId || ownerId),
+    ownerName: owner.username || 'Player',
+    isSelf: String(viewer.userId || '') === String(owner.userId || ownerId),
+    items,
+    itemCount: items.length,
+    typeOptions,
+    selectedType,
+    typeLabel: selectedType,
+  });
+}
+
+app.get('/inventory', (req, res) => {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const userId = req.query.userId
+    || (sessionUser && (sessionUser.userId || sessionUser.id))
+    || 1;
+  return renderInventoryPage(req, res, userId);
+});
+
+app.get('/users/:id/inventory', (req, res) => {
+  return renderInventoryPage(req, res, req.params.id || 1);
+});
+
+/**
  * Avatar Shop (catalog).
  *
  * Real page: https://web.archive.org/web/20210605211817/https://www.roblox.com/catalog?Category=0
@@ -3286,7 +3527,14 @@ function renderCatalogPage2021(req, res) {
       id,
       name: asset.name || 'Item',
       assetType: asset.assetType || asset.className || 'Accessory',
-      price: Number(asset.price) || 0,
+      assetTypeId: Number(asset.assetTypeId || 0),
+      // The SHOP price is 0 for everything on LuckyBlox - no item costs Robux
+      // here. The item's real Roblox price is preserved on the record as
+      // originalPrice, so the true value is still known and displayed as a
+      // reference, while buying is always free.
+      price: 0,
+      originalPrice: Number(asset.originalPrice != null ? asset.originalPrice : asset.price) || 0,
+      isForSale: true,
       creatorName: asset.creatorName || 'LuckyBlox Studio',
       owned: ownedIds.has(id),
       wearing: wearingIds.has(id),
@@ -4538,6 +4786,65 @@ app.get('/api/client/status', (req, res) => {
   res.json({ ok: true, ...clientLauncher.getClientStatus() });
 });
 
+/* ---------------------------------------------------------------------------
+ * Roblox asset fetching (owner only)
+ * ---------------------------------------------------------------------------
+ * The site's starter inventory used to be four invented ids (1001..1004) with
+ * invented names. Those ids do not exist on Roblox - the economy API 404s and
+ * their thumbnails return BrokenImage - so the avatar rendered blank.
+ *
+ * POST /api/assets/fetch downloads the REAL asset metadata and image for the
+ * given ids (or the verified starter set when none are given), saves the images
+ * into Webserver/www/asset-cache/, and writes the verified records into
+ * assets.json. An id Roblox does not recognise is reported and skipped, never
+ * invented.
+ * ------------------------------------------------------------------------- */
+app.post('/api/assets/fetch', requireOwner, async (req, res) => {
+  const body = req.body || {};
+  const requested = Array.isArray(body.assetIds)
+    ? body.assetIds.map((n) => Number(n)).filter((n) => Number.isFinite(n) && n > 0)
+    : null;
+
+  try {
+    const result = requested && requested.length
+      ? await assetFetcher.fetchAll(requested, { cacheDir: assetCacheDir, publicUrl: '/asset-cache' })
+      : await assetFetcher.fetchStarterSet({ cacheDir: assetCacheDir, publicUrl: '/asset-cache' });
+
+    // Only VERIFIED records are merged in, and an existing record is updated in
+    // place rather than duplicated, so re-running the fetch is idempotent.
+    const assets = getAssets();
+    for (const record of result.records) {
+      assets[String(record.assetId)] = Object.assign({}, assets[String(record.assetId)] || {}, record);
+    }
+    writeJson(assetsPath, assets);
+
+    audit('assets_fetched', {
+      ip: security.clientIp(req),
+      fetched: result.records.length,
+      failed: result.failed.length,
+    });
+
+    return res.json({
+      ok: true,
+      fetched: result.records.map((r) => ({
+        assetId: r.assetId, name: r.name, assetType: r.assetType,
+        price: r.price, downloaded: Boolean(r.thumbnail),
+      })),
+      // Reported so a bad id is visible instead of silently dropped.
+      failed: result.failed,
+      cacheDir: assetCacheDir,
+    });
+  } catch (error) {
+    console.error('[api/assets/fetch] failed:', error);
+    return res.status(500).json({ ok: false, error: 'fetch-failed', message: String(error.message || error) });
+  }
+});
+
+/** The verified starter ids, so a caller knows what the default fetch will pull. */
+app.get('/api/assets/starter-set', (req, res) => {
+  res.json({ ok: true, starter: assetFetcher.STARTER_SET });
+});
+
 /**
  * Get the LuckyBlox client installer.
  *
@@ -5096,6 +5403,12 @@ app.post('/Data/Upload.ashx', express.raw({ type: '*/*', limit: '100mb' }), (req
 /**
  * Resolve an asset id to a stored record, accepting the several shapes the
  * asset DB can use (numeric id, string id, or a name match).
+ *
+ * Falls back to the on-disk CoreScripts collection (Assets/CoreScripts), which
+ * is how the 2021M/2022M clients actually get their engine scripts: the client
+ * asks for an asset id and expects the Lua source back. Those files were on disk
+ * but unreachable, because this function only ever looked in assets.json - so
+ * every CoreScript request 404'd.
  */
 function resolveAssetById(assetId) {
   const assets = getAssets();
@@ -5108,12 +5421,111 @@ function resolveAssetById(assetId) {
     return assets[wanted];
   }
 
-  return Object.values(assets).find((asset) => {
+  const inStore = Object.values(assets).find((asset) => {
     if (!asset || typeof asset !== 'object') return false;
     return String(asset.id) === wanted
       || String(asset.assetId) === wanted
       || String(asset.currentVersionId) === wanted;
-  }) || null;
+  });
+  if (inStore) return inStore;
+
+  // Not a catalog asset - maybe it is a CoreScript. Return a record pointing at
+  // the real .lua on disk so serveAssetById() streams it instead of 404ing.
+  const coreScript = resolveCoreScript(wanted);
+  if (coreScript) return coreScript;
+
+  return null;
+}
+
+/**
+ * The CoreScripts collection: Assets/CoreScripts/<Name> (<assetId>)/<version>.lua
+ *
+ * Roblox's own layout, kept because the folder name carries the real asset id and
+ * each numbered .lua is a successive version of that script. A 2021 client asks
+ * for an asset id and, with ?version=N, for one specific version; without a
+ * version it wants the newest one that exists.
+ *
+ * The directory listing is cached: it is read once per process rather than on
+ * every asset request, so a client's request storm does not hammer the disk.
+ */
+const CORE_SCRIPTS_DIR = path.join(releaseRoot, 'Assets', 'CoreScripts');
+let coreScriptIndex = null;
+
+function buildCoreScriptIndex() {
+  const index = new Map();
+  let root;
+  try {
+    if (!fs.existsSync(CORE_SCRIPTS_DIR)) return index;
+    root = fs.readdirSync(CORE_SCRIPTS_DIR, { withFileTypes: true });
+  } catch (error) {
+    console.warn(`[luckyblox] could not read CoreScripts: ${error.message}`);
+    return index;
+  }
+
+  for (const entry of root) {
+    if (!entry.isDirectory()) continue;
+    // "BackpackBuilder (53878047)" -> id 53878047
+    const match = /^(.*?)\s*\((\d+)\)\s*$/.exec(entry.name);
+    if (!match) continue;
+
+    const id = Number(match[2]);
+    const name = match[1].trim();
+    const dir = path.join(CORE_SCRIPTS_DIR, entry.name);
+
+    let files;
+    try {
+      files = fs.readdirSync(dir)
+        .map((f) => /^(\d+)\.lua$/i.exec(f))
+        .filter(Boolean)
+        .map((m) => Number(m[1]))
+        .sort((a, b) => a - b);
+    } catch (error) {
+      continue;
+    }
+    if (!files.length) continue;
+
+    index.set(id, {
+      id,
+      assetId: id,
+      name,
+      dir,
+      versions: files,
+      // The newest version the dump actually holds. Roblox's live "latest" could
+      // be higher; serving the newest file present is the honest answer.
+      latest: files[files.length - 1],
+      assetType: 'Lua',
+      assetTypeId: 5,
+      creatorName: 'Roblox',
+      source: 'CoreScripts',
+    });
+  }
+
+  console.log(`[luckyblox] CoreScripts indexed: ${index.size} script(s), `
+    + `${Array.from(index.values()).reduce((n, s) => n + s.versions.length, 0)} version file(s)`);
+  return index;
+}
+
+function coreScriptIndexMap() {
+  if (!coreScriptIndex) coreScriptIndex = buildCoreScriptIndex();
+  return coreScriptIndex;
+}
+
+/** A CoreScript record for an asset id, with the file path filled in. */
+function resolveCoreScript(assetId, wantedVersion) {
+  const record = coreScriptIndexMap().get(Number(assetId));
+  if (!record) return null;
+
+  const requested = Number(wantedVersion);
+  const version = Number.isFinite(requested) && record.versions.includes(requested)
+    ? requested
+    : record.latest;
+
+  return Object.assign({}, record, {
+    version,
+    currentVersionId: version,
+    filePath: path.join(record.dir, `${version}.lua`),
+    availableVersions: record.versions.slice(),
+  });
 }
 
 // Studio handshake store: pending sign-in nonces waiting to be linked to a
@@ -5141,7 +5553,10 @@ function getStudioHandshakes() {
  */
 function serveAssetById(req, res) {
   const rawId = req.params.id || req.query.id || req.query.assetId || req.query.assetid;
-  const asset = resolveAssetById(rawId);
+  // CoreScripts are versioned; a client asks for ?version=N and expects that
+  // exact version, or the newest one when it does not say.
+  const wantedVersion = req.query.version || req.query.v;
+  const asset = resolveAssetById(rawId, wantedVersion);
 
   if (!asset) {
     return res.status(404).json({
@@ -5165,12 +5580,35 @@ function serveAssetById(req, res) {
   });
 
   if (found) {
+    // Content type by extension. A CoreScript is Lua SOURCE, and a client that
+    // receives the right type can use it directly; sending everything as
+    // octet-stream made script assets opaque.
+    const ext = path.extname(found).toLowerCase();
+    const typeByExt = {
+      '.lua': 'text/plain; charset=utf-8',
+      '.rbxm': 'application/octet-stream',
+      '.rbxmx': 'application/xml; charset=utf-8',
+      '.rbxl': 'application/octet-stream',
+      '.rbxlx': 'application/xml; charset=utf-8',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.json': 'application/json; charset=utf-8',
+      '.txt': 'text/plain; charset=utf-8',
+    };
+    const contentType = typeByExt[ext] || 'application/octet-stream';
     const binary = req.query.format === 'binary' || req.query.binary === '1';
-    const contentType = binary ? 'application/octet-stream' : 'application/octet-stream';
     const stat = fs.statSync(found);
-    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Type', binary ? 'application/octet-stream' : contentType);
     res.setHeader('Content-Length', stat.size);
-    res.setHeader('Cache-Control', 'no-store');
+    // CoreScripts are immutable per version, so they can be cached hard. Local
+    // catalog files use the same path only when the version is pinned.
+    res.setHeader('Cache-Control', asset.source === 'CoreScripts' ? 'public, max-age=31536000' : 'no-store');
+    if (asset.source === 'CoreScripts') {
+      res.setHeader('X-LuckyBlox-Source', 'CoreScripts');
+      res.setHeader('X-LuckyBlox-Version', String(asset.version || ''));
+    }
     return fs.createReadStream(found).pipe(res);
   }
 

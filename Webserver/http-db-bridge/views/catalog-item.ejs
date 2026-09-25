@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    <%= title %>
+  </title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/catalog.css" />
+</head>
+<%# A single Avatar Shop item. Real page: https://web.archive.org/web/2021*/https://www.roblox.com/catalog/<id>/<slug>
+
+    The 2021 item page was a two-column body: the large item image on the left, and
+    the name / creator / price / Buy button on the right, with the description under
+    it. Everything shown here is the item's real fetched metadata - name, type,
+    creator and the Roblox price it originally carried. Nothing is invented.
+    %>
+
+    <body>
+      <div class="lb-page">
+        <%- include('partials/header', { user: user, currency: currency, activeNav: 'catalog' }) %>
+
+          <div class="lb-shell">
+            <%- include('partials/sidebar', { user: user, activeNav: 'catalog' }) %>
+
+              <main class="lb-main">
+                <div class="lb-catalog-item">
+
+                  <!-- LEFT: the item image -->
+                  <div class="ci-media">
+                    <div class="ci-image">
+                      <% if (item.thumbnailUrl) { %>
+                        <img src="<%= item.thumbnailUrl %>" alt="<%= item.name %>"
+                          onerror="this.style.display='none';" />
+                        <% } else { %>
+                          <span class="lb-catalog-thumb-letter">
+                            <%= String(item.name || '?' ).slice(0, 1).toUpperCase() %>
+                          </span>
+                          <% } %>
+                    </div>
+                  </div>
+
+                  <!-- RIGHT: identity, price, action -->
+                  <div class="ci-info">
+                    <h1 class="ci-title">
+                      <%= item.name %>
+                    </h1>
+                    <div class="ci-byline">
+                      By <strong>
+                        <%= item.creatorName %>
+                      </strong>
+                      &middot; <span class="lb-muted">
+                        <%= item.assetType %>
+                      </span>
+                    </div>
+
+                    <div class="ci-price-block">
+                      <% if (item.owned) { %>
+                        <div class="ci-price ci-price-owned">You own this item</div>
+                        <% } else { %>
+                          <div class="ci-price ci-price-free">Free</div>
+                          <% if (item.originalPrice> 0) { %>
+                            <div class="ci-price-was">
+                              Originally <%= item.originalPrice %> Robux on Roblox
+                            </div>
+                            <% } %>
+                              <% } %>
+                    </div>
+
+                    <div class="lb-action-row ci-actions">
+                      <% if (item.owned) { %>
+                        <a class="lb-btn lb-btn-secondary" href="/avatar?userId=<%= user.userId %>">
+                          Wear it on your Avatar
+                        </a>
+                        <% } else { %>
+                          <button class="lb-btn lb-btn-primary" type="button" id="buyItemBtn"
+                            data-asset-id="<%= item.id %>">
+                            Get it free
+                          </button>
+                          <span class="lb-faint" style="align-self:center;">
+                            Items are free on LuckyBlox.
+                          </span>
+                          <% } %>
+                            <a class="lb-btn lb-btn-secondary" href="/catalog">Back to Avatar Shop</a>
+                    </div>
+
+                    <div class="lb-panel" style="margin-top:16px;">
+                      <div class="lb-panel-header"><span>Description</span></div>
+                      <div class="lb-panel-body">
+                        <div class="lb-description">
+                          <%= item.description || 'This item does not have a description.' %>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="lb-panel">
+                      <div class="lb-panel-body">
+                        <div class="lb-game-meta-list">
+                          <div class="lb-game-meta-row"><span>Item ID</span><strong>
+                              <%= item.id %>
+                            </strong></div>
+                          <div class="lb-game-meta-row"><span>Type</span><strong>
+                              <%= item.assetType %>
+                            </strong></div>
+                          <div class="lb-game-meta-row"><span>Creator</span><strong>
+                              <%= item.creatorName %>
+                            </strong></div>
+                          <div class="lb-game-meta-row"><span>Source</span><strong>
+                              <%= item.source==='roblox:fetched' ? 'Roblox (fetched)' : 'Local' %>
+                            </strong></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </main>
+          </div>
+      </div>
+
+      <script>
+        (function () {
+          'use strict';
+          var btn = document.getElementById('buyItemBtn');
+          if (!btn) return;
+          btn.addEventListener('click', async function () {
+            btn.disabled = true;
+            btn.textContent = 'Adding...';
+            try {
+              var res = await fetch('/api/catalog/buy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ assetId: btn.getAttribute('data-asset-id') })
+              });
+              var data = await res.json().catch(function () { return {}; });
+              if (res.status === 401 || (data && data.error === 'sign-in-required')) {
+                window.location.href = '/signin?redirect=' + encodeURIComponent(window.location.pathname);
+                return;
+              }
+              if (data && data.ok) {
+                window.location.reload();
+                return;
+              }
+              alert((data && data.message) || 'Could not add this item.');
+            } catch (error) {
+              alert('Could not reach the server.');
+            } finally {
+              btn.disabled = false;
+              btn.textContent = 'Get it free';
+            }
+          });
+        }());
+      </script>
+      <script src="/legacy-nav.js"></script>
+    </body>
+
+</html>

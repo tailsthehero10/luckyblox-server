@@ -1,0 +1,9 @@
+Exception calling "WriteAllText" with "3" argument(s): "The requested operation cannot be performed on a file with a 
+user-mapped section open.
+"
+At E:\LuckyBloxLauncher\NEW LKL\Release\luckyblox-server\tools\fetch-catalog.ps1:123 char:1
++ [System.IO.File]::WriteAllText($outJson, $json, (New-Object System.Te ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException
+    + FullyQualifiedErrorId : IOException
+ 
