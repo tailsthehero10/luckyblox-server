@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>
+    <%= title %>
+  </title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
+</head>
+<%# Page not found. Uses the shared header/sidebar shell like every other page so a bad URL still lands on the site's
+  own chrome rather than a bare error page. %>
+
+  <body>
+    <div class="lb-page">
+      <%- include('partials/header', { user: user, currency: currency, activeNav: '' }) %>
+
+        <div class="lb-shell">
+          <%- include('partials/sidebar', { user: user, activeNav: '' }) %>
+
+            <main class="lb-main">
+              <div class="roblox-panel">
+                <div class="roblox-panel-header">
+                  <img class="ch-ico ch-ico-sm" src="/icons/search.svg" alt="" /> Page not found
+                </div>
+                <div class="roblox-panel-body">
+                  <h1 style="margin:0 0 8px; font-size:24px; font-weight:700;">We could not find that page</h1>
+                  <p style="color:#555555; margin:0 0 16px;">
+                    The address <strong>
+                      <%= requestedPath %>
+                    </strong> does not match anything on LuckyBlox.
+                  </p>
+
+                  <div class="lb-action-row">
+                    <a class="lb-btn lb-btn-primary" href="/">Back to Home</a>
+                    <a class="lb-btn lb-btn-secondary" href="/games">Browse Games</a>
+                  </div>
+                </div>
+              </div>
+            </main>
+        </div>
+    </div>
+    <script src="/legacy-nav.js"></script>
+  </body>
+
+</html>

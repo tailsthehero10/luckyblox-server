@@ -1,122 +1,127 @@
-/* LuckyBlox settings page. Supports a full dark theme via .theme-dark on
-   <html>/<body>, which also re-colours the shared roblox.css variables. */
+/* LuckyBlox settings page.
 
-.settings-shell {
+   Built as a real 2021-style "settings window": a left section list that SWITCHES
+   which panel is visible, not a list of anchors that scrolls one long page. Only
+   one panel is on screen at a time, exactly like the real 2021 settings surface.
+
+   The panel box styling comes from roblox.css (.roblox-panel). This sheet only
+   owns the window chrome and the form rows.
+
+   Dark theme: .theme-dark on <html>/<body> (see the bottom of this file). */
+
+.settings-window {
   display: grid;
-  grid-template-columns: 240px 1fr;
-  gap: 24px;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 24px 18px 64px;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 0;
+  background: var(--bg-container);
+  border: 1px solid var(--border-line);
   align-items: start;
 }
 
+/* The section list is the window's left pane. 2021 used a flat list with a
+   coloured left rule on the active row, not rounded pills. */
 .settings-sidebar {
-  position: sticky;
-  top: 84px;
-  background: var(--bg-container);
-  border: 1px solid var(--border-line);
-  border-radius: 12px;
-  padding: 14px 10px;
+  border-right: 1px solid var(--border-line);
+  padding: 10px 0;
+  min-height: 320px;
 }
 
 .settings-sidebar-title {
-  font-size: 0.72rem;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
   font-weight: 700;
-  padding: 6px 12px 10px;
+  padding: 6px 16px 10px;
 }
 
 .settings-nav-link {
   display: block;
-  padding: 9px 12px;
-  border-radius: 8px;
+  padding: 9px 16px;
+  border-left: 3px solid transparent;
   color: var(--text-main);
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 .settings-nav-link:hover {
-  background: rgba(127, 160, 220, 0.12);
+  background: #f2f2f2;
   text-decoration: none;
 }
 
+/* The active row: the site accent rule + a light tint. */
 .settings-nav-link.is-active {
-  background: rgba(26, 95, 180, 0.12);
-  color: var(--rbx-blue);
+  border-left-color: #00a2ff;
+  background: #eef7ff;
+  color: #0b6fa4;
+  font-weight: 700;
 }
 
 .settings-main {
   min-width: 0;
+  padding: 18px 20px 22px;
 }
 
 .settings-head h1 {
   margin: 0 0 4px;
-  font-size: 1.7rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .settings-sub {
-  margin: 0 0 20px;
+  margin: 0 0 18px;
   color: var(--text-muted);
+  font-size: 14px;
 }
 
 .settings-status {
   margin-bottom: 16px;
-  padding: 11px 14px;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
+  padding: 10px 13px;
+  border-radius: 0;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .settings-status.is-ok {
-  background: rgba(0, 168, 89, 0.12);
+  background: #e3f7ec;
   color: #0a7d43;
-  border: 1px solid rgba(0, 168, 89, 0.3);
+  border: 1px solid #a8e0c2;
 }
 
 .settings-status.is-error {
-  background: rgba(217, 83, 79, 0.12);
-  color: #c0392b;
-  border: 1px solid rgba(217, 83, 79, 0.3);
+  background: #fdecec;
+  color: #a01b1b;
+  border: 1px solid #f3bcbc;
 }
 
-.settings-card {
-  background: var(--bg-container);
-  border: 1px solid var(--border-line);
-  border-radius: 12px;
-  margin-bottom: 18px;
-  overflow: hidden;
-}
-
-.settings-card-head {
-  padding: 14px 20px;
-  font-weight: 800;
-  border-bottom: 1px solid var(--border-line);
-}
-
-.settings-card-body {
-  padding: 18px 20px;
+/* One panel visible at a time. [hidden] is what the window script toggles. */
+.settings-panel[hidden] {
+  display: none !important;
 }
 
 .settings-row {
   display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 18px;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 16px;
   padding: 12px 0;
-  border-bottom: 1px solid var(--border-line);
+  border-bottom: 1px solid #e8eaef;
 }
 
 .settings-row:last-child {
   border-bottom: none;
+  padding-bottom: 0;
+}
+
+.settings-row:first-child {
+  padding-top: 0;
 }
 
 .settings-label {
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 14px;
+  color: var(--text-main);
   padding-top: 8px;
 }
 
@@ -124,81 +129,109 @@
   min-width: 0;
 }
 
+/* Inputs are the 2021 field: white, 1px grey border, 2px radius, 40px tall. */
 .settings-field input,
-.settings-field textarea,
-.settings-field select {
+.settings-field textarea {
   width: 100%;
   box-sizing: border-box;
   font: inherit;
-  font-size: 0.95rem;
+  font-size: 14px;
   padding: 9px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border-line);
-  background: var(--bg-main);
+  border-radius: 2px;
+  border: 1px solid #b8bec6;
+  background: #ffffff;
   color: var(--text-main);
+}
+
+.settings-field textarea {
+  min-height: 76px;
+  resize: vertical;
 }
 
 .settings-field input:focus,
 .settings-field textarea:focus {
   outline: none;
-  border-color: var(--rbx-blue);
-  box-shadow: 0 0 0 2px rgba(26, 95, 180, 0.18);
+  border-color: #00a2ff;
+  box-shadow: 0 0 0 2px rgba(0, 162, 255, 0.16);
 }
 
 .settings-field input:disabled {
-  opacity: 0.65;
+  background: #f2f4f5;
+  color: var(--text-muted);
   cursor: not-allowed;
 }
 
 .settings-help {
-  font-size: 0.78rem;
+  font-size: 12px;
   color: var(--text-muted);
   margin-top: 6px;
 }
 
 .settings-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
 }
 
 .settings-summary-item {
-  background: var(--bg-main);
+  background: #fafafa;
   border: 1px solid var(--border-line);
-  border-radius: 10px;
-  padding: 12px 14px;
+  border-radius: 0;
+  padding: 10px 12px;
 }
 
 .settings-summary-item span {
   display: block;
-  font-size: 0.72rem;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
 }
 
 .settings-summary-item strong {
-  font-size: 1.05rem;
+  font-size: 15px;
+}
+
+/* The avatar pointer sits inside the Avatar Shop area instead: a plain link
+   block, no card, so it reads as a note rather than another control. */
+.settings-pointer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #f7f9fc;
+  border: 1px solid var(--border-line);
+  font-size: 14px;
+}
+.settings-pointer a {
+  font-weight: 700;
 }
 
 .settings-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  align-items: center;
   margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-line);
 }
 
+/* 2021 buttons: green primary, white secondary, 2px radius, no shadow. */
 .settings-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 11px 20px;
-  border-radius: 8px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 2px;
   border: 1px solid transparent;
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 14px;
   cursor: pointer;
   text-decoration: none;
 }
+
+.settings-btn .ch-ico { width: 16px; height: 16px; filter: none !important; }
 
 .settings-btn.primary {
   background: #00a859;
@@ -206,18 +239,23 @@
 }
 
 .settings-btn.primary:hover {
-  filter: brightness(1.06);
+  background: #009b52;
+  text-decoration: none;
 }
 
 .settings-btn.secondary {
-  background: var(--bg-container);
-  color: var(--text-main);
-  border-color: var(--border-line);
+  background: #ffffff;
+  color: #393b3d;
+  border-color: #bcbcbc;
 }
 
 .settings-btn.secondary:hover {
-  background: rgba(127, 160, 220, 0.1);
+  background: #f2f2f2;
+  text-decoration: none;
 }
+
+/* A .ch-ico rendered on the white secondary button must stay dark. */
+.settings-btn.secondary .ch-ico { filter: none !important; }
 
 .settings-btn:disabled {
   opacity: 0.6;
@@ -240,46 +278,86 @@ body.theme-dark {
   color: #e6e9ee !important;
 }
 
-body.theme-dark .settings-card,
-body.theme-dark .settings-sidebar {
+body.theme-dark .settings-window {
   background: #1a1e25;
   border-color: #2c333d;
 }
 
+body.theme-dark .settings-sidebar {
+  border-right-color: #2c333d;
+}
+
+body.theme-dark .settings-nav-link:hover {
+  background: #222833;
+}
+
 body.theme-dark .settings-nav-link.is-active {
-  background: rgba(90, 160, 255, 0.16);
-  color: #7db8ff;
+  background: #132b3d;
+  color: #6cc4ff;
+  border-left-color: #00a2ff;
 }
 
 body.theme-dark .settings-field input,
 body.theme-dark .settings-field textarea,
-body.theme-dark .settings-field select,
 body.theme-dark .settings-summary-item {
   background: #12161c;
   border-color: #2c333d;
   color: #e6e9ee;
 }
 
+body.theme-dark .settings-field input:disabled {
+  background: #191d24;
+  color: #7d8794;
+}
+
+body.theme-dark .settings-row {
+  border-bottom-color: #242a33;
+}
+
+body.theme-dark .settings-pointer {
+  background: #12161c;
+  border-color: #2c333d;
+}
+
+body.theme-dark .settings-btn.secondary {
+  background: #222833;
+  color: #e6e9ee;
+  border-color: #39414d;
+}
+
+body.theme-dark .settings-btn.secondary .ch-ico { filter: none !important; }
+
 body.theme-dark .settings-status.is-ok {
   color: #4be08e;
+  background: #12301f;
+  border-color: #1f5a38;
 }
 
 body.theme-dark .settings-status.is-error {
   color: #ff8a84;
-}
-
-body.theme-dark .roblox-topbar {
-  background: #1a1e25 !important;
-  border-color: #2c333d !important;
+  background: #341a1a;
+  border-color: #6a2b2b;
 }
 
 @media (max-width: 800px) {
-  .settings-shell {
+  .settings-window {
     grid-template-columns: 1fr;
   }
 
   .settings-sidebar {
-    position: static;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-line);
+    min-height: 0;
+    display: flex;
+    flex-wrap: wrap;
+    padding: 6px;
+  }
+
+  .settings-sidebar-title { display: none; }
+
+  .settings-nav-link {
+    border-left: 3px solid transparent;
+    padding: 7px 12px;
   }
 
   .settings-row {

@@ -9,6 +9,7 @@ const robloxApi = require('./robloxApi');
 const { getStudioBuildInfo, getStudioUpdateManifest, STUDIO_EXECUTABLE_PATH, DEFAULT_BASE_URL } = require('./studioBuildInfo');
 const clientLauncher = require(path.join(__dirname, '..', '..', 'server', 'clientLauncher.js'));
 const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'server', 'studioApi.js'));
+const { installClientApi } = require('./clientApi.js');
 const { installTeamCreateRoutes } = require(path.join(__dirname, '..', '..', 'server', 'teamCreate.js'));
 const {
   allocatePlayerToServer,
@@ -886,7 +887,10 @@ function serializeUser(userId) {
   return {
     userId: Number(user.userId || userId || 1),
     username: user.username || 'LocalPlayer',
-    displayName: user.username || 'LocalPlayer',
+    // The display name is its own field, set at signup and editable in Settings.
+    // This used to be hardcoded to user.username, so a chosen display name was
+    // silently discarded and every API consumer saw the username instead.
+    displayName: user.displayName || user.username || 'LocalPlayer',
     bio: user.bio || '',
     joinDate: user.joinDate || new Date().toISOString(),
     membershipStatus: user.membershipStatus || user.membership || 'None',
@@ -2159,6 +2163,37 @@ function writeUploadedPackage(fileName, buffer, assetKind = 'rbxl') {
 ensureSeedData();
 installStudioApiRoutes(app, { resolveUser: (userId) => getUser(userId) });
 installTeamCreateRoutes(app);
+
+/**
+ * The Roblox client API namespace (/v1/users, /v1/inventory, /v1/thumbnails, ...).
+ *
+ * The 2021M player and 2022M Studio clients address the real roblox.com v1/v2 API
+ * shapes (see Clients/2022M/ClientSettings/ClientAppSettings.json and
+ * Clients/2019M/Player/DevSettingsFile.json). Until now every one of those
+ * requests fell through to Express's default HTML 404, which a client cannot
+ * parse. See Webserver/http-db-bridge/clientApi.js for the endpoint list.
+ *
+ * Installed early so the client namespace is registered before the page routes.
+ */
+installClientApi(app, {
+  getUser,
+  getUsers,
+  getAssets,
+  getGames,
+  getGameEntry,
+  getPlaceSettings,
+  serializeUser,
+  getCurrencyForUser,
+  getWearingForUser,
+  getFriendsForUser,
+  getPublicGamesForUser,
+  normalizePlaceId,
+  resolveSessionUser,
+  saveUser,
+  publicOrigin,
+  dataDir,
+  releaseRoot,
+});
 
 app.get('/health', (req, res) => {
   res.json({ ok: true, status: 'online', port: PORT, releaseRoot, timestamp: new Date().toISOString() });
@@ -3817,7 +3852,7 @@ app.get('/v1/studio/authenticate', (req, res) => {
     ok: true,
     userId: Number(user.userId),
     username: user.username,
-    displayName: user.username,
+    displayName: user.displayName || user.username,
     membership: user.membershipStatus || user.membership || 'None',
     authTicket: ticket.ticket,
     expiresAt: new Date(ticket.expiresAt).toISOString(),
@@ -5325,7 +5360,8 @@ app.get('/api/me', (req, res) => {
     user: {
       userId: Number(user.userId || userId),
       username: user.username,
-      displayName: user.username,
+      // Never flatten the display name to the username here either.
+      displayName: user.displayName || user.username,
       robux: Number(user.robux) || 0,
       currency: getCurrencyForUser(user),
     },
@@ -5449,7 +5485,7 @@ app.get('/api/v1/account', (req, res) => {
     user: {
       userId: Number(user.userId || userId),
       username: user.username,
-      displayName: user.username,
+      displayName: user.displayName || user.username,
       membership: user.membershipStatus || user.membership || 'None',
       role: admin ? 'Admin' : 'Creator',
       isVerified: admin,
@@ -5777,6 +5813,46 @@ app.get('/dev/docs/auth', requireDevAuth, (req, res) => {
   res.render('dev/docs/auth', {
     title: 'Auth API - LuckyBlox Studio',
     user,
+  });
+});
+
+/* ---------------------------------------------------------------------------
+ * JSON 404 - the last route in the table.
+ * ---------------------------------------------------------------------------
+ * Before this, ANY unregistered path fell through to Express's default handler,
+ * which answers with an HTML error page. A game client or Studio cannot parse
+ * HTML, so every unimplemented client endpoint looked like a protocol failure
+ * (and the 2021M/2022M clients address a lot of v1/v2 paths).
+ *
+ * Anything under an API namespace - or any request that asks for JSON - now gets
+ * a well-formed JSON 404 in the shape the Roblox APIs use. Real page requests
+ * still get the HTML "not found" page.
+ * ------------------------------------------------------------------------- */
+app.use((req, res) => {
+  const accept = String(req.headers.accept || '');
+  const isApiRequest = req.path.startsWith('/v1/')
+    || req.path.startsWith('/v2/')
+    || req.path.startsWith('/api/')
+    || req.path.startsWith('/assets/')
+    || req.path.startsWith('/assetdelivery/')
+    || accept.includes('application/json');
+
+  if (isApiRequest) {
+    return res.status(404).json({
+      ok: false,
+      error: 'not-found',
+      // The Roblox error envelope, so a client's own error parser succeeds.
+      errors: [{ code: 0, message: `The endpoint ${req.path} is not implemented on this server.` }],
+    });
+  }
+
+  return res.status(404).render('not-found', {
+    title: 'Page not found - LuckyBlox',
+    user: req.sessionUser || getUser(1),
+    currency: getCurrencyForUser(req.sessionUser || getUser(1)),
+    // Echo back what was asked for, but escaped by EJS on output so a crafted
+    // path cannot inject markup into the error page.
+    requestedPath: req.originalUrl || req.path,
   });
 });
 

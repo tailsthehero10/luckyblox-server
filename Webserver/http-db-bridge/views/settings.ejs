@@ -18,13 +18,25 @@
       <%- include('partials/sidebar', { user: user, activeNav: 'account' }) %>
 
       <div class="lb-main">
-    <div class="settings-shell">
-      <aside class="settings-sidebar">
+    <!--
+      A real settings WINDOW: the left list switches which panel is shown, one at
+      a time (the old version was four stacked cards with anchor links).
+
+      Avatar-only controls (rig R6/R15, gender, body colours, scales) deliberately
+      live on the Avatar page - see /avatar. Settings points there instead of
+      duplicating them, so there is exactly one place to change an avatar.
+    -->
+    <div class="settings-window">
+      <aside class="settings-sidebar" role="tablist" aria-label="Settings sections">
         <div class="settings-sidebar-title">Settings</div>
-        <a href="#profile" class="settings-nav-link is-active" data-panel="profile">Profile</a>
-        <a href="#appearance" class="settings-nav-link" data-panel="appearance">Appearance</a>
-        <a href="#privacy" class="settings-nav-link" data-panel="privacy">Privacy</a>
-        <a href="#account" class="settings-nav-link" data-panel="account">Account</a>
+        <a href="#profile" class="settings-nav-link is-active" role="tab" aria-selected="true"
+           data-panel="profile">Profile</a>
+        <a href="#appearance" class="settings-nav-link" role="tab" aria-selected="false"
+           data-panel="appearance">Appearance</a>
+        <a href="#privacy" class="settings-nav-link" role="tab" aria-selected="false"
+           data-panel="privacy">Privacy</a>
+        <a href="#account" class="settings-nav-link" role="tab" aria-selected="false"
+           data-panel="account">Account</a>
       </aside>
 
       <main class="settings-main">
@@ -37,121 +49,135 @@
 
         <form id="settingsForm">
           <!-- Profile -->
-          <section class="settings-card settings-panel" id="panel-profile">
-            <div class="settings-card-head">Profile</div>
-            <div class="settings-card-body">
-              <div class="settings-row">
-                <label class="settings-label" for="username">Username</label>
-                <div class="settings-field">
-                  <input id="username" type="text" value="<%= user.username %>" disabled />
-                  <div class="settings-help">Your username is permanent and is how others find you.</div>
-                </div>
+          <section class="settings-panel" id="panel-profile" role="tabpanel">
+            <div class="roblox-panel">
+              <div class="roblox-panel-header">
+                <img class="ch-ico ch-ico-sm" src="/icons/profile.svg" alt="" /> Profile
               </div>
-
-              <div class="settings-row">
-                <label class="settings-label" for="setDisplayName">Display name</label>
-                <div class="settings-field">
-                  <input id="setDisplayName" name="displayName" type="text" maxlength="35"
-                         value="<%= user.displayName || user.username %>" placeholder="Display name" />
-                  <div class="settings-help">Shown across LuckyBlox. Defaults to your username.</div>
+              <div class="roblox-panel-body">
+                <div class="settings-row">
+                  <label class="settings-label" for="username">Username</label>
+                  <div class="settings-field">
+                    <input id="username" type="text" value="<%= user.username %>" disabled />
+                    <div class="settings-help">Your username is permanent and is how others find you.</div>
+                  </div>
                 </div>
-              </div>
 
-              <div class="settings-row">
-                <label class="settings-label" for="setBio">About</label>
-                <div class="settings-field">
-                  <textarea id="setBio" name="bio" maxlength="500" rows="3" placeholder="Tell people about yourself"><%= user.bio || '' %></textarea>
+                <div class="settings-row">
+                  <label class="settings-label" for="setDisplayName">Display name</label>
+                  <div class="settings-field">
+                    <input id="setDisplayName" name="displayName" type="text" maxlength="35"
+                           value="<%= user.displayName || user.username %>" placeholder="Display name" />
+                    <div class="settings-help">Shown across LuckyBlox. Defaults to your username.</div>
+                  </div>
                 </div>
-              </div>
 
-              <div class="settings-row">
-                <label class="settings-label" for="setEmail">Email</label>
-                <div class="settings-field">
-                  <input id="setEmail" name="email" type="email" maxlength="120"
-                         value="<%= user.email || '' %>" placeholder="you@example.com" />
-                  <div class="settings-help">Used for account recovery only.</div>
+                <div class="settings-row">
+                  <label class="settings-label" for="setBio">About</label>
+                  <div class="settings-field">
+                    <textarea id="setBio" name="bio" maxlength="500" rows="3" placeholder="Tell people about yourself"><%= user.bio || '' %></textarea>
+                  </div>
+                </div>
+
+                <div class="settings-row">
+                  <label class="settings-label" for="setEmail">Email</label>
+                  <div class="settings-field">
+                    <input id="setEmail" name="email" type="email" maxlength="120"
+                           value="<%= user.email || '' %>" placeholder="you@example.com" />
+                    <div class="settings-help">Used for account recovery only.</div>
+                  </div>
                 </div>
               </div>
             </div>
           </section>
 
           <!-- Appearance -->
-          <section class="settings-card settings-panel" id="panel-appearance">
-            <div class="settings-card-head">Appearance</div>
-            <div class="settings-card-body">
-              <div class="settings-row">
-                <label class="settings-label" for="setTheme">Theme</label>
-                <div class="settings-field">
-                  <select class="lb-select" id="setTheme" name="theme">
-                    <option value="light" <%= (user.theme || 'light') === 'light' ? 'selected' : '' %>>Light</option>
-                    <option value="dark" <%= user.theme === 'dark' ? 'selected' : '' %>>Dark</option>
-                  </select>
-                  <div class="settings-help">Dark theme applies to your profile and settings pages.</div>
-                </div>
+          <section class="settings-panel" id="panel-appearance" role="tabpanel" hidden>
+            <div class="roblox-panel">
+              <div class="roblox-panel-header">
+                <img class="ch-ico ch-ico-sm" src="/icons/palette.svg" alt="" /> Appearance
               </div>
-
-              <div class="settings-row">
-                <label class="settings-label" for="setGender">Gender</label>
-                <div class="settings-field">
-                  <select class="lb-select" id="setGender" name="gender">
-                    <option value="NotSpecified" <%= (user.gender || 'NotSpecified') === 'NotSpecified' ? 'selected' : '' %>>Not specified</option>
-                    <option value="Male" <%= user.gender === 'Male' ? 'selected' : '' %>>Male</option>
-                    <option value="Female" <%= user.gender === 'Female' ? 'selected' : '' %>>Female</option>
-                  </select>
+              <div class="roblox-panel-body">
+                <div class="settings-row">
+                  <label class="settings-label" for="setTheme">Theme</label>
+                  <div class="settings-field">
+                    <select class="lb-select" id="setTheme" name="theme">
+                      <option value="light" <%= (user.theme || 'light') === 'light' ? 'selected' : '' %>>Light</option>
+                      <option value="dark" <%= user.theme === 'dark' ? 'selected' : '' %>>Dark</option>
+                    </select>
+                    <div class="settings-help">Applies to your profile and settings pages.</div>
+                  </div>
                 </div>
-              </div>
 
-              <div class="settings-row">
-                <label class="settings-label" for="setAvatarType">Avatar rig</label>
-                <div class="settings-field">
-                  <select class="lb-select" id="setAvatarType" name="playerAvatarType">
-                    <% var rig = (user.avatar && user.avatar.playerAvatarType) || 'R15'; %>
-                    <option value="R15" <%= rig === 'R15' ? 'selected' : '' %>>R15</option>
-                    <option value="R6" <%= rig === 'R6' ? 'selected' : '' %>>R6</option>
-                  </select>
-                  <div class="settings-help">Change your outfit colours on the <a href="/avatar?userId=<%= user.userId %>">Avatar page</a>.</div>
+                <!-- Avatar controls are NOT duplicated here. The Avatar page owns
+                     rig, body colours, scales and the outfit. -->
+                <div class="settings-row">
+                  <span class="settings-label">Avatar</span>
+                  <div class="settings-field">
+                    <div class="settings-pointer">
+                      <img class="ch-ico ch-ico-sm" src="/icons/avatar.svg" alt="" />
+                      <span>Your character, rig and outfit are managed on the
+                        <a href="/avatar?userId=<%= user.userId %>">Avatar page</a>.</span>
+                    </div>
+                    <div class="settings-help">
+                      Current rig: <strong><%= (user.avatar && user.avatar.playerAvatarType) || 'R15' %></strong>
+                      &middot; wearing <%= Array.isArray(user.currentlyWearing) ? user.currentlyWearing.length : 0 %> item(s).
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </section>
 
           <!-- Privacy -->
-          <section class="settings-card settings-panel" id="panel-privacy">
-            <div class="settings-card-head">Privacy</div>
-            <div class="settings-card-body">
-              <div class="settings-row">
-                <label class="settings-label" for="setAboutMe">Who can see my activity</label>
-                <div class="settings-field">
-                  <select class="lb-select" id="setAboutMe" name="aboutMe">
-                    <option value="everyone">Everyone</option>
-                    <option value="friends">Friends</option>
-                    <option value="nobody">Nobody</option>
-                  </select>
-                  <div class="settings-help">Controls who can see your recent experiences and creations.</div>
+          <section class="settings-panel" id="panel-privacy" role="tabpanel" hidden>
+            <div class="roblox-panel">
+              <div class="roblox-panel-header">
+                <img class="ch-ico ch-ico-sm" src="/icons/lock.svg" alt="" /> Privacy
+              </div>
+              <div class="roblox-panel-body">
+                <div class="settings-row">
+                  <label class="settings-label" for="setAboutMe">Who can see my activity</label>
+                  <div class="settings-field">
+                    <select class="lb-select" id="setAboutMe" name="aboutMe">
+                      <option value="everyone" <%= (user.aboutMe || 'everyone') === 'everyone' ? 'selected' : '' %>>Everyone</option>
+                      <option value="friends" <%= user.aboutMe === 'friends' ? 'selected' : '' %>>Friends</option>
+                      <option value="nobody" <%= user.aboutMe === 'nobody' ? 'selected' : '' %>>Nobody</option>
+                    </select>
+                    <div class="settings-help">Controls who can see your recent experiences and creations.</div>
+                  </div>
                 </div>
               </div>
             </div>
           </section>
 
           <!-- Account -->
-          <section class="settings-card settings-panel" id="panel-account">
-            <div class="settings-card-head">Account</div>
-            <div class="settings-card-body">
-              <div class="settings-summary">
-                <div class="settings-summary-item"><span>User ID</span><strong><%= user.userId %></strong></div>
-                <div class="settings-summary-item"><span>Membership</span><strong><%= user.membershipStatus || user.membership || 'None' %></strong></div>
-                <div class="settings-summary-item"><span>Joined</span><strong><%= (user.joinDate || '').slice(0, 10) %></strong></div>
-                <div class="settings-summary-item"><span>Robux</span><strong><%= (currency && currency.robux) || user.robux || 0 %></strong></div>
+          <section class="settings-panel" id="panel-account" role="tabpanel" hidden>
+            <div class="roblox-panel">
+              <div class="roblox-panel-header">
+                <img class="ch-ico ch-ico-sm" src="/icons/settings.svg" alt="" /> Account
               </div>
-              <div class="settings-field" style="margin-top:14px;">
-                <a class="settings-btn secondary" href="/logout">Sign out</a>
+              <div class="roblox-panel-body">
+                <div class="settings-summary">
+                  <div class="settings-summary-item"><span>User ID</span><strong><%= user.userId %></strong></div>
+                  <div class="settings-summary-item"><span>Membership</span><strong><%= user.membershipStatus || user.membership || 'None' %></strong></div>
+                  <div class="settings-summary-item"><span>Joined</span><strong><%= (user.joinDate || '').slice(0, 10) %></strong></div>
+                  <div class="settings-summary-item"><span>Robux</span><strong><%= (currency && currency.robux) || user.robux || 0 %></strong></div>
+                </div>
+                <div class="settings-actions">
+                  <a class="settings-btn secondary" href="/logout">
+                    <img class="ch-ico" src="/icons/back.svg" alt="" /> Sign out
+                  </a>
+                </div>
               </div>
             </div>
           </section>
 
           <div class="settings-actions">
             <button type="submit" class="settings-btn primary" id="settingsSave">Save changes</button>
-            <a class="settings-btn secondary" href="/profile?userId=<%= user.userId %>">View profile</a>
+            <a class="settings-btn secondary" href="/profile?userId=<%= user.userId %>">
+              <img class="ch-ico" src="/icons/profile.svg" alt="" /> View profile
+            </a>
           </div>
         </form>
       </main>
@@ -172,18 +198,42 @@
       }
       applyTheme(savedTheme);
 
-      // --- Sidebar nav switches which panel is visible (all are visible on one
-      // scroll on small screens; on desktop the nav highlights the section).
+      // --- The section list SWITCHES the visible panel (one window at a time),
+      // which is what a settings window does. The old code scrolled to an anchor
+      // and left every card on the page, which is not a window.
       var links = document.querySelectorAll('.settings-nav-link');
+      var panels = document.querySelectorAll('.settings-panel');
+
+      function showPanel(key) {
+        panels.forEach(function (panel) {
+          panel.hidden = panel.id !== ('panel-' + key);
+        });
+        links.forEach(function (l) {
+          var on = l.getAttribute('data-panel') === key;
+          l.classList.toggle('is-active', on);
+          l.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        // Keep the section in the URL so a refresh / back button lands on the
+        // same section, exactly like a real settings deep link.
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', '#' + key);
+        }
+      }
+
       links.forEach(function (link) {
         link.addEventListener('click', function (e) {
           e.preventDefault();
-          var panel = document.getElementById('panel-' + link.getAttribute('data-panel'));
-          if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          links.forEach(function (l) { l.classList.remove('is-active'); });
-          link.classList.add('is-active');
+          showPanel(link.getAttribute('data-panel'));
         });
       });
+
+      // Open the section named in the URL hash (e.g. /settings#privacy), and
+      // default to Profile when there is none or it does not exist.
+      (function initialPanel() {
+        var wanted = String(window.location.hash || '').replace('#', '');
+        var known = Array.prototype.map.call(links, function (l) { return l.getAttribute('data-panel'); });
+        showPanel(known.indexOf(wanted) !== -1 ? wanted : 'profile');
+      }());
 
       var status = document.getElementById('settingsStatus');
       var saveBtn = document.getElementById('settingsSave');
@@ -206,8 +256,6 @@
           bio: document.getElementById('setBio').value,
           email: document.getElementById('setEmail').value,
           theme: document.getElementById('setTheme').value,
-          gender: document.getElementById('setGender').value,
-          playerAvatarType: document.getElementById('setAvatarType').value,
           aboutMe: document.getElementById('setAboutMe').value,
         };
 

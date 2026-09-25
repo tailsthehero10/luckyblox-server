@@ -1722,6 +1722,65 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
+   THE panel system  (2021 section cards)
+   ---------------------------------------------------------------------------
+   This is the single source of truth for a content panel on the site.
+
+   Problem it fixes: pages were written against two different panel names -
+   the older pages use `.roblox-panel`, the newer ones use `.lb-panel` - and only
+   `.lb-panel` was ever fully styled here. A `.roblox-panel` therefore rendered as
+   bare unboxed content (that is the Avatar page), while an `.lb-panel` got the
+   2021 card. Side by side, a page looked like two different designs.
+
+   Both names now resolve to the SAME 2021 section card:
+     white surface, 1px #d6d6d6 border, 2px radius, no shadow (flat 2021 style),
+     a grey 13px/16px header strip with a 1px bottom rule, and 16px body padding.
+   Every page that renders either name is automatically consistent.
+
+   Header: `.lb-panel-header` | `.roblox-panel-header`
+   Body:   `.lb-panel-body`   | `.roblox-panel-body`
+   --------------------------------------------------------------------------- */
+.lb-panel,
+.roblox-panel,
+.lb-section,
+.roblox-section {
+  background: #ffffff !important;
+  border: 1px solid #d6d6d6 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin-bottom: 16px !important;
+  overflow: hidden;
+}
+
+.lb-panel-header,
+.roblox-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 16px !important;
+  background: #f7f7f7 !important;
+  border-bottom: 1px solid #d6d6d6 !important;
+  color: #393b3d !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+}
+
+.lb-panel-body,
+.roblox-panel-body {
+  padding: 16px !important;
+  color: #393b3d !important;
+}
+
+/* The header's own icon must not inherit the header's bold text colouring when
+   the icon is a tinted SVG. */
+.lb-panel-header .ch-ico,
+.roblox-panel-header .ch-ico {
+  filter: none !important;
+  opacity: 0.85;
+}
+
+/* ---------------------------------------------------------------------------
    Non-selectable UI chrome.
    Chrome and UI text behave like an application, not a document: dragging across
    the page must not highlight text, and the logo/brand art must not be picked up
