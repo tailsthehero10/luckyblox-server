@@ -1186,9 +1186,16 @@ function renderAvatarFigure(user, size) {
   const leftArm = pick('leftArmColorId', 1002);
   const rightLeg = pick('rightLegColorId', 1002);
   const leftLeg = pick('leftLegColorId', 1002);
-  const scale = Math.max(0.4, (Number(size) || 240) / 240);
 
-  return `<div class="lb-avatar-figure" style="--lb-avatar-scale:${scale};" role="img" aria-label="Avatar">`
+  // The figure is a 10em-tall box whose parts are all sized in em, so the target
+  // height is applied as a FONT-SIZE. That resizes the layout box with the
+  // artwork; the old `--lb-avatar-scale` used transform: scale(), which drew the
+  // figure larger while still reserving the 130x240 box - so a 352px figure
+  // spilled out of its panel and overlapped whatever was below it.
+  const targetPx = Number(size) > 0 ? Number(size) : 240;
+  const fontPx = Math.round((targetPx / 10) * 1000) / 1000;
+
+  return `<div class="lb-avatar-figure" style="font-size:${fontPx}px;" role="img" aria-label="Avatar">`
     + `<div class="lb-af-part lb-af-head" style="background:${head};"><span class="lb-af-face">:B</span></div>`
     + `<div class="lb-af-part lb-af-torso" style="background:${torso};"></div>`
     + `<div class="lb-af-part lb-af-larm" style="background:${leftArm};"></div>`
