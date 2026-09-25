@@ -33,8 +33,12 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const releaseRoot = path.resolve(__dirname, '..');
-const { publicBaseUrl, publicHostname, publicProtocol } = require('./runtimeConfig');
+const releaseRoot = path.resolve(__dirname, '..', '..');
+// runtimeConfig lives in <root>/server/, two levels up from this folder - the
+// same path studioBuildInfo.js (its sibling here) uses. A bare './runtimeConfig'
+// resolved to Webserver/http-db-bridge/runtimeConfig, which does not exist, so
+// every boot died with MODULE_NOT_FOUND before the server could listen.
+const { publicBaseUrl, publicHostname, publicProtocol } = require(path.join(__dirname, '..', '..', 'server', 'runtimeConfig'));
 
 const INSTALL_FOLDER_NAME = 'Luckyblox';
 const VERSIONS_DIR = 'Versions';

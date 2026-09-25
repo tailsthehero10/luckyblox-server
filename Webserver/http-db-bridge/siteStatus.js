@@ -73,7 +73,12 @@ const ALWAYS_OPEN = [
   /^\/fonts\//,
   /^\/site-icon\//,
   /^\/favicon\.(ico|png)$/,
+  // Every shared page script, not just legacy-nav.js. Missing entries here meant
+  // /loading.js and /lb-select.js 404'd whenever the site was closed or in
+  // preview, so a page that DID render lost its loading UI and its dropdowns.
   /^\/legacy-nav\.js$/,
+  /^\/loading\.js$/,
+  /^\/lb-select\.js$/,
   /^\/health$/,
   /^\/api\/preview-status$/,
   /^\/preview$/,
@@ -90,6 +95,14 @@ const ALWAYS_OPEN = [
   /^\/studio\//,
   /^\/ClientSettings\//,
   /^\/AppSettings\.xml$/,
+  // The installer/updater endpoints. A player whose client is broken must be
+  // able to download or update it even while the site itself is closed, which
+  // is precisely when they are most likely to need a repair.
+  /^\/download\/client/,          // /download/client and /download/client/binary
+  /^\/download\/studio\/binary$/,
+  /^\/api\/client\//,             // build-info, update-manifest, status, launch
+  /^\/api\/studio\/(build-info|update-manifest|config)$/,
+  /^\/v1\/client\/version\//,
   /^\/asset\//i,
   /^\/assets\//,
   // Status + health for the launcher's own connectivity check.

@@ -2434,7 +2434,17 @@ const PREVIEW_ALLOWLIST = [
   /^\/api\/servers$/,
   /^\/api\/jobs\//,
   /^\/studio\//,
+  // Shared page scripts. Same gap as the closed-site list: allowlisting only
+  // legacy-nav.js meant /loading.js and /lb-select.js 404'd in preview mode.
   /^\/legacy-nav\.js$/,
+  /^\/loading\.js$/,
+  /^\/lb-select\.js$/,
+  // Installer + updater endpoints, so a client can be installed or repaired
+  // before the public site opens.
+  /^\/download\/client/,
+  /^\/download\/studio\/binary$/,
+  /^\/api\/client\//,
+  /^\/api\/studio\/(build-info|update-manifest|config)$/,
 ];
 
 function isPreviewAllowed(reqPath) {
