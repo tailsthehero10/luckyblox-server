@@ -116,8 +116,8 @@
                         <span class="ch-badge ch-badge-type"><%= place.serverCount %> server<%= place.serverCount === 1 ? '' : 's' %></span>
                       </div>
                       <div class="ch-game-meta" style="margin-top:6px;">
-                        <span class="ch-badge ch-badge-type">Created <%= place.createdAt ? new Date(place.createdAt).toLocaleDateString() : '—' %></span>
-                        <span class="ch-badge ch-badge-type">Updated <%= place.updatedAt ? new Date(place.updatedAt).toLocaleDateString() : '—' %></span>
+                        <span class="ch-badge ch-badge-type">Created <%= place.createdAt ? new Date(place.createdAt).toLocaleDateString() : 'â€”' %></span>
+                        <span class="ch-badge ch-badge-type">Updated <%= place.updatedAt ? new Date(place.updatedAt).toLocaleDateString() : 'â€”' %></span>
                         <span class="ch-badge ch-badge-type"><%= place.hasMap ? 'Map ready' : 'No map file' %></span>
                       </div>
                     </div>
@@ -228,7 +228,7 @@
                       <div class="ch-action-ico"><img class="ch-ico" src="/icons/studio.svg" alt="" /></div>
                       <div>
                         <div class="ch-action-name">Place <%= s.placeId %></div>
-                        <div class="ch-action-sub"><%= s.playing %>/<%= s.maxPlayers %> players · port <%= s.port %> · <%= s.status %></div>
+                        <div class="ch-action-sub"><%= s.playing %>/<%= s.maxPlayers %> players آ· port <%= s.port %> آ· <%= s.status %></div>
                       </div>
                     </div>
                   <% }) %>
@@ -253,7 +253,7 @@
     </main>
     </div>
   </div>
-  <script src="/legacy-nav.js"></script>
+  <%- include('partials/scripts') %>
   <script>
     (function () {
       'use strict';
@@ -322,7 +322,7 @@
               listEl.innerHTML = d.servers.map(function (s) {
                 return '<div class="ch-action"><div class="ch-action-ico"><img class="ch-ico" src="/icons/studio.svg" alt="" /></div>' +
                   '<div><div class="ch-action-name">Place ' + s.placeId + '</div>' +
-                  '<div class="ch-action-sub">' + s.playing + '/' + s.maxPlayers + ' players · port ' + s.port + ' · ' + s.status + '</div></div></div>';
+                  '<div class="ch-action-sub">' + s.playing + '/' + s.maxPlayers + ' players آ· port ' + s.port + ' آ· ' + s.status + '</div></div></div>';
               }).join('');
             } else {
               listEl.innerHTML = '<div class="ch-empty">No games running right now.</div>';

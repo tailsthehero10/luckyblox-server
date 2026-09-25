@@ -1,0 +1,27 @@
+<!--
+  Shared page scripts - include this immediately before </body> on every page.
+
+  Order matters:
+
+    1. loading.js     - must exist BEFORE any inline script that might want
+                        LBLoading, so it is first. It defines window.LBLoading.
+    2. legacy-nav.js  - keeps the status block and Robux figure fresh, decorates
+                        lazy/remote images with the shared loading spinner, and
+                        binds the "More pages" dropdown.
+    3. lb-select.js   - enhances <select class="lb-select"> into the themed
+                        dropdown (self-injects its own stylesheet).
+
+  Only include the ones a page needs, but the two page scripts are harmless
+  everywhere (they no-op when their targets are absent), so in practice every
+  page takes all three. Keeping them in one partial is what stops a new page
+  from silently shipping without the loading UI, which is exactly how the game
+  page ended up with no feedback on its launch call.
+
+  Expects: optional `withSelect` (default true).
+-->
+<% var spWithSelect=(typeof withSelect !=='undefined' ) ? withSelect : true; %>
+  <script src="/loading.js"></script>
+  <%- include('partials/scripts') %>
+  <% if (spWithSelect) { %>
+    <script src="/lb-select.js"></script>
+    <% } %>

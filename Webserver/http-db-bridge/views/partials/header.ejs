@@ -36,6 +36,29 @@ var hRobux = hCurrency.robux != null ? hCurrency.robux : (hUser ? (hUser.robux |
   </nav>
 
   <div class="lb-header-right roblox-right">
+    <!--
+      Right-hand cluster, left to right: the ACCOUNT (avatar + username, linked
+      to the profile), then the Robux balance, then settings and friends.
+
+      The account block leads the cluster on purpose - it is the identity the
+      2021 bar showed immediately left of the currency, and it is the only thing
+      in the bar that says WHICH account you are signed in as. The avatar was
+      previously an icon-only link at the far right with no name at all, so a
+      visitor could not tell whose account they were looking at.
+    -->
+<% if (hUserId) { %>
+    <a class="lb-account roblox-account" href="/users/<%= hUserId %>/profile" title="<%= hUser.username %>">
+      <span class="lb-account-avatar">
+        <% if (hUser.avatar && hUser.avatar.headshotUrl) { %>
+        <img src="<%= hUser.avatar.headshotUrl %>" alt="" />
+        <% } else { %>
+        <%= String(hUser.username || 'L').slice(0, 1).toUpperCase() %>
+        <% } %>
+      </span>
+      <span class="lb-account-name"><%= hUser.username %></span>
+    </a>
+<% } %>
+
     <a class="lb-robux roblox-robux" href="/upgrades/robux" title="Robux balance"><%= hRobux %></a>
 
     <a class="lb-icon-button roblox-icon-button" href="/settings" title="Settings" aria-label="Settings">
@@ -47,11 +70,7 @@ var friendsHref = hUserId ? ('/users/' + hUserId + '/friends') : '/signin';
     <a class="lb-icon-button roblox-icon-button" href="<%= friendsHref %>" title="Friends" aria-label="Friends">
       <img class="ch-ico" src="/icons/friends.svg" alt="" />
     </a>
-<% if (hUserId) { %>
-    <a class="lb-icon-button roblox-icon-button" href="/users/<%= hUserId %>/profile" title="Profile" aria-label="Profile">
-      <img class="ch-ico" src="/icons/profile.svg" alt="" />
-    </a>
-<% } else { %>
+<% if (!hUserId) { %>
     <a class="lb-header-action roblox-header-action" href="/signin">Log In</a>
 <% } %>
   </div>

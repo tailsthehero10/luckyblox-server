@@ -10,6 +10,7 @@ const { getStudioBuildInfo, getStudioUpdateManifest, STUDIO_EXECUTABLE_PATH, DEF
 const clientLauncher = require(path.join(__dirname, '..', '..', 'server', 'clientLauncher.js'));
 const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'server', 'studioApi.js'));
 const { installClientApi } = require('./clientApi.js');
+const { getClientBuildInfo, getClientUpdateManifest } = require('./clientBuildInfo.js');
 const assetFetcher = require(path.join(__dirname, '..', '..', 'server', 'assetFetcher.js'));
 const { installTeamCreateRoutes } = require(path.join(__dirname, '..', '..', 'server', 'teamCreate.js'));
 const {
@@ -23,6 +24,7 @@ const {
   removeServerByJobId,
   getServerForPlace,
   spawnDedicatedServer,
+  setJobTitle,
 } = require(path.join(__dirname, '..', '..', 'server', 'orchestrator.js'));
 
 const {
@@ -90,6 +92,10 @@ app.use('/fonts', express.static(path.join(__dirname, 'public', 'fonts')));
 app.use('/legacy-nav.js', express.static(path.join(__dirname, 'public', 'legacy-nav.js')));
 // Custom site dropdown (replaces native <select> with a themed, accessible one).
 app.use('/lb-select.js', express.static(path.join(__dirname, 'public', 'lb-select.js')));
+// Shared loading UI: puts the LuckyBlox spinner on screen for real server waits
+// (page loads, API calls, the game page's live data) and takes it off when the
+// answer arrives. Loaded on every page, like legacy-nav.js.
+app.use('/loading.js', express.static(path.join(__dirname, 'public', 'loading.js')));
 // Serve the site icon folder so /favicon.ico, /favicon.png and the originals in
 // Webserver/site icon/ are all reachable from every page.
 const siteIconDir = path.join(releaseRoot, 'Webserver', 'site icon');
@@ -1776,6 +1782,62 @@ function syncLocalIdentity(user) {
   }
 }
 
+/**
+ * Publish the job a player just joined into Settings/ for the desktop tools.
+ *
+ * The Discord companion and the launcher both read these files:
+ *
+ *   jobid.txt         - which job this machine is in (the companion polls
+ *                       /api/jobs/<id> for the live player count and the name)
+ *   MapPath.txt       - which map, so the companion can name the game even
+ *                       without the API
+ *   gameserverraw.json - the declared slot size
+ *
+ * The desktop launcher writes these itself when it starts a session. When the
+ * session is started FROM THE WEBSITE instead (the Play button), nothing wrote
+ * them, so the companion could not tell what was being played and the card was
+ * blank. Writing them here closes that gap for the web-driven flow.
+ */
+function syncLocalJob({ jobId, placeId, placeName, port, maxPlayers }) {
+  const settingsRoot = path.join(releaseRoot, 'Settings');
+  try {
+    fs.mkdirSync(settingsRoot, { recursive: true });
+
+    fs.writeFileSync(path.join(settingsRoot, 'jobid.txt'), String(jobId || ''));
+
+    // MapPath.txt is a path, so keep the shape the launcher uses: the map file
+    // for this place when one exists, otherwise the place's own name. The
+    // companion derives the title from the basename.
+    const gameEntry = getGameEntry(placeId);
+    const mapFile = (gameEntry && (gameEntry.path || gameEntry.fileName))
+      || `${placeName || (gameEntry && gameEntry.title) || 'LuckyBlox Arena'}.rbxl`;
+    fs.writeFileSync(path.join(settingsRoot, 'MapPath.txt'), mapFile);
+
+    // The slot size, in the same keys the companion already scans for.
+    const serverRaw = {
+      PlaceId: Number(placeId) || 0,
+      MaxPlayers: Number(maxPlayers) || 20,
+      PreferredPlayerCapacity: Number(maxPlayers) || 20,
+      MachineAddress: '127.0.0.1',
+      Port: Number(port) || gamePort,
+      JobId: String(jobId || ''),
+      Name: placeName || (gameEntry && gameEntry.title) || 'LuckyBlox Place',
+    };
+    fs.writeFileSync(path.join(settingsRoot, 'gameserverraw.json'), JSON.stringify(serverRaw, null, 2));
+
+    // The bridge's own HTTP port, so the Discord companion asks the RIGHT API.
+    // Its configured apiBaseUrl is a static default and the bridge is not on a
+    // fixed port (3001/3002 locally, whatever the platform injects in the cloud),
+    // so a stale value meant the card silently lost the live player count.
+    fs.writeFileSync(path.join(settingsRoot, 'apibaseurl.txt'), `http://127.0.0.1:${publicPort}`);
+
+    return true;
+  } catch (error) {
+    // Best effort: a read-only checkout must not break the launch.
+    return false;
+  }
+}
+
 function getPublishedPlaces() {
   const placesFilePath = path.join(dataDir, 'places.json');
   const records = readJson(placesFilePath, {});
@@ -2125,6 +2187,29 @@ function getGameEntry(placeId) {
 
 function normalizePlaceId(rawPlaceId) {
   return normalizePlaceIdInput(rawPlaceId);
+}
+
+/**
+ * Create a job for a player AND name it.
+ *
+ * Wraps the orchestrator's createJoinJob so every launch path stamps the
+ * experience's real title onto the job record. Without this, /api/jobs/<id>
+ * could only report a placeId, and any consumer (the Discord companion, a
+ * status page) that wanted to show the game's NAME had to re-derive it from a
+ * local file - which does not exist on a machine that only runs the browser.
+ */
+function createNamedJoinJob(userId, placeId) {
+  const job = createJoinJob(userId, placeId);
+  try {
+    const entry = getGameEntry(placeId);
+    if (entry && entry.title) {
+      setJobTitle(job.jobId, entry.title);
+      job.placeName = entry.title;
+    }
+  } catch (error) {
+    /* A missing title must never break the join. */
+  }
+  return job;
 }
 
 function getTicketStatus(ticket) {
@@ -4472,7 +4557,9 @@ app.get('/v1/join-script', (req, res) => {
   const placeId = Number(req.query.placeId || req.query.placeid || 1818);
 
   try {
-    const job = createJoinJob(userId, placeId);
+    // Naming the job here means /api/jobs/<id> can report the game's name to the
+    // Discord companion and any status consumer.
+    const job = createNamedJoinJob(userId, placeId);
     const ticket = createAuthTicket(userId, placeId, {
       port: job.port,
       serverJobId: job.jobId,
@@ -4783,7 +4870,19 @@ app.post('/v1/launch-client', (req, res) => {
  * Play button polls this so it can decide between "Play" and "Download".
  */
 app.get('/api/client/status', (req, res) => {
-  res.json({ ok: true, ...clientLauncher.getClientStatus() });
+  // Include the published build, so the site can tell an installed-but-outdated
+  // client from an up-to-date one instead of only knowing installed/not.
+  const build = getClientBuildInfo();
+  res.json({
+    ok: true,
+    ...clientLauncher.getClientStatus(),
+    build: {
+      available: build.available,
+      buildId: build.buildId,
+      version: build.version,
+      channel: build.channel,
+    },
+  });
 });
 
 /* ---------------------------------------------------------------------------
@@ -4846,6 +4945,53 @@ app.get('/api/assets/starter-set', (req, res) => {
 });
 
 /**
+ * The client build + update manifest.
+ *
+ * This is the endpoint a LuckyBlox installer polls to discover whether a newer
+ * build exists - the same job Roblox's version endpoint does. It reports the
+ * build that is actually on disk, so an installer comparing its own buildId
+ * against `buildId` will download only on a real change.
+ */
+app.get('/api/client/build-info', (req, res) => {
+  res.json(getClientBuildInfo());
+});
+
+app.get('/api/client/update-manifest', (req, res) => {
+  res.json(getClientUpdateManifest());
+});
+
+/* Roblox's installer looks for the version manifest on the channel path; keep an
+   alias so a stock-style installer finds it without custom configuration. */
+app.get('/v1/client/version/:channel', (req, res) => {
+  res.json(getClientUpdateManifest());
+});
+
+/**
+ * Download the client BINARY (not the installer).
+ *
+ * Serves the build the manifest advertises, so an installed client can update
+ * itself in place - this is what makes /download/client an installer plus an
+ * updater rather than a one-shot download. Refuses when there is no build on
+ * disk, instead of streaming an unrelated file.
+ */
+app.get('/download/client/binary', (req, res) => {
+  const info = getClientBuildInfo();
+  if (!info.available || !info.sourceBinary || !fs.existsSync(info.sourceBinary)) {
+    return res.status(404).json({
+      ok: false,
+      error: 'client-build-not-available',
+      message: 'No LuckyBlox client build is published on this server.',
+    });
+  }
+
+  // Always advertise which build this is, so an updater can verify it got the
+  // version it asked for rather than trusting the bytes.
+  res.set('X-LuckyBlox-Build', String(info.buildId || ''));
+  res.set('X-LuckyBlox-Version', String(info.version || ''));
+  return res.download(info.sourceBinary, info.binaryName);
+});
+
+/**
  * Get the LuckyBlox client installer.
  *
  * The installer is a real file the build ships; when it is absent this 404s
@@ -4876,7 +5022,7 @@ app.post('/api/client/launch', (req, res) => {
 
   const userId = Number(sessionUser.userId || sessionUser.id) || 1;
   const placeId = Number(req.body.placeId || req.query.placeId || 1818);
-  const job = createJoinJob(userId, placeId);
+  const job = createNamedJoinJob(userId, placeId);
   const ticket = createAuthTicket(userId, placeId, { port: job.port, serverJobId: job.jobId });
   const result = launchLocalRobloxClient({
     userId,
@@ -4913,8 +5059,9 @@ app.post('/api/launch-game', (req, res) => {
 
   try {
     // One call creates (or reuses) the job AND binds the player to it, so the
-    // ticket, the jobId and the port can never disagree with each other.
-    const job = createJoinJob(userId, placeId);
+    // ticket, the jobId and the port can never disagree with each other. It also
+    // names the job, so the Discord companion and status UIs can show the game.
+    const job = createNamedJoinJob(userId, placeId);
     const ticket = createAuthTicket(userId, placeId, {
       port: job.port,
       serverJobId: job.jobId,
@@ -4933,6 +5080,17 @@ app.post('/api/launch-game', (req, res) => {
       ticket: ticket.ticket,
     });
     const clientStatus = clientLauncher.getClientStatus();
+
+    // Publish the session into Settings/ so the desktop tools can see it: the
+    // Discord companion reads jobid.txt + MapPath.txt to name the game and the
+    // live player count, which is exactly the card the site should be showing.
+    syncLocalJob({
+      jobId: job.jobId,
+      placeId,
+      placeName: job.placeName,
+      port: job.port,
+      maxPlayers: job.maxPlayers,
+    });
 
     audit('launch_game', {
       ip: security.clientIp(req),

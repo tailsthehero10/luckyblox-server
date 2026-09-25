@@ -67,6 +67,8 @@
     <p class="roblox-description" id="clientStatusLine"></p>
   </div>
 
+  <%# Above the inline handler, which calls window.LBLoading. %>
+  <%- include('partials/scripts') %>
   <script>
     // The Play button finds the installed LuckyBlox client and launches it
     // automatically. If the client is missing, it offers the custom installer
@@ -82,7 +84,13 @@
 
       btn.addEventListener('click', async function () {
         var placeId = Number(btn.getAttribute('data-place-id')) || 1818;
-        btn.disabled = true;
+        var loading = window.LBLoading;
+
+        // The launch is a two-step server call (build the ticket, then start the
+        // client), so the big page spinner plus the status line is the honest
+        // indicator. The button also gets its own in-button spinner.
+        if (loading) loading.show('Starting LuckyBlox\u2026');
+        if (loading) loading.button(btn, true);
         say('Checking for the LuckyBlox client\u2026');
 
         try {
@@ -116,11 +124,13 @@
         } catch (error) {
           say('Could not reach the server to launch the client.');
         } finally {
-          btn.disabled = false;
+          // Covers every path above, including the sign-in redirect and the
+          // throw, so the veil is never left up over a live page.
+          if (loading) loading.hideAll();
+          if (loading) loading.button(btn, false);
         }
       });
     }());
   </script>
-  <script src="/legacy-nav.js"></script>
 </body>
 </html>

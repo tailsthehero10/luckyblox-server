@@ -46,3 +46,50 @@ LuckyBlox is a local Roblox-style game platform served from a release folder. Ap
   the route 404s and Play reports the client as unavailable instead of dead-linking.
 - Play flow: `POST /api/launch-game` (and `/api/client/launch`) detect the client,
   auto-launch it, and return `client.downloadUrl` when it is not installed.
+- The launch also calls `syncLocalJob()`, which publishes `Settings/jobid.txt`,
+  `Settings/MapPath.txt`, `Settings/gameserverraw.json` and
+  `Settings/apibaseurl.txt` so the desktop tools (Discord companion, launcher)
+  know which job this machine is in even when the session was started from the
+  website rather than the desktop launcher.
+
+## Client build + update manifest
+- `Webserver/http-db-bridge/clientBuildInfo.js` is the server half of a
+  Roblox-style updater. Endpoints: `GET /api/client/build-info`,
+  `GET /api/client/update-manifest`, `GET /v1/client/version/:channel`,
+  `GET /download/client/binary`.
+- The manifest reports the build actually present on disk (`available: false`
+  when there is none), so an installer never downloads a build that does not
+  exist. Pin a version with `LUCKYBLOX_CLIENT_VERSION`; pick the channel with
+  `LUCKYBLOX_CLIENT_CHANNEL` (default `production`).
+- `/api/client/status` reports the published build alongside the install state,
+  so the site can distinguish installed-and-current from installed-and-stale.
+
+## Loading UI (the spinner)
+- The shipping artwork is `public/img/loading.gif`, served from this server (not
+  hotlinked) and used as the site's single "waiting on the server" signal.
+- `public/loading.js` defines `window.LBLoading`:
+  `show/hide/hideAll` (full-page veil), `block/blockOff` (one element),
+  `track(promise, el)`, `run(task, text)`, `button(btn, on)`, `json(url, opts)`.
+  The full-page veil reference-counts concurrent calls, and waits `320ms` before
+  clearing so a fast cache hit does not flash a spinner.
+- Markup classes (roblox.css): `.lb-loader` with a size scale
+  (`.lb-loader-xs|sm|md|lg|xl|xxl`), `.lb-loading-block`, `.lb-loading-overlay`,
+  `.lb-loading-page`. Size is driven by the `--lb-loader-size` custom property, so
+  one variable resizes the glyph, the block overlay and the page veil together.
+- Every page includes `views/partials/scripts.ejs` (loading.js + legacy-nav.js +
+  lb-select.js). Include it ABOVE any inline script that reads `window.LBLoading`.
+- `legacy-nav.js` still decorates lazy/remote `<img>` with the block spinner; the
+  game page additionally refreshes its live "Playing" figure from `/api/servers`.
+- When editing views with PowerShell, never let `Set-Content -Encoding UTF8` add a
+  BOM: a BOM before `<!DOCTYPE html>` pushes the browser into quirks mode. Strip
+  it (or write without a BOM).
+
+## Discord Rich Presence
+- The companion lives in `_presence/` (`LuckyBloxPresence.cs` +
+  `presence.config.json`). It reads the launcher's `Settings/` files and polls
+  `/api/jobs/<jobId>` for the live player count.
+- `/api/jobs/<jobId>` reports `placeName`, `playerCount`, `maxPlayers` and
+  `slotsLeft`; the bridge stamps the real title onto the job via `setJobTitle`
+  so the card can name the game without a local map file.
+- `apiBaseUrlFile` (`apibaseurl.txt`) overrides the static `apiBaseUrl`, because
+  the bridge's port is not fixed (3001/3002 locally, platform-injected in cloud).

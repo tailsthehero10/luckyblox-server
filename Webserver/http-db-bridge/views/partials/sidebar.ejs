@@ -28,21 +28,35 @@ var sbItems = [
 ];
 %>
 <aside class="lb-sidebar roblox-sidebar" aria-label="Site navigation">
+<%#
+  The account block sits at the TOP of the rail, above the nav rows, so the rail
+  reads as "you, then your navigation". It used to be pinned at the BOTTOM after
+  a divider, which put the identity below every link and, on a long rail, pushed
+  it off-screen unless the user scrolled to the end.
+%>
+<% if (sbUser) { %>
+  <div class="lb-sidebar-user roblox-sidebar-user">
+    <div class="lb-sidebar-avatar roblox-sidebar-avatar">
+      <% if (sbUser.avatar && sbUser.avatar.headshotUrl) { %>
+      <img src="<%= sbUser.avatar.headshotUrl %>" alt="" />
+      <% } else { %>
+      <%= String(sbUser.username || 'L').slice(0, 1).toUpperCase() %>
+      <% } %>
+    </div>
+    <div class="lb-sidebar-identity">
+      <div class="lb-sidebar-username roblox-sidebar-username"><%= sbUser.username %></div>
+      <div class="lb-sidebar-status roblox-sidebar-status">
+        <span class="lb-sidebar-dot roblox-sidebar-dot"></span> Online
+      </div>
+    </div>
+  </div>
+  <div class="roblox-sidebar-divider"></div>
+<% } %>
+
 <% sbItems.forEach(function (item) { %>
   <a href="<%= item.href %>" class="lb-sidebar-link roblox-sidebar-link <%= sbActive === item.key ? 'is-active' : '' %>">
     <img class="ch-ico" src="<%= item.icon %>" alt="" />
     <span><%= item.label %></span>
   </a>
 <% }); %>
-
-<% if (sbUser) { %>
-  <div class="roblox-sidebar-divider"></div>
-  <div class="lb-sidebar-user roblox-sidebar-user">
-    <div class="lb-sidebar-avatar roblox-sidebar-avatar"><%= String(sbUser.username || 'L').slice(0, 1).toUpperCase() %></div>
-    <div>
-      <div class="lb-sidebar-username roblox-sidebar-username"><%= sbUser.username %></div>
-      <div class="lb-sidebar-status roblox-sidebar-status"><span class="lb-sidebar-dot roblox-sidebar-dot"></span> Online</div>
-    </div>
-  </div>
-<% } %>
 </aside>

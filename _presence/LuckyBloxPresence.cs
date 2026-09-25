@@ -55,6 +55,11 @@ namespace LuckyBloxPresence
         public string JobIdFile = "jobid.txt";
         public bool ShowSlotsLeft = true;
 
+        // The bridge writes its real HTTP base here when a session starts, because
+        // its port is not fixed (3001/3002 locally, platform-injected in the
+        // cloud). ApiBaseUrl stays the fallback for a launcher-only session.
+        public string ApiBaseUrlFile = "apibaseurl.txt";
+
         // Discord image keys are per-application. A place id maps to an asset
         // key uploaded at 512x512, so the card shows the real game icon.
         //   { "1818": "game_1818_jailbreak" }
@@ -146,6 +151,7 @@ namespace LuckyBloxPresence
             config.GameServerFile = Str(map, "gameServerFile", config.GameServerFile);
             config.ShowPlayerCount = Bool(map, "showPlayerCount", config.ShowPlayerCount);
             config.ApiBaseUrl = Str(map, "apiBaseUrl", config.ApiBaseUrl);
+            config.ApiBaseUrlFile = Str(map, "apiBaseUrlFile", config.ApiBaseUrlFile);
             config.JobIdFile = Str(map, "jobIdFile", config.JobIdFile);
             config.ShowSlotsLeft = Bool(map, "showSlotsLeft", config.ShowSlotsLeft);
             config.FetchLiveIcons = Bool(map, "fetchLiveIcons", config.FetchLiveIcons);
@@ -586,10 +592,21 @@ namespace LuckyBloxPresence
         /// <summary>
         /// Asks the launcher's job endpoint for real player counts. Uses the
         /// in-box WebClient so the companion still needs no NuGet packages.
+        ///
+        /// The endpoint also reports the experience's own name (placeName), which
+        /// is authoritative: it comes from the server's games.json. That matters
+        /// because MapPath.txt is written by the desktop launcher and does not
+        /// exist when the client is driven straight from the website, so without
+        /// this the card would show the slot counts but no game name.
         /// </summary>
         private static void TryFillLiveSlots(PresenceConfig config, GameContext ctx)
         {
-            var url = config.ApiBaseUrl.TrimEnd('/') + "/api/jobs/" + Uri.EscapeDataString(ctx.JobId);
+            // Prefer the base the bridge published for THIS session; fall back to
+            // the configured one for a launcher-only run.
+            string baseUrl = ReadSetting(config, config.ApiBaseUrlFile);
+            if (string.IsNullOrWhiteSpace(baseUrl)) baseUrl = config.ApiBaseUrl;
+
+            var url = baseUrl.TrimEnd('/') + "/api/jobs/" + Uri.EscapeDataString(ctx.JobId);
 
             try
             {
@@ -609,12 +626,13 @@ namespace LuckyBloxPresence
                     int max = ExtractJsonInt(json, "maxPlayers");
                     if (max > 0) ctx.MaxPlayers = max;
 
-                    string placeId = ExtractJsonInt(json, "placeId").ToString();
-                    int parsedPlace;
-                    if (ctx.PlaceId <= 0 && int.TryParse(placeId, out parsedPlace) && parsedPlace > 0)
-                    {
-                        ctx.PlaceId = parsedPlace;
-                    }
+                    // Prefer the server's name, but never overwrite a title we
+                    // already resolved locally with an empty value.
+                    string name = ExtractJsonString(json, "placeName");
+                    if (!string.IsNullOrWhiteSpace(name)) ctx.Title = name;
+
+                    int placeId = ExtractJsonInt(json, "placeId");
+                    if (ctx.PlaceId <= 0 && placeId > 0) ctx.PlaceId = placeId;
                 }
             }
             catch { }
@@ -627,6 +645,15 @@ namespace LuckyBloxPresence
             if (!match.Success) return -1;
             int value;
             return int.TryParse(match.Groups[1].Value, out value) ? value : -1;
+        }
+
+        /// <summary>Reads a JSON string value, tolerating a null (returns "").</summary>
+        private static string ExtractJsonString(string json, string key)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(
+                json,
+                Quote() + System.Text.RegularExpressions.Regex.Escape(key) + Quote() + "\\s*:\\s*" + Quote() + "([^" + Quote() + "]*)" + Quote());
+            return match.Success ? match.Groups[1].Value : "";
         }
 
         /// Reads the launcher's own DiscordRPC.txt toggle so this companion

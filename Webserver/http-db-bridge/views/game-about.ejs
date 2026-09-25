@@ -53,10 +53,19 @@
         <div class="lb-game-hero">
           <!-- Left: the thumbnail with the Play button over it -->
           <div>
-            <div class="lb-game-thumb">
+            <!--
+              The thumbnail is the page's heaviest asset, so it is wrapped in a
+              loading block: the big spinner covers it until the real artwork
+              arrives. lb-loader-md is set here (rather than the 28px default)
+              because the thumbnail is large and a small glyph over it reads as
+              noise.
+            -->
+            <div class="lb-game-thumb lb-loading-block is-loading" id="gameThumbBlock" style="--lb-loader-size:64px;">
               <img class="roblox-game-thumb-img" src="<%= thumbUrl %>" alt="<%= g.title %> thumbnail"
-                   onerror="this.style.display='none';" />
-              <button class="lb-btn lb-btn-primary roblox-play-button" type="button" data-launch-place-id="<%= placeId %>">
+                   id="gameThumb"
+                   onerror="this.style.display='none';var b=document.getElementById('gameThumbBlock');if(b)b.classList.remove('is-loading');" />
+              <button class="lb-btn lb-btn-primary roblox-play-button" type="button"
+                      id="playBtn" data-launch-place-id="<%= placeId %>">
                 <img class="ch-ico" src="/icons/play.svg" alt="" /> Play
               </button>
             </div>
@@ -81,8 +90,14 @@
                       exactly where the 2021 page put it, so it is not repeated
                       here. This tab carries the full game-stat grid instead. %>
                   <div class="lb-game-stats">
-                    <div class="lb-game-stat">
-                      <span class="lb-game-stat-value"><%= abbreviateCount(playing) %></span>
+                    <!--
+                      "Playing" is the one figure on this page that changes while
+                      the page is open, so it is wrapped in a loading overlay: the
+                      spinner covers the number during a refresh instead of the
+                      number silently changing under the reader's eye.
+                    -->
+                    <div class="lb-game-stat lb-loading-overlay" id="playingStat" style="--lb-loader-size:28px;">
+                      <span class="lb-game-stat-value" data-playing-value><%= abbreviateCount(playing) %></span>
                       <span class="lb-game-stat-label">Playing</span>
                     </div>
                     <div class="lb-game-stat">
@@ -246,6 +261,75 @@
     </div>
   </div>
 
+  <%
+  /* The game page is the one page that fetches its own live data after paint
+     (the running server list and the player count), so it needs the shared
+     loading UI. Loaded here rather than globally so a page that never waits on
+     the server pays nothing for it. */
+  %>
+  <%- include('partials/scripts') %>
+  <script>
+    (function () {
+      var loading = window.LBLoading;
+
+      // --- Thumbnail ---------------------------------------------------------
+      // The block is server-rendered with .is-loading so the spinner is already
+      // up during the image request; drop it when the artwork settles.
+      var thumb = document.getElementById('gameThumb');
+      var thumbBlock = document.getElementById('gameThumbBlock');
+      if (thumb && thumbBlock) {
+        var clearThumb = function () { thumbBlock.classList.remove('is-loading'); };
+        if (thumb.complete) clearThumb();
+        thumb.addEventListener('load', clearThumb, { once: true });
+        thumb.addEventListener('error', clearThumb, { once: true });
+      }
+
+      // --- Live player count -------------------------------------------------
+      // /api/servers is the authoritative number for THIS place. The server-
+      // rendered figure can be stale by the time the page is read, and the page
+      // used to never refresh it at all - so "3 Playing" stayed 3 forever.
+      var playingStat = document.getElementById('playingStat');
+      var playingValue = document.querySelector('[data-playing-value]');
+      var placeId = <%= Number(placeId) || 1818 %>;
+
+      function abbreviate(n) {
+        var value = Number(n) || 0;
+        if (value >= 1000000) return (Math.round(value / 100000) / 10) + 'M';
+        if (value >= 1000) return (Math.round(value / 100) / 10) + 'K';
+        return String(value);
+      }
+
+      function refreshPlaying() {
+        if (!playingValue || document.hidden) return;
+
+        if (loading && playingStat) loading.block(playingStat);
+        fetch('/api/servers?placeId=' + encodeURIComponent(placeId), {
+          headers: { Accept: 'application/json' },
+        })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (data) {
+            if (!data || !Array.isArray(data.servers)) return;
+            var total = data.servers.reduce(function (sum, s) {
+              return sum + (Number(s.playing) || 0);
+            }, 0);
+            playingValue.textContent = abbreviate(total);
+          })
+          .catch(function () { /* leave the last known figure in place */ })
+          .finally(function () {
+            if (loading && playingStat) loading.blockOff(playingStat);
+          });
+      }
+
+      // Refresh once shortly after load, then on an interval while the tab is
+      // visible. The 30s period matches how often the orchestrator's figures
+      // can meaningfully change without hammering the endpoint.
+      window.setTimeout(refreshPlaying, 1200);
+      window.setInterval(refreshPlaying, 30000);
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) refreshPlaying();
+      });
+    }());
+  </script>
   <script>
     // Favorite is a local toggle: the data files have no favourites model, so the
     // button reflects the click instead of pretending a server round-trip.
@@ -267,6 +351,15 @@
       const trigger = event.target.closest('[data-launch-place-id]');
       if (!trigger) return;
 
+      const loading = window.LBLoading;
+
+      // The launch call starts the client AND the match the ticket belongs to,
+      // which takes a moment. During it the whole page is waiting, so the big
+      // spinner comes up with a status line instead of the button appearing to
+      // do nothing until the client window finally opens.
+      if (loading) loading.show('Starting LuckyBlox\u2026');
+      if (loading) loading.button(trigger, true);
+
       try {
         const placeId = Number(trigger.getAttribute('data-launch-place-id')) || 1818;
         const response = await fetch('/api/launch-game', {
@@ -279,23 +372,29 @@
 
         // Playing needs an account: send guests to sign in, then back here.
         if (response.status === 401 || (data && data.error === 'sign-in-required')) {
+          if (loading) loading.hideAll();
           const next = encodeURIComponent(window.location.pathname + window.location.search);
           window.location.href = '/signin?redirect=' + next;
           return;
         }
 
         if (!response.ok || !data || !data.ok || !data.ticket) {
+          if (loading) loading.hideAll();
           alert((data && data.message) || 'Unable to generate a launch ticket.');
           return;
         }
 
         // The local client was launched automatically when it is installed.
         if (data.nativeLaunch && data.nativeLaunch.status === 'launched') {
+          // Leave the veil up briefly: the client is still connecting to the
+          // game server, so dropping it instantly reads as "nothing happened".
+          if (loading) loading.hideAll();
           return;
         }
 
         // Not installed: offer the custom installer, then the browser hand-off.
         if (data.client && !data.client.installed && data.client.downloadUrl) {
+          if (loading) loading.hideAll();
           var goDownload = window.confirm(
             'The LuckyBlox client is not installed.\n\nDownload it now?'
           );
@@ -310,12 +409,16 @@
           window.location.href = data.playUrl;
         } else if (data.launchURI) {
           window.location.href = data.launchURI;
+        } else if (loading) {
+          loading.hideAll();
         }
       } catch (error) {
+        if (loading) loading.hideAll();
         alert('LuckyBlox failed to launch.');
+      } finally {
+        if (loading) loading.button(trigger, false);
       }
     });
   </script>
-  <script src="/legacy-nav.js"></script>
 </body>
 </html>

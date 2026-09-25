@@ -306,20 +306,44 @@ function getJobStatus(serverJobId) {
   }
 
   const players = Array.isArray(server.currentPlayers) ? server.currentPlayers : [];
+
+  // The friendly title and the place's own limits, so a consumer (the site, or
+  // the Discord companion) can name the experience without re-deriving it from
+  // a local file. The orchestrator is deliberately not coupled to games.json,
+  // so the title is carried on the server record when the job is created
+  // (see spawnDedicatedServer / setJobTitle) and simply omitted when unknown -
+  // an absent title is better than an invented one.
   return {
     ok: true,
     jobId: server.serverJobId,
     placeId: Number(server.placeId),
+    placeName: server.placeName || null,
     port: Number(server.port),
     status: server.status || 'running',
     playerCount: players.length,
     maxPlayers: Number(server.maxPlayers || 20),
+    slotsLeft: Math.max(0, Number(server.maxPlayers || 20) - players.length),
     players: players.slice(),
     startedAt: server.startedAt,
     uptimeSeconds: server.startedAt
       ? Math.max(0, Math.round((Date.now() - new Date(server.startedAt).getTime()) / 1000))
       : 0,
   };
+}
+
+/**
+ * Attach the experience's friendly title to a running job.
+ *
+ * The bridge knows games.json (and therefore the real title); the orchestrator
+ * does not. Rather than duplicating that lookup here, the bridge stamps the
+ * title onto the record, so /api/jobs/<id> can report the name a player would
+ * recognise - which is what the Discord card and any status UI need.
+ */
+function setJobTitle(serverJobId, placeName) {
+  const server = activeGameServers.find((candidate) => candidate.serverJobId === serverJobId);
+  if (!server) return false;
+  server.placeName = placeName ? String(placeName) : null;
+  return true;
 }
 
 /**
@@ -336,9 +360,12 @@ function createJoinJob(userId, placeId) {
     jobId: allocation.serverJobId,
     serverJobId: allocation.serverJobId,
     placeId: Number(allocation.placeId),
+    // The friendly name, when the bridge has stamped one onto the record.
+    placeName: (status && status.placeName) || null,
     port: Number(allocation.port),
     playerCount: Number(allocation.playerCount || 0),
     maxPlayers: status ? status.maxPlayers : 20,
+    slotsLeft: status ? status.slotsLeft : 20,
     created: Boolean(allocation.created),
     serverHost: GAME_LISTEN_HOST,
   };
@@ -357,6 +384,7 @@ module.exports = {
   allocatePlayerToServer,
   createJoinJob,
   getJobStatus,
+  setJobTitle,
   getTotalPlayerCount,
   listServersForPlace,
   removePlayerFromServer,

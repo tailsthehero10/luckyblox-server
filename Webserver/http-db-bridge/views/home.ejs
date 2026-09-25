@@ -57,7 +57,14 @@
               <div class="lb-game-grid">
                 <% homeGames.forEach(function (game) { %>
                   <a class="lb-game-card" href="/game/<%= game.placeId %>">
-                    <div class="lb-game-card-thumb">
+                    <!--
+                      The card thumbnail is covered by the shared loading block
+                      (decorateLoadingImages in legacy-nav.js adds .is-loading and
+                      clears it on load). The size is raised from the 28px
+                      default because a card tile is a large, empty surface and a
+                      small glyph in the middle of it reads as a broken image.
+                    -->
+                    <div class="lb-game-card-thumb" style="--lb-loader-size:44px;">
                       <% if (game.icon && /^\/|^https?:\/\//.test(game.icon) && game.icon.indexOf('unsplash') === -1) { %>
                         <img src="<%= game.icon %>" alt="<%= game.title %>" loading="lazy"
                              onerror="this.style.display='none';var p=this.parentNode;if(p)p.classList.add('is-placeholder');" />
@@ -118,8 +125,15 @@
     </div>
   </div>
 
+  <%# The shared scripts load HERE, above the inline launch handler, because that
+      handler calls window.LBLoading. Loading them at the very bottom of the page
+      (after the inline script) would leave LBLoading undefined at the moment the
+      handler is defined. %>
+  <%- include('partials/scripts') %>
   <script>
     async function launchGame(placeId) {
+      var loading = window.LBLoading;
+      if (loading) loading.show('Starting LuckyBlox\u2026');
       try {
         const response = await fetch('/api/launch-game', {
           method: 'POST',
@@ -164,6 +178,12 @@
         console.error('Launch failure:', error);
         alert('LuckyBlox failed to launch the game.');
         return null;
+      } finally {
+        // Every exit path - success, sign-in redirect, download prompt, even the
+        // throw above - clears the veil here, so the page can never be left stuck
+        // behind the spinner. A navigation replaces the page anyway, and the
+        // bfcache restore is handled in loading.js.
+        if (loading) loading.hideAll();
       }
     }
 
@@ -175,6 +195,5 @@
       await launchGame(placeId);
     });
   </script>
-  <script src="/legacy-nav.js"></script>
 </body>
 </html>

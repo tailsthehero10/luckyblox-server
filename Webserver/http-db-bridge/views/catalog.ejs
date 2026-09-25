@@ -77,7 +77,7 @@
                                Before this the tiles were plain <div>s, so nothing
                                in the Avatar Shop could be opened. -->
                           <a class="lb-catalog-tile" href="/catalog/<%= item.id %>">
-                            <div class="lb-catalog-thumb">
+                            <div class="lb-catalog-thumb" style="--lb-loader-size:36px;">
                               <% if (item.thumbnailUrl) { %>
                                 <img src="<%= item.thumbnailUrl %>" alt="<%= item.name %>" loading="lazy"
                                   onerror="this.style.display='none';" />
@@ -123,7 +123,7 @@
               </main>
           </div>
       </div>
-      <script src="/legacy-nav.js"></script>
+      <%- include('partials/scripts') %>
       <script src="/lb-select.js"></script>
     </body>
 

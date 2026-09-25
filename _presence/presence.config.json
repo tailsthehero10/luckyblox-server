@@ -39,6 +39,8 @@
   "showPlayerCount": true,
   "showSlotsLeft": true,
   "apiBaseUrl": "http://127.0.0.1:2005",
+  "_comment_apiBaseUrlFile": "The LuckyBlox server writes its real HTTP base here when a session starts (its port is not fixed). Used in preference to apiBaseUrl.",
+  "apiBaseUrlFile": "apibaseurl.txt",
   "jobIdFile": "jobid.txt",
 
   "_comment_icons": "Per-game 512x512 Discord asset keys. Upload the image to your Discord app, then map place id -> asset key. Unlisted ids fall back to largeImageKey.",

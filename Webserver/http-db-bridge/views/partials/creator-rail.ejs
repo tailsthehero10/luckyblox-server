@@ -13,82 +13,93 @@
 
   Expects: user (may be null), activeNav, and optionally studioReady.
 -->
-<% var crUser=(typeof user !=='undefined' && user) ? user : null; var crActive=(typeof activeNav !=='undefined' &&
-  activeNav) ? activeNav : '' ; var crUserId=crUser ? crUser.userId : null; var crStudioReady=(typeof studioReady
-  !=='undefined' ) ? studioReady : false; var crCreate=[ { key: 'create' , label: 'Create' , href: '/create' ,
-  icon: '/icons/create.svg' }, { key: 'develop' , label: 'My Experiences' , href: '/develop' ,
-  icon: '/icons/develop.svg' }, { key: 'newplace' , label: 'New Experience' , href: '/dev/create' ,
-  icon: '/icons/plus.svg' }, { key: 'assets' , label: 'Assets' , href: '/dev/assets' , icon: '/icons/assets.svg' }, {
-  key: 'docs' , label: 'Creator Docs' , href: '/dev/docs' , icon: '/icons/code.svg' } ]; var crStudio=[ { key: 'studio'
-  , label: 'Open Studio' , href: '/studio' , icon: '/icons/studio.svg' }, { key: 'webstudio' , label: 'Web Tools' ,
-  href: crUserId ? ('/studio?userId=' + crUserId) : ' /studio', icon: '/icons/hammer.svg' }, { key: 'avatar' ,
-  label: 'Customize Avatar' , href: crUserId ? ('/avatar?userId=' + crUserId) : ' /signin', icon: '/icons/palette.svg' }
-  ]; var crSite=[ { key: 'home' , label: 'Back to Home' , href: '/' , icon: '/icons/home.svg' }, { key: 'games' ,
-  label: 'Discover' , href: '/games' , icon: '/icons/games.svg' }, { key: 'settings' , label: 'Settings' ,
-  href: '/settings' , icon: '/icons/settings.svg' } ]; %>
+<%
+var crUser = (typeof user !== 'undefined' && user) ? user : null;
+var crActive = (typeof activeNav !== 'undefined' && activeNav) ? activeNav : '';
+var crUserId = crUser ? crUser.userId : null;
+var crStudioReady = (typeof studioReady !== 'undefined') ? studioReady : false;
+
+// Signed out, the Studio helpers fall back to /signin. They used to fall back to
+// ' /studio' and ' /signin' - a literal LEADING SPACE in the href, which the
+// browser resolved as a relative path and 404'd. A guest clicking either row hit
+// a dead page instead of the sign-in form.
+var crStudioHref = crUserId ? ('/studio?userId=' + crUserId) : '/signin';
+var crAvatarHref = crUserId ? ('/avatar?userId=' + crUserId) : '/signin';
+
+var crCreate = [
+  { key: 'create', label: 'Create', href: '/create', icon: '/icons/create.svg' },
+  { key: 'develop', label: 'My Experiences', href: '/develop', icon: '/icons/develop.svg' },
+  { key: 'newplace', label: 'New Experience', href: '/dev/create', icon: '/icons/plus.svg' },
+  { key: 'assets', label: 'Assets', href: '/dev/assets', icon: '/icons/assets.svg' },
+  { key: 'docs', label: 'Creator Docs', href: '/dev/docs', icon: '/icons/code.svg' }
+];
+var crStudio = [
+  { key: 'studio', label: 'Open Studio', href: '/studio', icon: '/icons/studio.svg' },
+  { key: 'webstudio', label: 'Web Tools', href: crStudioHref, icon: '/icons/hammer.svg' },
+  { key: 'avatar', label: 'Customize Avatar', href: crAvatarHref, icon: '/icons/palette.svg' }
+];
+var crSite = [
+  { key: 'home', label: 'Back to Home', href: '/', icon: '/icons/home.svg' },
+  { key: 'games', label: 'Discover', href: '/games', icon: '/icons/games.svg' },
+  { key: 'settings', label: 'Settings', href: '/settings', icon: '/icons/settings.svg' }
+];
+%>
   <aside class="lb-sidebar roblox-sidebar lb-rail-creator" aria-label="Creator navigation">
     <div class="lb-rail-title">Creator Hub</div>
 
+<%# The account block leads the rail, above the creator groups, matching the
+    site rail so the identity is in the same place on every page. %>
+<% if (crUser) { %>
+    <div class="lb-sidebar-user roblox-sidebar-user">
+      <div class="lb-sidebar-avatar roblox-sidebar-avatar">
+        <% if (crUser.avatar && crUser.avatar.headshotUrl) { %>
+        <img src="<%= crUser.avatar.headshotUrl %>" alt="" />
+        <% } else { %>
+        <%= String(crUser.username || 'L').slice(0, 1).toUpperCase() %>
+        <% } %>
+      </div>
+      <div class="lb-sidebar-identity">
+        <div class="lb-sidebar-username roblox-sidebar-username"><%= crUser.username %></div>
+        <div class="lb-sidebar-status roblox-sidebar-status">
+          <span class="lb-sidebar-dot roblox-sidebar-dot"></span> <%= crStudioReady ? 'Studio ready' : 'Ready' %>
+        </div>
+      </div>
+    </div>
+    <div class="roblox-sidebar-divider"></div>
+<% } %>
+
     <div class="lb-rail-group">
       <div class="lb-rail-group-label">Create</div>
-      <% crCreate.forEach(function (item) { %>
-        <a href="<%= item.href %>"
-          class="lb-sidebar-link roblox-sidebar-link <%= crActive === item.key ? 'is-active' : '' %>">
-          <img class="ch-ico" src="<%= item.icon %>" alt="" />
-          <span>
-            <%= item.label %>
-          </span>
-        </a>
-        <% }); %>
+<% crCreate.forEach(function (item) { %>
+      <a href="<%= item.href %>" class="lb-sidebar-link roblox-sidebar-link <%= crActive === item.key ? 'is-active' : '' %>">
+        <img class="ch-ico" src="<%= item.icon %>" alt="" />
+        <span><%= item.label %></span>
+      </a>
+<% }); %>
     </div>
 
     <div class="lb-rail-group">
       <div class="lb-rail-group-label">Studio</div>
-      <% crStudio.forEach(function (item) { %>
-        <a href="<%= item.href %>"
-          class="lb-sidebar-link roblox-sidebar-link <%= crActive === item.key ? 'is-active' : '' %>">
-          <img class="ch-ico" src="<%= item.icon %>" alt="" />
-          <span>
-            <%= item.label %>
-          </span>
-        </a>
-        <% }); %>
-          <button type="button" class="lb-sidebar-link roblox-sidebar-link" id="railLaunchStudioBtn">
-            <img class="ch-ico" src="/icons/download.svg" alt="" />
-            <span>
-              <%= crStudioReady ? 'Launch Studio' : 'Get Studio' %>
-            </span>
-          </button>
+<% crStudio.forEach(function (item) { %>
+      <a href="<%= item.href %>" class="lb-sidebar-link roblox-sidebar-link <%= crActive === item.key ? 'is-active' : '' %>">
+        <img class="ch-ico" src="<%= item.icon %>" alt="" />
+        <span><%= item.label %></span>
+      </a>
+<% }); %>
+      <button type="button" class="lb-sidebar-link roblox-sidebar-link" id="railLaunchStudioBtn">
+        <img class="ch-ico" src="/icons/download.svg" alt="" />
+        <span><%= crStudioReady ? 'Launch Studio' : 'Get Studio' %></span>
+      </button>
     </div>
 
     <div class="roblox-sidebar-divider"></div>
 
     <div class="lb-rail-group">
-      <% crSite.forEach(function (item) { %>
-        <a href="<%= item.href %>"
-          class="lb-sidebar-link roblox-sidebar-link <%= crActive === item.key ? 'is-active' : '' %>">
-          <img class="ch-ico" src="<%= item.icon %>" alt="" />
-          <span>
-            <%= item.label %>
-          </span>
-        </a>
-        <% }); %>
+<% crSite.forEach(function (item) { %>
+      <a href="<%= item.href %>" class="lb-sidebar-link roblox-sidebar-link <%= crActive === item.key ? 'is-active' : '' %>">
+        <img class="ch-ico" src="<%= item.icon %>" alt="" />
+        <span><%= item.label %></span>
+      </a>
+<% }); %>
     </div>
-
-    <% if (crUser) { %>
-      <div class="roblox-sidebar-divider"></div>
-      <div class="lb-sidebar-user roblox-sidebar-user">
-        <div class="lb-sidebar-avatar roblox-sidebar-avatar">
-          <%= String(crUser.username || 'L' ).slice(0, 1).toUpperCase() %>
-        </div>
-        <div>
-          <div class="lb-sidebar-username roblox-sidebar-username">
-            <%= crUser.username %>
-          </div>
-          <div class="lb-sidebar-status roblox-sidebar-status"><span class="lb-sidebar-dot roblox-sidebar-dot"></span>
-            <%= crStudioReady ? 'Studio ready' : 'Ready' %>
-          </div>
-        </div>
-      </div>
-      <% } %>
   </aside>

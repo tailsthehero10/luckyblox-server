@@ -60,6 +60,14 @@
   --lb-shadow: 0 1px 3px rgba(25, 27, 31, 0.08);
   --lb-shadow-lg: 0 6px 20px rgba(25, 27, 31, 0.16);
 
+  /* Rail geometry. --lb-topbar-height is the height of the FIXED top bar and the
+     rail's `top` offset, so the two can never drift apart: the top bar is sized
+     from it and the rail starts below it. --lb-rail-width is the width the page
+     content reserves for the rail. Both are narrowed at <=1024px and the rail
+     slides away at <=760px. */
+  --lb-rail-width: 220px;
+  --lb-topbar-height: 50px;
+
   /* Back-compat aliases. Views across the project still read the old token
      names; mapping them here means every page picks up the 2021 palette
      without having to edit each view. */
@@ -2421,24 +2429,21 @@ a.roblox-brand:hover {
   align-items: start;
 }
 
+/* Legacy "floating card" sidebar look. The rail is now a full-height fixed
+   column (see "Permanent left navigation rail"), so the sticky offset and the
+   rounded card chrome here are stale: a 12px radius and a 1px border on a
+   viewport-height rail drew a floating box with visible seams against the top
+   bar and the page edge. Only the row metrics are kept. */
 .roblox-sidebar {
-  position: sticky;
-  top: 68px;
   background: var(--bg-container);
-  border: 1px solid var(--border-line);
-  border-radius: 12px;
-  padding: 12px 10px;
 }
 
 .roblox-sidebar-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
+  /* Row metrics are owned by the shared .lb-sidebar-link rule. Duplicating a
+     different padding/radius here (10px 12px / 8px against 0 10px /
+     var(--lb-radius)) made the rail rows inconsistent between the two class
+     names. Only the legacy colour treatment is kept. */
   color: var(--text-main);
-  font-size: 0.95rem;
-  font-weight: 600;
   text-decoration: none !important;
 }
 
@@ -2672,13 +2677,21 @@ select:focus-visible {
   display: flex;
   align-items: center;
   gap: 16px;
-  min-height: 48px;
-  padding: 8px 16px;
+  /* The top bar is a FIXED 50px band (declared with !important in the header
+     block above). This copy used to say sticky/48px and the two disagreed, and
+     the fixed rail's `top: var(--lb-topbar-height)` depends on the bar actually
+     being 50px - a 48px bar left a 2px sliver of rail behind the header. */
+  min-height: var(--lb-topbar-height, 50px);
+  height: var(--lb-topbar-height, 50px);
+  padding: 0 16px;
+  box-sizing: border-box;
   background: linear-gradient(180deg, var(--lb-header) 0%, var(--lb-header-2) 100%) !important;
   border-bottom: 1px solid var(--lb-header-line);
   box-shadow: none !important;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 1000;
 }
 
@@ -2945,8 +2958,22 @@ img.roblox-brand-mark {
 .lb-page:has(> .roblox-topbar) > .lb-shell,
 .lb-page:has(> .lb-header) > .lb-shell,
 .roblox-page:has(> .roblox-topbar) > .roblox-shell,
-.lb-page:has(> .lb-header) > .roblox-shell { max-width: 1360px; }
+.lb-page:has(> .lb-header) > .roblox-shell {
+  /* The shell is NOT a centred box any more. It carries the left offset for the
+     fixed rail, so it has to span the full viewport - if it were centred at
+     1200px the 220px padding-left would push the content sideways instead of
+     clearing the rail, and the rail (pinned at left: 0) would look detached
+     from the page's own left edge. */
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
 
+/* The rail's own box. NOTE: this is the earlier, non-flagged copy of the same
+   selectors - the authoritative fixed positioning lives in the "Permanent left
+   navigation rail" block further down. Everything here must therefore stay free
+   of position/width/min-height, which used to describe a grid-track sidebar and
+   would otherwise fight the fixed rail. */
 .lb-sidebar,
 .roblox-sidebar {
   padding: 16px 12px;
@@ -2956,10 +2983,11 @@ img.roblox-brand-mark {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  position: sticky;
-  top: 48px;
 }
 
+/* Rail rows are anchors AND buttons (the Creator rail's Launch Studio is a real
+   <button>), so the button needs the same reset or it renders with the UA's
+   grey chrome and a different font. */
 .lb-sidebar-link,
 .roblox-sidebar-link {
   display: flex;
@@ -2971,9 +2999,16 @@ img.roblox-brand-mark {
   background: transparent;
   border: 0;
   color: #44484f;
+  font-family: inherit;
   font-size: 15px;
   font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
 }
+button.lb-sidebar-link,
+button.roblox-sidebar-link { min-height: 34px; }
 .lb-sidebar-link:hover,
 .roblox-sidebar-link:hover { background: #e6e9ec; }
 .lb-sidebar-link.is-active,
@@ -3690,24 +3725,17 @@ img.roblox-brand-mark {
 }
 
 /* --- Responsive ---------------------------------------------------------- */
+/* At tablet widths the rail NARROWS (see --lb-rail-width: 200px below) but must
+   stay a fixed left rail. This block used to set `position: static` and reflow
+   the rail into a wrapped horizontal row while the shell kept reserving 200px of
+   padding-left - so the nav jumped to the top AND a blank 200px strip stayed
+   beside the content. That combination is what read as a broken layout. */
 @media (max-width: 1024px) {
-  .lb-shell,
-  .roblox-shell { grid-template-columns: minmax(0, 1fr); }
-  .lb-sidebar,
-  .roblox-sidebar {
-    position: static;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 4px;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--lb-line-soft);
-    background: var(--lb-surface);
-  }
+  /* The rail keeps its fixed box (declared with !important further down); only
+     the row metrics tighten so the narrower rail still fits its labels. */
   .lb-sidebar-link,
-  .roblox-sidebar-link { height: 30px; padding: 0 8px; font-size: 14px; }
-  .roblox-sidebar-divider { display: none; }
-  .lb-main,
-  .roblox-main { padding: 16px; }
+  .roblox-sidebar-link { height: 32px; padding: 0 8px; font-size: 14px; }
+  .roblox-sidebar-divider { margin: 8px 4px; }
 }
 
 @media (max-width: 820px) {
@@ -3830,34 +3858,52 @@ img.roblox-brand-mark {
    header and are clipped. Only the pages that actually render a header get the
    offset, so header-less pages are unaffected.
    --------------------------------------------------------------------------- */
-.lb-page:has(> .lb-header),
-.lb-page:has(> .roblox-topbar),
-.roblox-page:has(> .roblox-topbar),
-.roblox-page:has(> .lb-header) {
+/* A page that renders its own top bar must clear the FIXED 50px bar. Which
+   element carries that offset depends on the page:
+     - pages with a .lb-shell: the shell carries it (padding-top), because it also
+       has to clear the rail;
+     - pages without one (e.g. /studio, which is just .roblox-page > .roblox-topbar
+       > .studio-shell): the page itself must carry it, or the content slides
+       under the header.
+   The second case used to be `padding-top: 0` unconditionally, which clipped the
+   first 50px of every header-but-no-shell page. */
+.roblox-page:has(> .roblox-topbar):not(:has(.lb-shell)),
+.roblox-page:has(> .lb-header):not(:has(.lb-shell)),
+.lb-page:has(> .lb-header):not(:has(.lb-shell)),
+.lb-page:has(> .roblox-topbar):not(:has(.lb-shell)) {
+  padding-top: var(--lb-topbar-height, 50px) !important;
+}
+
+/* With a shell present, the shell owns the offset, so the page contributes none
+   (otherwise the two stack and the content is pushed ~50px too far down). */
+.lb-page:has(> .lb-header):has(.lb-shell),
+.lb-page:has(> .roblox-topbar):has(.lb-shell),
+.roblox-page:has(> .roblox-topbar):has(.lb-shell),
+.roblox-page:has(> .lb-header):has(.lb-shell) {
   padding-top: 0 !important;
 }
 
+/* The shell starts below the fixed 50px header. This used to be expressed TWICE
+   - `padding-top: 16px` here and `margin-top: 50px` on the header's next
+   sibling below - and the shell is that next sibling, so the two stacked into
+   ~100px of dead space above the content on every page. The fixed-rail block
+   (see "Permanent left navigation rail") owns this offset now, with
+   padding-top: var(--lb-topbar-height); these rules must not add a second one. */
 .lb-page > .lb-shell,
 .lb-page > .roblox-shell,
 .lb-page > .lb-main,
 .roblox-page > .roblox-shell,
 .roblox-page > .roblox-main {
-  padding-top: 16px;
+  padding-top: 0;
 }
 
-/* Any direct child of the page that follows the header must clear its 50px. */
+/* No margin offset on the child after the header: the shell's own padding-top
+   already clears the fixed bar, and a margin here would stack on top of it. */
 .lb-page > .lb-header + *,
 .lb-page > .roblox-topbar + *,
 .roblox-page > .roblox-topbar + *,
 .roblox-page > .lb-header + * {
-  margin-top: 50px;
-}
-
-/* The sticky rail starts below the fixed header, not behind it. */
-.lb-page > .lb-header ~ .lb-shell .lb-sidebar,
-.roblox-page > .roblox-topbar ~ .roblox-shell .roblox-sidebar,
-.roblox-page > .roblox-topbar ~ .lb-shell .lb-sidebar {
-  top: 66px;
+  margin-top: 0;
 }/* ---------------------------------------------------------------------------
    Avatar Shop (catalog) tiles
    ---------------------------------------------------------------------------
@@ -4106,19 +4152,66 @@ img.roblox-brand-mark {
    to public/img/loading.gif and served from this server rather than hotlinked,
    so the site keeps working if the CDN moves or blocks the request.
 
-   .lb-loader        - standalone centred spinner
-   .lb-loading-block - a container that shows the spinner until its content
-                       resolves, e.g. a remote thumbnail
+   The spinner is the site's ONE "we are waiting on the server" signal, used in
+   four places:
+
+     .lb-loader            - a standalone spinner (any size via .lb-loader-*)
+     .lb-loading-block     - a container that shows the spinner until its own
+                             content resolves (a remote thumbnail, a panel)
+     .lb-loading-overlay   - a full-area veil over a panel/section
+     .lb-loading-page      - a full-page veil for a route change or first paint
+     .lb-btn.is-loading    - an in-button spinner for a submit/launch action
+
+   Sizes are a scale rather than fixed pixels so the same glyph reads correctly
+   at 20px inside a button and at 160px on a splash. Every size is driven by the
+   --lb-loader-size custom property, and the ::before/overlay placements inherit
+   it, so one variable controls the whole thing.
    --------------------------------------------------------------------------- */
 
+/* The size scale. `--lb-loader-size` is the single knob. */
 .lb-loader {
+  --lb-loader-size: 32px;
   display: block;
-  width: 32px;
-  height: 32px;
+  width: var(--lb-loader-size);
+  height: var(--lb-loader-size);
   margin: 0 auto;
+  background: url('/img/loading.gif') center / contain no-repeat;
+  flex: 0 0 auto;
+}
+
+.lb-loader-xs { --lb-loader-size: 16px; }
+.lb-loader-sm { --lb-loader-size: 24px; }
+.lb-loader-md { --lb-loader-size: 40px; }
+.lb-loader-lg { --lb-loader-size: 72px; }
+.lb-loader-xl { --lb-loader-size: 120px; }
+.lb-loader-xxl { --lb-loader-size: 180px; }
+
+/* An inline spinner sits beside a label instead of centring itself. */
+.lb-loader-inline { display: inline-block; margin: 0; vertical-align: middle; }
+
+/* The spinner inside a button: the label is swapped for the glyph, so a submit
+   action can show it is working without changing the button's size. */
+.lb-btn.is-loading,
+.roblox-play-button.is-loading,
+.roblox-primary-button.is-loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+.lb-btn.is-loading::after,
+.roblox-play-button.is-loading::after,
+.roblox-primary-button.is-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
   background: url('/img/loading.gif') center / contain no-repeat;
 }
 
+/* --- Block: a container waits for its own content ------------------------- */
 .lb-loading-block {
   position: relative;
   min-height: 40px;
@@ -4131,16 +4224,84 @@ img.roblox-brand-mark {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 28px;
-  height: 28px;
-  margin: -14px 0 0 -14px;
+  width: var(--lb-loader-size, 28px);
+  height: var(--lb-loader-size, 28px);
+  margin-top: calc(var(--lb-loader-size, 28px) / -2);
+  margin-left: calc(var(--lb-loader-size, 28px) / -2);
   background: url('/img/loading.gif') center / contain no-repeat;
   pointer-events: none;
+  z-index: 2;
 }
 
 /* An image that has not finished loading stays dimmed so the spinner reads. */
 .lb-loading-block.is-loading img {
   opacity: 0;
+}
+
+/* --- Overlay: a veil over a panel or section ------------------------------ */
+.lb-loading-overlay {
+  position: relative;
+}
+
+.lb-loading-overlay.is-loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.72);
+  background-image: url('/img/loading.gif');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: var(--lb-loader-size, 48px) auto;
+  z-index: 5;
+  pointer-events: all;
+}
+
+/* --- Page: a veil over the whole viewport ---------------------------------
+   Used for a first paint and for a full-page API fetch. It starts HIDDEN and is
+   switched on by JS, so a page that never calls the API is never blocked and a
+   no-JS visitor still sees content rather than an endless spinner. */
+.lb-loading-page {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  background: rgba(242, 244, 245, 0.94);
+  --lb-loader-size: 160px;
+}
+
+.lb-loading-page.is-loading {
+  display: flex;
+}
+
+/* The large glyph plus a status line, which is what makes a wait feel like the
+   real site rather than a frozen tab. */
+.lb-loading-page::before {
+  content: '';
+  width: var(--lb-loader-size);
+  height: var(--lb-loader-size);
+  background: url('/img/loading.gif') center / contain no-repeat;
+}
+
+.lb-loading-page-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--lb-muted);
+  letter-spacing: 0.01em;
+}
+
+/* Respect a reduced-motion preference: the GIF still moves on its own, so give
+   those users the static state clearly rather than an animated flash. */
+@media (prefers-reduced-motion: reduce) {
+  .lb-loader,
+  .lb-loading-block.is-loading::before,
+  .lb-loading-overlay.is-loading::after,
+  .lb-loading-page::before {
+    animation: none;
+  }
 }
 /* ---------------------------------------------------------------------------
    Permanent left navigation rail  (LuckyBlox 2021 layout)
@@ -4155,10 +4316,8 @@ img.roblox-brand-mark {
    Studio, so the creation flow never depends on the general site nav.
    --------------------------------------------------------------------------- */
 
-:root {
-  --lb-rail-width: 220px;
-  --lb-topbar-height: 50px;
-}
+/* NOTE: --lb-rail-width / --lb-topbar-height are declared once, in the design
+   token block at the top of this file. They are used above as well as here. */
 
 /* The rail is fixed to the viewport left edge and scrolls on its own. It is
    never a grid track that a page could re-flow, so it cannot be dragged or
@@ -4199,11 +4358,38 @@ img.roblox-brand-mark {
   padding-left: var(--lb-rail-width) !important;
 }
 
+/* .lb-main is the content column. It owns the page gutter and the centred max
+   width, because every page wraps its content in it. */
 .lb-main,
 .roblox-main {
   max-width: 1180px;
   margin: 0 auto;
   padding: 16px 24px 48px !important;
+}
+
+/* But a page that ALSO puts its own page wrapper inside .lb-main was applying a
+   second gutter and a second max-width on top of it - ~44px of stacked
+   horizontal padding and doubled vertical gaps, which is what read as "spacing is
+   wrong" on /develop (.lb-main + .ch-page) and /settings (.lb-main +
+   .settings-shell). The inner wrapper keeps its own layout, but stops adding a
+   gutter the outer column already provides. */
+.lb-main > .ch-page,
+.lb-main > .lb-page,
+.lb-main > .roblox-page,
+.lb-main > .settings-shell,
+.lb-main > .dev-shell {
+  max-width: none !important;
+  margin: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  background: transparent !important;
+}
+
+/* Same trap one level deeper: a .ch-page/.lb-page that is the ONLY child of the
+   shell (i.e. no .lb-main around it) still needs the rail offset, which the
+   shell's padding-left already supplies. */
+.lb-shell > .ch-page {
+  padding-top: 0 !important;
 }
 
 /* The top bar keeps the brand and account actions but is shortened to the
@@ -4241,62 +4427,87 @@ img.roblox-brand-mark {
   padding-left: 16px !important;
 }
 
-/* --- Creator rail (used by /create and /develop) -------------------------- */
+/* --- Creator rail (used by /create and /develop) ---------------------------
+   This rail used to be a dark navy slab (#101826). Against the 2021 light page
+   it produced the "looks bad" effect on /create and /develop: a dark top bar, a
+   dark rail and a light content column meeting at three different tones, with
+   the rail's hard bottom edge cutting across a light page.
+
+   The real Creator Hub rail was LIGHT, like the rest of the site: grey group
+   headings, dark row text, and a blue pill on the active row. This restores
+   that, and keeps the creator-specific grouping and the Studio button.
+   --------------------------------------------------------------------------- */
 .lb-rail-creator {
-  background: #101826 !important;
-  border-right: 1px solid #0a1220 !important;
+  background: var(--lb-surface) !important;
+  border-right: 1px solid var(--lb-line) !important;
 }
+
+/* "Creator Hub" heading at the top of the rail. */
 .lb-rail-creator .lb-rail-title {
-  color: #ffffff;
-  font-size: 13px;
+  color: var(--lb-ink);
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 6px 10px 10px;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 4px 10px 12px;
 }
+
+/* Group headings (CREATE / STUDIO) - the small grey caps label the 2021 Hub used
+   to separate its sections. The first group sits right under the identity block,
+   so it must not add a leading gap. */
 .lb-rail-creator .lb-rail-group {
-  margin-top: 14px;
+  margin-top: 16px;
+}
+.lb-rail-creator .lb-rail-group:first-of-type {
+  margin-top: 0;
 }
 .lb-rail-creator .lb-rail-group-label {
-  color: #7f8ea3;
+  color: var(--lb-faint);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 4px 10px;
+  padding: 4px 10px 6px;
 }
+
+/* Rows are the shared light rail rows - only the icon treatment differs, since
+   these icons sit on a light surface now and must stay dark. */
 .lb-rail-creator .lb-sidebar-link,
 .lb-rail-creator .roblox-sidebar-link {
-  color: #cbd5e1 !important;
+  color: var(--lb-ink-2) !important;
 }
 .lb-rail-creator .lb-sidebar-link .ch-ico,
 .lb-rail-creator .roblox-sidebar-link .ch-ico {
-  filter: brightness(0) invert(1) !important;
-  opacity: 0.7;
+  filter: none !important;
+  opacity: 0.8;
 }
 .lb-rail-creator .lb-sidebar-link:hover,
 .lb-rail-creator .roblox-sidebar-link:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #ffffff !important;
+  background: #eef1f4 !important;
+  color: var(--lb-ink) !important;
 }
 .lb-rail-creator .lb-sidebar-link.is-active,
 .lb-rail-creator .roblox-sidebar-link.is-active {
-  background: #1f6feb !important;
-  color: #ffffff !important;
+  background: #dcecf9 !important;
+  color: var(--lb-ink) !important;
+  font-weight: 700;
 }
 .lb-rail-creator .lb-sidebar-link.is-active .ch-ico,
 .lb-rail-creator .roblox-sidebar-link.is-active .ch-ico {
   opacity: 1;
 }
-.lb-rail-creator .roblox-sidebar-divider {
-  background: rgba(255, 255, 255, 0.12);
+
+/* The Studio button is a <button>, so it also needs the blue "primary action"
+   treatment that distinguishes it from the plain navigation rows. */
+.lb-rail-creator #railLaunchStudioBtn {
+  margin-top: 4px;
+  color: var(--lb-link) !important;
+  font-weight: 700;
 }
-.lb-rail-creator .roblox-sidebar-username,
-.lb-rail-creator .lb-sidebar-username { color: #ffffff; }
-.lb-rail-creator .roblox-sidebar-status,
-.lb-rail-creator .lb-sidebar-status { color: #94a3b8; }
-.lb-rail-creator .roblox-sidebar-avatar,
-.lb-rail-creator .lb-sidebar-avatar { background: #1f6feb; color: #ffffff; }
+.lb-rail-creator #railLaunchStudioBtn .ch-ico {
+  filter: none !important;
+  opacity: 1;
+}
 
 /* --- Layout-glitch fixes -------------------------------------------------- */
 /* Some pages nested a second .lb-page inside the shell, which used to be a grid
@@ -4552,4 +4763,119 @@ body.lb-studio .studio-place {
 body.lb-studio .studio-brand,
 body.lb-studio .studio-place h3 {
   color: #f3f4f5 !important;
+}/* ---------------------------------------------------------------------------
+   Header account block + rail identity
+   ---------------------------------------------------------------------------
+   The 2021 bar showed the signed-in ACCOUNT immediately left of the Robux
+   figure: a round avatar plus the username, the whole thing linking to the
+   profile. The header previously had an icon-only avatar at the far right with
+   no name, so there was no way to tell which account was signed in.
+
+   The same identity leads the left rail (top of the column), so the account is
+   in a consistent place at the top of both navigation surfaces.
+   --------------------------------------------------------------------------- */
+
+.lb-account,
+.roblox-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px 0 4px;
+  margin-right: 2px;
+  border-radius: var(--lb-radius);
+  color: var(--lb-header-text) !important;
+  font-size: 14px;
+  font-weight: 500;
+  max-width: 190px;
+}
+
+.lb-account:hover,
+.roblox-account:hover {
+  background: rgba(255, 255, 255, 0.1);
+  text-decoration: none !important;
+}
+
+/* Round avatar, 26px, exactly as the 2021 bar rendered it. */
+.lb-account-avatar,
+.roblox-account-avatar {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #3a3f47;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.lb-account-avatar img,
+.roblox-account-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The name truncates rather than wrapping, so a long username cannot push the
+   Robux figure and the icons off the bar. */
+.lb-account-name,
+.roblox-account-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Under ~900px the name is dropped and only the avatar remains, so the bar keeps
+   fitting without the icons colliding. */
+@media (max-width: 900px) {
+  .lb-account-name,
+  .roblox-account-name { display: none; }
+  .lb-account,
+  .roblox-account { padding: 0 4px; max-width: none; }
+}
+
+/* --- Rail identity ------------------------------------------------------- */
+
+/* The rail's identity block is a two-column row: avatar, then name + status. It
+   needs the min-width:0 chain so a long username ellipsises instead of widening
+   the rail past its 220px track. */
+.lb-sidebar-identity {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.lb-sidebar-user .lb-sidebar-username,
+.lb-sidebar-user .roblox-sidebar-username {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The avatar may now contain an <img> (the account headshot) rather than a
+   letter, so it needs to clip its contents to the circle. */
+.lb-sidebar-avatar,
+.roblox-sidebar-avatar {
+  overflow: hidden;
+}
+
+.lb-sidebar-avatar img,
+.roblox-sidebar-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The identity block is the first thing in the rail, so it must not add the
+   group's top margin above itself. */
+.lb-sidebar > .lb-sidebar-user:first-child,
+.roblox-sidebar > .roblox-sidebar-user:first-child {
+  margin-top: 0;
+  padding: 6px 10px 10px;
 }
