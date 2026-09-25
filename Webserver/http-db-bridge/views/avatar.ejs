@@ -1,184 +1,477 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= title %></title>
+  <title>
+    <%= title %>
+  </title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/avatar.css" />
 </head>
-<body>
-  <div class="lb-page">
-    <%- include('partials/header', { user: user, currency: currency, activeNav: 'avatar' }) %>
+<%# Avatar page - rebuilt against the real 2021 avatar editor.
+  https://web.archive.org/web/20210801000000/https://www.roblox.com/my/avatar
 
-    <div class="lb-shell">
-      <%- include('partials/sidebar', { user: user, activeNav: 'avatar' }) %>
+  The 2021 page was a two-column body: the character render with the body-colour
+  palette and the scale sliders on the left, and the currently-wearing outfit on
+  the right, with the inventory under it.
 
-      <main class="lb-main">
+  This page OWNS everything avatar-related - rig (R6/R15), gender, body colours,
+  scales and the outfit. Settings no longer duplicates any of it (see
+  views/settings.ejs), so there is exactly one place to change a character.
 
-    <section class="roblox-layout">
-      <div class="roblox-panel">
-        <div class="roblox-panel-header">Avatar customization</div>
-        <div class="roblox-panel-body">
-          <div class="roblox-avatar-stage">
-            <div class="roblox-avatar-render lb-loading-block is-loading">
-              <%# The real avatar, in order of fidelity: the wearer's Roblox full-body
-                  render, then the locally drawn figure in their own body colours.
-                  The letter tile is only a last resort for an account with no
-                  colours at all - it is never the primary render. %>
-              <% if (avatar && avatar.fullBodyUrl) { %>
-                <img class="lb-avatar-render-img" src="<%= avatar.fullBodyUrl %>"
-                  alt="<%= user.username %>'s avatar" width="352" height="352"
-                  onerror="this.style.display='none';" />
-              <% } else { %>
-                <%- lbAvatarFigure(user, 352) %>
-              <% } %>
-              <div style="font-weight:700; font-size:1.1rem; margin-top: 12px;"><%= user.username %></div>
-              <div style="color: var(--rbx-muted);">Currently wearing <%= Array.isArray(wearing) ? wearing.length : 0 %> items</div>
-            </div>
-          </div>
+  Every control below is seeded from the account's real saved avatar -
+  user.avatar.playerAvatarType / bodyColors / scales - never a made-up default.
+%>
 
-          <div class="roblox-button-row" style="margin-top: 18px;">
-            <button class="roblox-primary-button" id="save-wear" type="button">Save outfit</button>
-            <button class="roblox-secondary-button" id="randomize-wear" type="button">Randomize</button>
-          </div>
-        </div>
-      </div>
+  <body>
+    <div class="lb-page">
+      <%- include('partials/header', { user: user, currency: currency, activeNav: 'avatar' }) %>
 
-      <%# "Currently Wearing" - one row per equipped item with its real name, its
-          price (or Offsale) and a red X to unequip it, the way the 2021 page
-          listed the outfit. Every row is a real item from the account. %>
-      <div class="roblox-panel">
-        <div class="roblox-panel-header">Currently Wearing</div>
-        <div class="roblox-panel-body">
-          <% if (wearing && wearing.length) { %>
-            <div class="lb-wearing-list">
-              <% wearing.forEach(function (item) { %>
-                <div class="lb-wearing-row">
-                  <div class="lb-wearing-thumb">
-                    <% if (item.thumbnailUrl) { %>
-                      <img src="<%= item.thumbnailUrl %>" alt="<%= item.name %>" loading="lazy"
-                        onerror="this.style.display='none';" />
-                    <% } else { %>
-                      <span><%= String(item.name || '?').slice(0, 1).toUpperCase() %></span>
-                    <% } %>
-                  </div>
-                  <div class="lb-wearing-info">
-                    <div class="lb-wearing-name"><%= item.name %></div>
-                    <div class="lb-wearing-type"><%= item.assetType %></div>
-                  </div>
-                  <button type="button" class="lb-wearing-remove" data-unequip="<%= item.id %>"
-                    title="Unequip <%= item.name %>" aria-label="Unequip <%= item.name %>">X</button>
+        <div class="lb-shell">
+          <%- include('partials/sidebar', { user: user, activeNav: 'avatar' }) %>
+
+            <main class="lb-main">
+
+              <!-- Avatar editor header: the 2021 editor opened with this bar. -->
+              <div class="roblox-panel">
+                <div class="roblox-panel-header">
+                  <img class="ch-ico ch-ico-sm" src="/icons/avatar.svg" alt="" /> Avatar Editor
+                  <a class="lb-btn lb-btn-secondary av-editor-getmore" href="/catalog">Get More</a>
                 </div>
-              <% }); %>
-            </div>
-            <div class="lb-faint" style="margin-top:8px;">Click the red X to unequip items.</div>
-          <% } else { %>
-            <div class="lb-muted">This account is not wearing anything yet. Pick items below and save your outfit.</div>
-          <% } %>
-        </div>
-      </div>
-
-      <div class="roblox-panel">
-        <div class="roblox-panel-header">Inventory</div>
-        <div class="roblox-panel-body">
-          <div class="roblox-asset-grid">
-            <% const wearingList = Array.isArray(user.currentlyWearing) ? user.currentlyWearing : []; %>
-            <% assets.forEach((asset) => { %>
-              <% const isSelected = wearingList.includes(String(asset.id)); %>
-              <div class="roblox-asset-card <%= isSelected ? 'selected' : '' %>" data-asset-id="<%= asset.id %>">
-                <div class="roblox-asset-preview"><%= asset.name.slice(0, 1).toUpperCase() %></div>
-                <div class="roblox-asset-name"><%= asset.name %></div>
-                <div class="roblox-asset-type"><%= asset.assetType %> · ID <%= asset.id %></div>
-                <button class="roblox-secondary-button" type="button" data-select-asset="<%= asset.id %>"><%= isSelected ? 'Selected' : 'Select' %></button>
               </div>
-            <% }) %>
+
+              <div class="av-layout">
+                <!-- LEFT: the character, the rig, the colours, the scales. -->
+                <div class="av-col-left">
+
+                  <div class="roblox-panel">
+                    <div class="roblox-panel-body">
+                      <div class="roblox-avatar-stage">
+                        <div class="roblox-avatar-render lb-loading-block is-loading">
+                          <%# The real avatar, in order of fidelity: the wearer's Roblox
+                              full-body render, then the locally drawn figure in their own
+                              body colours. The letter tile is only a last resort for an
+                              account with no colours at all. %>
+                            <% if (avatar && avatar.fullBodyUrl) { %>
+                              <img class="lb-avatar-render-img" src="<%= avatar.fullBodyUrl %>"
+                                alt="<%= user.username %>'s avatar" width="352" height="352"
+                                onerror="this.style.display='none';" />
+                              <% } else { %>
+                                <%- lbAvatarFigure(user, 352) %>
+                                  <% } %>
+                                    <div class="av-render-name">
+                      <%= user.displayName || user.username %>
+                    </div>
+                    <div class="av-render-sub">
+                      Currently wearing <%= Array.isArray(wearing) ? wearing.length : 0 %> items &middot; rig
+                        <strong id="rigEcho">
+                          <%= avatarType %>
+                        </strong>
+                    </div>
+                </div>
+              </div>
+
+              <div class="roblox-button-row av-render-actions">
+                <button class="roblox-primary-button" id="save-avatar" type="button">Save avatar</button>
+                <button class="roblox-secondary-button" id="randomize-wear" type="button">Randomize</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Body / rig: R6 or R15. This is the ONLY place the rig is set. -->
+          <div class="roblox-panel">
+            <div class="roblox-panel-header">
+              <img class="ch-ico ch-ico-sm" src="/icons/avatar.svg" alt="" /> Body
+            </div>
+            <div class="roblox-panel-body">
+              <div class="av-field">
+                <div class="av-field-label">Avatar rig</div>
+                <div class="av-rig-picker">
+                  <% [['R15', 'Modern rig with 15 body parts'], ['R6', 'Classic 6-part blocky figure']].forEach(function (rig) { %>
+                    <button type="button"
+                      class="av-rig-option <%= avatarType === rig[0] ? 'is-active' : '' %>"
+                      data-rig="<%= rig[0] %>" aria-pressed="<%= avatarType === rig[0] ? 'true' : 'false' %>">
+                      <strong>
+                        <%= rig[0] %>
+                      </strong>
+                      <span>
+                        <%= rig[1] %>
+                      </span>
+                    </button>
+                    <% }); %>
+                </div>
+                <div class="av-help">The rig changes how the client builds your character on join.</div>
+              </div>
+
+              <div class="av-field">
+                <div class="av-field-label">Gender</div>
+                <div class="av-rig-picker av-rig-picker--three">
+                  <% var curGender = user.gender || (user.avatar && user.avatar.gender) || 'NotSpecified'; %>
+                    <% [['Male', 'Male'], ['Female', 'Female'], ['NotSpecified', 'Not specified']].forEach(function (g) { %>
+                      <button type="button"
+                        class="av-rig-option av-rig-option--sm <%= curGender === g[0] ? 'is-active' : '' %>"
+                        data-gender="<%= g[0] %>" aria-pressed="<%= curGender === g[0] ? 'true' : 'false' %>">
+                        <strong>
+                          <%= g[1] %>
+                        </strong>
+                      </button>
+                      <% }); %>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Body colours: the 2021 palette of swatches, one row per body part. -->
+          <div class="roblox-panel">
+            <div class="roblox-panel-header">
+              <img class="ch-ico ch-ico-sm" src="/icons/palette.svg" alt="" /> Body Colors
+            </div>
+            <div class="roblox-panel-body">
+              <%
+                // The BrickColor ids and hexes Roblox actually used in 2021. Only
+                // ids listed here are offered, so a saved colour is always real.
+                var palette = [
+                  { id: 1,    name: 'White',                hex: '#F2F3F3' },
+                  { id: 1002, name: 'Really black',          hex: '#1B2A34' },
+                  { id: 194,  name: 'Medium stone grey',     hex: '#A3A2A5' },
+                  { id: 21,   name: 'Bright red',            hex: '#C4281C' },
+                  { id: 23,   name: 'Bright blue',           hex: '#0D69AC' },
+                  { id: 24,   name: 'Bright yellow',         hex: '#F5CD30' },
+                  { id: 226,  name: 'Bright green',          hex: '#4B974B' },
+                  { id: 28,   name: 'Dark green',            hex: '#287F47' },
+                  { id: 5,    name: 'Brick yellow',          hex: '#D7C59A' },
+                  { id: 119,  name: 'Br. yellowish green',   hex: '#A4BD47' },
+                  { id: 106,  name: 'Bright orange',         hex: '#DA8541' },
+                  { id: 9,    name: 'Light reddish brown',   hex: '#8C5B42' }
+                ];
+                var colorParts = [
+                  { key: 'headColorId',     label: 'Head' },
+                  { key: 'torsoColorId',    label: 'Torso' },
+                  { key: 'rightArmColorId', label: 'Right Arm' },
+                  { key: 'leftArmColorId',  label: 'Left Arm' },
+                  { key: 'rightLegColorId', label: 'Right Leg' },
+                  { key: 'leftLegColorId',  label: 'Left Leg' }
+                ];
+              %>
+                <% colorParts.forEach(function (part) { %>
+                  <div class="av-color-row">
+                    <div class="av-color-part">
+                      <%= part.label %>
+                    </div>
+                    <div class="av-swatches" data-color-part="<%= part.key %>">
+                      <% var currentColor = Number((bodyColors && bodyColors[part.key]) || 1002); %>
+                        <% palette.forEach(function (c) { %>
+                          <button type="button"
+                            class="av-swatch <%= currentColor === c.id ? 'is-active' : '' %>"
+                            style="background:<%= c.hex %>;" data-color-id="<%= c.id %>"
+                            title="<%= c.name %>" aria-label="<%= part.label %>: <%= c.name %>"></button>
+                          <% }); %>
+                    </div>
+                  </div>
+                  <% }); %>
+                    <div class="av-help" style="margin-top:8px;">
+                      Changes are saved when you press <strong>Save avatar</strong>.
+                    </div>
+            </div>
+          </div>
+
+          <!-- Scales: the 2021 sliders (height / width / head / depth / proportion / body type). -->
+          <div class="roblox-panel">
+            <div class="roblox-panel-header">
+              <img class="ch-ico ch-ico-sm" src="/icons/edit.svg" alt="" /> Body Scale
+            </div>
+            <div class="roblox-panel-body">
+              <%
+                // Ranges match the real avatar-rules the client reads (see
+                // /v1/avatar-rules in clientApi.js), so a value saved here is
+                // always one the client will accept.
+                var scaleDefs = [
+                  { key: 'height',     label: 'Height',     min: 0.75, max: 1.25, step: 0.01, def: 1 },
+                  { key: 'width',      label: 'Width',      min: 0.70, max: 1.30, step: 0.01, def: 1 },
+                  { key: 'head',       label: 'Head',       min: 0.95, max: 1.05, step: 0.01, def: 1 },
+                  { key: 'depth',      label: 'Depth',      min: 0.75, max: 1.25, step: 0.01, def: 1 },
+                  { key: 'proportion', label: 'Proportion', min: 0,    max: 3,    step: 0.01, def: 0 },
+                  { key: 'bodyType',   label: 'Body Type',  min: 0,    max: 3,    step: 0.01, def: 0 }
+                ];
+                function scaleValue(key, def) {
+                  var v = scales && scales[key];
+                  return (v == null || isNaN(Number(v))) ? def : Number(v);
+                }
+              %>
+                <% scaleDefs.forEach(function (s) { %>
+                  <div class="av-scale-row">
+                    <label class="av-scale-label" for="scale-<%= s.key %>">
+                      <%= s.label %>
+                    </label>
+                    <input class="av-scale-input" type="range" id="scale-<%= s.key %>"
+                      data-scale="<%= s.key %>" min="<%= s.min %>" max="<%= s.max %>" step="<%= s.step %>"
+                      value="<%= scaleValue(s.key, s.def) %>" />
+                    <span class="av-scale-value" id="scaleval-<%= s.key %>">
+                      <%= scaleValue(s.key, s.def) %>
+                    </span>
+                  </div>
+                  <% }); %>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: currently wearing + the inventory to pick from. -->
+        <div class="av-col-right">
+
+          <div class="roblox-panel">
+            <div class="roblox-panel-header">
+              <img class="ch-ico ch-ico-sm" src="/icons/assets.svg" alt="" /> Currently Wearing
+            </div>
+            <div class="roblox-panel-body">
+              <% if (wearing && wearing.length) { %>
+                <div class="lb-wearing-list">
+                  <% wearing.forEach(function (item) { %>
+                    <div class="lb-wearing-row">
+                      <div class="lb-wearing-thumb">
+                        <% if (item.thumbnailUrl) { %>
+                          <img src="<%= item.thumbnailUrl %>" alt="<%= item.name %>" loading="lazy"
+                            onerror="this.style.display='none';" />
+                          <% } else { %>
+                            <span>
+                              <%= String(item.name || '?').slice(0, 1).toUpperCase() %>
+                            </span>
+                            <% } %>
+                      </div>
+                      <div class="lb-wearing-info">
+                        <div class="lb-wearing-name">
+                          <%= item.name %>
+                        </div>
+                        <div class="lb-wearing-type">
+                          <%= item.assetType %>
+                        </div>
+                      </div>
+                      <button type="button" class="lb-wearing-remove" data-unequip="<%= item.id %>"
+                        title="Unequip <%= item.name %>" aria-label="Unequip <%= item.name %>">X</button>
+                    </div>
+                    <% }); %>
+                </div>
+                <div class="lb-faint" style="margin-top:8px;">Click the red X to unequip an item.</div>
+                <% } else { %>
+                  <div class="lb-muted">This account is not wearing anything yet. Pick items below and save.</div>
+                  <% } %>
+            </div>
+          </div>
+
+          <div class="roblox-panel">
+            <div class="roblox-panel-header">
+              <img class="ch-ico ch-ico-sm" src="/icons/assets.svg" alt="" /> Inventory
+            </div>
+            <div class="roblox-panel-body">
+              <% if (assets.length) { %>
+                <div class="roblox-asset-grid">
+                  <% const wearingList = Array.isArray(user.currentlyWearing) ? user.currentlyWearing : []; %>
+                    <% assets.forEach((asset) => { %>
+                      <% const isSelected = wearingList.includes(String(asset.id)); %>
+                        <div class="roblox-asset-card <%= isSelected ? 'selected' : '' %>"
+                          data-asset-id="<%= asset.id %>">
+                          <div class="roblox-asset-preview">
+                            <% if (asset.thumbnail || asset.image) { %>
+                              <img src="<%= asset.thumbnail || asset.image %>" alt="<%= asset.name %>"
+                                loading="lazy" onerror="this.style.display='none';" />
+                              <% } else { %>
+                                <%= String(asset.name || '?').slice(0, 1).toUpperCase() %>
+                                <% } %>
+                          </div>
+                          <div class="roblox-asset-name">
+                            <%= asset.name %>
+                          </div>
+                          <div class="roblox-asset-type">
+                            <%= asset.assetType || asset.className %> &middot; ID <%= asset.id %>
+                          </div>
+                          <button class="roblox-secondary-button" type="button"
+                            data-select-asset="<%= asset.id %>">
+                            <%= isSelected ? 'Selected' : 'Select' %>
+                          </button>
+                        </div>
+                        <% }) %>
+                </div>
+                <% } else { %>
+                  <div class="lb-muted">No items are available in the local catalog yet.</div>
+                  <% } %>
+            </div>
           </div>
         </div>
       </div>
-    </section>
       </main>
     </div>
   </div>
 
   <script>
-    const userId = '<%= user.userId %>';
-    const selected = new Set(<%- JSON.stringify(wearingList || []) %>);
+    (function () {
+      'use strict';
 
-    document.addEventListener('click', async (event) => {
-      // Unequip: the red X on a "Currently Wearing" row. Drop the item from the
-      // selected set and save the same way the Save outfit button does, so the
-      // equipped list and Settings/ stay in sync.
-      const unequipButton = event.target.closest('[data-unequip]');
-      if (unequipButton) {
-        const assetId = String(unequipButton.getAttribute('data-unequip'));
-        selected.delete(assetId);
+      var selected = new Set(<%- JSON.stringify(wearingList || []) %>);
 
-        const response = await fetch('/api/avatar/save', {
+      // --- Local editor state, seeded from what the account actually saved. ---
+      var rig = '<%= avatarType %>';
+      var gender = '<%= curGender %>';
+      var bodyColors = <%- JSON.stringify(bodyColors || {}) %>;
+      var scales = <%- JSON.stringify(scales || {}) %>;
+      var dirty = false;
+
+      function markDirty() { dirty = true; }
+
+      /**
+       * Save every avatar field in one request. /api/avatar/save merges the patch
+       * into the stored avatar and mirrors it into Settings/ for the clients, so
+       * saving the rig alone never wipes the colours or the outfit.
+       */
+      async function saveAvatar() {
+        var response = await fetch('/api/avatar/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ assetIds: Array.from(selected) })
+          body: JSON.stringify({
+            assetIds: Array.from(selected),
+            playerAvatarType: rig,
+            gender: gender,
+            bodyColors: bodyColors,
+            scales: scales
+          })
         });
-
-        const payload = await response.json().catch(() => ({}));
-        if (payload.ok) {
-          window.location.reload();
-        } else {
-          alert((payload && payload.message) || 'Could not unequip that item. Sign in and try again.');
-        }
-        return;
-      }
-
-      const assetButton = event.target.closest('[data-select-asset]');
-      if (assetButton) {
-        const assetId = String(assetButton.getAttribute('data-select-asset'));
-        if (selected.has(assetId)) {
-          selected.delete(assetId);
-        } else {
-          selected.add(assetId);
-        }
-
-        assetButton.textContent = selected.has(assetId) ? 'Selected' : 'Select';
-        const card = assetButton.closest('.roblox-asset-card');
-        if (card) {
-          card.classList.toggle('selected', selected.has(assetId));
-        }
-        return;
-      }
-
-      if (event.target.id === 'save-wear') {
-        // Save through /api/avatar/save so the equipped list is written together
-        // with the rest of the avatar and mirrored into Settings/ for the clients.
-        const response = await fetch('/api/avatar/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ assetIds: Array.from(selected) })
-        });
-
-        const payload = await response.json().catch(() => ({}));
-        if (payload.ok) {
-          window.location.reload();
-        } else {
+        var payload = await response.json().catch(function () { return {}; });
+        if (!payload.ok) {
           alert((payload && payload.message) || 'Could not save your avatar. Sign in and try again.');
+          return false;
         }
+        dirty = false;
+        return true;
       }
 
-      if (event.target.id === 'randomize-wear') {
-        const items = Array.from(document.querySelectorAll('[data-select-asset]'));
-        const randomCount = Math.min(3, items.length);
-        selected.clear();
+      // --- Rig picker ---------------------------------------------------------
+      // (R6/R15 is set HERE and only here - Settings no longer offers it.)
+      document.querySelectorAll('[data-rig]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          rig = btn.getAttribute('data-rig');
+          document.querySelectorAll('[data-rig]').forEach(function (b) {
+            var on = b === btn;
+            b.classList.toggle('is-active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+          var echo = document.getElementById('rigEcho');
+          if (echo) echo.textContent = rig;
+          markDirty();
+        });
+      });
 
-        for (let i = 0; i < randomCount; i += 1) {
-          const item = items[Math.floor(Math.random() * items.length)];
-          if (!item) continue;
-          const assetId = String(item.getAttribute('data-select-asset'));
-          selected.add(assetId);
-          const card = item.closest('.roblox-asset-card');
-          if (card) card.classList.add('selected');
-          item.textContent = 'Selected';
+      // --- Gender picker ------------------------------------------------------
+      document.querySelectorAll('[data-gender]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          gender = btn.getAttribute('data-gender');
+          document.querySelectorAll('[data-gender]').forEach(function (b) {
+            var on = b === btn;
+            b.classList.toggle('is-active', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+          markDirty();
+        });
+      });
+
+      // --- Body colours -------------------------------------------------------
+      // One swatch per body part; picking a swatch sets that part only, exactly
+      // like the 2021 palette.
+      document.querySelectorAll('.av-swatches').forEach(function (row) {
+        row.addEventListener('click', function (event) {
+          var swatch = event.target.closest('.av-swatch');
+          if (!swatch) return;
+          var part = row.getAttribute('data-color-part');
+          var colorId = Number(swatch.getAttribute('data-color-id'));
+          if (!part || !colorId) return;
+
+          bodyColors[part] = colorId;
+          row.querySelectorAll('.av-swatch').forEach(function (s) { s.classList.remove('is-active'); });
+          swatch.classList.add('is-active');
+          markDirty();
+        });
+      });
+
+      // --- Scales -------------------------------------------------------------
+      document.querySelectorAll('[data-scale]').forEach(function (input) {
+        input.addEventListener('input', function () {
+          var key = input.getAttribute('data-scale');
+          var value = Number(input.value);
+          scales[key] = value;
+          var out = document.getElementById('scaleval-' + key);
+          if (out) out.textContent = value;
+          markDirty();
+        });
+      });
+
+      // --- Inventory selection + unequip --------------------------------------
+      document.addEventListener('click', function (event) {
+        var assetButton = event.target.closest('[data-select-asset]');
+        if (assetButton) {
+          var assetId = String(assetButton.getAttribute('data-select-asset'));
+          if (selected.has(assetId)) selected.delete(assetId); else selected.add(assetId);
+          assetButton.textContent = selected.has(assetId) ? 'Selected' : 'Select';
+          var card = assetButton.closest('.roblox-asset-card');
+          if (card) card.classList.toggle('selected', selected.has(assetId));
+          markDirty();
+          return;
         }
+
+        // Unequip: the red X on a "Currently Wearing" row saves immediately, the
+        // way the 2021 list did, so the item is gone from Settings/ too.
+        var unequipButton = event.target.closest('[data-unequip]');
+        if (unequipButton) {
+          selected.delete(String(unequipButton.getAttribute('data-unequip')));
+          saveAvatar().then(function (ok) { if (ok) window.location.reload(); });
+        }
+      });
+
+      // --- Actions ------------------------------------------------------------
+      var saveBtn = document.getElementById('save-avatar');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', async function () {
+          saveBtn.disabled = true;
+          saveBtn.textContent = 'Saving...';
+          var ok = await saveAvatar();
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save avatar';
+          if (ok) window.location.reload();
+        });
       }
-    });
+
+      var randomBtn = document.getElementById('randomize-wear');
+      if (randomBtn) {
+        randomBtn.addEventListener('click', function () {
+          var items = Array.from(document.querySelectorAll('[data-select-asset]'));
+          if (!items.length) return;
+          // Randomise the OUTFIT only. The 2021 Randomize button did not silently
+          // change body colours or the rig.
+          selected.clear();
+          var count = Math.min(3, Math.max(1, Math.floor(Math.random() * items.length) + 1));
+          for (var i = 0; i < count; i += 1) {
+            var item = items[Math.floor(Math.random() * items.length)];
+            if (!item) continue;
+            var id = String(item.getAttribute('data-select-asset'));
+            selected.add(id);
+            item.textContent = 'Selected';
+            var card = item.closest('.roblox-asset-card');
+            if (card) card.classList.add('selected');
+          }
+          markDirty();
+        });
+      }
+
+      // Warn before leaving with unsaved changes, so a colour pick is not lost.
+      window.addEventListener('beforeunload', function (event) {
+        if (!dirty) return undefined;
+        event.preventDefault();
+        event.returnValue = '';
+        return '';
+      });
+    }());
   </script>
   <script src="/legacy-nav.js"></script>
-</body>
+  </body>
+
 </html>

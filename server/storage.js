@@ -176,18 +176,45 @@ function deleteJson(fileName) {
 /** Human-readable summary of where data is stored (logged at boot). */
 function describeStorage() {
   const remote = remoteStore.describe();
+
+  // A set LUCKYBLOX_DATA_DIR only means "a path was configured" - NOT that the
+  // path is on a real mount. Setting the env var without attaching a Render Disk
+  // still lands on the ephemeral container filesystem, and the old message then
+  // claimed "stored on a persistent volume ... will survive redeploys", which is
+  // wrong exactly when it matters. Render mounts a disk at the path in
+  // RENDER_DISK_PATH; on any other host a non-bundled dir is a real local disk,
+  // so only warn when we can tell the difference (i.e. we are on Render).
+  const onRender = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID);
+  const viaRenderDisk = Boolean(process.env.RENDER_DISK_PATH && process.env.RENDER_DISK_PATH.trim());
+  const unbackedOnRender = onRender && isPersistent && !viaRenderDisk;
+
+  let note;
+  if (unbackedOnRender) {
+    note = `LUCKYBLOX_DATA_DIR is set to ${dataDir}, but no Render Disk is attached `
+      + '(RENDER_DISK_PATH is unset), so this path is on the EPHEMERAL container '
+      + 'filesystem and WILL BE LOST on redeploy. Attach a Render Disk, or set '
+      + 'LUCKYBLOX_SYNC to mirror to a FREE store instead.';
+  } else if (isPersistent) {
+    note = 'Data is stored on a persistent volume and will survive redeploys.';
+  } else if (remote.enabled) {
+    note = `Data is mirrored to a free ${remote.mode} store and will survive redeploys.`;
+  } else {
+    note = 'Data is stored in the container filesystem and WILL BE LOST on redeploy. '
+      + 'Set LUCKYBLOX_DATA_DIR / attach a Render Disk, OR set LUCKYBLOX_SYNC '
+      + 'to mirror to a FREE store (see server/remoteStore.js).';
+  }
+
   return {
     dataDir,
-    persistent: isPersistent || remote.enabled,
+    // `persistent` stays the headline "will this survive?" answer, but it now
+    // reports FALSE for the unbacked-on-Render case rather than trusting the flag.
+    persistent: (isPersistent && !unbackedOnRender) || remote.enabled,
     localPersistent: isPersistent,
+    onRender,
+    viaRenderDisk,
+    unbacked: unbackedOnRender,
     remote,
-    note: (isPersistent
-      ? 'Data is stored on a persistent volume and will survive redeploys.'
-      : remote.enabled
-        ? `Data is mirrored to a free ${remote.mode} store and will survive redeploys.`
-        : 'Data is stored in the container filesystem and WILL BE LOST on redeploy. '
-          + 'Set LUCKYBLOX_DATA_DIR / attach a Render Disk, OR set LUCKYBLOX_SYNC '
-          + 'to mirror to a FREE store (see server/remoteStore.js).'),
+    note,
   };
 }
 

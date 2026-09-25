@@ -5889,8 +5889,20 @@ storage.restoreFromRemote()
       const store = storage.describeStorage();
       console.log(`[luckyblox] data dir: ${store.dataDir}`);
       console.log(`[luckyblox] persistence: ${store.persistent ? 'ON' : 'OFF'} - ${store.note}`);
+      // Say explicitly what backs the path, so a set-but-unbacked LUCKYBLOX_DATA_DIR
+      // cannot masquerade as a real disk.
+      console.log(`[luckyblox] storage: render=${store.onRender ? 'yes' : 'no'} `
+        + `renderDisk=${store.viaRenderDisk ? 'yes' : 'no'} `
+        + `localPersistent=${store.localPersistent ? 'yes' : 'no'}`);
+      if (store.unbacked) {
+        console.warn('[luckyblox] WARNING: data dir is not backed by a Render Disk. '
+          + 'Attach one, or set LUCKYBLOX_SYNC, or accounts will be lost on redeploy.');
+      }
       if (store.remote && store.remote.enabled) {
         console.log(`[luckyblox] free remote storage: ${store.remote.mode} - ${store.remote.note}`);
+      } else {
+        // Absence of this line is itself the signal: remote sync is not configured.
+        console.log('[luckyblox] free remote storage: not configured (LUCKYBLOX_SYNC unset)');
       }
 
       // Periodically prune expired rate-limit buckets so memory stays bounded.
