@@ -39,6 +39,18 @@
  * key-value service that speaks plain HTTP.
  *
  * ---------------------------------------------------------------------------
+ * Backend C - a local git clone (no credentials at all)
+ * ---------------------------------------------------------------------------
+ *   LUCKYBLOX_SYNC=local
+ *   LUCKYBLOX_SYNC_DIR=<path to a Luckyblox-Storage-1 clone>  (optional)
+ *
+ * Mirrors the data files straight into a sibling checkout of the storage repo
+ * and commits them there with plain `git` if it is installed. This is the
+ * zero-cost option for running the server on the SAME machine as the checkout
+ * (E:\...\Release\Luckyblox-Storage-1): nothing is uploaded and no token is
+ * needed, you just push the clone when you want the copy off the machine.
+ *
+ * ---------------------------------------------------------------------------
  * Behaviour
  * ---------------------------------------------------------------------------
  *   - loadAll():   pull every remembered file into the local data dir on boot.
@@ -50,6 +62,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const FILES = [
   'users.json',
@@ -139,6 +152,26 @@ function loadConfig() {
     };
   }
 
+  if (mode === 'local') {
+    // The sibling clone of the storage repo sitting next to this server, which is
+    // how the project is laid out on disk: <Release>/luckyblox-server and
+    // <Release>/Luckyblox-Storage-1. An explicit path always wins, so the same
+    // code works from any other checkout.
+    const dir = String(
+      process.env.LUCKYBLOX_SYNC_DIR
+      || path.resolve(__dirname, '..', '..', 'Luckyblox-Storage-1'),
+    ).trim();
+
+    return {
+      enabled: true,
+      mode: 'local',
+      dir,
+      // Data lands under the clone's `data/` folder, matching the github backend's
+      // LUCKYBLOX_SYNC_PATH default so the two are interchangeable.
+      dataDir: path.join(dir, String(process.env.LUCKYBLOX_SYNC_PATH || 'data').trim().replace(/^\/+|\/+$/g, '')),
+    };
+  }
+
   return { enabled: false, mode: mode || 'off', reason: 'LUCKYBLOX_SYNC is not set' };
 }
 
@@ -161,6 +194,23 @@ function log(message) {
 
 function warn(message) {
   console.warn(`[luckyblox:sync] ${message}`);
+}
+
+/**
+ * Is a `git` binary available? Checked once and cached. Only the local backend
+ * needs it, and only for the convenience commit - the mirror itself is plain
+ * file writes, which is why a missing git is a warning rather than a failure.
+ */
+let cachedHasGit;
+function hasGit() {
+  if (cachedHasGit !== undefined) return cachedHasGit;
+  try {
+    execFileSync('git', ['--version'], { stdio: 'ignore' });
+    cachedHasGit = true;
+  } catch (error) {
+    cachedHasGit = false;
+  }
+  return cachedHasGit;
 }
 
 /** fetch with a timeout, so a hung remote can never hang the app. */
@@ -353,6 +403,67 @@ async function githubPushBatch(changes, deletions) {
 }
 
 /* ---------------------------------------------------------------------------
+ * Local backend - a sibling git clone of the storage repo
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Write or remove one file inside the local clone's data folder.
+ *
+ * The clone is a normal directory on this machine, so a push is just a file
+ * write. A deletion removes the file (and prunes the now-empty directory) so the
+ * clone matches the server exactly instead of accumulating dead accounts.
+ */
+function localWrite(fileName, data) {
+  const target = path.join(config.dataDir, fileName);
+  try {
+    if (data === null) {
+      if (fs.existsSync(target)) fs.unlinkSync(target);
+      return true;
+    }
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    const tmp = `${target}.tmp-sync`;
+    fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+    fs.renameSync(tmp, target);
+    return true;
+  } catch (error) {
+    warn(`local write ${fileName} failed: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Commit the mirrored files in the clone, so the change is recorded rather than
+ * sitting as an uncommitted edit forever.
+ *
+ * Optional: it needs `git` on PATH. When git is missing the files are still
+ * written - the mirror is useful on its own - so this only warns.
+ */
+function localCommit() {
+  if (!hasGit()) {
+    warn('git is not installed; mirrored files were written but not committed');
+    return;
+  }
+  try {
+    execFileSync('git', ['-C', config.dir, 'add', '--', 'data'], { stdio: 'ignore' });
+    // `git diff --cached --quiet` exits 1 when something is staged. Nothing to
+    // commit is normal (a repeat write of identical data) and must not be an error.
+    try {
+      execFileSync('git', ['-C', config.dir, 'diff', '--cached', '--quiet'], { stdio: 'ignore' });
+      return;
+    } catch (dirty) {
+      execFileSync(
+        'git',
+        ['-C', config.dir, 'commit', '-m', 'luckyblox: sync data', '--no-verify'],
+        { stdio: 'ignore' },
+      );
+      log('committed mirrored data in the local clone');
+    }
+  } catch (error) {
+    warn(`local commit failed: ${error.message}`);
+  }
+}
+
+/* ---------------------------------------------------------------------------
  * Generic HTTP backend - one JSON object holding every file.
  * ------------------------------------------------------------------------- */
 
@@ -411,7 +522,23 @@ async function loadAll(dataDir) {
   const loaded = [];
 
   try {
-    if (config.mode === 'http') {
+    if (config.mode === 'local') {
+      // The clone is just a directory, so the mirror is a file copy. Only files
+      // the clone actually has are restored, so an untouched clone never wipes
+      // the local data dir.
+      for (const fileName of FILES.concat(discoverUserFiles(config.dataDir))) {
+        const mirrored = path.join(config.dataDir, fileName);
+        if (!fs.existsSync(mirrored)) continue;
+        try {
+          const parsed = JSON.parse(fs.readFileSync(mirrored, 'utf8'));
+          if (!parsed || !isMeaningful(parsed)) continue;
+          writeLocal(dataDir, fileName, parsed);
+          loaded.push(fileName);
+        } catch (error) {
+          warn(`local read ${fileName} failed: ${error.message}`);
+        }
+      }
+    } else if (config.mode === 'http') {
       httpCache = await httpPullAll();
       if (!httpCache || typeof httpCache !== 'object') httpCache = {};
       // The http store is one object, so every key it holds is a remembered file.
@@ -533,6 +660,20 @@ async function pushPending() {
   pendingData.clear();
   pendingDeletes.clear();
 
+  if (config.mode === 'local') {
+    // A mirror is synchronous file writes; the commit afterwards is the only
+    // part that shells out, and it is optional.
+    let written = 0;
+    for (const [fileName, data] of changes.entries()) {
+      if (localWrite(fileName, data)) written += 1;
+    }
+    for (const fileName of removals) {
+      if (localWrite(fileName, null)) written += 1;
+    }
+    if (written > 0) localCommit();
+    return { ok: true, pushed: Array.from(changes.keys()), removed: removals };
+  }
+
   if (config.mode === 'http') {
     if (!httpCache) httpCache = {};
     for (const [fileName, data] of changes.entries()) httpCache[fileName] = data;
@@ -548,6 +689,11 @@ async function pushPending() {
 /** Push one file now (used by tests). */
 async function pushNow(fileName, data) {
   if (!enabled) return { ok: false, reason: 'disabled' };
+  if (config.mode === 'local') {
+    const ok = localWrite(fileName, data === null ? null : data);
+    if (ok) localCommit();
+    return { ok, pushed: [fileName] };
+  }
   if (config.mode === 'http') {
     if (!httpCache) httpCache = {};
     httpCache[fileName] = data;
@@ -588,16 +734,29 @@ function describe() {
         + 'to mirror data to a free store (see server/remoteStore.js).',
     };
   }
+  // The local backend mirrors into a sibling checkout rather than a remote host,
+  // so its note must not promise the same thing the network backends do: nothing
+  // leaves the machine until the clone is pushed.
+  const localNote = hasGit()
+    ? `Data is mirrored into the git clone at ${config.dir} and committed there. `
+      + 'Push that clone to get the copy off this machine.'
+    : `Data is mirrored into ${config.dir}, but git is not installed so the files `
+      + 'are written without being committed. Install git to record them.';
+
   return {
     enabled: true,
     mode: config.mode,
     repo: config.mode === 'github' ? config.repo : undefined,
     branch: config.mode === 'github' ? config.branch : undefined,
     path: config.mode === 'github' ? config.dir : undefined,
+    dir: config.mode === 'local' ? config.dir : undefined,
+    git: config.mode === 'local' ? hasGit() : undefined,
     contentSync: SYNC_CONTENT,
     contentDirs: SYNC_CONTENT ? CONTENT_DIRS.map((c) => c.dir) : [],
-    note: `Data is mirrored to a free ${config.mode} store and survives redeploys.`
-      + (SYNC_CONTENT ? ' Content folders are mirrored too.' : ''),
+    note: config.mode === 'local'
+      ? localNote
+      : `Data is mirrored to a free ${config.mode} store and survives redeploys.`
+        + (SYNC_CONTENT ? ' Content folders are mirrored too.' : ''),
   };
 }
 
@@ -687,6 +846,29 @@ async function pushContent(releaseRootDir) {
     changes.set(`content/${entry.key}/_index.json`, rels);
   }
 
+  if (config.mode === 'local') {
+    // Content folders are mirrored as real files under the clone's data folder,
+    // keeping the same `content/<folder>/<rel>` shape the two remote backends use
+    // so the restore path below is identical.
+    let written = 0;
+    for (const [key, data] of changes.entries()) {
+      const target = path.join(config.dataDir, key);
+      try {
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        if (data && typeof data === 'object' && typeof data.__base64 === 'string') {
+          fs.writeFileSync(target, Buffer.from(data.__base64, 'base64'));
+        } else {
+          fs.writeFileSync(target, JSON.stringify(data, null, 2), 'utf8');
+        }
+        written += 1;
+      } catch (error) {
+        warn(`local content write ${key} failed: ${error.message}`);
+      }
+    }
+    if (written > 0) localCommit();
+    return { ok: true, files: written };
+  }
+
   if (config.mode === 'http') {
     if (!httpCache) httpCache = {};
     for (const [key, data] of changes.entries()) httpCache[key] = data;
@@ -704,7 +886,23 @@ async function loadContent(releaseRootDir) {
   let restored = 0;
   const entries = [];
 
-  if (config.mode === 'http') {
+  if (config.mode === 'local') {
+    for (const entry of CONTENT_DIRS) {
+      const indexPath = path.join(config.dataDir, 'content', entry.key, '_index.json');
+      if (!fs.existsSync(indexPath)) continue;
+      let listing;
+      try {
+        listing = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+      } catch (error) {
+        listing = null;
+      }
+      if (!Array.isArray(listing)) continue;
+      for (const rel of listing) {
+        if (String(rel) === '_index.json') continue;
+        entries.push({ folderKey: entry.key, rel, key: `content/${entry.key}/${rel}` });
+      }
+    }
+  } else if (config.mode === 'http') {
     if (!httpCache) {
       try {
         httpCache = await httpPullAll();
@@ -737,22 +935,28 @@ async function loadContent(releaseRootDir) {
   for (const item of entries) {
     const abs = contentAbsPathForFolderKey(releaseRootDir, item.folderKey, item.rel);
     if (!abs) continue;
-    let data = null;
-    try {
-      data = config.mode === 'http' ? httpCache[item.key] : await githubPull(item.key);
-    } catch (error) {
-      warn(`content pull ${item.key} failed: ${error.message}`);
-    }
-    if (data == null) continue;
+
     try {
       fs.mkdirSync(path.dirname(abs), { recursive: true });
+
+      if (config.mode === 'local') {
+        // The clone holds the real bytes for a content file, so this is a copy.
+        const mirrored = path.join(config.dataDir, item.key);
+        if (!fs.existsSync(mirrored)) continue;
+        fs.writeFileSync(abs, fs.readFileSync(mirrored));
+        restored += 1;
+        continue;
+      }
+
+      const data = config.mode === 'http' ? httpCache[item.key] : await githubPull(item.key);
+      if (data == null) continue;
       const encoded = (data && typeof data === 'object' && typeof data.__base64 === 'string')
         ? data.__base64
         : String(data);
       fs.writeFileSync(abs, Buffer.from(encoded, 'base64'));
       restored += 1;
     } catch (error) {
-      warn(`content write ${item.key} failed: ${error.message}`);
+      warn(`content ${item.key} failed: ${error.message}`);
     }
   }
 

@@ -25,7 +25,29 @@
 
       <main class="lb-main">
         <section class="lb-hero">
-          <div class="lb-game-icon" style="width:100px;height:100px;background-image:url('<%= (featuredGame.icon && /^\/|^https?:\/\//.test(featuredGame.icon)) ? featuredGame.icon : '/gameplaceholder/card.png' %>');"></div>
+          <!--
+            The featured game's artwork, as a SQUARE card (1:1), matching the game
+            cards and the game page - one artwork shape everywhere.
+
+            It is a real <img> rather than a background-image so the shared loading
+            spinner (decorateLoadingImages in legacy-nav.js) can cover it while it
+            loads.
+
+            The placeholder art is a SIBLING under the real art, not an either/or
+            branch: the real art is layered on top and, if it 404s, it hides itself
+            and the placeholder underneath is revealed. An either/or branch would
+            only cover a game with NO icon at all and would leave a game with a
+            broken icon URL showing an empty grey box.
+          -->
+          <div class="lb-hero-art lb-loading-block is-loading" style="--lb-loader-size:40px;">
+            <% if (featuredGame.icon && /^\/|^https?:\/\//.test(featuredGame.icon)) { %>
+              <img class="lb-hero-art-img lb-hero-art-top" src="<%= featuredGame.icon %>"
+                   alt="<%= featuredGame.title %>" loading="lazy"
+                   onerror="this.style.display='none';" />
+            <% } %>
+            <img class="lb-hero-art-img lb-hero-art-base" src="/gameplaceholder/card.png"
+                 alt="<%= featuredGame.title %>" loading="lazy" />
+          </div>
           <div>
             <div class="lb-eyebrow">Featured Experience</div>
             <div class="lb-title-block">
@@ -58,11 +80,21 @@
                 <% homeGames.forEach(function (game) { %>
                   <a class="lb-game-card" href="/game/<%= game.placeId %>">
                     <!--
-                      The card thumbnail is covered by the shared loading block
-                      (decorateLoadingImages in legacy-nav.js adds .is-loading and
-                      clears it on load). The size is raised from the 28px
-                      default because a card tile is a large, empty surface and a
-                      small glyph in the middle of it reads as a broken image.
+                      A SQUARE card (1:1), matching the game page and the featured
+                      hero: game artwork is always a square icon, so it is never
+                      shown as a wide banner.
+
+                      The game's own art is layered ON TOP of the placeholder card,
+                      so a game with no icon shows real art and a game whose icon
+                      URL 404s reveals the placeholder instead of an empty box. The
+                      onerror also marks the frame .is-placeholder, which hides the
+                      broken image outright.
+
+                      These are lazy images, so the shared loading block
+                      (decorateLoadingImages in legacy-nav.js) covers the tile while
+                      it loads. The size is raised from the 28px default because a
+                      card tile is a large, empty surface and a small glyph in the
+                      middle of it reads as a broken image.
                     -->
                     <div class="lb-game-card-thumb" style="--lb-loader-size:44px;">
                       <% if (game.icon && /^\/|^https?:\/\//.test(game.icon) && game.icon.indexOf('unsplash') === -1) { %>

@@ -3384,8 +3384,12 @@ button.roblox-sidebar-link { min-height: 34px; }
 .roblox-asset-tag { margin-left: auto; font-size: 12px; color: var(--lb-muted); flex: 0 0 auto; }
 
 /* --- Game cards ---------------------------------------------------------- */
+/* Square tiles need a wider minimum than the old 16:9 ones did: at 168px a
+   square card is only 168px tall as well, which crowds the title and subtitle
+   underneath it. 160px keeps 5-6 tiles per row on a desktop column while leaving
+   the caption room to breathe. */
 .lb-game-grid,
-.roblox-game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 16px 12px; }
+.roblox-game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 18px 14px; }
 .lb-game-card,
 .roblox-game-card { display: block; color: var(--lb-ink); }
 .lb-game-card:hover,
@@ -3395,10 +3399,11 @@ button.roblox-sidebar-link { min-height: 34px; }
 .roblox-game-card-thumb {
   position: relative;
   width: 100%;
-  /* The 2021 card art is 16:9, but a game's ICON is square (Card_512x512).
-     The frame stays 16:9; the image below is fitted rather than cropped so the
-     whole thumbnail is visible. */
-  aspect-ratio: 16 / 9;
+  /* A game's art is its square Card_512x512 icon, so the card frame is square.
+     It was 16:9, which is the shape of the wide Big_ art and NOT the shape of a
+     game icon - a square icon in a 16:9 frame letterboxes into grey bars on both
+     sides and reads as a half-broken image. */
+  aspect-ratio: 1 / 1;
   border-radius: var(--lb-radius);
   overflow: hidden;
   background: #e3e6ea;
@@ -3422,10 +3427,16 @@ button.roblox-sidebar-link { min-height: 34px; }
   object-position: center center;
 }
 
-/* A wide 16:9 hero image should still fill the frame edge to edge - only a
-   square/portrait icon needs the letterboxed fit above. */
-.lb-game-card-thumb img.lb-thumb-wide,
-.roblox-game-card-thumb img.lb-thumb-wide {
+/* A wide image (the Big_ art, 596x335) must still not be CROPPED to fit the
+   square frame, so it gets the same fitted treatment as everything else. If a
+   wide image is genuinely wanted edge-to-edge, opt in with this class and accept
+   the crop.
+
+   NOTE: this used to be the default for any wide image, which is why a wide
+   image filled the frame while a square icon letterboxed - two different looks
+   from the same card. Fitting is now the rule and cropping the exception. */
+.lb-game-card-thumb img.lb-thumb-cover,
+.roblox-game-card-thumb img.lb-thumb-cover {
   object-fit: cover;
 }
 .roblox-game-card-placeholder { z-index: 0; }
@@ -3486,12 +3497,49 @@ button.roblox-sidebar-link { min-height: 34px; }
 .roblox-game-thumb {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  /* A CARD, not a wide banner. The game art is the square Card_512x512 icon, so
+     the frame is square (1:1) and the art is fitted inside it.
+
+     This used to be aspect-ratio: 16/9. The placeholder art that ships in the
+     repo is NOT 512x512 - Card_512x512/...png is 236x236 (square, but small) and
+     Big_/image (44).png is 596x335 (wide) - so a 16:9 frame made the square icon
+     letterbox into two grey bars and made the wide Big_ art fill the box. Neither
+     looked like the square game card the real page shows. */
+  aspect-ratio: 1 / 1;
   border-radius: var(--lb-radius);
   overflow: hidden;
   background: #e3e6ea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.roblox-game-thumb-img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Fit the WHOLE artwork inside the square frame - never crop it. The source art
+   is whatever shape it is (236x236 square, or 596x335 wide), so `cover` would
+   cut the edges off the square icon and `contain` on a wide image would leave
+   bars. `contain` is correct for both: the square icon fills the square exactly,
+   and any wider art is scaled down to fit with the frame's own grey as the
+   matte rather than an invented crop. */
+.roblox-game-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+  display: block;
+}
+
+/* The placeholder card sits UNDERNEATH the game's own artwork. The real art is
+   absolutely positioned on top of it, so a game with no artwork (or one whose
+   artwork 404s) shows the placeholder card instead of an empty frame. */
+.roblox-game-thumb-base {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.roblox-game-thumb-top {
+  position: relative;
+  z-index: 1;
+}
 
 .lb-game-info,
 .roblox-game-info { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
@@ -3565,11 +3613,16 @@ button.roblox-sidebar-link { min-height: 34px; }
 .roblox-game-meta-row > span { color: var(--lb-muted); }
 
 /* Play button overlaid on the thumbnail. It sits bottom-LEFT, the way the 2021
-   page placed it; centring it collided with the artwork watermark. */
+   page placed it; centring it collided with the artwork watermark.
+
+   z-index matters here: the artwork is itself positioned (the real art at z-index
+   1, over the placeholder at 0), so without an explicit layer the button would be
+   painted underneath the image and disappear. */
 .lb-game-thumb .roblox-play-button {
   position: absolute;
   left: 14px;
   bottom: 14px;
+  z-index: 2;
   transform: none;
   height: 48px;
   padding: 0 30px;
@@ -3665,6 +3718,46 @@ button.roblox-sidebar-link { min-height: 34px; }
   box-shadow: var(--lb-shadow);
   padding: 16px;
   margin-bottom: 16px;
+}
+
+/* The featured game's artwork: a square card, the same shape as a game card and
+   the game page's own card, so one artwork shape is used across the site.
+
+   It was a background-image on a 100x100 div, which has two problems: the shared
+   loading spinner cannot cover a background-image, and when the art 404s the div
+   stays as a tinted empty box rather than falling back to real placeholder art. */
+.lb-hero-art {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  flex: 0 0 auto;
+  border-radius: var(--lb-radius);
+  overflow: hidden;
+  background: #e3e6ea;
+  border: 1px solid var(--lb-line-soft);
+}
+
+.lb-hero-art-img {
+  width: 100%;
+  height: 100%;
+  /* Fit the whole artwork, never crop it - the source art is a square icon or
+     the wider Big_ image, and a crop would cut the icon's edges off. */
+  object-fit: contain;
+  object-position: center center;
+  display: block;
+}
+
+/* The placeholder sits UNDERNEATH the game's own artwork, so a game with no icon
+   still shows real art and a game whose icon URL 404s reveals the placeholder
+   instead of an empty grey box. */
+.lb-hero-art-base {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.lb-hero-art-top {
+  position: relative;
+  z-index: 1;
 }
 .lb-title-block,
 .roblox-title-block { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }

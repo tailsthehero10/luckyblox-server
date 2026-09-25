@@ -29,12 +29,32 @@ LuckyBlox is a local Roblox-style game platform served from a release folder. Ap
 - Data lives in `Webserver/http-db-bridge/data/`. On a host without a persistent
   disk (Render free tier) the container filesystem is wiped on redeploy.
 - `server/remoteStore.js` mirrors the data files to a FREE store so they survive
-  with no paid disk. Modes: `LUCKYBLOX_SYNC=github` (a separate private repo +
-  a fine-grained token with Contents: Read+Write) or `LUCKYBLOX_SYNC=http`
-  (any JSON blob endpoint).
+  with no paid disk. Three modes, chosen by `LUCKYBLOX_SYNC`:
+  - `github` — commits to the private repo (default
+    `tailsthehero10/Luckyblox-Storage-1`). Needs `LUCKYBLOX_SYNC_TOKEN`: a
+    fine-grained PAT scoped to that one repo with Contents: Read+Write.
+    Batches every changed file into ONE commit via the Git Data API.
+  - `http` — GET/PUT one JSON object at `LUCKYBLOX_SYNC_URL` (any blob store).
+  - `local` — mirrors straight into a sibling clone of the storage repo
+    (`<release>/../Luckyblox-Storage-1`, or `LUCKYBLOX_SYNC_DIR`) and commits
+    there with git. No token, no network, no cost; use it when the server runs on
+    the same machine as the clone.
 - `server/storage.js` pulls on boot (`restoreFromRemote`) and pushes on every
   write (debounced, best-effort). Unset `LUCKYBLOX_SYNC` = local-only, unchanged.
+- Per-user `<id>.json` files (inventory, currency, membership) sync too, not just
+  the named files in `FILES`.
 - Test: `node tests/remoteStore.test.js`.
+
+## Image / artwork rules
+- Game artwork is a SQUARE card (1:1), everywhere: the game page thumbnail, the
+  home game cards and the home featured hero. It is never a wide banner.
+- The shipped placeholder art is NOT 512x512 despite the folder name:
+  `gameplaceholder/Card_512x512/*.png` is 236x236 and `gameplaceholder/Big_/*`
+  is 596x335 (wide). Fit art with `object-fit: contain` inside a square frame;
+  `cover` crops the square icon's edges off.
+- Artwork is always a real `<img>` layered over a placeholder sibling, never a
+  CSS `background-image`: the shared loading spinner can only cover an element,
+  and a 404 must reveal the placeholder rather than an empty tinted box.
 
 ## Client install model
 - The content client lives in a folder literally named `Luckyblox` (see `server/clientLauncher.js`).

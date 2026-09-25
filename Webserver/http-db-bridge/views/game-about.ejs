@@ -14,13 +14,22 @@
 
   The 2021 layout was a two-column body:
 
-    LEFT   the 16:9 thumbnail with the green Play button over it, then the
+    LEFT   the game CARD (1:1) with the green Play button over it, then the
            About / Store / Servers underline tabs. Under About: the full stat
            grid (Playing, Visits, Favorites, Created, Updated, Genre).
     RIGHT  the game icon, the title, "By <creator>", the Playing / Favorites /
            Visits stats, the like/dislike bar with its percentage, the Favorite
-           button, the Play button, the Server Size and Genre rows, then the
-           Description section.
+           button, the Server Size and Genre rows, then the Description section.
+
+  The left column is a square card, not a wide banner. Game artwork on LuckyBlox
+  is the square Card_512x512 icon, so the frame is 1:1 and the art is fitted
+  inside it (object-fit: contain). The placeholder art that ships in the repo is
+  NOT actually 512x512 - Card_512x512/*.png is 236x236 and Big_/* is 596x335 - so
+  a 16:9 frame used to letterbox the square icon into grey bars.
+
+  There is deliberately ONE Play button on this page (the one overlaid on the
+  card). An earlier revision had a second, smaller Play button in the right
+  column; the real page has only the one.
 
   Every number is real: games.json, places.json, or the live orchestrator.
 %>
@@ -61,9 +70,20 @@
               noise.
             -->
             <div class="lb-game-thumb lb-loading-block is-loading" id="gameThumbBlock" style="--lb-loader-size:64px;">
-              <img class="roblox-game-thumb-img" src="<%= thumbUrl %>" alt="<%= g.title %> thumbnail"
-                   id="gameThumb"
-                   onerror="this.style.display='none';var b=document.getElementById('gameThumbBlock');if(b)b.classList.remove('is-loading');" />
+              <!--
+                The card art, layered like the home hero: the game's own artwork on
+                top of the placeholder. If the game's art 404s it hides itself and
+                the placeholder under it is revealed, instead of leaving the square
+                frame as an empty grey box.
+              -->
+              <% if (game.icon && /^\/|^https?:\/\//.test(game.icon)) { %>
+                <img class="roblox-game-thumb-img roblox-game-thumb-top" src="<%= game.icon %>"
+                     alt="<%= g.title %> card"
+                     id="gameThumb"
+                     onerror="this.style.display='none';var b=document.getElementById('gameThumbBlock');if(b)b.classList.remove('is-loading');" />
+              <% } %>
+              <img class="roblox-game-thumb-img roblox-game-thumb-base" src="/gameplaceholder/card.png"
+                   alt="<%= g.title %>" id="gameThumbFallback" />
               <button class="lb-btn lb-btn-primary roblox-play-button" type="button"
                       id="playBtn" data-launch-place-id="<%= placeId %>">
                 <img class="ch-ico" src="/icons/play.svg" alt="" /> Play
@@ -273,15 +293,37 @@
       var loading = window.LBLoading;
 
       // --- Thumbnail ---------------------------------------------------------
-      // The block is server-rendered with .is-loading so the spinner is already
-      // up during the image request; drop it when the artwork settles.
-      var thumb = document.getElementById('gameThumb');
+      // The block is server-rendered with .is-loading so the spinner is already up
+      // during the image request; drop it when the artwork settles.
+      //
+      // The game's own art and the placeholder under it are separate elements, and
+      // a game may have neither as far as JS is concerned, so this waits on every
+      // image in the block rather than on one hardcoded id - otherwise a game with
+      // no icon of its own would spin forever, because the element the old code
+      // looked for was never rendered.
       var thumbBlock = document.getElementById('gameThumbBlock');
-      if (thumb && thumbBlock) {
+      if (thumbBlock) {
+        var thumbImages = thumbBlock.querySelectorAll('img');
         var clearThumb = function () { thumbBlock.classList.remove('is-loading'); };
-        if (thumb.complete) clearThumb();
-        thumb.addEventListener('load', clearThumb, { once: true });
-        thumb.addEventListener('error', clearThumb, { once: true });
+        var remaining = thumbImages.length;
+
+        if (remaining === 0) {
+          clearThumb();
+        } else {
+          thumbImages.forEach(function (img) {
+            var settle = function () {
+              remaining -= 1;
+              if (remaining <= 0) clearThumb();
+            };
+            // A cached image has already finished, so it will never fire load.
+            if (img.complete) {
+              settle();
+              return;
+            }
+            img.addEventListener('load', settle, { once: true });
+            img.addEventListener('error', settle, { once: true });
+          });
+        }
       }
 
       // --- Live player count -------------------------------------------------

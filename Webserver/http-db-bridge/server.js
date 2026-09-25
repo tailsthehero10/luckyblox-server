@@ -4061,10 +4061,17 @@ function renderGamePage2021(req, res, placeId) {
     currency: getCurrencyForUser(user),
     createdAt,
     updatedAt,
-    // Roblox's own placeholder art: Card_512x512 for the icon, Big_ for the wide
-    // hero thumbnail on the game's own page.
+    // Roblox's own placeholder art: the SQUARE card (Card_512x512) is both the
+    // page icon and the page thumbnail, because the game page shows a card.
+    //
+    // The thumbnail used to be '/gameplaceholder/big.png' - the wide Big_ art,
+    // handed out unconditionally for every game. Two things were wrong with it:
+    // every experience displayed the same 596x335 banner regardless of its own
+    // artwork, and the square card frame could never be satisfied by a wide
+    // image. When a game has its own icon, both fields use it, so the card shows
+    // THAT game's art.
     gameIcon: game.icon && /^\/|^https?:\/\//.test(game.icon) ? game.icon : '/gameplaceholder/card.png',
-    gameThumb: '/gameplaceholder/big.png',
+    gameThumb: game.icon && /^\/|^https?:\/\//.test(game.icon) ? game.icon : '/gameplaceholder/card.png',
     creatorName: game.developer || 'LuckyBlox Studio',
     playing,
     visits: Number(game.visits) || 0,
@@ -6736,9 +6743,13 @@ storage.restoreFromRemote()
           + 'Attach one, or set LUCKYBLOX_SYNC, or accounts will be lost on redeploy.');
       }
       if (store.remote && store.remote.enabled) {
-        console.log(`[luckyblox] free remote storage: ${store.remote.mode} - ${store.remote.note}`);
+        // "local" is a sibling git clone, not a remote host - calling it remote
+        // storage in the log would mislead anyone reading the boot output into
+        // thinking the data had left the machine.
+        const label = store.remote.mode === 'local' ? 'local mirror' : 'free remote storage';
+        console.log(`[luckyblox] ${label}: ${store.remote.mode} - ${store.remote.note}`);
       } else {
-        // Absence of this line is itself the signal: remote sync is not configured.
+        // Absence of this line is itself the signal: sync is not configured.
         console.log('[luckyblox] free remote storage: not configured (LUCKYBLOX_SYNC unset)');
       }
 
