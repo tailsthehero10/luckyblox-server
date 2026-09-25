@@ -429,7 +429,19 @@ function resolveSessionUser(req) {
     return null;
   }
 
-  return getUser(session.userId || 1);
+  // A session must name a real account. This used to be `session.userId || 1`,
+  // so a malformed session record with no userId resolved to account 1 - the
+  // deployment OWNER - and made req.sessionUser the owner for that request.
+  // A session with no usable id is simply not a session.
+  const userId = Number(session.userId);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    activeSessions.delete(sessionId);
+    return null;
+  }
+
+  const user = getUser(userId);
+  // Never let a session resolve to an account that does not exist.
+  return user && (user.userId || user.id) ? user : null;
 }
 
 function applySessionCookie(res, userId, req) {
@@ -4785,6 +4797,167 @@ app.post('/api/avatar/save', (req, res) => {
   });
 });
 
+/**
+ * /v4/avatar - the avatar model in the v4 (modern) shape.
+ *
+ * WHY THIS EXISTS: the 2021M/2022M clients request /v4/avatar. This server only
+ * ever answered /api/avatar_v1, so that request had no local handler and fell
+ * through to the real avatar.roblox.com, which answers 500 for a private-server
+ * user and made the character come out wrong. Serving the path HERE is what
+ * keeps the client on this site - it never reaches Roblox at all.
+ *
+ * This is LuckyBlox's OWN shape, built entirely from this server's data (the
+ * account record, avatars.json-equivalent fields, assets.json). It does NOT
+ * proxy or fetch Roblox, so the site works with no internet and no Roblox
+ * account, and the response is identical every call.
+ *
+ * The v4 model differs from v1: it names the body colours in a nested
+ * bodyColors object, describes the rig as "R15"/"R6" with a full scale set, and
+ * reports each worn item with its type name rather than a bare id.
+ */
+function buildAvatarModelV4(userId) {
+  const user = getUser(userId);
+  const avatar = user && user.avatar ? user.avatar : {};
+  const assetsById = getAssets();
+
+  // The rig. R15 and R6 are the only two this server models.
+  const playerAvatarType = String(
+    user.avatarType || avatar.playerAvatarType || 'R15',
+  );
+
+  // Body colours: the stored model uses Roblox's BrickColor names, the account
+  // may only have hex. Read whichever exists, and never invent a colour.
+  const storedColors = avatar.bodyColors || {};
+  const hex = avatar.bodyColorHex || {};
+
+  const colorFor = (part) => {
+    if (storedColors[part]) return String(storedColors[part]);
+    if (hex[part]) return String(hex[part]);
+    return null;
+  };
+
+  const bodyColors = {
+    headColor: colorFor('headColor'),
+    torsoColor: colorFor('torsoColor'),
+    rightArmColor: colorFor('rightArmColor'),
+    leftArmColor: colorFor('leftArmColor'),
+    rightLegColor: colorFor('rightLegColor'),
+    leftLegColor: colorFor('leftLegColor'),
+  };
+
+  // Worn items, resolved against this site's own asset catalogue so each entry
+  // carries a real name and type instead of a bare number.
+  const wearing = Array.isArray(user.currentlyWearing) ? user.currentlyWearing : [];
+  const assets = wearing.map((rawId) => {
+    const id = Number(rawId);
+    const local = assetsById[String(rawId)] || null;
+    return {
+      id: Number.isFinite(id) ? id : 0,
+      name: (local && local.name) || 'Asset',
+      assetType: {
+        id: Number((local && local.assetTypeId) || 0),
+        name: (local && (local.assetType || local.className)) || 'Asset',
+      },
+      currentVersionId: null,
+    };
+  });
+
+  // Roblox's default R15 scale set, so a client always receives complete numbers
+  // and never a partial rig it has to repair itself.
+  const defaultScales = {
+    height: 1,
+    width: 1,
+    head: 1,
+    depth: 1,
+    proportion: 1,
+    bodyType: 0,
+  };
+  const scales = Object.assign({}, defaultScales, avatar.scales || {});
+
+  return {
+    userId: Number(user.userId || user.id || userId || 1),
+    username: user.username || null,
+    displayName: user.displayName || user.username || null,
+    playerAvatarType,
+    scales,
+    bodyColors,
+    bodyColorHex: hex,
+    assets,
+    defaultShirtApplied: Boolean(avatar.defaultShirtApplied),
+    defaultPantsApplied: Boolean(avatar.defaultPantsApplied),
+    emotes: Array.isArray(user.emotes) ? user.emotes : [],
+    // Provenance: always this server. Never 'roblox' - this route does not
+    // contact Roblox, so the client can trust the model is local.
+    source: 'luckyblox',
+  };
+}
+
+/**
+ * Resolve the account an avatar request is FOR.
+ *
+ * Identity comes from the session only. A bare ?userId= is NOT trusted: it used
+ * to be, which meant a signed-out caller could ask for userId=1 and be handed
+ * the deployment OWNER's avatar (and admin flags) - the same guest-becomes-owner
+ * leak this server has at /api/v1/me. A guest asking for an arbitrary id is
+ * refused instead of silently upgraded.
+ *
+ * Returns { userId } on success, or { error } to be returned to the caller.
+ */
+function resolveAvatarRequestUser(req) {
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  if (!sessionUser) {
+    return { error: 'sign-in-required' };
+  }
+  const sessionId = Number(sessionUser.userId || sessionUser.id);
+  if (!Number.isFinite(sessionId) || sessionId <= 0) {
+    return { error: 'sign-in-required' };
+  }
+
+  // A session may look up its OWN id only. Any other id is ignored, not obeyed.
+  const requested = req.query.userId || req.query.userid;
+  if (requested != null && Number(requested) !== sessionId) {
+    return { error: 'forbidden' };
+  }
+
+  return { userId: sessionId };
+}
+
+// v4 is the shape the 2021M/2022M clients ask for.
+app.get('/v4/avatar', (req, res) => {
+  const resolved = resolveAvatarRequestUser(req);
+  if (resolved.error === 'sign-in-required') {
+    return res.status(401).json({ ok: false, error: 'sign-in-required', message: 'Sign in to load an avatar.' });
+  }
+  if (resolved.error === 'forbidden') {
+    return res.status(403).json({ ok: false, error: 'forbidden', message: 'You can only load your own avatar.' });
+  }
+  return res.json(buildAvatarModelV4(resolved.userId));
+});
+
+// The modern client also probes these two sibling paths on the same host before
+// it gives up and reaches for Roblox. Answering them keeps every avatar request
+// on this server.
+app.get('/v4/avatar/avatar-rules', (req, res) => {
+  res.json({
+    ok: true,
+    playerAvatarType: 'R15',
+    scales: { height: 1, width: 1, head: 1, depth: 1, proportion: 1, bodyType: 0 },
+    bodyColors: {},
+    source: 'luckyblox',
+  });
+});
+
+app.get('/v3/avatar', (req, res) => {
+  const resolved = resolveAvatarRequestUser(req);
+  if (resolved.error === 'sign-in-required') {
+    return res.status(401).json({ ok: false, error: 'sign-in-required', message: 'Sign in to load an avatar.' });
+  }
+  if (resolved.error === 'forbidden') {
+    return res.status(403).json({ ok: false, error: 'forbidden', message: 'You can only load your own avatar.' });
+  }
+  return res.json(buildAvatarModelV4(resolved.userId));
+});
+
 app.get('/v1/avatar-fetch', (req, res) => {
   const userId = req.query.userId || req.query.userid || 1;
   const placeId = req.query.placeId || req.query.placeid || 1818;
@@ -5963,26 +6136,35 @@ app.get('/studio-open-place/v1/openplace', (req, res) => {
 });
 
 app.get('/api/v1/me', (req, res) => {
-  // Prefer the authenticated session. The query/header id is only honoured for
-  // the caller's own id - it used to let any request read another account
-  // (including the owner's) by naming it, and defaulted to id 1 for anonymous
-  // callers, which answered every guest with the deployment owner.
+  // Identity is the SESSION and nothing else.
+  //
+  // This route used to fall back to id 1 for any signed-out caller, and 1 is
+  // OWNER_USER_ID - so an anonymous request was told `owner: true, admin: true`
+  // and handed the owner's serialized account. That is the guest-becomes-owner
+  // leak. A signed-out visitor now gets an explicit guest answer with no account
+  // attached, and a claimed id is never used to resolve an identity.
   const sessionUser = req.sessionUser || resolveSessionUser(req);
-  const claimedId = req.query.userId || req.headers['x-user-id'];
-  const sessionId = sessionUser ? (sessionUser.userId || sessionUser.id) : null;
 
-  // A claimed id that does not match the session is ignored rather than acted on.
-  const effectiveId = sessionId != null
-    ? sessionId
-    : (claimedId != null ? claimedId : 1);
+  if (!sessionUser) {
+    return res.json({
+      ok: true,
+      signedIn: false,
+      owner: false,
+      admin: false,
+      guest: true,
+      user: null,
+    });
+  }
 
-  const user = getUser(effectiveId);
+  const sessionId = Number(sessionUser.userId || sessionUser.id);
+  const user = getUser(sessionId);
   res.json({
     ok: true,
-    signedIn: Boolean(sessionUser),
+    signedIn: true,
     owner: isOwnerUser(user),
     admin: isAdminUser(user),
-    user: serializeUser(user.userId || effectiveId || 1),
+    guest: false,
+    user: serializeUser(user.userId || sessionId),
   });
 });
 
@@ -5994,11 +6176,24 @@ app.get('/api/v1/me', (req, res) => {
  */
 app.get('/api/me', (req, res) => {
   const sessionUser = req.sessionUser || resolveSessionUser(req);
-  const userId = sessionUser ? (sessionUser.userId || sessionUser.id || 1) : 1;
+
+  // A signed-out caller has NO wallet. Returning user 1's Robux here was another
+  // face of the same leak: a guest read the owner's balance and currency.
+  if (!sessionUser) {
+    return res.json({
+      ok: true,
+      signedIn: false,
+      guest: true,
+      user: null,
+    });
+  }
+
+  const userId = Number(sessionUser.userId || sessionUser.id);
   const user = getUser(userId);
   res.json({
     ok: true,
-    signedIn: Boolean(sessionUser),
+    signedIn: true,
+    guest: false,
     user: {
       userId: Number(user.userId || userId),
       username: user.username,

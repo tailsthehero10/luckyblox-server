@@ -20,8 +20,8 @@
   Expects: optional `withSelect` (default true).
 -->
 <% var spWithSelect=(typeof withSelect !=='undefined' ) ? withSelect : true; %>
-  <script src="/loading.js"></script>
-  <%- include('partials/scripts') %>
-  <% if (spWithSelect) { %>
-    <script src="/lb-select.js"></script>
-    <% } %>
+<script src="/loading.js"></script>
+<script src="/legacy-nav.js"></script>
+<% if (spWithSelect) { %>
+  <script src="/lb-select.js"></script>
+<% } %>
