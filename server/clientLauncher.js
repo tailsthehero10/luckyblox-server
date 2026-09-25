@@ -66,6 +66,38 @@ function candidateRoots() {
 }
 
 /**
+ * Compare two version directory names the way a human reads them.
+ *
+ * A plain string sort gets multi-digit segments BACKWARDS: "2021.10" sorts
+ * before "2021.9" because '1' < '9', so the "newest wins" walk below would pick
+ * the OLDER build and launch a stale client - silently, and only once a project
+ * reached a two-digit segment. Splitting on the separators versions actually use
+ * and comparing numerically fixes it; non-numeric names fall back to a string
+ * compare so the order stays deterministic.
+ */
+function compareVersions(a, b) {
+  const pa = String(a || '').split(/[.\-_]/);
+  const pb = String(b || '').split(/[.\-_]/);
+  const len = Math.max(pa.length, pb.length);
+
+  for (let i = 0; i < len; i += 1) {
+    const ra = i < pa.length ? pa[i] : '0';
+    const rb = i < pb.length ? pb[i] : '0';
+    const na = Number(ra);
+    const nb = Number(rb);
+    const bothNumeric = Number.isFinite(na) && Number.isFinite(nb) && ra !== '' && rb !== '';
+
+    if (bothNumeric) {
+      if (na !== nb) return na < nb ? -1 : 1;
+    } else if (ra !== rb) {
+      return ra < rb ? -1 : 1;
+    }
+  }
+
+  return String(a).localeCompare(String(b));
+}
+
+/**
  * Locate the client binary under an install root.
  *
  * Inside a root the binary is either directly present (the bundled build) or
@@ -88,7 +120,8 @@ function findBinaryInRoot(root) {
     versions = fs.readdirSync(versionsDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
-      .sort();
+      // Numeric-aware, so Versions/2021.10 beats Versions/2021.9.
+      .sort(compareVersions);
   } catch (error) {
     return null;
   }

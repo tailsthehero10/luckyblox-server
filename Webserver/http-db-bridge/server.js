@@ -2327,11 +2327,47 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/api/studio/build-info', (req, res) => {
-  res.json({ ok: true, ...getStudioBuildInfo() });
+  // Report the download URL alongside the path, so an installer on another
+  // machine can actually FETCH Studio. The executablePath below is the server's
+  // own filesystem path, which is meaningless to a remote client - an installer
+  // that copied from it silently installed nothing.
+  const info = getStudioBuildInfo();
+  const available = Boolean(info.executablePath && fs.existsSync(info.executablePath));
+  res.json({
+    ok: true,
+    ...info,
+    available,
+    binaryName: path.basename(info.executablePath || 'RobloxStudioBeta.exe'),
+    binarySize: available ? fs.statSync(info.executablePath).size : 0,
+    downloadUrl: available ? '/download/studio/binary' : null,
+  });
 });
 
 app.get('/api/studio/update-manifest', (req, res) => {
   res.json(getStudioUpdateManifest());
+});
+
+/**
+ * Download the Studio binary.
+ *
+ * Mirrors /download/client/binary so an installer can fetch BOTH surfaces from
+ * the same server. Refuses when no build is on disk rather than streaming
+ * something unrelated.
+ */
+app.get('/download/studio/binary', (req, res) => {
+  const info = getStudioBuildInfo();
+  const executable = info.executablePath;
+  if (!executable || !fs.existsSync(executable)) {
+    return res.status(404).json({
+      ok: false,
+      error: 'studio-build-not-available',
+      message: 'No LuckyBlox Studio build is published on this server.',
+    });
+  }
+
+  res.set('X-LuckyBlox-Build', String(info.buildId || ''));
+  res.set('X-LuckyBlox-Version', String(info.version || ''));
+  return res.download(executable, path.basename(executable));
 });
 
 app.get('/api/studio/config', (req, res) => {

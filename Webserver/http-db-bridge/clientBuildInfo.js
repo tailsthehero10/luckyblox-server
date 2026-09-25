@@ -42,6 +42,36 @@ const CLIENT_BINARY = process.platform === 'win32' ? 'RobloxPlayerBeta.exe' : 'R
 const CHANNEL = String(process.env.LUCKYBLOX_CLIENT_CHANNEL || 'production').trim() || 'production';
 
 /**
+ * Compare two version directory names the way a human reads them.
+ *
+ * The same trap as server/clientLauncher.js: a plain string sort puts
+ * "2021.10" BEFORE "2021.9" (because '1' < '9'), so "newest wins" would select
+ * the older build - and here that means the manifest would advertise and serve a
+ * stale client. Segment-wise numeric comparison fixes it.
+ */
+function compareVersions(a, b) {
+  const pa = String(a || '').split(/[.\-_]/);
+  const pb = String(b || '').split(/[.\-_]/);
+  const len = Math.max(pa.length, pb.length);
+
+  for (let i = 0; i < len; i += 1) {
+    const ra = i < pa.length ? pa[i] : '0';
+    const rb = i < pb.length ? pb[i] : '0';
+    const na = Number(ra);
+    const nb = Number(rb);
+    const bothNumeric = Number.isFinite(na) && Number.isFinite(nb) && ra !== '' && rb !== '';
+
+    if (bothNumeric) {
+      if (na !== nb) return na < nb ? -1 : 1;
+    } else if (ra !== rb) {
+      return ra < rb ? -1 : 1;
+    }
+  }
+
+  return String(a).localeCompare(String(b));
+}
+
+/**
  * Which build the installer should fetch.
  *
  * Derived from the newest build found on disk so the manifest can never point at
@@ -73,7 +103,7 @@ function resolveSourceDir() {
       versions = fs.readdirSync(versionsDir, { withFileTypes: true })
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name)
-        .sort();
+        .sort(compareVersions);
     } catch (error) {
       continue;
     }

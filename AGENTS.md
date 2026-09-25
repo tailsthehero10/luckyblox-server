@@ -56,13 +56,34 @@ LuckyBlox is a local Roblox-style game platform served from a release folder. Ap
 - `Webserver/http-db-bridge/clientBuildInfo.js` is the server half of a
   Roblox-style updater. Endpoints: `GET /api/client/build-info`,
   `GET /api/client/update-manifest`, `GET /v1/client/version/:channel`,
-  `GET /download/client/binary`.
+  `GET /download/client/binary`, and the Studio twin `GET /download/studio/binary`.
 - The manifest reports the build actually present on disk (`available: false`
   when there is none), so an installer never downloads a build that does not
   exist. Pin a version with `LUCKYBLOX_CLIENT_VERSION`; pick the channel with
   `LUCKYBLOX_CLIENT_CHANNEL` (default `production`).
 - `/api/client/status` reports the published build alongside the install state,
   so the site can distinguish installed-and-current from installed-and-stale.
+
+## Installer
+- `tools/installer/LuckybloxInstaller.cs` is a single-file Windows installer +
+  updater for BOTH the Player and Studio. It installs to
+  `<root>\Luckyblox\Versions\<version>\`, keeps old versions for rollback, and
+  only ever repoints `version.txt` after a download is verified — it never
+  overwrites a working build.
+- Build with `tools/installer/build-installer.bat` (finds the in-box `csc`).
+  It does NOT need `Microsoft.CSharp`: the source avoids the `dynamic` keyword.
+- Switches: `/S` silent, `/Check` report state only, `/Update`, `/Force`,
+  `/Uninstall`, `/root <dir>`, `/base <url>`. `%LUCKYBLOX_INSTALLER_BASE%` bakes
+  a server URL in at build time; otherwise it reads `installer.config.txt`, then
+  the launcher's `Settings/baseurl.txt`.
+- The Apps-&-features uninstall entry points at a copy of the installer kept
+  inside the install folder, so it still works after the original is deleted.
+
+## Version ordering
+- Version directory names are compared NUMERICALLY (`compareVersions` in
+  `server/clientLauncher.js` and `Webserver/http-db-bridge/clientBuildInfo.js`).
+  A plain string sort puts `2021.10` before `2021.9`, which would silently
+  launch or serve the OLDER build. Guarded by `tests/client-version-order.test.js`.
 
 ## Loading UI (the spinner)
 - The shipping artwork is `public/img/loading.gif`, served from this server (not

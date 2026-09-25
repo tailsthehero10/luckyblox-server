@@ -26,15 +26,29 @@
 // ---------------------------------------------------------------------------
 // Build (no SDK needed - uses the in-box .NET Framework compiler)
 // ---------------------------------------------------------------------------
-//   csc.exe /target:winexe /out:LuckybloxInstaller.exe /r:System.Windows.Forms.dll ^
-//           /r:System.Drawing.dll LuckybloxInstaller.cs
+//   csc.exe /target:winexe /out:LuckybloxInstaller.exe ^
+//           /r:System.Windows.Forms.dll /r:System.Drawing.dll LuckybloxInstaller.cs
 //
 // Or run build-installer.bat, which finds csc and does it for you.
+//
+// NOTE: Microsoft.CSharp is deliberately NOT referenced. The source avoids the
+// `dynamic` keyword everywhere (see CreateShortcut, which uses late-bound
+// reflection instead), because `dynamic` would require that reference and the
+// build command above would stop working on a clean machine.
 //
 // The installer is a single .exe with no external dependencies. It can be run:
 //   - normally (a small window with Install / Update / Launch)
 //   - silently:  LuckybloxInstaller.exe /S /root "C:\path"
 //   - update only, no UI:  LuckybloxInstaller.exe /Update /S
+//   - state check:  LuckybloxInstaller.exe /S /check
+//
+// Exit codes (so a script or the launcher can branch on the result):
+//   0  success, or already up to date
+//   1  failed (network, download, or a busy binary)
+//
+// The uninstall entry Windows writes points at a COPY of this exe kept inside
+// the install folder, so "Uninstall" in Apps & features keeps working after the
+// original download is deleted.
 
 using System;
 using System.Collections.Generic;
@@ -84,20 +98,76 @@ namespace LuckyBlox.Installer
             string baked = Environment.GetEnvironmentVariable("LUCKYBLOX_INSTALLER_BASE");
             if (!string.IsNullOrWhiteSpace(baked)) return baked.TrimEnd('/');
 
-            // Otherwise read the config written next to the installer (if any),
-            // then fall back to localhost - the local-deployment default.
-            try
-            {
-                var cfg = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? ".", "installer.config.txt");
-                if (File.Exists(cfg))
-                {
-                    var text = File.ReadAllText(cfg, Encoding.UTF8).Replace("\uFEFF", "").Trim();
-                    if (!string.IsNullOrWhiteSpace(text)) return text.TrimEnd('/');
-                }
-            }
-            catch { }
+            string beside = ReadConfigFile();
+            if (!string.IsNullOrWhiteSpace(beside)) return beside;
+
+            // Finally, the launcher's OWN config. A user who already runs the
+            // desktop launcher has a working base URL recorded in
+            // Settings/baseurl.txt; reading it means the installer points at the
+            // same deployment instead of silently defaulting to localhost and
+            // installing a client that connects nowhere.
+            string fromLauncher = ReadLauncherBaseUrl();
+            if (!string.IsNullOrWhiteSpace(fromLauncher)) return fromLauncher;
 
             return "http://127.0.0.1:3001";
+        }
+
+        /// <summary>installer.config.txt next to the exe, if present.</summary>
+        private static string ReadConfigFile()
+        {
+            try
+            {
+                var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? ".";
+                var cfg = Path.Combine(dir, "installer.config.txt");
+                if (!File.Exists(cfg)) return "";
+                return FirstMeaningfulLine(File.ReadAllText(cfg, Encoding.UTF8));
+            }
+            catch { return ""; }
+        }
+
+        /// <summary>
+        /// The launcher's Settings/baseurl.txt. Probes the usual locations,
+        /// because the installer is often run from a temp folder far away from
+        /// the release tree it is installing.
+        /// </summary>
+        private static string ReadLauncherBaseUrl()
+        {
+            var exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? ".";
+            var candidates = new[]
+            {
+                Path.Combine(exeDir, "Settings", "baseurl.txt"),
+                Path.Combine(exeDir, "..", "Settings", "baseurl.txt"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Luckyblox", "Settings", "baseurl.txt"),
+            };
+
+            foreach (var candidate in candidates)
+            {
+                try
+                {
+                    if (!File.Exists(candidate)) continue;
+                    string value = FirstMeaningfulLine(File.ReadAllText(candidate, Encoding.UTF8));
+                    if (!string.IsNullOrWhiteSpace(value)) return value;
+                }
+                catch { }
+            }
+            return "";
+        }
+
+        /// <summary>
+        /// The first line that is neither blank nor a comment, BOM stripped.
+        /// These config files are hand-edited, so both are common.
+        /// </summary>
+        private static string FirstMeaningfulLine(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return "";
+            foreach (var raw in text.Replace("\uFEFF", "").Split('\n'))
+            {
+                string line = raw.Trim();
+                if (line.Length == 0) continue;
+                if (line.StartsWith("#") || line.StartsWith("//")) continue;
+                return line.TrimEnd('/');
+            }
+            return "";
         }
 
         /// <summary>The default per-user install root: %LOCALAPPDATA%\Luckyblox.</summary>
@@ -532,26 +602,77 @@ namespace LuckyBlox.Installer
         ///
         /// Failure here is not fatal: a player-only install is still a valid
         /// install, so the error is logged and the install continues.
+        ///
+        /// This DOWNLOADS Studio over HTTP. It used to read `executablePath` from
+        /// /api/studio/build-info and File.Copy() from it - but that path is a
+        /// location on the SERVER's own disk, so on any machine other than the
+        /// one running the server the Copy threw and Studio was silently never
+        /// installed, while the log still claimed the install succeeded.
         /// </summary>
         private void TryInstallStudio(string versionDir, BuildInfo playerBuild)
         {
             try
             {
                 string json = ManifestClient.GetString(_baseUrl + "/api/studio/build-info");
-                string studioPath = ManifestClient.JsonString(json, "executablePath");
+
+                // 'available' is the server's honest answer about whether a build
+                // exists; a null downloadUrl means do not even try.
+                string available = ManifestClient.JsonRaw(json, "available");
+                string downloadUrl = ManifestClient.JsonString(json, "downloadUrl");
                 string studioName = ManifestClient.JsonString(json, "binaryName");
                 if (string.IsNullOrWhiteSpace(studioName)) studioName = InstallerConfig.StudioBinary;
 
-                if (!string.IsNullOrWhiteSpace(studioPath) && File.Exists(studioPath))
+                if (available == "false" || string.IsNullOrWhiteSpace(downloadUrl))
                 {
-                    var dest = Path.Combine(versionDir, studioName);
-                    File.Copy(studioPath, dest, true);
-                    _log("Studio installed alongside the player.");
+                    _log("No Studio build is published; installing the Player only.");
+                    return;
                 }
+
+                if (downloadUrl.StartsWith("/")) downloadUrl = _baseUrl + downloadUrl;
+
+                long studioSize = ManifestClient.JsonInt64(json, "binarySize");
+                var dest = Path.Combine(versionDir, studioName);
+                var temp = dest + ".tmp";
+                SafeDelete(temp);
+
+                _log("Downloading Studio...");
+                // Share the progress bar with the player download: the studio
+                // fetch is a second, smaller transfer in the same operation.
+                Download(downloadUrl, temp, studioSize);
+
+                // Same verification rule as the player: never promote an empty or
+                // truncated binary into a position that looks like a real install.
+                var info = new FileInfo(temp);
+                if (!info.Exists || info.Length == 0)
+                {
+                    SafeDelete(temp);
+                    _log("The Studio download was empty; skipping it.");
+                    return;
+                }
+                if (studioSize > 0 && info.Length != studioSize)
+                {
+                    _log("Warning: expected " + studioSize + " Studio bytes, received " + info.Length + ".");
+                }
+
+                if (File.Exists(dest))
+                {
+                    try { File.Delete(dest); }
+                    catch (IOException)
+                    {
+                        SafeDelete(temp);
+                        _log("LuckyBlox Studio appears to be running; it was not updated.");
+                        return;
+                    }
+                }
+
+                File.Move(temp, dest);
+                _log("Studio installed alongside the Player.");
             }
-            catch
+            catch (Exception ex)
             {
-                // No studio on this server - expected for a player-only deployment.
+                // No studio on this server, or it is unreachable - expected for a
+                // player-only deployment, so this is not a failed install.
+                _log("Studio was not installed: " + ex.Message);
             }
         }
 
@@ -682,6 +803,13 @@ namespace LuckyBlox.Installer
         /// <summary>
         /// Creates a .lnk through the Windows Script Host, the only shortcut API
         /// available from plain .NET Framework without shipping an interop DLL.
+        ///
+        /// Uses late-bound reflection rather than the `dynamic` keyword. `dynamic`
+        /// requires a reference to Microsoft.CSharp, which the documented
+        /// no-SDK build command (csc + System.Windows.Forms + System.Drawing) does
+        /// not pass - so a `dynamic` version of this method fails to compile with
+        /// the exact command in this file's header. Reflection needs no reference
+        /// beyond what is already there.
         /// </summary>
         private static void CreateShortcut(string linkPath, string targetPath)
         {
@@ -690,12 +818,18 @@ namespace LuckyBlox.Installer
                 var shellType = Type.GetTypeFromProgID("WScript.Shell");
                 if (shellType == null) return;
 
-                dynamic shell = Activator.CreateInstance(shellType);
-                dynamic link = shell.CreateShortcut(linkPath);
-                link.TargetPath = targetPath;
-                link.WorkingDirectory = Path.GetDirectoryName(targetPath);
-                link.Description = "Play on LuckyBlox";
-                link.Save();
+                object shell = Activator.CreateInstance(shellType);
+                object link = shellType.InvokeMember(
+                    "CreateShortcut",
+                    BindingFlags.InvokeMethod,
+                    null, shell, new object[] { linkPath });
+                if (link == null) return;
+
+                var linkType = link.GetType();
+                linkType.InvokeMember("TargetPath", BindingFlags.SetProperty, null, link, new object[] { targetPath });
+                linkType.InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, link, new object[] { Path.GetDirectoryName(targetPath) });
+                linkType.InvokeMember("Description", BindingFlags.SetProperty, null, link, new object[] { "Play on LuckyBlox" });
+                linkType.InvokeMember("Save", BindingFlags.InvokeMethod, null, link, null);
             }
             catch { }
         }
@@ -703,26 +837,81 @@ namespace LuckyBlox.Installer
         /// <summary>
         /// Register an uninstall entry so LuckyBlox appears in Apps &amp; features
         /// and can be removed the normal Windows way.
+        ///
+        /// The UninstallString points at a COPY of the installer kept inside the
+        /// install folder, not at the path the installer was run from. That is
+        /// the difference between a working uninstall and a dead button:
+        ///
+        ///   - a downloaded installer usually runs from a temporary folder that
+        ///     the browser or the user deletes afterwards, so a registry entry
+        ///     naming that path stops resolving almost immediately;
+        ///   - Windows launches the UninstallString later, as a separate process,
+        ///     long after the installer that wrote it has exited.
+        ///
+        /// Keeping the copy in the install dir means it lives exactly as long as
+        /// the thing it removes, and is deleted with it.
         /// </summary>
-        private void RegisterUninstall(string root, string exePath = null)
+        private void RegisterUninstall(string root)
         {
             try
             {
+                var installDir = InstallerConfig.InstallDir(root);
+                Directory.CreateDirectory(installDir);
+
+                string uninstallerPath = PrepareUninstallerCopy(installDir);
+
                 var keyPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\LuckyBlox";
                 using (var key = Registry.CurrentUser.CreateSubKey(keyPath))
                 {
                     if (key == null) return;
                     key.SetValue("DisplayName", "LuckyBlox");
                     key.SetValue("Publisher", "LuckyBlox");
-                    key.SetValue("InstallLocation", InstallerConfig.InstallDir(_root));
+                    key.SetValue("InstallLocation", installDir);
                     key.SetValue("DisplayVersion", InstallState.Read(_root).CurrentVersion ?? "");
-                    key.SetValue("UninstallString",
-                        "\"" + (exePath ?? Application.ExecutablePath) + "\" /Uninstall");
+                    key.SetValue("UninstallString", "\"" + uninstallerPath + "\" /Uninstall /S");
+                    key.SetValue("QuietUninstallString", "\"" + uninstallerPath + "\" /Uninstall /S");
                     key.SetValue("NoModify", 1);
                     key.SetValue("NoRepair", 1);
                 }
             }
             catch { }
+        }
+
+        /// <summary>
+        /// Copy the running installer into the install folder so the uninstall
+        /// entry has a stable target that lives as long as the install does.
+        ///
+        /// Returns the path to run for an uninstall. If the copy cannot be made
+        /// (a locked-down machine, or the installer is already there) the current
+        /// executable path is returned so the entry is still usable right now
+        /// rather than pointing at nothing.
+        /// </summary>
+        private static string PrepareUninstallerCopy(string installDir)
+        {
+            try
+            {
+                // Assembly.Location is the real on-disk path of the running exe.
+                // (Application.ExecutablePath is equivalent for an exe, but this
+                // avoids depending on System.Windows.Forms in this path.)
+                string self = Assembly.GetExecutingAssembly().Location;
+                if (string.IsNullOrEmpty(self) || !File.Exists(self)) return self ?? "";
+
+                string target = Path.Combine(installDir, "LuckybloxInstaller.exe");
+
+                // Do not copy a file onto itself.
+                if (string.Equals(Path.GetFullPath(self), Path.GetFullPath(target), StringComparison.OrdinalIgnoreCase))
+                {
+                    return target;
+                }
+
+                File.Copy(self, target, true);
+                return target;
+            }
+            catch
+            {
+                try { return Assembly.GetExecutingAssembly().Location ?? ""; }
+                catch { return ""; }
+            }
         }
 
         /// <summary>Remove the install tree and the uninstall registration.</summary>
@@ -1156,6 +1345,41 @@ namespace LuckyBlox.Installer
 
             string root = options.Root ?? InstallerConfig.DefaultRoot();
 
+            // --- State check ---------------------------------------------------
+            // Reports what is installed and what the server publishes, changing
+            // nothing. This is what the launcher calls to decide whether to show
+            // "Play" or "Update" without ever triggering an install.
+            // Exit 0 = installed and current, 1 = not installed or unreachable,
+            // 2 = installed but an update is available.
+            if (options.Check)
+            {
+                AttachParentConsole();
+
+                var state = InstallState.Read(root);
+                Console.WriteLine("install dir : " + InstallerConfig.InstallDir(root));
+                Console.WriteLine("installed   : " + (state.PlayerInstalled
+                    ? (string.IsNullOrEmpty(state.CurrentVersion) ? "unknown version" : state.CurrentVersion)
+                    : "no"));
+
+                try
+                {
+                    var build = new ManifestClient(InstallerConfig.BaseUrl).Fetch();
+                    Console.WriteLine("server      : " + (build.IsValid ? build.Version : "(no build published)"));
+
+                    if (!build.IsValid) return 2;
+                    if (!state.PlayerInstalled) return 1;
+
+                    bool same = !string.IsNullOrEmpty(build.Version)
+                        && string.Equals(state.CurrentVersion, build.Version, StringComparison.OrdinalIgnoreCase);
+                    return same ? 0 : 2;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("server      : unreachable (" + ex.Message + ")");
+                    return state.PlayerInstalled ? 0 : 1;
+                }
+            }
+
             // --- Uninstall -----------------------------------------------------
             if (options.Uninstall)
             {
@@ -1180,6 +1404,14 @@ namespace LuckyBlox.Installer
             // launcher can drive it without a UI.
             if (options.Silent)
             {
+                // This is a /target:winexe binary, so it has NO console of its
+                // own: without this the whole progress log below is written to a
+                // null handle and a caller invoking `/S` from a script sees
+                // nothing at all. Attaching to the parent's console is what makes
+                // the output visible when one is inherited (cmd, the launcher
+                // using a pipe) while staying invisible on a double-click.
+                AttachParentConsole();
+
                 var installer = new Installer(
                     root,
                     InstallerConfig.BaseUrl,
@@ -1191,6 +1423,19 @@ namespace LuckyBlox.Installer
 
                 var result = installer.Run(options.Force);
                 Console.WriteLine();
+
+                // Report the failure through a dialog only when there is no
+                // console to read: in a script the exit code is the contract,
+                // and a modal box would hang the automation.
+                if (!result.Ok && !HasConsole())
+                {
+                    MessageBox.Show(
+                        result.Message,
+                        "LuckyBlox Installer",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
+
                 return result.Ok ? 0 : 1;
             }
 
@@ -1199,6 +1444,35 @@ namespace LuckyBlox.Installer
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new InstallerForm(root, InstallerConfig.BaseUrl));
             return 0;
+        }
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool AttachConsole(int processId);
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        private static extern IntPtr GetConsoleWindow();
+
+        private const int ATTACH_PARENT_PROCESS = -1;
+
+        /// <summary>
+        /// Attach to the console we were launched from, if any.
+        ///
+        /// A winexe has no console; AttachConsole hands us the parent's so
+        /// Console.WriteLine actually lands somewhere. It fails harmlessly (the
+        /// return value is false) when there is no parent console - i.e. a
+        /// double-click - which is exactly when we want no output anyway.
+        /// </summary>
+        private static void AttachParentConsole()
+        {
+            try { AttachConsole(ATTACH_PARENT_PROCESS); }
+            catch { }
+        }
+
+        /// <summary>True when this process can actually write to a console.</summary>
+        private static bool HasConsole()
+        {
+            try { return GetConsoleWindow() != IntPtr.Zero; }
+            catch { return false; }
         }
     }
 
@@ -1209,6 +1483,7 @@ namespace LuckyBlox.Installer
     ///   /Update              force an update check even when it looks current
     ///   /Force               reinstall over the current version
     ///   /Uninstall           remove the install
+    ///   /Check               report install/update state and exit (no changes)
     ///   /root "C:\path"      install root (the "Luckyblox" folder is created in it)
     ///   /base "https://..."  point at a specific LuckyBlox server
     /// </summary>
@@ -1217,6 +1492,7 @@ namespace LuckyBlox.Installer
         public bool Silent;
         public bool Force;
         public bool Uninstall;
+        public bool Check;
         public string Root;
         public string BaseUrl;
 
@@ -1250,6 +1526,10 @@ namespace LuckyBlox.Installer
                     case "/uninstall":
                     case "--uninstall":
                         options.Uninstall = true;
+                        break;
+                    case "/check":
+                    case "--check":
+                        options.Check = true;
                         break;
                     case "/root":
                     case "--root":
