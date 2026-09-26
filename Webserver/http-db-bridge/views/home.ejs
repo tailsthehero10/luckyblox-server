@@ -109,6 +109,21 @@
                              onerror="this.style.display='none';var p=this.parentNode;if(p)p.classList.add('is-placeholder');" />
                       <% } %>
                       <img class="roblox-game-card-placeholder" src="/gameplaceholder/card.png" alt="" loading="lazy" />
+
+                      <!--
+                        The play affordance from the real Discover card (44px, rounded).
+                        It is a <span>, not a nested <button>: the whole card is already
+                        an <a>, and a button inside a link is invalid HTML and swallows
+                        the click. The delegated handler below turns a click on it into
+                        an in-page launch, so pressing it starts the game rather than
+                        navigating to the game page.
+                      -->
+                      <span class="lb-game-card-play" role="button" tabindex="-1"
+                            aria-label="Play <%= game.title %>"
+                            data-launch-place-id="<%= game.placeId %>"
+                            data-launch-from-card="1">
+                        <img class="ch-ico" src="/icons/play.svg" alt="" />
+                      </span>
                     </div>
                     <div class="lb-game-card-title"><%= game.title %></div>
                     <div class="lb-game-card-sub"><%= game.genre %> &middot; <%= Number(game.playerCount) || 0 %> playing</div>
@@ -229,6 +244,15 @@
     document.addEventListener('click', async (event) => {
       const trigger = event.target.closest('[data-launch-place-id]');
       if (!trigger) return;
+
+      // A card's play button sits INSIDE the card's <a>, so without this the
+      // browser would follow the link to the game page instead of starting the
+      // game. Stopping propagation here keeps the click on the grid and launches
+      // in place, which is what the button appears to promise.
+      if (trigger.getAttribute('data-launch-from-card') === '1') {
+        event.preventDefault();
+        event.stopPropagation();
+      }
 
       const placeId = Number(trigger.getAttribute('data-launch-place-id')) || 1818;
       await launchGame(placeId);

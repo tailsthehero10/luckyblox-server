@@ -3401,25 +3401,52 @@ button.roblox-sidebar-link { min-height: 34px; }
 .lb-asset-tag,
 .roblox-asset-tag { margin-left: auto; font-size: 12px; color: var(--lb-muted); flex: 0 0 auto; }
 
-/* --- Game cards ----------------------------------------------------------
-   Geometry taken from the real 2013 Roblox sheet rather than invented:
+/* --- Game cards (the Discover grid) ---------------------------------------
+   Geometry comes from the real DISCOVER page's own stylesheet, which is the page
+   /games reproduces:
 
-     Games.css  .game-item        { width: 192px; height: 144px }
-                .game-item-image  { width: 192px; height: 108px }
+     .game-grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+       column-gap: 12px;
+       row-gap: 24px;
+       padding: 12px;
+     }
+     .game-card-thumb-container {
+       height: 0;
+       padding-bottom: 100%;      <- SQUARE thumbnail
+       width: 100%;
+     }
+     .game-card-thumb-container img { position: absolute; }
+     .game-card-name-info .play-button {
+       width: 44px; height: 44px; border-radius: 8px;
+     }
 
-   192x108 is 16:9, so a game card's image is a WIDE card, not a square. This is
-   the opposite of the game's ICON (Card_512x512), which is square and appears in
-   the info column of the game page. Sizing both the same way is what made the
-   cards look wrong.
+   Two things to note, because they were both wrong before:
 
-   The tile keeps a fixed card width so the grid columns match the 2013 sheet
-   instead of stretching to fill the viewport. */
+     1. The grid card thumbnail is SQUARE. (An earlier revision used the 2013
+        Games.css `.game-item-image` 192x108, which is 16:9 - that is a different,
+        older layout, not Discover.)
+
+     2. The row gap is DOUBLE the column gap. That is what makes the real grid
+        read as rows of cards rather than one continuous sheet. */
 .lb-game-grid,
 .roblox-game-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(192px, 1fr));
-  gap: 18px 14px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  column-gap: 12px;
+  row-gap: 24px;
 }
+
+@media (max-width: 767px) {
+  .lb-game-grid,
+  .roblox-game-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+}
+@media (max-width: 543px) {
+  .lb-game-grid,
+  .roblox-game-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+}
+
 .lb-game-card,
 .roblox-game-card { display: block; color: var(--lb-ink); }
 .lb-game-card:hover,
@@ -3429,9 +3456,11 @@ button.roblox-sidebar-link { min-height: 34px; }
 .roblox-game-card-thumb {
   position: relative;
   width: 100%;
-  /* 192 x 108 - the real 2013 .game-item-image, i.e. 16:9. */
-  aspect-ratio: 16 / 9;
-  border-radius: var(--lb-radius);
+  /* Square, as on Discover. aspect-ratio is the modern equivalent of the real
+     rule's `height: 0; padding-bottom: 100%`, and it keeps the box in normal
+     flow so the artwork below needs no extra wrapper. */
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
   overflow: hidden;
   background: #e3e6ea;
   margin-bottom: 6px;
@@ -3440,9 +3469,9 @@ button.roblox-sidebar-link { min-height: 34px; }
   justify-content: center;
 }
 
-/* Fit the whole thumbnail inside the card - do NOT crop it.
-   object-fit: cover cut the edges off a square game icon (the real Roblox icon
-   shape) because the frame is 16:9, which is what made card art look wrong. */
+/* Fit the whole artwork inside the card - do NOT crop it.
+   The frame is square and the art is the square game icon, so `contain` shows it
+   whole; `cover` would shave the icon's edges. */
 .lb-game-card-thumb img,
 .roblox-game-card-thumb img {
   position: absolute;
@@ -3452,6 +3481,60 @@ button.roblox-sidebar-link { min-height: 34px; }
   object-fit: contain;
   /* Keep it centred and never stretched. */
   object-position: center center;
+}
+
+/* --- The play button on a Discover card -----------------------------------
+   The real card shows a 44px rounded play button over the thumbnail on hover:
+
+     .game-card-name-info .play-button {
+       width: 44px; height: 44px; border-radius: 8px;
+     }
+
+   It is the affordance that tells you a card is playable rather than just a
+   link, which is what the real grid relies on. Hidden until hover so the artwork
+   is unobstructed at rest, exactly as the real page does. */
+.lb-game-card-play,
+.roblox-game-card-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+
+.lb-game-card:hover .lb-game-card-play,
+.lb-game-card:focus-within .lb-game-card-play,
+.roblox-game-card:hover .roblox-game-card-play,
+.roblox-game-card:focus-within .roblox-game-card-play {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.lb-game-card-play .ch-ico,
+.roblox-game-card-play .ch-ico {
+  width: 22px;
+  height: 22px;
+  /* The play glyph ships white; keep it white on the dark scrim. */
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+/* A touch device has no hover, so the button must be visible without one. */
+@media (hover: none) {
+  .lb-game-card-play,
+  .roblox-game-card-play { opacity: 1; pointer-events: auto; }
 }
 
 /* A wide image (the Big_ art, 596x335) must still not be CROPPED to fit the
@@ -5138,10 +5221,19 @@ html.theme-dark {
   --lb-header-text: #f2f5f9;
   --lb-header-muted: #b3bdca;
 
-  /* --- Accents get a touch brighter to hold up on dark ------------------ */
-  --lb-blue: #35b2ff;
-  --lb-blue-dark: #1a8fe0;
-  --lb-link: #59b8ff;
+  /* --- Accents ---------------------------------------------------------
+     On dark, links and accents are WHITE, not blue.
+
+     Blue link text on a dark page is the thing that reads as "the theme looks
+     wrong": #59b8ff on #0f1216 is a low-contrast, cold colour that makes every
+     link look like a hyperlink from 2003. The real dark theme's text is white.
+
+     --lb-blue / --lb-blue-dark are still used for FOCUS RINGS and a few fills
+     where a white ring would be invisible against white text, so those keep a
+     light blue; only the TEXT colour (--lb-link) goes white. */
+  --lb-blue: #7cc4ff;
+  --lb-blue-dark: #4a9fe0;
+  --lb-link: #ffffff;
   --lb-green: #22c47d;
   --lb-green-dark: #16a263;
   --lb-red: #ff5f57;
@@ -5184,7 +5276,7 @@ html.theme-dark {
   --rbx-muted: #99a3b0 !important;
   --rbx-header: #121820 !important;
   --rbx-header-dark: #0d1218 !important;
-  --rbx-blue: #59b8ff !important;
+  --rbx-blue: #ffffff !important;
   --rbx-green: #22c47d !important;
 }
 
@@ -5279,8 +5371,8 @@ html.theme-dark .lb-sidebar-link:hover,
 html.theme-dark .roblox-sidebar-link:hover { background: var(--lb-surface-alt) !important; }
 html.theme-dark .lb-sidebar-link.is-active,
 html.theme-dark .roblox-sidebar-link.is-active {
-  background: #15334a !important;
-  color: #7cc9ff !important;
+  background: #2a2f36 !important;
+  color: #ffffff !important;
 }
 html.theme-dark .roblox-sidebar-divider { background: var(--lb-line) !important; }
 html.theme-dark .lb-sidebar-username,
@@ -5433,8 +5525,8 @@ html.theme-dark .settings-sidebar { border-right-color: var(--lb-line) !importan
 html.theme-dark .settings-nav-link { color: var(--lb-ink-2) !important; }
 html.theme-dark .settings-nav-link:hover { background: var(--lb-surface-alt) !important; }
 html.theme-dark .settings-nav-link.is-active {
-  background: #15334a !important;
-  color: #7cc9ff !important;
+  background: #2a2f36 !important;
+  color: #ffffff !important;
 }
 html.theme-dark .settings-help,
 html.theme-dark .settings-sub,
@@ -5886,4 +5978,457 @@ header.lb-header.dark-theme .roblox-header-action {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
+}/* ===========================================================================
+   REAL 2021 PAGE LAYOUTS
+   ---------------------------------------------------------------------------
+   These are not invented. Every number is lifted from the real page's own
+   stylesheet, captured in the reference archives:
+
+     Profile   -> Profile.css        (fetch(1) in "Profile - Roblox_files")
+     Game page -> GameDetails.css    (fetch(1) in "Brookhaven ... - Roblox_files")
+     Discover  -> Discover.css       (game grid)
+     Groups    -> structure from the archived group + group-search markup
+
+   They are grouped here so the geometry of a page is readable in one place
+   instead of being spread across a dozen scattered overrides.
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   PROFILE
+   ---------------------------------------------------------------------------
+   Real rules:
+
+     .profile-container                        { max-width: 970px; margin: 0 auto }
+     .profile-header .profile-avatar-image     { position: relative; margin-right: 12px;
+                                                 width: 128px; height: 128px }
+     .profile-header .profile-avatar-image     { float: none; margin: 0 auto;
+                                                 width: 102px; height: 102px }   <- narrow
+     .profile-header-more                      { position: absolute; top: 0; right: 6px }
+     .profile-avatar-left, .profile-avatar-right { height: 300px }
+
+   So the page is a 970px centred column, NOT a full-width one, and the headshot
+   is 128px - not the large square the site was drawing.
+   --------------------------------------------------------------------------- */
+
+/* The profile content column. 970px is the real figure; the site was letting it
+   stretch to the full content width, which is why the header looked sparse and
+   the counters drifted far apart. */
+.lb-main > .lb-profile-container,
+.lb-profile-container {
+  max-width: 970px !important;
+  margin: 0 auto !important;
+}
+
+/* --- Header ----------------------------------------------------------------- */
+.lb-profile-header,
+.roblox-profile-hero {
+  position: relative;
+  max-width: 970px;
+  margin: 0 auto;
+  padding: 0 0 16px !important;
+}
+
+/* The headshot: 128px square, sitting left of the name block. */
+.lb-avatar-stage,
+.lb-profile-header .lb-avatar-stage {
+  position: relative;
+  flex: 0 0 auto;
+  width: 128px !important;
+  height: 128px !important;
+  margin-right: 12px !important;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #eef1f4;
+  border: 1px solid var(--lb-line-soft);
+}
+
+.lb-avatar-stage img,
+.lb-avatar-stage .roblox-avatar-image {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  display: block;
+}
+
+/* The drawn fallback figure must FIT inside the 128px stage, not overflow it.
+   It is sized by font-size (see the figure rules), so the stage caps it. */
+.lb-avatar-stage .lb-avatar-figure {
+  font-size: 12.8px !important;
+  margin: 0 auto;
+}
+
+/* On narrow screens the real page centres a 102px headshot. */
+@media (max-width: 767px) {
+  .lb-avatar-stage,
+  .lb-profile-header .lb-avatar-stage {
+    width: 102px !important;
+    height: 102px !important;
+    margin: 0 auto 10px !important;
+  }
+  .lb-avatar-stage .lb-avatar-figure { font-size: 10.2px !important; }
+  .lb-profile-header { text-align: center; }
+}
+
+/* --- The name row ----------------------------------------------------------- */
+.lb-profile-name,
+.roblox-profile-title {
+  /* The real name is a single large line; it must wrap rather than clip a long
+     username, which is what a fixed height plus nowrap used to do. */
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  overflow-wrap: anywhere;
+  margin: 0 0 4px !important;
+}
+
+/* --- Counters --------------------------------------------------------------- */
+.lb-counter-row,
+.roblox-profile-counters {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 22px !important;
+  margin: 12px 0 0 !important;
+  padding: 0 !important;
+  list-style: none;
+}
+.lb-counter,
+.roblox-profile-counter {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.lb-counter-value,
+.roblox-profile-counter-value {
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  color: var(--lb-ink);
+}
+.lb-counter-label,
+.roblox-profile-counter-label {
+  font-size: 12px !important;
+  color: var(--lb-muted);
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+/* ---------------------------------------------------------------------------
+   GAME PAGE
+   ---------------------------------------------------------------------------
+   Real rules:
+
+     .game-details-carousel-container {
+       float: left; position: relative; width: 640px; height: 360px;
+     }
+     .game-details-carousel-container:before {
+       display: block; content: ""; width: 100%; padding-top: calc((9 / 16) * 100%);
+     }
+     @media (max-width: 991px) {
+       .game-details-carousel-container {
+         float: none; width: 100%; max-width: 768px; height: auto; margin: 0 auto;
+       }
+     }
+     .voting-panel          { width: 54%; position: relative }
+     .game-title-container  { padding: 0 12px 0 0 }
+     .game-buttons-container{ padding: 0 12px 0 18px }
+     .game-description      { white-space: pre-wrap; word-break: break-word;
+                              padding-bottom: 12px }
+
+   The real layout FLOATS a fixed 640x360 carousel and puts the info beside it -
+   it is not a CSS grid. Floating is what keeps the two columns locked to those
+   proportions instead of letting the hero stretch with the viewport.
+   --------------------------------------------------------------------------- */
+
+.lb-game-hero,
+.roblox-game-hero {
+  display: block !important;   /* the real layout floats; a grid fights it */
+  max-width: 1200px;
+  margin: 0 auto 16px !important;
+  padding: 16px !important;
+  overflow: hidden;            /* contains the floated children */
+}
+.lb-game-hero::after,
+.roblox-game-hero::after { content: ""; display: table; clear: both; }
+
+/* The big thumbnail: a fixed 640x360 carousel, floated left. */
+.lb-game-hero > div:first-child,
+.lb-game-hero .lb-game-thumb,
+.roblox-game-hero .roblox-game-thumb {
+  float: left;
+}
+.lb-game-thumb,
+.roblox-game-thumb {
+  width: 640px !important;
+  height: 360px !important;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #e3e6ea;
+}
+
+/* The info column sits beside the carousel. */
+.lb-game-info,
+.roblox-game-info {
+  margin-left: 660px;      /* 640 carousel + 20 gutter */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+/* Under 991px the real page drops the float and centres a 768px carousel. */
+@media (max-width: 991px) {
+  .lb-game-hero > div:first-child,
+  .lb-game-hero .lb-game-thumb,
+  .roblox-game-hero .roblox-game-thumb { float: none; }
+  .lb-game-thumb,
+  .roblox-game-thumb {
+    width: 100% !important;
+    max-width: 768px !important;
+    height: auto !important;
+    margin: 0 auto;
+  }
+  .lb-game-info,
+  .roblox-game-info { margin-left: 0 !important; margin-top: 16px; }
+}
+
+/* The vote bar is 54% wide on the real page. */
+.lb-vote-block { max-width: 54%; }
+@media (max-width: 991px) { .lb-vote-block { max-width: 100%; } }
+
+.lb-game-title,
+.roblox-game-title {
+  padding-right: 12px;
+  font-size: 26px !important;
+  font-weight: 700 !important;
+  line-height: 1.15 !important;
+  height: auto !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  overflow-wrap: anywhere;
+}
+
+/* Description keeps the author's line breaks, as the real rule does. */
+.lb-description,
+.roblox-description {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  padding-bottom: 12px;
+}
+
+/* ---------------------------------------------------------------------------
+   GROUPS (the group page)
+   ---------------------------------------------------------------------------
+   Structure from the archived group page:
+
+     .group-details-container
+       .container-header.see-all-container-header   h1 "Groups" + More Groups
+       .group-details.col-xs-12 (col-sm-9 when signed in)
+         .section-content
+           .group-header
+             .group-image      <- the group emblem
+             .group-caption    <- .group-title > .group-name, .group-owner
+           .group-info         <- .group-stats, .group-members
+           .group-menu         <- .rbx-tab.group-tab rows
+           .section-content.remove-panel
+             .group-description
+
+   The emblem sits left of the name, the stats/members sit under the name, and the
+   tabs run across as a full-width row under the header - which is the shape the
+   site was missing.
+   --------------------------------------------------------------------------- */
+
+.lb-group-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--lb-line-soft);
+  margin-bottom: 14px;
+}
+
+/* The group emblem: a square card, like every other piece of game/group art. */
+.lb-group-emblem {
+  width: 150px !important;
+  height: 150px !important;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #eef1f4;
+  border: 1px solid var(--lb-line-soft);
+  display: grid;
+  place-items: center;
+}
+.lb-group-emblem img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.lb-group-caption { min-width: 0; flex: 1 1 auto; }
+.lb-group-name {
+  font-size: 26px !important;
+  font-weight: 700 !important;
+  line-height: 1.15 !important;
+  height: auto !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  margin: 0 0 4px !important;
+}
+.lb-group-owner { font-size: 14px; color: var(--lb-muted); margin-bottom: 10px; }
+
+/* Stats and members sit under the name, as two small labelled blocks. */
+.lb-group-stats,
+.lb-group-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  margin-top: 8px;
+}
+
+/* The tab row runs the full width under the group header. */
+.lb-group-menu,
+.roblox-group-menu {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 0;
+  border-bottom: 1px solid var(--lb-line);
+  margin-bottom: 14px;
+}
+.lb-group-tab,
+.roblox-group-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 14px !important;
+  border-bottom: 3px solid transparent;
+  color: var(--lb-muted) !important;
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none !important;
+  white-space: nowrap;
+}
+.lb-group-tab:hover,
+.roblox-group-tab:hover { color: var(--lb-ink) !important; }
+.lb-group-tab.is-active,
+.lb-group-tab.active,
+.roblox-group-tab.is-active {
+  border-bottom-color: var(--lb-blue) !important;
+  color: var(--lb-ink) !important;
+  font-weight: 700;
+}
+
+@media (max-width: 767px) {
+  .lb-group-header { flex-direction: column; }
+  .lb-group-emblem { width: 110px !important; height: 110px !important; }
+}
+
+/* ---------------------------------------------------------------------------
+   GROUP SEARCH
+   ---------------------------------------------------------------------------
+   Structure from the archived group search page:
+
+     .container-header.see-all-container-header    h3 "Search Groups"
+     .search-container > form.form-search
+       .input-group
+         .form-has-feedback > input#GroupSearchField.form-control.input-field
+         .input-group-btn  > button#GroupSearchButton.input-addon-btn
+
+   The search field and its button form ONE joined control (the input-group), not
+   a field with a separate button floating beside it.
+   --------------------------------------------------------------------------- */
+
+.lb-group-search-form {
+  display: flex;
+  align-items: stretch;
+  max-width: 620px;
+  margin: 0 0 18px;
+  border: 1px solid var(--lb-line);
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--lb-surface);
+}
+.lb-group-search-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 40px;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 12px;
+  font-size: 15px;
+  background: transparent !important;
+}
+.lb-group-search-btn {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 40px;
+  border: 0;
+  border-left: 1px solid var(--lb-line);
+  background: var(--lb-surface-alt);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.lb-group-search-btn:hover { background: #eef1f4; }
+.lb-group-search-btn .ch-ico { width: 16px; height: 16px; }
+
+/* --- Dark theme ------------------------------------------------------------ */
+html.theme-dark .lb-avatar-stage,
+html.theme-dark .lb-group-emblem { background: #20262f !important; border-color: var(--lb-line) !important; }
+html.theme-dark .lb-group-search-form { background: #12161c !important; border-color: var(--lb-line) !important; }
+html.theme-dark .lb-group-search-btn { background: #1c2129 !important; border-left-color: var(--lb-line) !important; }
+html.theme-dark .lb-group-search-btn:hover { background: #232a34 !important; }
+html.theme-dark .lb-group-search-btn .ch-ico { filter: brightness(0) invert(1) !important; }
+html.theme-dark .lb-group-search-field { color: #ffffff !important; }
+html.theme-dark .lb-group-search-field::placeholder { color: var(--lb-faint) !important; }/* ---------------------------------------------------------------------------
+   Profile header row
+   ---------------------------------------------------------------------------
+   The real profile header is ONE row: the 128px headshot on the left, and the
+   name + counters + actions beside it. The wrapper below is what makes that a
+   row; without it the headshot and the info stacked into a tall sparse column,
+   which is why the header looked nothing like the reference.
+   --------------------------------------------------------------------------- */
+.lb-profile-header-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.lb-profile-header-info {
+  flex: 1 1 auto;
+  min-width: 0;      /* lets a long name wrap instead of widening the row */
+}
+
+/* On narrow screens the real page centres the header and stacks the row. */
+@media (max-width: 767px) {
+  .lb-profile-header-top {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .lb-profile-header-info { width: 100%; }
+  .lb-profile-header-info .lb-counter-row { justify-content: center; }
+  .lb-profile-header-info .lb-meta-row,
+  .lb-profile-header-info .lb-action-row { justify-content: center; }
+}
+
+/* The headshot and the fallback figure share the stage; the figure is centred and
+   capped so it can never overflow the 128px box. */
+.lb-avatar-stage { display: flex; align-items: center; justify-content: center; }
+.lb-avatar-stage-fallback { display: flex; align-items: center; justify-content: center; }
+.lb-avatar-stage-top {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
 }

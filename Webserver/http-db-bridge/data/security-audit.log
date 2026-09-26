@@ -15,3 +15,5 @@
 {"at":"2026-09-24T12:22:14.074Z","event":"signout","ip":"127.0.0.1","sessionId":"lb_0f64e78865c149d4e42da77072512ba443053d3d1076692f"}
 {"at":"2026-09-24T12:22:16.856Z","event":"signout","ip":"127.0.0.1","sessionId":"lb_0080fe67ce60fa17dc670fe860501e3f4fe1d1f9a956093f"}
 {"at":"2026-09-24T12:22:19.866Z","event":"signout","ip":"127.0.0.1","sessionId":"lb_479adfd77a510c41e8d15eac969b5bcb52776a8c0155f014"}
+{"at":"2026-09-26T10:49:37.809Z","event":"marketplace_purchase","userId":"1","productId":"900001","price":25,"balanceAfter":1175}
+{"at":"2026-09-26T10:49:37.845Z","event":"marketplace_purchase","userId":"3","productId":"900001","price":25,"balanceAfter":835}

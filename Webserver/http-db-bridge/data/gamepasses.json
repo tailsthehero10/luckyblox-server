@@ -1,0 +1,14 @@
+{
+  "900001": {
+    "id": 900001,
+    "assetId": 900001,
+    "name": "Test Pass",
+    "description": "Created by the marketplace test",
+    "price": 25,
+    "forSale": true,
+    "creatorId": 2,
+    "creatorName": "seller",
+    "createdAt": "2026-09-26T10:49:37.769Z",
+    "updatedAt": "2026-09-26T10:49:37.769Z"
+  }
+}

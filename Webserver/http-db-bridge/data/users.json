@@ -2,7 +2,7 @@
   "1": {
     "userId": "1",
     "joinDate": "2024-01-15T00:00:00.000Z",
-    "robux": 1200,
+    "robux": 1225,
     "currencies": {
       "coins": 2500,
       "tickets": 120
@@ -10,7 +10,8 @@
     "inventory": [
       "607702162",
       "1029025",
-      "25330901"
+      "25330901",
+      "900001"
     ],
     "currentlyWearing": [
       "607702162"
@@ -107,7 +108,7 @@
         "leftLegColorId": 1002
       }
     },
-    "updatedAt": "2026-09-23T17:14:15.079Z",
+    "updatedAt": "2026-09-26T10:49:37.840Z",
     "role": "owner",
     "username": "tailsthehero10",
     "displayName": "tailsthehero10",
@@ -121,7 +122,10 @@
     "passwordSalt": "652a1414baf5c52fc2e198ac527a7506",
     "passwordVersion": 3,
     "robloxUserId": 1,
-    "theme": "dark"
+    "theme": "dark",
+    "ownedGamePasses": [
+      "900001"
+    ]
   },
   "3": {
     "userId": "3",
@@ -131,7 +135,7 @@
     "joinDate": "2025-03-02T00:00:00.000Z",
     "membership": "Premium",
     "membershipStatus": "Premium",
-    "robux": 860,
+    "robux": 835,
     "currencies": {
       "coins": 1500,
       "tickets": 75
@@ -139,7 +143,8 @@
     "inventory": [
       "607702162",
       "1029025",
-      "25330901"
+      "25330901",
+      "900001"
     ],
     "currentlyWearing": [
       "607702162"
@@ -170,7 +175,10 @@
         "leftLegColorId": 1002
       }
     },
-    "updatedAt": "2026-09-13T00:00:00.000Z"
+    "updatedAt": "2026-09-26T10:49:37.832Z",
+    "ownedGamePasses": [
+      "900001"
+    ]
   },
   "4": {
     "userId": "4",

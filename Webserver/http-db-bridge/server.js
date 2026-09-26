@@ -9,6 +9,7 @@ const robloxApi = require('./robloxApi');
 const { getStudioBuildInfo, getStudioUpdateManifest, STUDIO_EXECUTABLE_PATH, DEFAULT_BASE_URL } = require('./studioBuildInfo');
 const clientLauncher = require(path.join(__dirname, '..', '..', 'server', 'clientLauncher.js'));
 const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'server', 'studioApi.js'));
+const { installMarketplaceRoutes } = require(path.join(__dirname, '..', '..', 'server', 'marketplace.js'));
 const { installClientApi } = require('./clientApi.js');
 const { getClientBuildInfo, getClientUpdateManifest } = require('./clientBuildInfo.js');
 const assetFetcher = require(path.join(__dirname, '..', '..', 'server', 'assetFetcher.js'));
@@ -78,33 +79,6 @@ const siteStatus = require('./siteStatus').createSiteStatus({
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-
-/**
- * Bind the EJS engine EXPLICITLY.
- *
- * `app.set('view engine', 'ejs')` makes Express require('ejs') from ITS OWN
- * resolution path. There are two copies of ejs 3.1.10 on disk here (one at the
- * repo root, one under http-db-bridge/node_modules), so if Express loads the
- * other copy than the one the template was compiled against, EJS never binds its
- * `include` argument - and any view that includes a partial dies with
- * "include is not a function".
- *
- * Requiring ejs HERE resolves it from this file's own directory, so the app and
- * its views always share one instance. The engine is registered under the same
- * extension ('ejs') so every existing res.render() call is unchanged.
- */
-let ejsEngine;
-try {
-  ejsEngine = require('ejs');
-} catch (error) {
-  ejsEngine = null;
-}
-
-if (ejsEngine && typeof ejsEngine.renderFile === 'function') {
-  app.engine('ejs', (filePath, options, callback) => {
-    ejsEngine.renderFile(filePath, options, callback);
-  });
-}
 /**
  * Make the account's theme available to EVERY view as `themeClass`.
  *
@@ -2148,6 +2122,20 @@ function saveUser(userId, nextState) {
 
   users[String(userId)] = merged;
   writeJson(usersPath, users);
+
+  // Mirror the account into the client-visible Settings/ files.
+  //
+  // This is what makes the DESKTOP CLIENT see the account's Robux: the client
+  // reads Settings/users/*.json, not the website. It used to be called only from
+  // the sign-in path, so a balance changed any other way (an owner setting it, a
+  // marketplace purchase) never reached the client and it kept showing the old
+  // number. Doing it here means every write keeps the two in step.
+  try {
+    syncLocalIdentity(merged);
+  } catch (error) {
+    /* best effort - a failed mirror must not fail the save */
+  }
+
   return merged;
 }
 
@@ -2409,6 +2397,29 @@ function writeUploadedPackage(fileName, buffer, assetKind = 'rbxl') {
 ensureSeedData();
 installStudioApiRoutes(app, { resolveUser: (userId) => getUser(userId) });
 installTeamCreateRoutes(app);
+
+/**
+ * The marketplace + economy API.
+ *
+ * The 2021M client buys things through its own CoreScript, which calls these
+ * endpoints directly - NOT the site's HTML. Without them every purchase fails
+ * with "the product could not be found", and the client never learns the account
+ * has any Robux at all.
+ *
+ * The helpers are injected rather than imported so this module keeps using the
+ * server's single write path (saveUser), which is what mirrors a balance change
+ * to the client state files and the free remote store like any other edit.
+ */
+installMarketplaceRoutes(app, {
+  getUser,
+  saveUser,
+  getUsers,
+  writeJson,
+  readJson,
+  dataDir,
+  audit,
+  resolveSessionUser,
+});
 
 /**
  * The Roblox client API namespace (/v1/users, /v1/inventory, /v1/thumbnails, ...).
@@ -3456,6 +3467,86 @@ app.post('/api/admin/set-role', requireOwner, (req, res) => {
   audit('owner_set_role', { targetId, role, by: String(req.sessionUser.userId) });
 
   res.json({ ok: true, userId: targetId, role });
+});
+
+/**
+ * Owner-only: set an account's Robux to an exact amount.
+ *
+ * This is the one control the owner needs to make an account the richest on the
+ * server, and it is deliberately absolute ("set to N") rather than relative
+ * ("add N"): a repeated call is idempotent, so a retried request cannot silently
+ * double somebody's balance.
+ *
+ * The write goes through saveUser(), the server's single account write path. That
+ * matters beyond persistence: saveUser mirrors the account into the client-visible
+ * Settings/ files, which is how the desktop client learns the balance. Writing
+ * users.json directly would leave the client showing the OLD number.
+ *
+ * Body: { userId, robux }  or  { userId, robux: "+"/"-" with `amount` }
+ */
+app.post('/api/admin/set-robux', requireOwner, (req, res) => {
+  const targetId = String(req.body.userId || req.body.userid || '').trim();
+  if (!targetId) {
+    return res.status(400).json({ ok: false, error: 'invalid-request', message: 'userId is required.' });
+  }
+
+  const target = getUser(targetId);
+  if (!target || !target.userId) {
+    return res.status(404).json({ ok: false, error: 'user-not-found', userId: targetId });
+  }
+
+  const previous = Number(target.robux) || 0;
+
+  // Absolute set is the normal case. A delta is offered for "give this account
+  // 1000 more", but the operator must ask for it explicitly.
+  let next;
+  if (req.body.robux === '+' || req.body.robux === '-') {
+    const amount = Math.abs(Number(req.body.amount) || 0);
+    next = req.body.robux === '+' ? previous + amount : previous - amount;
+  } else {
+    next = Number(req.body.robux);
+  }
+
+  if (!Number.isFinite(next)) {
+    return res.status(400).json({ ok: false, error: 'invalid-amount', message: 'robux must be a number.' });
+  }
+
+  // Robux is a whole number and cannot be negative. Clamping here rather than
+  // trusting the caller keeps a malformed request from writing a nonsense balance
+  // that the client would then render as-is.
+  next = Math.max(0, Math.round(next));
+
+  const updated = saveUser(targetId, Object.assign({}, target, { robux: next }));
+  audit('owner_set_robux', {
+    targetId,
+    previous,
+    next,
+    by: String(req.sessionUser.userId || req.sessionUser.id || ''),
+  });
+
+  return res.json({
+    ok: true,
+    userId: targetId,
+    username: updated.username,
+    previous,
+    robux: next,
+  });
+});
+
+/**
+ * Owner-only: read an account's balance. The counterpart to set-robux, so an
+ * operator can confirm what actually landed without loading the whole profile.
+ */
+app.get('/api/admin/robux', requireOwner, (req, res) => {
+  const targetId = String(req.query.userId || '').trim();
+  const target = getUser(targetId || req.sessionUser.userId);
+  if (!target) return res.status(404).json({ ok: false, error: 'user-not-found' });
+  return res.json({
+    ok: true,
+    userId: String(target.userId || targetId),
+    username: target.username,
+    robux: Number(target.robux) || 0,
+  });
 });
 
 app.get('/studio', (req, res) => {
@@ -5266,12 +5357,18 @@ app.get('/download', (req, res) => {
   const sessionUser = req.sessionUser || resolveSessionUser(req) || null;
   const user = req.query.userId ? getUser(req.query.userId) : (sessionUser || getUser(1));
 
-  res.render('download', {
+  return res.render('client-download', {
     title: 'Download LuckyBlox - Roblox',
     user,
     currency: getCurrencyForUser(user),
     // The real install state of the machine running this server.
-    client: clientLauncher.getClientStatus(),
+    //
+    // NOTE: this local MUST NOT be called `client`. EJS reads options.client as its
+    // own `client: true` flag - "compile for the browser" - and in that mode
+    // `include` is a string stub rather than a function, so every
+    // <%- include(...) %> in the view throws "include is not a function". The page
+    // looked broken for no visible reason until the name was changed.
+    clientStatus: clientLauncher.getClientStatus(),
     build: getClientBuildInfo(),
     // Shown when the host cannot run the desktop client at all (e.g. the Linux
     // container), so the page explains itself instead of showing a dead button.

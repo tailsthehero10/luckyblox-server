@@ -65,46 +65,58 @@
       <%- include('partials/sidebar', { user: user, activeNav: 'profile' }) %>
 
       <main class="lb-main">
-        <!-- Profile header: headshot, name, counters, actions -->
-        <section class="lb-profile-header">
-          <div class="lb-avatar-stage">
-            <%# Layered, like the Currently Wearing stage: the local figure is
-                always drawn and the remote headshot sits on top of it, so a
-                failed request reveals the figure rather than an empty circle. %>
-            <div class="lb-avatar-stage-fallback">
-              <%= lbAvatarFigure(user, 150) %>
-            </div>
-            <% if (headshot || fullBody) { %>
-              <img class="roblox-avatar-image lb-avatar-stage-top" src="<%= headshot || fullBody %>"
-                   alt="<%= user.username %>" onerror="this.style.display='none';" />
-            <% } %>
-          </div>
+        <!--
+          Profile header.
 
-          <div>
-            <div class="lb-profile-name">
-              <span><%= user.displayName || user.username %></span>
-              <% if (adminBadge && adminBadge.label) { %>
-                <span class="lb-pill"><%= adminBadge.label %></span>
+          The real page lays this out as a 970px centred column: a 128px square
+          headshot on the LEFT, with the name block beside it and the counters
+          under the name. See "REAL 2021 PAGE LAYOUTS" in roblox.css for the
+          source values.
+
+          The wrapper below is the flex row that puts the headshot and the name
+          side by side; without it the two stacked and the header read as a tall
+          sparse column instead of the real one-line header.
+        -->
+        <section class="lb-profile-header">
+          <div class="lb-profile-header-top">
+            <div class="lb-avatar-stage">
+              <%# Layered: the local figure is always drawn and the remote headshot
+                  sits on top of it, so a failed request reveals the figure rather
+                  than an empty box. %>
+              <div class="lb-avatar-stage-fallback">
+                <%= lbAvatarFigure(user, 128) %>
+              </div>
+              <% if (headshot || fullBody) { %>
+                <img class="roblox-avatar-image lb-avatar-stage-top" src="<%= headshot || fullBody %>"
+                     alt="<%= user.username %>" onerror="this.style.display='none';" />
               <% } %>
             </div>
-            <% if ((user.displayName || user.username) !== user.username) { %>
-              <div class="lb-faint">@<%= user.username %></div>
-            <% } %>
 
-            <ul class="lb-counter-row">
-              <li class="lb-counter">
-                <span class="lb-counter-value" title="<%= fCount %>"><%= abbreviateCount(fCount) %></span>
-                <span class="lb-counter-label">Friends</span>
-              </li>
-              <li class="lb-counter">
-                <span class="lb-counter-value" title="<%= folCount %>"><%= abbreviateCount(folCount) %></span>
-                <span class="lb-counter-label">Followers</span>
-              </li>
-              <li class="lb-counter">
-                <span class="lb-counter-value" title="<%= folgCount %>"><%= abbreviateCount(folgCount) %></span>
-                <span class="lb-counter-label">Following</span>
-              </li>
-            </ul>
+            <div class="lb-profile-header-info">
+              <div class="lb-profile-name">
+                <span><%= user.displayName || user.username %></span>
+                <% if (adminBadge && adminBadge.label) { %>
+                  <span class="lb-pill"><%= adminBadge.label %></span>
+                <% } %>
+              </div>
+              <% if ((user.displayName || user.username) !== user.username) { %>
+                <div class="lb-faint">@<%= user.username %></div>
+              <% } %>
+
+              <ul class="lb-counter-row">
+                <li class="lb-counter">
+                  <span class="lb-counter-value" title="<%= fCount %>"><%= abbreviateCount(fCount) %></span>
+                  <span class="lb-counter-label">Friends</span>
+                </li>
+                <li class="lb-counter">
+                  <span class="lb-counter-value" title="<%= folCount %>"><%= abbreviateCount(folCount) %></span>
+                  <span class="lb-counter-label">Followers</span>
+                </li>
+                <li class="lb-counter">
+                  <span class="lb-counter-value" title="<%= folgCount %>"><%= abbreviateCount(folgCount) %></span>
+                  <span class="lb-counter-label">Following</span>
+                </li>
+              </ul>
 
             <div class="lb-meta-row">
               <span class="lb-pill">Joined <%= formatJoinDate(user.joinDate) %></span>
@@ -120,6 +132,7 @@
               <a class="lb-btn lb-btn-secondary" href="/users/<%= user.userId %>/friends">Friends</a>
               <a class="lb-btn lb-btn-secondary" href="/avatar?userId=<%= user.userId %>">Customize Avatar</a>
               <a class="lb-btn lb-btn-secondary" href="/account?userId=<%= user.userId %>">Account</a>
+            </div>
             </div>
           </div>
         </section>

@@ -1,0 +1,39 @@
+{
+  "userId": "3",
+  "username": "Skylin",
+  "displayName": "Skylin",
+  "membership": "Premium",
+  "membershipStatus": "Premium",
+  "role": "player",
+  "isAdmin": false,
+  "studioAccess": true,
+  "authenticated": true,
+  "robloxUserId": null,
+  "robux": 835,
+  "currencies": {
+    "coins": 1500,
+    "tickets": 75
+  },
+  "inventory": [
+    "607702162",
+    "1029025",
+    "25330901",
+    "900001"
+  ],
+  "currentlyWearing": [
+    "607702162"
+  ],
+  "avatar": {
+    "bodyColors": {
+      "headColorId": 1002,
+      "torsoColorId": 1002,
+      "rightArmColorId": 1002,
+      "leftArmColorId": 1002,
+      "rightLegColorId": 1002,
+      "leftLegColorId": 1002
+    }
+  },
+  "gender": "NotSpecified",
+  "joinDate": "2025-03-02T00:00:00.000Z",
+  "updatedAt": "2026-09-26T10:49:37.836Z"
+}
