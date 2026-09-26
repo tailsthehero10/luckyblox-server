@@ -268,6 +268,55 @@
     });
   }
 
+  /**
+   * The mobile rail toggle.
+   *
+   * Below 760px roblox.css translates the left rail off-screen and only
+   * `body.lb-rail-open` brings it back. Nothing ever set that class, so on a
+   * phone the site's only navigation was unreachable - the rail was simply gone.
+   * This binds the header button (and Escape / an outside click) to the class.
+   *
+   * At desktop widths the button is hidden by CSS and the rail is always shown,
+   * so this is inert there.
+   */
+  function bindRailToggle() {
+    var btn = document.getElementById('railToggleBtn');
+    if (!btn || btn.getAttribute('data-lb-bound') === '1') return;
+    btn.setAttribute('data-lb-bound', '1');
+
+    function setOpen(open) {
+      document.body.classList.toggle('lb-rail-open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(!document.body.classList.contains('lb-rail-open'));
+    });
+
+    // A click on the page (not on the rail or the button) closes the drawer, so
+    // tapping a link or the content behind it does not leave it stuck open.
+    document.addEventListener('click', function (e) {
+      if (!document.body.classList.contains('lb-rail-open')) return;
+      if (btn.contains(e.target)) return;
+      var rail = document.querySelector('.lb-sidebar, .roblox-sidebar');
+      if (rail && rail.contains(e.target)) return;
+      setOpen(false);
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') setOpen(false);
+    });
+
+    // Rotating to a wide viewport must not leave the body class behind, or the
+    // rail keeps the drawer's fixed width after it becomes a permanent column.
+    window.addEventListener('resize', function () {
+      if (window.innerWidth > 760) setOpen(false);
+    });
+  }
+
   function start() {
     // The pages now render their own complete nav (Home / Games / Create / More)
     // and the home page renders a real sidebar, so this script no longer rewrites
@@ -279,6 +328,7 @@
     decorateLoadingImages();
     bindMorePages();
     bindAccountMenu();
+    bindRailToggle();
 
     // Images that arrive after the first paint (lazy ones scrolling into view)
     // still get the spinner.

@@ -74,8 +74,8 @@
                       <div class="lb-catalog-grid">
                         <% catalogItems.forEach(function (item) { %>
                           <!-- The whole tile is the link, as on the 2021 catalog.
-                               Before this the tiles were plain <div>s, so nothing
-                               in the Avatar Shop could be opened. -->
+                               Before this the tiles were plain containers, so
+                               nothing in the Avatar Shop could be opened. -->
                           <a class="lb-catalog-tile" href="/catalog/<%= item.id %>">
                             <div class="lb-catalog-thumb" style="--lb-loader-size:36px;">
                               <% if (item.thumbnailUrl) { %>

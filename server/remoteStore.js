@@ -197,20 +197,58 @@ function warn(message) {
 }
 
 /**
+ * Resolve a usable `git` executable.
+ *
+ * Trying only the bare name `git` assumes it is on PATH. On Windows the official
+ * installer adds git to PATH only for shells opened after the install, and a
+ * server started by a service, a shortcut or a launcher inherits the OLD
+ * environment - so `git --version` fails and the local backend silently mirrors
+ * files without ever committing them. The binary is still there; it just is not
+ * findable by name.
+ *
+ * The standard install locations are checked as a fallback, and the resolved path
+ * is cached (including "none", so the miss is only paid once).
+ */
+let cachedGitPath;
+function resolveGit() {
+  if (cachedGitPath !== undefined) return cachedGitPath;
+
+  const candidates = ['git'];
+  if (process.platform === 'win32') {
+    const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+    const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+    const localAppData = process.env.LOCALAPPDATA || '';
+    candidates.push(
+      path.join(programFiles, 'Git', 'cmd', 'git.exe'),
+      path.join(programFilesX86, 'Git', 'cmd', 'git.exe'),
+      localAppData ? path.join(localAppData, 'Programs', 'Git', 'cmd', 'git.exe') : '',
+    );
+  }
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    // An absolute candidate must actually exist; the bare name is probed by exec.
+    if (path.isAbsolute(candidate) && !fs.existsSync(candidate)) continue;
+    try {
+      execFileSync(candidate, ['--version'], { stdio: 'ignore' });
+      cachedGitPath = candidate;
+      return cachedGitPath;
+    } catch (error) {
+      /* try the next candidate */
+    }
+  }
+
+  cachedGitPath = null;
+  return cachedGitPath;
+}
+
+/**
  * Is a `git` binary available? Checked once and cached. Only the local backend
  * needs it, and only for the convenience commit - the mirror itself is plain
  * file writes, which is why a missing git is a warning rather than a failure.
  */
-let cachedHasGit;
 function hasGit() {
-  if (cachedHasGit !== undefined) return cachedHasGit;
-  try {
-    execFileSync('git', ['--version'], { stdio: 'ignore' });
-    cachedHasGit = true;
-  } catch (error) {
-    cachedHasGit = false;
-  }
-  return cachedHasGit;
+  return Boolean(resolveGit());
 }
 
 /** fetch with a timeout, so a hung remote can never hang the app. */
@@ -435,24 +473,26 @@ function localWrite(fileName, data) {
  * Commit the mirrored files in the clone, so the change is recorded rather than
  * sitting as an uncommitted edit forever.
  *
- * Optional: it needs `git` on PATH. When git is missing the files are still
+ * Optional: it needs a `git` binary (resolved by resolveGit, which also checks
+ * the standard Windows install path). When git is missing the files are still
  * written - the mirror is useful on its own - so this only warns.
  */
 function localCommit() {
-  if (!hasGit()) {
+  const git = resolveGit();
+  if (!git) {
     warn('git is not installed; mirrored files were written but not committed');
     return;
   }
   try {
-    execFileSync('git', ['-C', config.dir, 'add', '--', 'data'], { stdio: 'ignore' });
+    execFileSync(git, ['-C', config.dir, 'add', '--', 'data'], { stdio: 'ignore' });
     // `git diff --cached --quiet` exits 1 when something is staged. Nothing to
     // commit is normal (a repeat write of identical data) and must not be an error.
     try {
-      execFileSync('git', ['-C', config.dir, 'diff', '--cached', '--quiet'], { stdio: 'ignore' });
+      execFileSync(git, ['-C', config.dir, 'diff', '--cached', '--quiet'], { stdio: 'ignore' });
       return;
     } catch (dirty) {
       execFileSync(
-        'git',
+        git,
         ['-C', config.dir, 'commit', '-m', 'luckyblox: sync data', '--no-verify'],
         { stdio: 'ignore' },
       );

@@ -38,6 +38,21 @@ var hRobux = hCurrency.robux != null ? hCurrency.robux : (hUser ? (hUser.robux |
 var hDark = (typeof themeOn !== 'undefined') ? !!themeOn : false;
 %>
 <header class="lb-header roblox-topbar<%= hDark ? ' dark-theme' : ' light-theme' %>">
+  <!--
+    Mobile rail toggle.
+
+    Below 760px the left rail is translated off-screen (see the media query in
+    roblox.css) and body.lb-rail-open brings it back. Without this button the
+    class was never set, so the site's ONLY navigation was unreachable on a
+    phone. It is hidden at desktop widths, where the rail is always visible.
+  -->
+  <button class="lb-rail-toggle" type="button" id="railToggleBtn"
+          aria-controls="siteRail" aria-expanded="false" aria-label="Open navigation">
+    <span class="lb-rail-toggle-bar"></span>
+    <span class="lb-rail-toggle-bar"></span>
+    <span class="lb-rail-toggle-bar"></span>
+  </button>
+
   <a class="lb-brand roblox-brand text-header" href="/" aria-label="LuckyBlox home">
     <img class="lb-brand-mark roblox-brand-mark" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
     <span class="lb-brand-word">LuckyBlox</span>
@@ -83,12 +98,6 @@ var hDark = (typeof themeOn !== 'undefined') ? !!themeOn : false;
       Right-hand cluster, left to right: the ACCOUNT (avatar + username, opening
       the account menu), then the Robux balance, then the settings and friends
       shortcuts.
-
-      The account block leads the cluster on purpose - it is the identity the
-      2021 bar showed immediately left of the currency, and it is the only thing
-      in the bar that says WHICH account you are signed in as.
-    -->
-      to the profile), then the Robux balance, then settings and friends.
 
       The account block leads the cluster on purpose - it is the identity the
       2021 bar showed immediately left of the currency, and it is the only thing

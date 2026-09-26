@@ -4834,6 +4834,48 @@ button.roblox-sidebar-link { min-height: 34px; }
 @media (max-width: 1024px) {
   :root { --lb-rail-width: 200px; }
 }
+/* ---------------------------------------------------------------------------
+   Mobile rail toggle (the header button that opens the left rail)
+   ---------------------------------------------------------------------------
+   The rail is a permanent fixed column at desktop widths, so this button only
+   exists for the narrow layout where the rail slides off-screen. It is hidden by
+   default and revealed by the same 760px query that hides the rail, so the two
+   can never disagree about which layout is in effect.
+   --------------------------------------------------------------------------- */
+.lb-rail-toggle {
+  display: none;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  margin-right: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--lb-radius);
+  background: transparent;
+  cursor: pointer;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.lb-rail-toggle:hover { background: rgba(0, 0, 0, 0.06); }
+.lb-rail-toggle-bar {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: currentColor;
+}
+/* The hamburger inherits the header's text colour, so it reads on both the light
+   and the dark 2021 header without a second rule. */
+.lb-header .lb-rail-toggle,
+.roblox-topbar .lb-rail-toggle { color: var(--lb-ink); }
+.lb-header.dark-theme .lb-rail-toggle,
+.roblox-topbar.dark-theme .lb-rail-toggle { color: #ffffff; }
+
+/* A dimmed backdrop behind the open drawer. It is only rendered while the rail
+   is open, so it never intercepts clicks in the normal layout. */
+.lb-rail-backdrop { display: none; }
+
 @media (max-width: 760px) {
   :root { --lb-rail-width: 0px; }
   .lb-sidebar,
@@ -4846,8 +4888,25 @@ button.roblox-sidebar-link { min-height: 34px; }
     transform: translateX(0);
     width: 220px !important;
     max-width: 220px !important;
+    z-index: 60;
   }
   body.lb-rail-open { --lb-rail-width: 220px; }
+
+  /* The toggle is only useful in this layout. */
+  .lb-rail-toggle { display: inline-flex; }
+
+  /* Backdrop: a plain pseudo-element on the body, so no extra markup is needed
+     and it cannot be clicked through to the page underneath. */
+  body.lb-rail-open::after {
+    content: '';
+    position: fixed;
+    top: var(--lb-topbar-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 50;
+  }
 }
 
 /* ---------------------------------------------------------------------------
