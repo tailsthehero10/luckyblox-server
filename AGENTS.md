@@ -96,6 +96,19 @@ LuckyBlox is a local Roblox-style game platform served from a release folder. Ap
   the route 404s and Play reports the client as unavailable instead of dead-linking.
 - Play flow: `POST /api/launch-game` (and `/api/client/launch`) detect the client,
   auto-launch it, and return `client.downloadUrl` when it is not installed.
+- **`AppSettings.xml` never bakes in a real host.** Every committed client file
+  carries `http://localhost/LuckBlox.site.tk/`; the live origin is substituted at
+  request time by `rewriteAppSettingsBaseUrl()` in `server.js`, which appends the
+  per-client path suffix from `CLIENT_BASE_SUFFIX` (`2021M` -> `/home/`, `2022M` ->
+  `/`). Two consequences worth remembering:
+  - The on-disk `BaseUrl` is a placeholder, not a setting. Editing it changes
+    nothing for the shipping clients, and pointing one at a remote host only
+    makes the file lie about where the client connects.
+  - The suffix must come from the pinned table, never from parsing the file. The
+    old fallback string-matched `LuckBlox.site.tk` and silently returned `/` for
+    any file that did not contain it, handing a client that needs `/home/` the
+    wrong page tree with no error. `tests/client-settings-resolution.test.js`
+    guards both the per-client suffix and the consistency of every committed file.
 - The launch also calls `syncLocalJob()`, which publishes `Settings/jobid.txt`,
   `Settings/MapPath.txt`, `Settings/gameserverraw.json` and
   `Settings/apibaseurl.txt` so the desktop tools (Discord companion, launcher)

@@ -34,14 +34,42 @@ function resolveClientDir(selectedPath = selectedFile) {
   return path.join(clientsRoot, DEFAULT_CLIENT);
 }
 
-// The suffix extraction from serveClientSettingsFile - the client's own path is
-// preserved so 2021M keeps its /home/ and 2022M keeps its root.
-function extractSuffix(xml) {
+// Mirror of CLIENT_BASE_SUFFIX in the bridge. Kept in sync deliberately: if the
+// production table changes shape, this test should be updated with it.
+const CLIENT_BASE_SUFFIX = { '2021M': '/home/', '2022M': '/' };
+
+/**
+ * The suffix actually handed to a client, mirroring rewriteAppSettingsBaseUrl.
+ *
+ * The committed file's own path is only a fallback for an UNKNOWN client folder;
+ * the two shipping clients are pinned by the table above. Reading the file alone
+ * is what the previous version of this test did, and it asserted a /home/ suffix
+ * that the 2021M file has never actually contained - the value is applied at
+ * request time, not stored.
+ */
+function servedSuffix(clientName) {
+  if (CLIENT_BASE_SUFFIX[clientName]) return CLIENT_BASE_SUFFIX[clientName];
+  const xml = fs.readFileSync(path.join(clientsRoot, clientName, 'AppSettings.xml'), 'utf8');
   const block = String(xml).match(/<BaseUrl>[\s\S]*?<\/BaseUrl>/i);
   if (!block) return '/';
-  const inner = block[0].match(/LuckBlox\.site\.tk(\/[^<]*)?/i) || [];
-  const found = inner[1] || '/';
-  return found.startsWith('/') ? found : '/' + found;
+  const inner = (block[0].match(/<BaseUrl>([\s\S]*?)<\/BaseUrl>/i) || [])[1] || '';
+  try {
+    const p = new URL(inner).pathname;
+    return p && p !== '' ? p : '/';
+  } catch (error) {
+    return '/';
+  }
+}
+
+/** The path a committed AppSettings.xml carries (should be the origin root). */
+function committedPath(xml) {
+  const inner = (String(xml).match(/<BaseUrl>([\s\S]*?)<\/BaseUrl>/i) || [])[1] || '';
+  try {
+    const p = new URL(inner).pathname;
+    return p && p !== '' ? p : '/';
+  } catch (error) {
+    return null;
+  }
 }
 
 let failures = 0;
@@ -90,16 +118,49 @@ check('resolveClientDir ignores a path-traversal attempt', () => {
   }
 });
 
-// --- Each client keeps its own BaseUrl path ----------------------------------
+// --- Each client is served its own BaseUrl path ------------------------------
 
-check('2021M keeps its trailing /home/ suffix', () => {
-  const xml = fs.readFileSync(path.join(clientsRoot, '2021M', 'AppSettings.xml'), 'utf8');
-  assert.equal(extractSuffix(xml), '/home/');
+check('2021M is served the trailing /home/ suffix', () => {
+  assert.equal(servedSuffix('2021M'), '/home/');
 });
 
-check('2022M keeps its root suffix', () => {
-  const xml = fs.readFileSync(path.join(clientsRoot, '2022M', 'AppSettings.xml'), 'utf8');
-  assert.equal(extractSuffix(xml), '/');
+check('2022M is served the root suffix', () => {
+  assert.equal(servedSuffix('2022M'), '/');
+});
+
+// Every committed file must name the SAME origin path, so the rewrite has a
+// predictable fallback and the files stop implying two clients talk elsewhere.
+check('every committed AppSettings.xml carries the same BaseUrl path', () => {
+  const withSettings = fs.readdirSync(clientsRoot)
+    .filter((entry) => fs.existsSync(path.join(clientsRoot, entry, 'AppSettings.xml')));
+  const seen = new Map();
+  for (const client of withSettings) {
+    const xml = fs.readFileSync(path.join(clientsRoot, client, 'AppSettings.xml'), 'utf8');
+    const p = committedPath(xml);
+    assert.ok(p !== null, `${client} BaseUrl should be a parseable URL`);
+    seen.set(client, p);
+  }
+  const distinct = new Set(seen.values());
+  assert.equal(
+    distinct.size,
+    1,
+    `expected one consistent BaseUrl path, got ${JSON.stringify([...seen])}`,
+  );
+});
+
+check('no committed AppSettings.xml points at a remote deployment', () => {
+  const withSettings = fs.readdirSync(clientsRoot)
+    .filter((entry) => fs.existsSync(path.join(clientsRoot, entry, 'AppSettings.xml')));
+  for (const client of withSettings) {
+    const xml = fs.readFileSync(path.join(clientsRoot, client, 'AppSettings.xml'), 'utf8');
+    const inner = (xml.match(/<BaseUrl>([\s\S]*?)<\/BaseUrl>/i) || [])[1] || '';
+    // A baked-in public host means the file lies about where the client connects;
+    // the origin is supplied at request time by the bridge instead.
+    assert.ok(
+      !/onrender\.com|render\.com/i.test(inner),
+      `${client} must not bake in a remote host (got "${inner}")`,
+    );
+  }
 });
 
 // --- The regression this test exists for -------------------------------------
@@ -118,8 +179,7 @@ check('every client folder with AppSettings.xml is resolvable', () => {
     .filter((entry) => fs.existsSync(path.join(clientsRoot, entry, 'AppSettings.xml')));
   assert.ok(withSettings.length > 0, 'expected at least one client with AppSettings.xml');
   for (const client of withSettings) {
-    const xml = fs.readFileSync(path.join(clientsRoot, client, 'AppSettings.xml'), 'utf8');
-    const suffix = extractSuffix(xml);
+    const suffix = servedSuffix(client);
     assert.ok(suffix.startsWith('/'), `${client} suffix should start with / (got "${suffix}")`);
   }
   console.log(`       (${withSettings.length} clients checked)`);

@@ -215,6 +215,29 @@ const CLIENT_BASE_SUFFIX = {
   '2022M': '/',
 };
 
+/**
+ * The path suffix a committed AppSettings.xml carries.
+ *
+ * Every shipped client's file now reads http://localhost/LuckBlox.site.tk/ , so
+ * this normally returns '/'. It exists for the one case the pinned table above
+ * does not cover: an UNKNOWN client folder (someone drops in a new build). The
+ * old fallback matched the literal string "LuckBlox.site.tk" and defaulted to '/';
+ * when the committed value was an origin WITHOUT that path - which is exactly what
+ * the 2021M/2022M files used to hold - it silently returned '/', handing a client
+ * that expects /home/ the wrong page tree with no error.
+ *
+ * Parsing the URL properly means any path is recovered correctly, whatever origin
+ * the file happens to name.
+ */
+function suffixFromBaseUrl(baseUrl) {
+  try {
+    const path = new URL(String(baseUrl)).pathname;
+    return path && path !== '' ? path : '/';
+  } catch (error) {
+    return '/';
+  }
+}
+
 function isKnownClient(name) {
   return KNOWN_CLIENTS.indexOf(name) !== -1;
 }
@@ -267,8 +290,8 @@ function rewriteAppSettingsBaseUrl(body, origin, clientName) {
   // committed file already carried so an unknown client still gets a sane URL.
   let suffix = CLIENT_BASE_SUFFIX[clientName];
   if (!suffix) {
-    const existingPath = (match[0].match(/LuckBlox\.site\.tk(\/[^<]*)?/i) || [])[1] || '/';
-    suffix = existingPath.startsWith('/') ? existingPath : '/' + existingPath;
+    const existing = (match[0].match(/<BaseUrl>([\s\S]*?)<\/BaseUrl>/i) || [])[1] || '';
+    suffix = suffixFromBaseUrl(existing);
   }
   return String(body).replace(
     /<BaseUrl>[\s\S]*?<\/BaseUrl>/i,
@@ -6899,9 +6922,18 @@ app.post('/dev/assets/upload', requireDevAuth, express.raw({ type: '*/*', limit:
 
 app.get('/dev/docs', requireDevAuth, (req, res) => {
   const user = getDevUser(req);
+  // The view reports live counts (`games.length`, `assets.length`) in its example
+  // payload. Those were never passed, so the page threw "games is not defined" and
+  // 500'd on every visit. They come from the same sources /dev/home uses.
+  const places = Object.values(readJson(path.join(dataDir, 'places.json'), {}));
+  const games = Object.values(getGames());
+  const assets = Object.values(getAssets());
   res.render('dev/docs', {
     title: 'API Docs - LuckyBlox Studio',
     user,
+    places,
+    games,
+    assets,
     currency: getCurrencyForUser(user),
     adminBadge: getAdminBadge(user),
   });
