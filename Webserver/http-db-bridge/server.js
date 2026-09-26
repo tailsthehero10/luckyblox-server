@@ -536,7 +536,19 @@ function resolveSessionUser(req) {
 
   const user = getUser(userId);
   // Never let a session resolve to an account that does not exist.
-  return user && (user.userId || user.id) ? user : null;
+  if (!user || !(user.userId || user.id)) return null;
+
+  // Mark the record as belonging to a validated session.
+  //
+  // This is the ONLY place a session is proven, so it is the only place this flag
+  // is set. isOwnerUser() requires it, which is what stops a plain record lookup
+  // (a profile page, a public API response, getUser(req.query.userId)) from ever
+  // being treated as the signed-in owner.
+  //
+  // A fresh object is returned rather than mutating the cached record, so the
+  // flag can never leak from a session-bound copy into the shared store - which
+  // would mark every future lookup of that account as authenticated.
+  return { ...user, isAuthenticated: true };
 }
 
 function applySessionCookie(res, userId, req) {
@@ -644,10 +656,36 @@ const verifyPassword = security.verifyPassword;
 const OWNER_USER_ID = String(process.env.LUCKYBLOX_OWNER_ID || '1');
 const OWNER_USERNAME = String(process.env.LUCKYBLOX_OWNER_USERNAME || 'tailsthehero10').toLowerCase();
 
+/**
+ * Is this account the deployment owner?
+ *
+ * SECURITY: this used to return true when the id was 1 OR the username matched
+ * `tailsthehero10`. Both halves were exploitable:
+ *
+ *   1. The username is NOT reserved at signup (see isReservedUsername), so any
+ *      visitor could register `tailsthehero10` and be handed owner + admin on the
+ *      spot - including the owner diagnostics and every admin-only route.
+ *   2. On a fresh deployment `nextUserId()` starts at 1, so the FIRST person to
+ *      sign up received id 1 - which is OWNER_USER_ID - and became the owner.
+ *
+ * An account is now the owner only when it is BOTH the configured id/username
+ * AND actually authenticated as that account. `user.isAuthenticated` is set by
+ * the session middleware when the request carries a valid session for that user;
+ * a bare record (or a signed-out lookup) is never the owner.
+ *
+ * Set LUCKYBLOX_OWNER_USERNAME to your own name, and prefer LUCKYBLOX_OWNER_ID.
+ */
 function isOwnerUser(user) {
   if (!user) {
     return false;
   }
+
+  // A record fetched for display (a profile lookup, a public API response) has no
+  // session behind it and must never be treated as the signed-in owner.
+  if (user.isAuthenticated !== true) {
+    return false;
+  }
+
   const idMatch = String(user.userId || user.id || '') === OWNER_USER_ID;
   const nameMatch = String(user.username || '').toLowerCase() === OWNER_USERNAME;
   return idMatch || nameMatch;
@@ -1454,6 +1492,11 @@ function ensureSeedData() {
   // a credential (see getUserByUsername).
   dedupeUsersByUsername();
 
+  // Say plainly whether an account can actually be the owner. Owner powers now
+  // need a matching id/username AND a real session, so a misconfigured owner is
+  // an unreachable admin area - report it at boot rather than let it be a mystery.
+  reportOwnerAccount();
+
   if (!fs.existsSync(assetsPath)) {
     writeJson(assetsPath, createDefaultAssets());
   }
@@ -1525,6 +1568,57 @@ function applyOwnerPasswordFromEnv() {
   writeJson(usersPath, users);
   console.log(`[luckyblox] applied owner password for ${owner.username || OWNER_USER_ID} from LUCKYBLOX_OWNER_PASSWORD`);
   return true;
+}
+
+/**
+ * Report whether an account actually satisfies the owner rules.
+ *
+ * Owner powers now require BOTH a matching id/username AND a real signed-in
+ * session (see isOwnerUser). If the configured LUCKYBLOX_OWNER_ID /
+ * LUCKYBLOX_OWNER_USERNAME do not match any stored account, nobody can be the
+ * owner - every admin route 403s and there is no way in. That used to fail
+ * silently; this prints exactly which values were checked and what exists, so a
+ * misconfiguration is one line of log instead of a mystery.
+ */
+function reportOwnerAccount() {
+  const users = getUsers();
+  const byId = users[OWNER_USER_ID];
+  const byName = Object.values(users).find(
+    (u) => u && String(u.username || '').toLowerCase() === OWNER_USERNAME,
+  );
+  const match = byId || byName || null;
+
+  if (!match) {
+    console.warn('[luckyblox] OWNER WARNING: no account matches the owner config, so '
+      + 'owner/admin routes are unreachable.');
+    console.warn(`[luckyblox]   looked for id "${OWNER_USER_ID}" or username "${OWNER_USERNAME}"`);
+    const known = Object.values(users)
+      .filter((u) => u && (u.userId || u.id))
+      .slice(0, 10)
+      .map((u) => `${u.userId || u.id}:${u.username}`)
+      .join(', ');
+    console.warn(`[luckyblox]   existing accounts: ${known || '(none)'}`);
+    console.warn('[luckyblox]   set LUCKYBLOX_OWNER_ID (or LUCKYBLOX_OWNER_USERNAME) to match '
+      + 'the account you sign in with.');
+    return { ok: false, ownerId: OWNER_USER_ID, ownerUsername: OWNER_USERNAME };
+  }
+
+  const id = String(match.userId || match.id || '');
+  const name = String(match.username || '');
+  const idOk = id === OWNER_USER_ID;
+  const nameOk = name.toLowerCase() === OWNER_USERNAME;
+  console.log(`[luckyblox] owner account: ${name} (id ${id}) via `
+    + `${idOk && nameOk ? 'id+username' : idOk ? 'id' : 'username'}`);
+
+  // A mismatch is not fatal (either half grants ownership) but it usually means
+  // one of the two env values is stale, which is worth knowing before it bites.
+  if (!idOk || !nameOk) {
+    console.warn(`[luckyblox]   note: ${!idOk ? `id ${id} != LUCKYBLOX_OWNER_ID ${OWNER_USER_ID}` : ''}`
+      + `${!idOk && !nameOk ? '; ' : ''}`
+      + `${!nameOk ? `username ${name} != LUCKYBLOX_OWNER_USERNAME ${OWNER_USERNAME}` : ''}`);
+  }
+
+  return { ok: true, ownerId: id, ownerUsername: name, matchedById: idOk, matchedByName: nameOk };
 }
 
 function getUsers() {
@@ -1758,6 +1852,17 @@ function nextUserId() {
 
   let candidate = highest + 1;
   while (used.has(candidate)) candidate += 1;
+
+  // NEVER issue the owner's id to a new account.
+  //
+  // On a deployment whose users.json is empty, `highest` is 0 and this used to
+  // return 1 - which is OWNER_USER_ID. The FIRST visitor to sign up was therefore
+  // handed the owner account, with the admin badge and every owner-only route.
+  // The owner id is reserved for the owner, so skip it (and the configured id, if
+  // an operator moved it).
+  const reserved = new Set([1, Number(OWNER_USER_ID)].filter((n) => Number.isFinite(n) && n > 0));
+  while (reserved.has(candidate)) candidate += 1;
+
   return candidate;
 }
 
@@ -2837,17 +2942,78 @@ app.get('/home', (req, res) => {
 
 app.get('/games', (req, res) => {
   const user = getUser(req.query.userId || 1);
-  const games = Object.values(getGames());
-  const featuredGame = games[0] || getGameEntry(1818);
+  const allGames = Object.values(getGames());
+  const activeGenre = String(req.query.genre || '').trim();
 
-  res.render('home', {
-    title: 'LuckyBlox Games',
+  // Normalise a game record into the shape the 2021 game card expects. The real
+  // tile shows only the name, the vote % and the playing count - no genre, no
+  // developer line - so those are the only fields built here.
+  const toCard = (g) => {
+    const likes = Number(g.likes) || 0;
+    const dislikes = Number((g.votes && g.votes.dislikes) || 0);
+    const total = likes + dislikes;
+    return {
+      placeId: Number(g.placeId || g.universeId || 1818),
+      title: g.title || g.name || 'Experience',
+      icon: g.icon || g.iconUrl || '/gameplaceholder/card.png',
+      // A vote percentage only when real votes exist; the card then omits the
+      // label rather than printing a fabricated 0%.
+      votePercentage: total > 0 ? Math.round((likes / total) * 100) : null,
+      playing: Number(g.playerCount) || 0,
+      genre: g.genre || 'Adventure',
+      visits: Number(g.visits) || 0,
+      favorites: Number(g.favorites) || 0,
+      updatedAt: g.updatedAt || g.publishedAt || '',
+    };
+  };
+
+  const cards = allGames.map(toCard);
+  const filtered = activeGenre
+    ? cards.filter((c) => c.genre.toLowerCase() === activeGenre.toLowerCase())
+    : cards;
+
+  /**
+   * The carousel rows.
+   *
+   * The 2021 Discover page was a stack of sort-based rows ("Most Engaging",
+   * "Popular", "Top Rated", "Recommended For You"). Each row is the same set of
+   * games ordered differently, which is exactly what the real page did - it did
+   * not have a separate hand-curated list per row.
+   *
+   * A row is dropped when it would be empty, so the page never shows an empty
+   * frame with a title.
+   */
+  const byPlaying = [...filtered].sort((a, b) => b.playing - a.playing);
+  const byVotes = [...filtered]
+    .filter((c) => c.votePercentage !== null)
+    .sort((a, b) => b.votePercentage - a.votePercentage);
+  const byUpdated = [...filtered].sort((a, b) => {
+    const ta = Date.parse(a.updatedAt) || 0;
+    const tb = Date.parse(b.updatedAt) || 0;
+    return tb - ta;
+  });
+  const byFavorites = [...filtered].sort((a, b) => b.favorites - a.favorites);
+
+  const sections = [
+    { key: 'popular', title: 'Popular', games: byPlaying.slice(0, 12) },
+    { key: 'top-rated', title: 'Top Rated', games: byVotes.slice(0, 12) },
+    { key: 'recommended', title: 'Recommended For You', games: byFavorites.slice(0, 12) },
+    { key: 'recently-updated', title: 'Recently Updated', games: byUpdated.slice(0, 12) },
+  ].filter((s) => s.games.length > 0);
+
+  // The genre chips come from the games actually present, so a chip can never
+  // filter down to nothing.
+  const genres = Array.from(new Set(cards.map((c) => c.genre).filter(Boolean))).sort();
+
+  res.render('games', {
+    title: 'Discover - LuckyBlox',
     user,
-    games,
-    featuredGame,
-    friends: getFriendsForUser(user.userId || 1),
     currency: getCurrencyForUser(user),
-    activePlaceId: req.query.placeId ? Number(req.query.placeId) : featuredGame.placeId,
+    sections,
+    genres,
+    activeGenre,
+    totalGames: cards.length,
+    abbreviateCount,
   });
 });
 
@@ -3004,6 +3170,14 @@ app.post('/signup', requireCsrf, (req, res) => {
     return renderError(409, 'That username is already taken.');
   }
 
+  // Defence in depth: checkUsernamePolicy already rejects reserved names, but a
+  // reserved name must never reach account creation even if that policy is ever
+  // relaxed. Registering the owner's username would grant owner + admin.
+  if (security.isReservedUsername(username)) {
+    audit('signup_reserved_name', { ip, username });
+    return renderError(409, 'That username is not available.');
+  }
+
   const nextId = nextUserId();
   const { hash, salt, version } = hashPassword(password);
   const created = buildNewUserRecord({
@@ -3050,6 +3224,13 @@ app.post('/luckblox.site.tk/signup', (req, res) => {
   // Same shared uniqueness rule as the form signup above.
   if (isUsernameTaken(username)) {
     return res.status(409).json({ ok: false, error: 'username-taken', message: 'That username is already taken.' });
+  }
+
+  // Same reserved-name guard as the form signup - this JSON endpoint is a second
+  // door to the same account table, so it must not be the weaker one.
+  if (security.isReservedUsername(username)) {
+    audit('signup_reserved_name', { ip: security.clientIp(req), username, via: 'api' });
+    return res.status(409).json({ ok: false, error: 'username-not-available', message: 'That username is not available.' });
   }
 
   const nextId = nextUserId();
@@ -6565,6 +6746,17 @@ app.post('/api/settings', (req, res) => {
         message: 'That display name is already taken. Pick another.',
       });
     }
+    // Reserved names are blocked here too. A display name is the name rendered
+    // next to the avatar everywhere, so setting it to the owner's - or to
+    // "Admin" - is impersonation even though it grants no powers.
+    if (security.isReservedUsername(candidate)) {
+      audit('display_name_reserved', { ip: security.clientIp(req), userId, candidate });
+      return res.status(409).json({
+        ok: false,
+        error: 'display-name-not-available',
+        message: 'That display name is not available. Pick another.',
+      });
+    }
     nextState.displayName = candidate;
   }
   if (typeof body.bio === 'string') {
@@ -6759,18 +6951,21 @@ app.get('/api/v1/assets', (req, res) => {
 });
 
 function getDevUser(req) {
-  const sessionCookie = parseCookieHeader(req.headers.cookie || '').luckblox_session;
-  const session = sessionCookie ? activeSessions.get(sessionCookie) : null;
-  if (session) return getUser(Number(session.userId) || 1);
-  return null;
+  // Delegates to the ONE validated resolver. This used to read the session
+  // directly and fall back to `Number(session.userId) || 1`, so a malformed
+  // session record with no userId resolved to account 1 - the deployment OWNER -
+  // and handed that visitor the developer dashboard.
+  return resolveSessionUser(req);
 }
 
 function requireDevAuth(req, res, next) {
-  const sessionCookie = parseCookieHeader(req.headers.cookie || '').luckblox_session;
-  const session = sessionCookie ? activeSessions.get(sessionCookie) : null;
-  if (session) {
-    req.sessionUser = getUser(Number(session.userId) || 1);
-    req.sessionUserId = String(req.sessionUser.userId || 1);
+  const user = resolveSessionUser(req);
+  if (user) {
+    // resolveSessionUser already marks the record isAuthenticated, so anything
+    // downstream that checks ownership sees a proven session rather than a bare
+    // lookup. Assigning it here keeps req.sessionUser consistent for the route.
+    req.sessionUser = user;
+    req.sessionUserId = String(user.userId || user.id || '');
     return next();
   }
   const redirect = encodeURIComponent(req.originalUrl || '/dev');

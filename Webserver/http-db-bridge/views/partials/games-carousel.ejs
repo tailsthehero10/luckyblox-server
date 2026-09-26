@@ -1,32 +1,27 @@
-<!--
+<%#
   Games carousel section - the real 2021 Discover row.
 
-  Structure taken from D:\DownLoads\Discover - Roblox.html:
+  Structure taken from D:\DownLoads\Discover - Roblox.html. Tag names below are
+  written without angle brackets on purpose: a literal tag inside a comment
+  defeats structural checks and makes the real nesting impossible to read.
 
-    <div class="games-list-container is-windows">
-      <a href=".../discover#/sortName/<key>">
-        <div class="container-header games-filter-changer">
-          <h3><title></h3>
-          <span class="see-all-button games-filter-changer btn-min-width btn-secondary-xs
-                       btn-more see-all-link-icon">See All </span>
-        </div>
-      </a>
-      <div class="horizontal-scroller games-list">
-        <div class="clearfix horizontal-scroll-window">
-          <div class="horizontally-scrollable" style="left: 0px;">
-            <ul class="hlist games game-cards game-tile-list">
-              <li class="list-item game-card game-tile"> ... </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
+    div.games-list-container.is-windows
+      a  (href=".../discover#/sortName/<key>")
+        div.container-header.games-filter-changer
+          h3  (the row title)
+          span.see-all-button.games-filter-changer.btn-min-width
+               .btn-secondary-xs.btn-more.see-all-link-icon   "See All "
+      div.horizontal-scroller.games-list
+        div.clearfix.horizontal-scroll-window
+          div.horizontally-scrollable  (style="left: 0px;")
+            ul.hlist.games.game-cards.game-tile-list
+              li.list-item.game-card.game-tile  (one per game)
 
   A row renders nothing at all when it has no games, rather than leaving an empty
   frame with a title - an empty carousel is what made the page look broken.
 
   Expects: section { key, title, seeAllHref }, games (array).
--->
+%>
 <% var sec=(typeof section !=='undefined' && section) ? section : {}; var secGames=Array.isArray(games) ? games : [];
   var secTitle=String(sec.title || '' ); var secKey=String(sec.key || '' ); var secHref=sec.seeAllHref || ('/games?sort=' + encodeURIComponent(secKey));
 %>

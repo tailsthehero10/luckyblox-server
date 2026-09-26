@@ -7,6 +7,7 @@
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/roblox-ui.css" />
 </head>
 <%#
   Home / Discover. The real 2021 home page was a sidebar plus a grid of game
@@ -24,6 +25,40 @@
       <%- include('partials/sidebar', { user: user, activeNav: 'home' }) %>
 
       <main class="lb-main">
+        <%#
+          Friends, as a horizontal row at the TOP of the page.
+
+          The 2021 home page opened with the friend list across the top - it is the
+          first thing a signed-in player sees, and it was previously buried in a
+          panel beside the account card at the bottom, where a long page pushed it
+          off-screen. A horizontal strip reads as "who is online" at a glance.
+        %>
+        <% if (friends && friends.length) { %>
+        <section class="lb-friends-strip">
+          <div class="lb-friends-strip-head">
+            <span class="lb-friends-strip-title">Friends</span>
+            <span class="lb-friends-strip-count"><%= friends.length %></span>
+          </div>
+          <div class="lb-friends-strip-row">
+            <% friends.forEach(function (friend) { %>
+              <a class="lb-friend-chip<%= friend.online ? ' is-online' : '' %>"
+                 href="<%= friend.profileUrl %>" title="<%= friend.username %>">
+                <span class="lb-friend-chip-avatar">
+                  <% if (friend.headshotUrl) { %>
+                    <img src="<%= friend.headshotUrl %>" alt="" loading="lazy"
+                         onerror="this.style.display='none';" />
+                  <% } else { %>
+                    <%= String(friend.username || 'F').slice(0, 1).toUpperCase() %>
+                  <% } %>
+                </span>
+                <span class="lb-friend-chip-name"><%= friend.username %></span>
+                <span class="lb-friend-chip-dot" aria-hidden="true"></span>
+              </a>
+            <% }); %>
+          </div>
+        </section>
+        <% } %>
+
         <section class="lb-hero">
           <!--
             The featured game's artwork, as a SQUARE card (1:1), matching the game
@@ -112,11 +147,16 @@
 
                       <!--
                         The play affordance from the real Discover card (44px, rounded).
-                        It is a <span>, not a nested <button>: the whole card is already
-                        an <a>, and a button inside a link is invalid HTML and swallows
-                        the click. The delegated handler below turns a click on it into
-                        an in-page launch, so pressing it starts the game rather than
-                        navigating to the game page.
+                        It is a span, not a nested button element: the whole card is
+                        already a link, and a button inside a link is invalid HTML and
+                        swallows the click. The delegated handler below turns a click on
+                        it into an in-page launch, so pressing it starts the game rather
+                        than navigating to the game page.
+
+                        NOTE: the tag names above are written without angle brackets on
+                        purpose. A literal tag inside a comment defeats structural
+                        checks (a naive tag count sees an unclosed element) and makes
+                        the real nesting impossible to read by eye.
                       -->
                       <span class="lb-game-card-play" role="button" tabindex="-1"
                             aria-label="Play <%= game.title %>"
@@ -137,28 +177,6 @@
         </section>
 
         <div class="lb-content-grid">
-          <section class="lb-panel">
-            <div class="lb-panel-header"><span>Friends</span></div>
-            <div class="lb-panel-body">
-              <% if (friends && friends.length) { %>
-                <div class="lb-asset-list">
-                  <% friends.forEach(function (friend) { %>
-                    <a class="lb-asset-item" href="<%= friend.profileUrl %>">
-                      <div class="lb-asset-icon"><%= String(friend.username || 'F').slice(0, 1).toUpperCase() %></div>
-                      <div>
-                        <div class="lb-asset-name"><%= friend.username %></div>
-                        <div class="lb-asset-type"><%= friend.status %></div>
-                      </div>
-                      <div class="lb-asset-tag"><%= friend.online ? 'Online' : 'Offline' %></div>
-                    </a>
-                  <% }); %>
-                </div>
-              <% } else { %>
-                <div class="lb-muted">No friends yet.</div>
-              <% } %>
-            </div>
-          </section>
-
           <section class="lb-panel">
             <div class="lb-panel-header"><span>Account</span></div>
             <div class="lb-panel-body">

@@ -352,4 +352,117 @@ textarea:focus-visible,
 
 .rbx-scroll-hidden::-webkit-scrollbar {
   display: none;
+}/* ---------------------------------------------------------------------------
+   Friends strip (the horizontal row at the top of the home page)
+   ---------------------------------------------------------------------------
+   The 2021 home page opened with the friend list across the top, so "who is
+   online" is the first thing a signed-in player sees. It is a single sideways
+   row of chips - the same horizontal-scroll pattern the game carousels use, so
+   the two rows feel like one design.
+   --------------------------------------------------------------------------- */
+
+.lb-friends-strip {
+  margin: 0 0 16px;
+}
+
+.lb-friends-strip-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.lb-friends-strip-title {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--rbx-text-header, #393b3d);
+}
+
+.lb-friends-strip-count {
+  font-size: 13px;
+  color: #6d7278;
+}
+
+.lb-friends-strip-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.lb-friends-strip-row::-webkit-scrollbar { display: none; }
+
+/* One friend. The dot carries the presence colour, matching the 2021 list
+   (green = online, grey = offline). */
+.lb-friend-chip {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 72px;
+  padding: 8px 4px;
+  border: 1px solid #e3e5e8;
+  border-radius: 8px;
+  background: #ffffff;
+  text-decoration: none !important;
+  color: var(--rbx-text-header, #393b3d);
+  transition: border-color 0.12s linear, background 0.12s linear;
+}
+.lb-friend-chip:hover {
+  background: #f2f4f5;
+  border-color: #c7cbce;
+}
+.lb-friend-chip:focus { outline: none; }
+.lb-friend-chip:focus-visible {
+  outline: 2px solid var(--rbx-blue, #00a2ff);
+  outline-offset: 1px;
+}
+
+.lb-friend-chip-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: #dfe3e8;
+  color: #44484f;
+  font-weight: 700;
+  font-size: 16px;
+  flex: 0 0 auto;
+}
+.lb-friend-chip-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.lb-friend-chip-name {
+  max-width: 100%;
+  font-size: 12px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Presence dot, bottom-right of the avatar. */
+.lb-friend-chip-dot {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  margin-left: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #b6bcc2;
+  border: 2px solid #ffffff;
+}
+.lb-friend-chip.is-online .lb-friend-chip-dot {
+  background: #02b757;
 }

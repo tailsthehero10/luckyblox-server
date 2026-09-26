@@ -7,6 +7,7 @@
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/roblox-ui.css" />
   <link rel="stylesheet" href="/css/join-status.css" />
 </head>
 <%#
@@ -112,7 +113,7 @@
             <div class="lb-join-panel" id="joinStatus" role="status" aria-live="polite" hidden>
               <div class="lb-join-panel-head">
                 <span class="lb-join-spinner" id="joinSpinner" aria-hidden="true"></span>
-                <strong class="lb-join-panel-title" id="joinTitle">Starting…</strong>
+                <strong class="lb-join-panel-title" id="joinTitle">Startingâ€¦</strong>
               </div>
               <div class="lb-join-panel-body" id="joinBody"></div>
               <div class="lb-join-panel-actions" id="joinActions" hidden></div>
@@ -488,7 +489,7 @@
       // The panel is used for the whole flow, so the page itself never has to be
       // covered by a full-screen veil - the visitor keeps seeing the experience.
       if (loading) loading.button(trigger, true);
-      showJoinState('working', 'Looking for the LuckyBlox client…',
+      showJoinState('working', 'Looking for the LuckyBlox clientâ€¦',
         'Checking this computer for an installed client.');
 
       try {

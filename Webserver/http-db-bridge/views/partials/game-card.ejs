@@ -1,25 +1,23 @@
-<!--
+<%#
   Game card - the real 2021 Roblox game tile.
 
   Structure taken verbatim from the saved Discover page
-  (D:\DownLoads\Discover - Roblox.html), which is the authority for this markup:
+  (D:\DownLoads\Discover - Roblox.html), which is the authority for this markup.
+  Tag names below are written without angle brackets on purpose: a literal tag
+  inside a comment defeats structural checks and makes the real nesting
+  impossible to read by eye. Read "li" as an li element, and so on.
 
-    <li class="list-item game-card game-tile" id="<placeId>" title="<name>">
-      <div class="game-card-container">
-        <a class="game-card-link" href="...">
-          <div class="game-card-thumb-container">
-            <span class="thumbnail-2d-container game-card-thumb"></span>
-          </div>
-          <div class="game-card-name game-name-title" title="<name>"><name></div>
-          <div class="game-card-info">
-            <span class="info-label icon-votes-gray"></span>
-            <span class="info-label vote-percentage-label">88%</span>
-            <span class="info-label icon-playing-counts-gray"></span>
-            <span class="info-label playing-counts-label" title="1110">1.1K</span>
-          </div>
-        </a>
-      </div>
-    </li>
+    li.list-item.game-card.game-tile  (id=placeId, title=name)
+      div.game-card-container
+        a.game-card-link  (href)
+          div.game-card-thumb-container
+            span.thumbnail-2d-container.game-card-thumb
+          div.game-card-name.game-name-title  (title=name)
+          div.game-card-info
+            span.info-label.icon-votes-gray
+            span.info-label.vote-percentage-label          88%
+            span.info-label.icon-playing-counts-gray
+            span.info-label.playing-counts-label           1.1K
 
   The real tile carries ONLY the name, the vote percentage and the playing count -
   no genre, no developer line. Adding those (as this site previously did) is what
@@ -27,7 +25,7 @@
 
   Expects: cardGame { placeId, title, icon, votePercentage, playing }, and
   optionally `showPlaying` (default true) so a caller can drop the player count.
-
+%>
   The thumbnail is a real <img> layered over the placeholder sibling rather than a
   CSS background, so a 404 reveals the placeholder instead of an empty box.
 -->
@@ -42,9 +40,10 @@ var gcPlaying = Number(gc.playing != null ? gc.playing : gc.playerCount) || 0;
 var gcShowPlaying = (typeof showPlaying !== 'undefined') ? !!showPlaying : true;
 var gcSlug = gcTitle.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
 var gcHref = '/games/' + gcPlaceId + (gcSlug ? '/' + gcSlug : '');
-// abbrNum comes from the route; fall back to a plain string so a caller that
-// forgets it still renders a number rather than throwing.
-var gcPlayingText = (typeof abbrNum === 'function') ? abbrNum(gcPlaying) : String(gcPlaying);
+// `abbreviateCount` is the shared helper (res.locals), so every page abbreviates
+// counts the same way. The fallback keeps a caller that renders this partial
+// outside a normal request (e.g. a test) from throwing.
+var gcPlayingText = (typeof abbreviateCount === 'function') ? abbreviateCount(gcPlaying) : String(gcPlaying);
 %>
 <li class="list-item game-card game-tile" id="<%= gcPlaceId %>" title="<%= gcTitle %>">
   <div class="game-card-container">

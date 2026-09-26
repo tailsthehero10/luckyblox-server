@@ -124,6 +124,65 @@ function checkPasswordPolicy(password) {
 }
 
 /**
+ * Names nobody may register.
+ *
+ * Roblox reserves its own brand words, its official accounts and the names of
+ * its systems, so a visitor can never register `Roblox`, `Admin`, or the name of
+ * a real staff account. LuckyBlox needs the same guard for a security reason on
+ * top of the impersonation one: the deployment OWNER is identified by username
+ * (LUCKYBLOX_OWNER_USERNAME, default `tailsthehero10`), so if that name could be
+ * registered, the registrant would be handed owner + admin instantly.
+ *
+ * Compared case-insensitively and with underscores stripped, so `_Admin_`,
+ * `a_d_m_i_n` and `ADMIN` are all caught - the same normalisation the signup
+ * uniqueness check uses.
+ */
+const RESERVED_USERNAMES = new Set([
+  // The product and its systems.
+  'luckyblox', 'luckblox', 'luckybloxadmin', 'luckbloxstaff', 'luckybloxmod',
+  'roblox', 'robloxadmin', 'robloxstaff', 'robloxmod', 'builderman',
+  // The deployment owner. LUCKYBLOX_OWNER_USERNAME is read at call time so an
+  // operator who sets a custom owner name also reserves it.
+  'tailsthehero10', 'tailsthehero',
+  // Privileged-sounding names, which are the impersonation vector.
+  'admin', 'administrator', 'moderator', 'mod', 'owner', 'root', 'sysadmin',
+  'superadmin', 'staff', 'support', 'helpdesk', 'system', 'official',
+  'security', 'server', 'operator', 'host',
+]);
+
+/**
+ * Names that may not be used as a whole word inside a username.
+ *
+ * Roblox blocks a name that merely CONTAINS its brand, so `RobloxFan123` and
+ * `i_am_admin_2` are rejected too - otherwise a visitor can still look official
+ * without owning the exact name.
+ */
+const RESERVED_SUBSTRINGS = ['roblox', 'luckyblox', 'builderman'];
+
+/**
+ * Is this name reserved?
+ *
+ * Exported so the signup routes, the API signup and any rename path all share
+ * one answer instead of each keeping its own list.
+ */
+function isReservedUsername(username) {
+  const raw = String(username || '').trim();
+  if (!raw) return false;
+
+  // Normalise the way an impostor would try to dodge the check: lowercase, and
+  // without the separators a username is allowed to contain.
+  const compact = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (RESERVED_USERNAMES.has(compact)) return true;
+
+  const ownerName = String(process.env.LUCKYBLOX_OWNER_USERNAME || 'tailsthehero10')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+  if (ownerName && compact === ownerName) return true;
+
+  return RESERVED_SUBSTRINGS.some((needle) => compact.includes(needle));
+}
+
+/**
  * Validate a username: 3-20 chars, letters/numbers/underscore, not reserved.
  */
 function checkUsernamePolicy(username) {
@@ -138,6 +197,11 @@ function checkUsernamePolicy(username) {
   }
   if (/^_|_$/.test(value)) {
     errors.push('Username cannot start or end with an underscore.');
+  }
+  // Reserved names are rejected with the same wording Roblox uses, so the
+  // message never hints at which name was special.
+  if (isReservedUsername(value)) {
+    errors.push('That username is not available.');
   }
 
   return { ok: errors.length === 0, errors };
@@ -343,6 +407,7 @@ module.exports = {
   verifyPassword,
   checkPasswordPolicy,
   checkUsernamePolicy,
+  isReservedUsername,
   rateLimit,
   clearRateLimit,
   pruneRateLimits,
