@@ -26,6 +26,9 @@ LuckyBlox is a local Roblox-style game platform served from a release folder. Ap
 - Static assets under `Webserver/www/site-icon/` and `Webserver/www/gameplaceholder/`.
 
 ## Persistence (free, no disk needed)
+- A `.env` file in the release root is read at boot by `server/envFile.js` (called
+  from `server.js` and `Webserver/http-db-bridge/server.js`). A real environment
+  variable always beats the file. `tests/env-file.test.js` guards this.
 - Data lives in `Webserver/http-db-bridge/data/`. On a host without a persistent
   disk (Render free tier) the container filesystem is wiped on redeploy.
 - `server/remoteStore.js` mirrors the data files to a FREE store so they survive

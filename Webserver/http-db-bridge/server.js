@@ -3,6 +3,13 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
+
+// Load a local .env BEFORE anything reads configuration. storage.js and
+// remoteStore.js resolve their settings at module-load time, so this has to run
+// ahead of those requires or the values arrive too late to matter.
+require(path.join(__dirname, '..', '..', 'server', 'envFile.js'))
+  .loadEnvFile(path.join(__dirname, '..', '..'));
+
 const { buildPlaceCatalogFromMaps, normalizePlaceId: normalizePlaceIdInput, resolveRequestedPlace } = require('./gameMapResolver');
 const { getRobloxProfileTemplateItems } = require('./robloxTemplateSource');
 const robloxApi = require('./robloxApi');
@@ -7069,7 +7076,16 @@ storage.restoreFromRemote()
         console.log(`[luckyblox] ${label}: ${store.remote.mode} - ${store.remote.note}`);
       } else {
         // Absence of this line is itself the signal: sync is not configured.
+        // Spell out the fix, because this is the one line that decides whether
+        // accounts survive a redeploy and "not configured" alone does not say how.
         console.log('[luckyblox] free remote storage: not configured (LUCKYBLOX_SYNC unset)');
+        console.log('[luckyblox]   -> to persist for free, set on this host:');
+        console.log('[luckyblox]      LUCKYBLOX_SYNC=github');
+        console.log('[luckyblox]      LUCKYBLOX_SYNC_TOKEN=<fine-grained PAT, Contents: Read+Write>');
+        console.log('[luckyblox]      (repo defaults to tailsthehero10/Luckyblox-Storage-1;'
+          + ' override with LUCKYBLOX_SYNC_REPO)');
+        console.log('[luckyblox]   -> or run on the same machine as the storage clone with'
+          + ' LUCKYBLOX_SYNC=local');
       }
 
       // Periodically prune expired rate-limit buckets so memory stays bounded.

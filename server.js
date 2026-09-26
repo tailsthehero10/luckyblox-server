@@ -2,6 +2,12 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+
+// Load a local .env before runtimeConfig resolves ports and hosts. start.js
+// spawns this file with a copy of process.env, so values applied here also reach
+// the bridge child.
+require('./server/envFile.js').loadEnvFile(__dirname);
+
 const {
   bindHost,
   publicPort,
