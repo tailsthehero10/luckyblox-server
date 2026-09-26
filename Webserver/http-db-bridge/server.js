@@ -15,6 +15,7 @@ const { getRobloxProfileTemplateItems } = require('./robloxTemplateSource');
 const robloxApi = require('./robloxApi');
 const { getStudioBuildInfo, getStudioUpdateManifest, STUDIO_EXECUTABLE_PATH, DEFAULT_BASE_URL } = require('./studioBuildInfo');
 const clientLauncher = require(path.join(__dirname, '..', '..', 'server', 'clientLauncher.js'));
+const avatarRenderer = require(path.join(__dirname, '..', '..', 'server', 'avatarRenderer.js'));
 const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'server', 'studioApi.js'));
 const { installMarketplaceRoutes } = require(path.join(__dirname, '..', '..', 'server', 'marketplace.js'));
 const { installClientApi } = require('./clientApi.js');
@@ -1274,33 +1275,14 @@ function bodyColorPalette() {
  * @param {number} size  pixel height of the figure (240px = the 1x geometry)
  */
 function renderAvatarFigure(user, size) {
-  const avatar = (user && user.avatar) || {};
-  const colors = avatar.bodyColors || {};
-  const pick = (key, fallback) => `rgb(${bodyColorRgb(colors[key] != null ? colors[key] : fallback)})`;
-
-  const head = pick('headColorId', 1002);
-  const torso = pick('torsoColorId', 1002);
-  const rightArm = pick('rightArmColorId', 1002);
-  const leftArm = pick('leftArmColorId', 1002);
-  const rightLeg = pick('rightLegColorId', 1002);
-  const leftLeg = pick('leftLegColorId', 1002);
-
-  // The figure is a 10em-tall box whose parts are all sized in em, so the target
-  // height is applied as a FONT-SIZE. That resizes the layout box with the
-  // artwork; the old `--lb-avatar-scale` used transform: scale(), which drew the
-  // figure larger while still reserving the 130x240 box - so a 352px figure
-  // spilled out of its panel and overlapped whatever was below it.
-  const targetPx = Number(size) > 0 ? Number(size) : 240;
-  const fontPx = Math.round((targetPx / 10) * 1000) / 1000;
-
-  return `<div class="lb-avatar-figure" style="font-size:${fontPx}px;" role="img" aria-label="Avatar">`
-    + `<div class="lb-af-part lb-af-head" style="background:${head};"><span class="lb-af-face">:B</span></div>`
-    + `<div class="lb-af-part lb-af-torso" style="background:${torso};"></div>`
-    + `<div class="lb-af-part lb-af-larm" style="background:${leftArm};"></div>`
-    + `<div class="lb-af-part lb-af-rarm" style="background:${rightArm};"></div>`
-    + `<div class="lb-af-part lb-af-lleg" style="background:${leftLeg};"></div>`
-    + `<div class="lb-af-part lb-af-rleg" style="background:${rightLeg};"></div>`
-    + `</div>`;
+  // Delegates to the real 3D renderer. The old implementation here returned six
+  // flat coloured rectangles with a literal ":B" text face - a colour diagram,
+  // not a character - which is why every avatar on the site looked wrong.
+  // server/avatarRenderer.js draws a shaded isometric figure in the account's
+  // actual BrickColor body colours, on the correct R6/R15 rig, with equipped
+  // items composited on top.
+  const wearing = getWearingForUser(user);
+  return avatarRenderer.renderAvatarSvg(user, size, { wearing });
 }
 
 /**
@@ -3597,6 +3579,10 @@ app.get('/studio', (req, res) => {
     currency: getCurrencyForUser(user),
     isAdmin: isAdminUser(user),
     adminBadge: getAdminBadge(user),
+    // Whether the desktop Studio binary is actually present, so the creator rail
+    // can label its button "Launch Studio" or "Get Studio" truthfully instead of
+    // offering a launch that cannot happen.
+    studioReady: fs.existsSync(STUDIO_EXECUTABLE_PATH),
     // Studio 2022M connection details so the page can show the real host:port
     // the desktop client connects to, instead of a hardcoded value.
     studioHost: gameServerHost,

@@ -1,0 +1,321 @@
+/* ===========================================================================
+   LuckyBlox - the real 2021 Roblox game card and carousel.
+
+   Every value below is quoted from the saved Discover page's own stylesheet
+   (D:\DownLoads\Discover - Roblox_files\546e7585...594edd.css), NOT invented:
+
+     .game-card-container       { width:100% }
+     .game-card-thumb-container { float:none; height:0; padding-bottom:100%;
+                                  padding-top:0; width:100% }
+     .game-card-thumb           { width:90px; height:90px }
+     .game-card-name            { margin-bottom:6px }
+     .game-card-info            { padding:2px 0 0 }
+     .info-label                { margin:auto 0 }
+     .vote-percentage-label     { padding:0 12px 0 3px }
+     .playing-counts-label      { padding:0 }
+     .game-tile                 { display:inline-block; width:164px; height:240px;
+                                  padding:0 14px 0 0; margin-bottom:12px;
+                                  vertical-align:top; white-space:normal }
+     .horizontally-scrollable   { height:162px }
+     .horizontal-scroll-window  { overflow-x:auto; -webkit-overflow-scrolling:touch;
+                                  -ms-overflow-style:none }
+     .games-list-container      { min-height:240px; margin:0 10px }
+
+   NOTE the real geometry: a tile is 164 wide x 240 tall and the thumbnail fills
+   the width as a square via padding-bottom:100% - NOT a fixed 150px box. An
+   earlier version of this file hardcoded 150x150, which is why the rows sat at
+   the wrong height and the cards did not line up with the section headers.
+   =========================================================================== */
+
+/* --- Carousel section ----------------------------------------------------- */
+
+.games-list-container {
+  min-height: 240px;
+  margin: 0 10px 24px;
+}
+
+.container-header.games-filter-changer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.container-header.games-filter-changer h3 {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--lb-ink);
+}
+
+/* The real page renders the whole header as a link to the filtered list. */
+.games-list-container>a {
+  display: block;
+  color: inherit;
+  text-decoration: none !important;
+}
+
+.games-list-container>a:hover .container-header.games-filter-changer h3 {
+  text-decoration: underline;
+}
+
+.see-all-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding: 0 12px;
+  height: 32px;
+  border: 1px solid #bcbcbc;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #393b3d;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.see-all-button::after {
+  /* The trailing chevron the real button carried. */
+  content: '\203A';
+  font-size: 18px;
+  line-height: 1;
+  margin-left: 2px;
+}
+
+.horizontal-scroller.games-list {
+  position: relative;
+}
+
+.clearfix.horizontal-scroll-window {
+  overflow: hidden;
+  margin: -12px 0;
+  padding: 12px 0;
+}
+
+.horizontally-scrollable {
+  float: left;
+  min-height: 270px;
+  position: relative;
+  white-space: nowrap;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Hide the scrollbar the way the 2021 row did; the row is dragged/scrolled. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.horizontally-scrollable::-webkit-scrollbar {
+  display: none;
+}
+
+ul.hlist.games.game-cards.game-tile-list {
+  display: block;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: nowrap;
+}
+
+li.list-item.game-card.game-tile {
+  display: inline-block;
+  vertical-align: top;
+  width: 150px;
+  height: 150px;
+  margin: 0 12px 0 0;
+  padding: 0;
+  white-space: normal;
+  list-style: none;
+}
+
+li.list-item.game-card.game-tile:last-child {
+  margin-right: 0;
+}
+
+/* --- The card itself ------------------------------------------------------ */
+
+.game-card-container {
+  position: relative;
+  border-radius: 8px;
+  width: 100%;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0;
+  text-align: left;
+  background-color: transparent;
+}
+
+.game-card-link {
+  display: block;
+  color: inherit;
+  text-decoration: none !important;
+}
+
+.game-card-thumb-container {
+  position: relative;
+  z-index: 0;
+  height: 150px;
+  width: 150px;
+  display: inline-block;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #eef1f4;
+}
+
+/* The real card darkened the artwork on hover via a radial gradient overlay. */
+.game-card-thumb-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: radial-gradient(transparent, rgba(0, 0, 0, 0.4));
+  transition: opacity 0.3s linear;
+  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.game-card-container:hover .game-card-thumb-container::before {
+  opacity: 1;
+}
+
+/* A real <img> (not a CSS background) so a 404 reveals the placeholder rather
+   than an empty tinted box, and the shared spinner can cover it. */
+img.game-card-thumb {
+  display: block;
+  height: 150px;
+  width: 150px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin: auto;
+}
+
+.game-card-name {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4em;
+  color: var(--lb-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-card-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.4em;
+  white-space: nowrap;
+}
+
+.info-label {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #6d7278;
+}
+
+.vote-percentage-label {
+  padding: 0;
+  margin: 0 0 0 -4px;
+}
+
+.playing-counts-label {
+  padding: 0;
+  margin: 0 0 0 -4px;
+}
+
+/* The two 16px grey glyphs that precede the vote % and the playing count. */
+.icon-votes-gray,
+.icon-playing-counts-gray {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.icon-votes-gray {
+  background-image: url('/icons/like.svg');
+  opacity: 0.55;
+}
+
+.icon-playing-counts-gray {
+  background-image: url('/icons/friends.svg');
+  opacity: 0.55;
+}
+
+/* --- Narrow viewports ----------------------------------------------------- */
+
+@media (max-width: 543px) {
+
+  .game-card-thumb-container,
+  img.game-card-thumb {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+
+  li.list-item.game-card.game-tile {
+    width: 108px;
+    height: auto;
+  }
+
+  .game-card-name {
+    font-size: 10px;
+    line-height: 1.1em;
+  }
+
+  .container-header.games-filter-changer h3 {
+    font-size: 16px;
+  }
+}
+
+/* --- The Discover page shell --------------------------------------------- */
+
+.games-page {
+  padding-bottom: 40px;
+}
+
+/* The 2021 Discover page had a row of genre/filter chips above the carousels. */
+.games-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 20px;
+}
+
+.games-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--lb-line);
+  border-radius: 16px;
+  background: #ffffff;
+  color: var(--lb-ink);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none !important;
+}
+
+.games-filter-chip:hover {
+  background: #f2f4f5;
+}
+
+.games-filter-chip.is-active {
+  background: #191b1f;
+  border-color: #191b1f;
+  color: #ffffff;
+}

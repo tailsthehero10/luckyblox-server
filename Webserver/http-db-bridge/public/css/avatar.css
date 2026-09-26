@@ -46,11 +46,60 @@ the currently-wearing outfit on the right. Panel chrome (.roblox-panel / header 
   text-align: center;
 }
 
+/* The 3D avatar render (server/avatarRenderer.js). It is inline SVG so it scales
+   cleanly, needs no network, and carries the account's real body colours. The
+   wrapper reserves the box so the figure can never spill into the panels below. */
+.lb-avatar-stage-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 352px;
+}
+
+.lb-avatar-svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  /* A soft ground shadow under the figure, so it reads as standing rather than
+     floating - the real thumbnail has the same contact shadow. */
+  filter: drop-shadow(0 10px 10px rgba(25, 27, 31, 0.16));
+}
+
 .lb-avatar-render-img {
   display: block;
   max-width: 100%;
   height: auto;
   object-fit: contain;
+}
+
+/* --- Buttons never show a focus outline ------------------------------------
+   Roblox removed the default focus ring on their controls; the browser's blue
+   outline was the single most obvious "this is not the real site" tell. Keyboard
+   users still get an indication via :focus-visible, which is the accessible
+   behaviour the real site also uses. */
+.roblox-primary-button:focus,
+.roblox-secondary-button:focus,
+.roblox-play-button:focus,
+.av-rig-option:focus,
+.av-swatch:focus,
+.lb-btn:focus,
+.lb-wearing-remove:focus,
+button:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.roblox-primary-button:focus-visible,
+.roblox-secondary-button:focus-visible,
+.roblox-play-button:focus-visible,
+.av-rig-option:focus-visible,
+.av-swatch:focus-visible,
+.lb-btn:focus-visible,
+.lb-wearing-remove:focus-visible,
+button:focus-visible {
+  outline: 2px solid #00a2ff !important;
+  outline-offset: 2px !important;
 }
 
 .av-render-name {

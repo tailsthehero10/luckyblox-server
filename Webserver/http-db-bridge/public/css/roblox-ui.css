@@ -1,0 +1,355 @@
+/* ===========================================================================
+   LuckyBlox - Roblox 2021 UI kit.
+
+   Copied from the real stylesheets saved with the reference pages, not invented.
+   Sources (the authority for every value below):
+
+     D:\DownLoads\Discover - Roblox_files\9436c6cb...0558d.css   (header/nav)
+     D:\DownLoads\Discover - Roblox_files\e0d4fd77...dba4.css   (buttons/base)
+     D:\DownLoads\Discover - Roblox_files\546e7585...594edd.css (game cards)
+
+   Where a rule is quoted from those files the original declaration is repeated in
+   the comment, so a future edit can be checked against the source rather than
+   against memory.
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   Design tokens (the real 2021 palette)
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* The exact colours the 2021 sheets use. */
+  --rbx-green: #02b757;
+  /* .btn-primary-md background-color */
+  --rbx-green-hover: #3fc679;
+  /* .btn-primary-md:hover background-color */
+  --rbx-blue: #00a2ff;
+  /* .btn-secondary-md background-color */
+  --rbx-text-header: #393b3d;
+  /* .text-header color */
+  --rbx-header-bg-light: #dee1e3;
+  --rbx-header-border-light: #c7cbce;
+  --rbx-header-bg-dark: #191b1d;
+  --rbx-header-border-dark: #111214;
+  --rbx-search-bg-light: #f2f4f5;
+  --rbx-search-bg-dark: #232527;
+
+  /* Header height is fixed at 90px in the real sheet:
+       .rbx-header{height:90px} */
+  --rbx-header-height: 90px;
+}
+
+/* ---------------------------------------------------------------------------
+   Header  (real: .rbx-header{height:90px})
+   ---------------------------------------------------------------------------
+   The 2021 header was NOT a dark bar by default - it is light (#dee1e3) with
+   dark text, switching to #191b1d only for a dark account theme. The nav items
+   use a 2px bottom border on hover, never a filled pill:
+
+     .rbx-navbar li:hover{border:0 #393b3d;border-bottom:2px solid #393b3d}
+     .text-header{color:#393b3d}
+   --------------------------------------------------------------------------- */
+
+.rbx-header,
+.lb-header {
+  height: var(--rbx-header-height);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+
+.light-theme .rbx-header,
+.lb-header.light-theme {
+  background-color: var(--rbx-header-bg-light);
+  border-bottom: 1px solid var(--rbx-header-border-light);
+}
+
+.dark-theme .rbx-header,
+.lb-header.dark-theme {
+  background-color: var(--rbx-header-bg-dark);
+  border-bottom: 1px solid var(--rbx-header-border-dark);
+}
+
+/* The nav list. Real: .rbx-header .rbx-navbar{margin:4px auto;display:flex} */
+.rbx-navbar {
+  display: flex;
+  align-items: center;
+  margin: 4px auto;
+  padding: 0;
+  list-style: none;
+}
+
+/* Real: .rbx-header .rbx-navbar li .nav-menu-title{padding:6px 9px;display:inline-block} */
+.rbx-navbar li .nav-menu-title {
+  display: inline-block;
+  padding: 6px 9px;
+  font-size: 16px;
+  font-weight: 400;
+  text-decoration: none;
+}
+
+/* Real: .rbx-navbar li:hover{border-bottom:2px solid #393b3d} */
+.rbx-navbar li {
+  text-align: center;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.1s linear;
+}
+
+.rbx-navbar li:hover {
+  border-bottom-color: var(--rbx-text-header);
+}
+
+.dark-theme .rbx-navbar li:hover {
+  border-bottom-color: #ffffff;
+}
+
+/* Real: .navbar-search{box-sizing:border-box;margin-top:6px;position:relative;border-radius:8px} */
+.navbar-search {
+  box-sizing: border-box;
+  margin-top: 6px;
+  position: relative;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  max-width: 500px;
+  height: 40px;
+  padding: 0 4px 0 0;
+}
+
+.light-theme .navbar-search {
+  background-color: var(--rbx-search-bg-light);
+}
+
+.dark-theme .navbar-search {
+  background-color: var(--rbx-search-bg-dark);
+}
+
+/* Real: .light-theme .rbx-header .navbar-search .new-input-field{color:#393b3d}
+         .dark-theme  .rbx-header .navbar-search .new-input-field{color:#fff}  */
+.navbar-search .new-input-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 16px;
+  padding: 0 8px;
+}
+
+.light-theme .navbar-search .new-input-field {
+  color: var(--rbx-text-header);
+}
+
+.dark-theme .navbar-search .new-input-field {
+  color: #ffffff;
+}
+
+/* ---------------------------------------------------------------------------
+   Buttons
+   ---------------------------------------------------------------------------
+   Real declarations, quoted:
+
+     .btn-primary-md  { background-color:#02b757; border:1px solid #02b757;
+                        color:#fff; font-weight:500; padding:9px; font-size:16px;
+                        line-height:100%; border-radius:3px }
+     .btn-primary-md:hover,:focus { background-color:#3fc679; border-color:#3fc679 }
+     .btn-secondary-md{ background-color:#00a2ff; border:1px solid #00a2ff; ... }
+     .btn-secondary-xs{ ... padding:4px; font-size:12px; border-radius:3px }
+
+   NOTE the focus rule: Roblox changes only the BACKGROUND on focus/hover. There
+   is no outline, and no box-shadow ring. Reproducing that is why the site's own
+   buttons no longer show a browser focus rectangle.
+   --------------------------------------------------------------------------- */
+
+.btn-primary-md,
+.btn-primary-lg,
+.roblox-primary-button,
+.lb-btn-primary {
+  user-select: none;
+  background-color: var(--rbx-green);
+  border: 1px solid var(--rbx-green);
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-block;
+  font-weight: 500;
+  height: auto;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  padding: 9px;
+  font-size: 16px;
+  line-height: 100%;
+  border-radius: 3px;
+  text-decoration: none;
+}
+
+.btn-primary-md:hover,
+.btn-primary-md:focus,
+.btn-primary-lg:hover,
+.btn-primary-lg:focus,
+.roblox-primary-button:hover,
+.roblox-primary-button:focus,
+.lb-btn-primary:hover,
+.lb-btn-primary:focus {
+  background-color: var(--rbx-green-hover);
+  border-color: var(--rbx-green-hover);
+  color: #ffffff;
+  cursor: pointer;
+  outline: none;
+}
+
+.btn-primary-md:active,
+.roblox-primary-button:active {
+  background-color: var(--rbx-green-hover);
+  color: #ffffff;
+}
+
+.btn-secondary-md,
+.btn-secondary-lg,
+.roblox-secondary-button,
+.lb-btn-secondary {
+  user-select: none;
+  background-color: var(--rbx-blue);
+  border: 1px solid var(--rbx-blue);
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-block;
+  font-weight: 500;
+  height: auto;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  padding: 9px;
+  font-size: 16px;
+  line-height: 100%;
+  border-radius: 3px;
+  text-decoration: none;
+}
+
+.btn-secondary-md:hover,
+.btn-secondary-md:focus,
+.roblox-secondary-button:hover,
+.roblox-secondary-button:focus,
+.lb-btn-secondary:hover,
+.lb-btn-secondary:focus {
+  background-color: #33b5ff;
+  border-color: #33b5ff;
+  color: #ffffff;
+  outline: none;
+}
+
+/* Real: .btn-secondary-xs{... padding:4px; font-size:12px; border-radius:3px} */
+.btn-secondary-xs,
+.see-all-button {
+  user-select: none;
+  background-color: var(--rbx-blue);
+  border: 1px solid var(--rbx-blue);
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-block;
+  font-weight: 500;
+  height: auto;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  padding: 4px;
+  font-size: 12px;
+  line-height: 100%;
+  border-radius: 3px;
+  text-decoration: none;
+}
+
+.btn-secondary-xs:hover,
+.btn-secondary-xs:focus {
+  background-color: #33b5ff;
+  border-color: #33b5ff;
+  color: #ffffff;
+  outline: none;
+}
+
+/* ---------------------------------------------------------------------------
+   No focus outline anywhere in the UI chrome
+   ---------------------------------------------------------------------------
+   Roblox's own controls never draw a focus ring; the browser default was the
+   single most obvious "this is not the real site" tell. Keyboard users still get
+   :focus-visible, which is the accessible equivalent.
+   --------------------------------------------------------------------------- */
+
+button:focus,
+a:focus,
+input:focus,
+select:focus,
+textarea:focus,
+[tabindex]:focus {
+  outline: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--rbx-blue);
+  outline-offset: 1px;
+}
+
+/* ---------------------------------------------------------------------------
+   Panels / sections
+   --------------------------------------------------------------------------- */
+
+.rbx-section,
+.roblox-panel {
+  background: #ffffff;
+  border: 1px solid #e3e5e8;
+  border-radius: 3px;
+}
+
+.rbx-section-header,
+.roblox-panel-header {
+  padding: 12px 15px;
+  border-bottom: 1px solid #e3e5e8;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--rbx-text-header);
+  background: #ffffff;
+  border-radius: 3px 3px 0 0;
+}
+
+.rbx-section-body,
+.roblox-panel-body {
+  padding: 15px;
+}
+
+/* ---------------------------------------------------------------------------
+   Typography - the 2021 sheets use Gotham SSm with these sizes
+   --------------------------------------------------------------------------- */
+
+.text-header {
+  color: var(--rbx-text-header);
+}
+
+.dark-theme .text-header {
+  color: #ffffff;
+}
+
+/* ---------------------------------------------------------------------------
+   Scrollbars
+   ---------------------------------------------------------------------------
+   Roblox hides the scrollbar on horizontal rows and uses a thin overlay
+   elsewhere. A default OS scrollbar on a game row is another "not the real
+   site" tell.
+   --------------------------------------------------------------------------- */
+
+.rbx-scroll-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.rbx-scroll-hidden::-webkit-scrollbar {
+  display: none;
+}

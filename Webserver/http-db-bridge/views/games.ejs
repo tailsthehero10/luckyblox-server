@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>
+    <%= title %>
+  </title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/games.css" />
+</head>
+<%# Discover - rebuilt against the saved 2021 page (D:\DownLoads\Discover - Roblox.html). The real page was a stack of
+  horizontal carousels, each headed by a sort name ("Most Engaging", "Popular" , "Top Rated" , ...) with a "See All"
+  button, and every row scrolled sideways through 150x150 square game tiles. This page previously rendered the HOME
+  template - so /games and / were the same page, which is why the route looked wrong no matter what was changed on it.
+  %>
+
+  <body>
+    <div class="lb-page roblox-page">
+      <%- include('partials/header', { user: user, currency: currency, activeNav: 'games' }) %>
+
+        <%- include('partials/sidebar', { user: user, activeNav: 'games' }) %>
+
+          <main class="lb-main roblox-main">
+            <div class="games-page">
+
+              <!-- The genre chips the real page carried above the carousels. Each one
+             filters the grid via the same `genre` query the route understands. -->
+              <div class="games-filter-bar">
+                <a class="games-filter-chip<%= !activeGenre ? ' is-active' : '' %>" href="/games">All</a>
+                <% genres.forEach(function (g) { %>
+                  <a class="games-filter-chip<%= activeGenre === g ? ' is-active' : '' %>"
+                    href="/games?genre=<%= encodeURIComponent(g) %>">
+                    <%= g %>
+                  </a>
+                  <% }); %>
+              </div>
+
+              <% if (!sections.length) { %>
+                <div class="lb-panel">
+                  <div class="lb-panel-body">
+                    <p class="lb-muted">No experiences match this filter yet.</p>
+                  </div>
+                </div>
+                <% } %>
+
+                  <% sections.forEach(function (section) { %>
+                    <%- include('partials/games-carousel', { section: section, games: section.games }) %>
+                      <% }); %>
+
+            </div>
+          </main>
+
+          <%- include('partials/scripts') %>
+    </div>
+  </body>
+
+</html>

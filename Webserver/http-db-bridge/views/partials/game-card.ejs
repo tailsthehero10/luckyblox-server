@@ -1,0 +1,70 @@
+<!--
+  Game card - the real 2021 Roblox game tile.
+
+  Structure taken verbatim from the saved Discover page
+  (D:\DownLoads\Discover - Roblox.html), which is the authority for this markup:
+
+    <li class="list-item game-card game-tile" id="<placeId>" title="<name>">
+      <div class="game-card-container">
+        <a class="game-card-link" href="...">
+          <div class="game-card-thumb-container">
+            <span class="thumbnail-2d-container game-card-thumb"></span>
+          </div>
+          <div class="game-card-name game-name-title" title="<name>"><name></div>
+          <div class="game-card-info">
+            <span class="info-label icon-votes-gray"></span>
+            <span class="info-label vote-percentage-label">88%</span>
+            <span class="info-label icon-playing-counts-gray"></span>
+            <span class="info-label playing-counts-label" title="1110">1.1K</span>
+          </div>
+        </a>
+      </div>
+    </li>
+
+  The real tile carries ONLY the name, the vote percentage and the playing count -
+  no genre, no developer line. Adding those (as this site previously did) is what
+  made the cards read as "not Roblox".
+
+  Expects: cardGame { placeId, title, icon, votePercentage, playing }, and
+  optionally `showPlaying` (default true) so a caller can drop the player count.
+
+  The thumbnail is a real <img> layered over the placeholder sibling rather than a
+  CSS background, so a 404 reveals the placeholder instead of an empty box.
+-->
+<%
+var gc = (typeof cardGame !== 'undefined' && cardGame) ? cardGame : {};
+var gcPlaceId = Number(gc.placeId || gc.universeId || 1818);
+var gcTitle = String(gc.title || gc.name || ('Experience ' + gcPlaceId));
+var gcIcon = (typeof gc.icon === 'string' && /^\/|^https?:\/\//.test(gc.icon)) ? gc.icon : '/gameplaceholder/card.png';
+var gcVote = (gc.votePercentage != null) ? Number(gc.votePercentage) : null;
+if (!Number.isFinite(gcVote)) gcVote = null;
+var gcPlaying = Number(gc.playing != null ? gc.playing : gc.playerCount) || 0;
+var gcShowPlaying = (typeof showPlaying !== 'undefined') ? !!showPlaying : true;
+var gcSlug = gcTitle.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+var gcHref = '/games/' + gcPlaceId + (gcSlug ? '/' + gcSlug : '');
+// abbrNum comes from the route; fall back to a plain string so a caller that
+// forgets it still renders a number rather than throwing.
+var gcPlayingText = (typeof abbrNum === 'function') ? abbrNum(gcPlaying) : String(gcPlaying);
+%>
+<li class="list-item game-card game-tile" id="<%= gcPlaceId %>" title="<%= gcTitle %>">
+  <div class="game-card-container">
+    <a class="game-card-link" href="<%= gcHref %>" id="<%= gcPlaceId %>">
+      <div class="game-card-thumb-container lb-loading-block is-loading" style="--lb-loader-size:36px;">
+        <img class="game-card-thumb" src="<%= gcIcon %>" alt="<%= gcTitle %>"
+             loading="lazy" onload="this.parentNode.classList.remove('is-loading');"
+             onerror="this.parentNode.classList.remove('is-loading');this.style.display='none';" />
+      </div>
+      <div class="game-card-name game-name-title" title="<%= gcTitle %>"><%= gcTitle %></div>
+      <div class="game-card-info">
+<% if (gcVote !== null) { %>
+        <span class="info-label icon-votes-gray"></span>
+        <span class="info-label vote-percentage-label"><%= gcVote %>%</span>
+<% } %>
+<% if (gcShowPlaying) { %>
+        <span class="info-label icon-playing-counts-gray"></span>
+        <span class="info-label playing-counts-label" title="<%= gcPlaying %>"><%= gcPlayingText %></span>
+<% } %>
+      </div>
+    </a>
+  </div>
+</li>
