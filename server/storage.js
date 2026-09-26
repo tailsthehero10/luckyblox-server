@@ -46,8 +46,30 @@ function resolveDataDir() {
 
 const dataDir = resolveDataDir();
 
+/**
+ * Is the data dir actually backed by storage that outlives the container?
+ *
+ * This used to be `dataDir !== bundledDataDir` - i.e. "a path was configured" -
+ * which is NOT the same question. On Render, setting LUCKYBLOX_DATA_DIR=/var/data
+ * without attaching a Disk points at the ephemeral container filesystem: the
+ * value is a real path, the variable is set, and every redeploy still wipes it.
+ * Reporting that as persistent is wrong exactly when it matters, and it also made
+ * dataPath() skip seeding the bundled defaults into an empty dir.
+ *
+ * Render mounts a Disk at RENDER_DISK_PATH; when we can see we are on Render and
+ * no disk is mounted, a configured path is NOT durable. On any other host a
+ * non-bundled dir is a real local disk, so the flag stays true.
+ */
+function isBackedByDurableStorage() {
+  if (dataDir === bundledDataDir) return false;
+  const onRender = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID);
+  const viaRenderDisk = Boolean(process.env.RENDER_DISK_PATH && process.env.RENDER_DISK_PATH.trim());
+  if (onRender && !viaRenderDisk) return false;
+  return true;
+}
+
 /** True when data is being written somewhere that survives a redeploy. */
-const isPersistent = dataDir !== bundledDataDir;
+const isPersistent = isBackedByDurableStorage();
 
 function ensureDataDir() {
   try {
@@ -197,9 +219,14 @@ function describeStorage() {
   // wrong exactly when it matters. Render mounts a disk at the path in
   // RENDER_DISK_PATH; on any other host a non-bundled dir is a real local disk,
   // so only warn when we can tell the difference (i.e. we are on Render).
+  //
+  // NOTE: this compares the RAW path state, not the `isPersistent` flag, because
+  // that flag already folds in the Render check - using it here would make the
+  // condition self-cancelling and the warning would never print.
   const onRender = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID);
   const viaRenderDisk = Boolean(process.env.RENDER_DISK_PATH && process.env.RENDER_DISK_PATH.trim());
-  const unbackedOnRender = onRender && isPersistent && !viaRenderDisk;
+  const configuredPath = dataDir !== bundledDataDir;
+  const unbackedOnRender = onRender && configuredPath && !viaRenderDisk;
 
   let note;
   if (unbackedOnRender) {
@@ -219,9 +246,8 @@ function describeStorage() {
 
   return {
     dataDir,
-    // `persistent` stays the headline "will this survive?" answer, but it now
-    // reports FALSE for the unbacked-on-Render case rather than trusting the flag.
-    persistent: (isPersistent && !unbackedOnRender) || remote.enabled,
+    // `persistent` is the headline "will this survive?" answer.
+    persistent: isPersistent || remote.enabled,
     localPersistent: isPersistent,
     onRender,
     viaRenderDisk,
