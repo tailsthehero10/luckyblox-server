@@ -692,7 +692,56 @@ function isOwnerUser(user) {
 }
 
 /**
- * The Roblox admin badge. There is exactly ONE admin badge â€” you either have
+ * Resolve the account a PAGE should render as.
+ *
+ * Every page controller used to do `getUser(req.query.userId || 1)`. That meant a
+ * signed-out visitor was rendered as account 1 - the deployment OWNER - and saw
+ * that person's username, Robux, friends, inventory and admin badge. A visitor
+ * must never be shown as somebody else, so the rule is now:
+ *
+ *   1. the signed-in account (a proven session), else
+ *   2. the account explicitly asked for by id, else
+ *   3. null  -> a guest view
+ *
+ * The `?userId=` query is still honoured for VIEWING a public profile, because
+ * that is a real feature; what is gone is the silent fallback to account 1.
+ *
+ * @returns {{user: object|null, isGuest: boolean, viewingSelf: boolean}}
+ */
+function resolveViewer(req, options) {
+  const opts = options || {};
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+
+  const rawId = req.query ? (req.query.userId || req.query.userid) : null;
+  const requestedId = rawId != null && String(rawId).trim() !== '' ? Number(rawId) : null;
+
+  if (sessionUser) {
+    const selfId = Number(sessionUser.userId || sessionUser.id) || null;
+    // A signed-in user viewing someone else is a normal public-profile visit.
+    if (requestedId && Number.isFinite(requestedId) && requestedId > 0 && requestedId !== selfId) {
+      return { user: getUser(requestedId), isGuest: false, viewingSelf: false };
+    }
+    return { user: sessionUser, isGuest: false, viewingSelf: true };
+  }
+
+  // Signed out. Only an explicitly requested id is honoured - never a default.
+  if (opts.allowGuestLookup !== false && requestedId && Number.isFinite(requestedId) && requestedId > 0) {
+    return { user: getUser(requestedId), isGuest: true, viewingSelf: false };
+  }
+
+  return { user: null, isGuest: true, viewingSelf: false };
+}
+
+/**
+ * The signed-in account, or null. For pages that are about YOU and have no
+ * meaningful guest view (settings, account, develop).
+ */
+function requireSessionUser(req) {
+  return req.sessionUser || resolveSessionUser(req) || null;
+}
+
+/**
+ * The Roblox admin badge. There is exactly ONE admin badge أ¢â‚¬â€‌ you either have
  * admin or you don't. The image ships in Assets/roles/admin.png (extracted from
  * the bundled 2021M client) and is served at /assets/roles/admin.png.
  *
@@ -919,100 +968,22 @@ const DEFAULT_GAME_ICON = '/gameplaceholder/card.png';
 // card needs square art, so the two defaults are one asset.
 const DEFAULT_GAME_COVER = DEFAULT_GAME_ICON;
 
+/**
+ * The starting account store.
+ *
+ * This used to seed NINE fabricated accounts (LocalPlayer, tailsthehero10,
+ * Skylin, Noco, ...) each with invented friends, badges, Robux, membership and
+ * a plaintext password. That is what made the site read as "fake": every visitor
+ * was shown accounts that do not exist, with friends who are not real, and the
+ * seeded owner record sat at id 1 where any signup could collide with it.
+ *
+ * A real deployment starts EMPTY. Accounts come from /signup and nowhere else,
+ * so every name, friend and badge on the site belongs to somebody who actually
+ * registered. The owner account is created by setting LUCKYBLOX_OWNER_PASSWORD
+ * (and optionally LUCKYBLOX_OWNER_USERNAME) on the host, or by signing up.
+ */
 function createDefaultUsers() {
-  return {
-    '1': {
-      userId: '1',
-      username: 'LocalPlayer',
-      password: 'local',
-      bio: 'Welcome to LuckyBlox. Build, play, and customize your avatar.',
-      joinDate: '2024-01-15T00:00:00.000Z',
-      membership: 'Premium',
-      membershipStatus: 'Premium',
-      robux: 1200,
-      inventory: ['607702162', '1029025', '25330901'],
-      currentlyWearing: ['607702162'],
-      stats: {
-        friends: 128,
-        created: 42,
-        plays: 743,
-        followers: 96,
-        badges: 14,
-        gameVisits: 3200,
-      },
-      friends: [
-        { userId: '2', username: 'tailsthehero10', status: 'online' },
-        { userId: '3', username: 'Skylin', status: 'online' },
-        { userId: '4', username: 'Noco', status: 'away' },
-        { userId: '5', username: 'Rogue', status: 'offline' },
-        { userId: '6', username: 'Astra', status: 'online' },
-        { userId: '7', username: 'PixelMind', status: 'offline' },
-        { userId: '8', username: 'NeonWave', status: 'online' },
-      ],
-      badges: [
-        { id: 'b1', name: 'Welcome to Roblox', description: 'Joined LuckyBlox', icon: 'W', earnedDate: '2024-01-15T00:00:00.000Z' },
-        { id: 'b2', name: 'First Build', description: 'Published your first place', icon: 'B', earnedDate: '2024-02-10T00:00:00.000Z' },
-        { id: 'b3', name: 'Social Butterfly', description: 'Added 100 friends', icon: 'S', earnedDate: '2024-04-22T00:00:00.000Z' },
-        { id: 'b4', name: 'Veteran', description: 'Played 1000+ games', icon: 'V', earnedDate: '2024-06-15T00:00:00.000Z' },
-        { id: 'b5', name: 'Premium Member', description: 'Active Premium subscriber', icon: 'P', earnedDate: '2024-01-15T00:00:00.000Z' },
-      ],
-      avatar: {
-        bodyColors: {
-          headColorId: 1002,
-          torsoColorId: 1002,
-          rightArmColorId: 1002,
-          leftArmColorId: 1002,
-          rightLegColorId: 1002,
-          leftLegColorId: 1002,
-        },
-      },
-      updatedAt: new Date().toISOString(),
-    },
-    '2': {
-      userId: '2',
-      username: 'tailsthehero10',
-      displayName: 'tailsthehero10',
-      password: '67d91cbd7b3f716f5417a1ea3bcff3e9e89f11a5e3ef1def9482fd96d0ef116a52c24307f961a620c2c654cd984aaeadbc47ba1d17ab4aa831c709718c51a2d7',
-      passwordSalt: '07825a4255a5d598b57ec7300ba022d6',
-      passwordVersion: 2,
-      bio: 'New LuckyBlox creator account.',
-      joinDate: '2026-09-13T21:16:20.056Z',
-      membership: 'Premium',
-      membershipStatus: 'Premium',
-      robux: 500,
-      inventory: ['607702162', '1029025', '25330901'],
-      currentlyWearing: ['607702162'],
-      stats: {
-        friends: 42,
-        created: 1,
-        plays: 0,
-        followers: 0,
-        badges: 3,
-        gameVisits: 12,
-      },
-      friends: [
-        { userId: '1', username: 'LocalPlayer', status: 'online' },
-        { userId: '9', username: 'BuilderZ', status: 'online' },
-        { userId: '10', username: 'StarDust', status: 'away' },
-      ],
-      badges: [
-        { id: 'b1', name: 'Welcome to Roblox', description: 'Joined LuckyBlox', icon: 'W', earnedDate: '2026-09-13T21:16:20.056Z' },
-        { id: 'b2', name: 'Newcomer', description: 'Created first place', icon: 'N', earnedDate: '2026-09-14T00:00:00.000Z' },
-        { id: 'b3', name: 'Getting Started', description: 'Completed tutorial', icon: 'G', earnedDate: '2026-09-15T00:00:00.000Z' },
-      ],
-      avatar: {
-        bodyColors: {
-          headColorId: 1002,
-          torsoColorId: 1002,
-          rightArmColorId: 1002,
-          leftArmColorId: 1002,
-          rightLegColorId: 1002,
-          leftLegColorId: 1002,
-        },
-      },
-      updatedAt: new Date().toISOString(),
-    },
-  };
+  return {};
 }
 
 function createDefaultGames() {
@@ -1186,22 +1157,40 @@ function getCurrencyForUser(user) {
 function getFriendsForUser(userId) {
   const user = getUser(userId);
   const friends = Array.isArray(user.friends) ? user.friends : [];
-  const statusPool = ['online', 'online', 'away', 'offline'];
 
-  return friends.map((entry, index) => {
+  return friends.map((entry) => {
     const friendId = entry && entry.userId != null ? entry.userId : null;
     const friendRecord = friendId != null ? getUser(friendId) : null;
     const name = (entry && entry.username) || (friendRecord && friendRecord.username) || 'Friend';
-    const status = (entry && entry.status) || statusPool[index % statusPool.length];
+
+    // Presence is NOT invented.
+    //
+    // This used to cycle ['online','online','away','offline'] by index, so the
+    // friends list showed made-up statuses that had nothing to do with whether
+    // anyone was actually online. A friend counts as online only when the stored
+    // record says so (or when their own presence field does); otherwise they are
+    // offline. An unknown friend is offline, which is the honest default.
+    const rawStatus = String(
+      (entry && entry.status) || (friendRecord && friendRecord.status) || '',
+    ).toLowerCase();
+    const status = rawStatus || 'offline';
+    const online = status === 'online';
+
+    // The headshot the friends strip renders. It was never set here, so every
+    // chip fell back to a letter - which is why the strip looked wrong.
+    const headshotUrl = (friendRecord && friendRecord.avatar && friendRecord.avatar.headshotUrl)
+      || (entry && entry.headshotUrl)
+      || null;
 
     return {
-      userId: Number(friendId || index + 1),
+      userId: Number(friendId || 0) || null,
       username: name,
-      displayName: (friendRecord && friendRecord.username) || name,
+      displayName: (friendRecord && (friendRecord.displayName || friendRecord.username)) || name,
       status,
-      online: status === 'online',
+      online,
+      headshotUrl,
       membership: (friendRecord && (friendRecord.membershipStatus || friendRecord.membership)) || 'None',
-      profileUrl: `/users/${Number(friendId || index + 1)}/profile`,
+      profileUrl: `/users/${Number(friendId || 0)}/profile`,
     };
   });
 }
@@ -1478,7 +1467,7 @@ function ensureSeedData() {
 
   // Migrate any legacy plaintext password to a salted hash at boot. The login
   // route only accepts salted hashes, so without this the default account (and
-  // any account created before hashing) can never sign in â€” and on a fresh
+  // any account created before hashing) can never sign in أ¢â‚¬â€‌ and on a fresh
   // container the seed data is regenerated every deploy, so this must run here
   // rather than relying on someone calling /luckblox-salt-setup by hand.
   upgradeLegacyPasswords();
@@ -2698,7 +2687,7 @@ function isPreviewAllowed(reqPath) {
   return PREVIEW_ALLOWLIST.some((rx) => rx.test(reqPath));
 }
 
-/** Real status for the preview page â€” computed from live server state. */
+/** Real status for the preview page أ¢â‚¬â€‌ computed from live server state. */
 function getPreviewStatus() {
   let players = 0;
   for (const server of activeGameServers) {
@@ -2729,14 +2718,14 @@ app.get('/api/preview-status', (req, res) => {
 
 app.get('/preview', (req, res) => {
   res.render('preview', {
-    title: 'LuckyBlox â€” Live Preview',
+    title: 'LuckyBlox أ¢â‚¬â€‌ Live Preview',
     stage: PREVIEW_STAGE,
     teasers: PREVIEW_TEASERS,
   });
 });
 
 // ---------------------------------------------------------------------------
-// Site status â€” public status page + owner open/close controls
+// Site status أ¢â‚¬â€‌ public status page + owner open/close controls
 // ---------------------------------------------------------------------------
 // The owner can flip the site between open, work in progress, maintenance and
 // closed without editing code or redeploying. /sitestat always shows the real
@@ -2803,7 +2792,7 @@ app.get('/api/site-status', (req, res) => {
 app.get('/sitestat', (req, res) => {
   const user = req.sessionUser || null;
   res.render('sitestat', {
-    title: 'LuckyBlox â€” Site status',
+    title: 'LuckyBlox أ¢â‚¬â€‌ Site status',
     status: siteStatusPayload(),
     user,
     isOwner: Boolean(user && isOwnerUser(user)),
@@ -2887,7 +2876,7 @@ app.use((req, res, next) => {
   }
 
   return res.status(503).render('closed', {
-    title: 'LuckyBlox â€” ' + state.label,
+    title: 'LuckyBlox أ¢â‚¬â€‌ ' + state.label,
     status: siteStatusPayload(),
   });
 });
@@ -2920,18 +2909,57 @@ app.use((req, res, next) => {
 });
 
 app.get('/', (req, res) => {
-  const user = getUser(req.query.userId || 1);
+  // The signed-in account, or a guest view. This used to be
+  // `getUser(req.query.userId || 1)` - so a signed-OUT visitor was shown account
+  // 1, the deployment owner: their name, their Robux, their friends. A guest must
+  // never be rendered as somebody else.
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const user = sessionUser || null;
+  const viewerId = user ? (user.userId || user.id) : null;
+
   const games = Object.values(getGames());
   const featuredGame = games[0] || getGameEntry(1818);
-  const friends = getFriendsForUser(user.userId || 1);
+  const friends = viewerId ? getFriendsForUser(viewerId) : [];
+
+  // The home rows, built from the real 2013 Discover structure. Each row is the
+  // same games ordered differently, which is what the real page did; a row with
+  // no games is dropped rather than left as an empty frame.
+  const toCard = (g) => {
+    const likes = Number(g.likes) || 0;
+    const dislikes = Number((g.votes && g.votes.dislikes) || 0);
+    const total = likes + dislikes;
+    return {
+      placeId: Number(g.placeId || g.universeId || 1818),
+      title: g.title || g.name || 'Experience',
+      icon: g.icon || g.iconUrl || '/gameplaceholder/card.png',
+      votePercentage: total > 0 ? Math.round((likes / total) * 100) : null,
+      playing: Number(g.playerCount) || 0,
+      favorites: Number(g.favorites) || 0,
+      updatedAt: g.updatedAt || g.publishedAt || '',
+    };
+  };
+  const cards = games.map(toCard);
+  const byPlaying = [...cards].sort((a, b) => b.playing - a.playing);
+  const byFavorites = [...cards].sort((a, b) => b.favorites - a.favorites);
+  const byUpdated = [...cards].sort((a, b) => {
+    const ta = Date.parse(a.updatedAt) || 0;
+    const tb = Date.parse(b.updatedAt) || 0;
+    return tb - ta;
+  });
+  const homeSections = [
+    { key: 'popular', title: 'Popular', games: byPlaying.slice(0, 12) },
+    { key: 'recommended', title: 'Recommended For You', games: byFavorites.slice(0, 12) },
+    { key: 'recently-updated', title: 'Recently Updated', games: byUpdated.slice(0, 12) },
+  ].filter((s) => s.games.length > 0);
 
   res.render('home', {
     title: 'LuckyBlox',
     user,
     games,
+    homeSections,
     featuredGame,
     friends,
-    currency: getCurrencyForUser(user),
+    currency: user ? getCurrencyForUser(user) : { robux: 0, coins: 0, tickets: 0 },
     activePlaceId: featuredGame.placeId,
   });
 });
@@ -2941,7 +2969,8 @@ app.get('/home', (req, res) => {
 });
 
 app.get('/games', (req, res) => {
-  const user = getUser(req.query.userId || 1);
+  const viewer = resolveViewer(req);
+  const user = viewer.user;
   const allGames = Object.values(getGames());
   const activeGenre = String(req.query.genre || '').trim();
 
@@ -3457,8 +3486,12 @@ app.post('/luckblox.site.tk/logout', (req, res) => {
 });
 
 app.get('/profile', async (req, res) => {
-  const userId = req.query.userId || 1;
-  return renderProfilePage2021(req, res, userId);
+  // A profile is a PUBLIC page, but a signed-out visitor must not be silently
+  // shown account 1 - that is the owner's profile. Only an explicit id is
+  // honoured; with none, a guest is sent to sign in.
+  const viewer = resolveViewer(req);
+  if (!viewer.user) return res.redirect('/signin?redirect=' + encodeURIComponent('/profile'));
+  return renderProfilePage2021(req, res, viewer.user.userId || viewer.user.id);
 });
 
 /**
@@ -3552,8 +3585,9 @@ app.get('/friends', (req, res) => {
 });
 
 app.get('/badges', (req, res) => {
-  const userId = Number(req.query.userId || req.query.userid || 1);
-  const user = getUser(userId);
+  const viewer = resolveViewer(req);
+  const userId = viewer.user ? (viewer.user.userId || viewer.user.id) : null;
+  const user = viewer.user;
   const badges = Array.isArray(user.badges) ? user.badges : [];
 
   res.render('badges', {
@@ -3566,7 +3600,7 @@ app.get('/badges', (req, res) => {
 
 /**
  * Owner-only gate. Any route wrapped with this only runs for the deployment
- * owner (ID 1 / tailsthehero10). Everyone else gets 403 â€” enforced server-side,
+ * owner (ID 1 / tailsthehero10). Everyone else gets 403 أ¢â‚¬â€‌ enforced server-side,
  * not just hidden in the UI.
  */
 function requireOwner(req, res, next) {
@@ -3777,14 +3811,17 @@ app.get('/studio', (req, res) => {
 });
 
 /**
- * Creator Hub â€” the LuckyBlox equivalent of create.roblox.com. Shows the real
+ * Creator Hub أ¢â‚¬â€‌ the LuckyBlox equivalent of create.roblox.com. Shows the real
  * experiences and assets belonging to the signed-in account, plus live counts.
  * Guests can view it but publishing actions prompt them to sign in.
  */
 app.get('/develop', (req, res) => {
-  const sessionUser = req.sessionUser;
-  const userId = sessionUser ? (sessionUser.userId || sessionUser.id || 1) : (req.query.userId || 1);
-  const user = getUser(userId);
+  // The Creator Hub belongs to the SIGNED-IN account. It used to fall back to
+  // account 1 - the owner - so a visitor saw the owner's experiences and assets.
+  // A guest now gets the page with no account behind it (the view prompts them
+  // to sign in), never somebody else's data.
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  const user = sessionUser || null;
   const isOwner = isOwnerUser(user);
   const signedIn = Boolean(sessionUser);
 
@@ -3897,7 +3934,7 @@ app.get('/catalog', (req, res) => {
  * routes ignore theirs.
  */
 function renderCatalogItemPage(req, res, assetId) {
-  const user = req.sessionUser || getUser(req.query.userId || 1);
+  const user = resolveViewer(req).user;
   const assets = getAssets();
   const asset = assets[String(assetId)] || null;
 
@@ -4010,7 +4047,7 @@ app.post('/api/catalog/buy', (req, res) => {
  * so honestly and shows the real balance instead of showing a fake store.
  */
 app.get('/upgrades/robux', (req, res) => {
-  const user = req.sessionUser || getUser(req.query.userId || 1);
+  const user = resolveViewer(req).user;
   res.render('robux', {
     title: 'Robux - LuckyBlox',
     user,
@@ -4026,8 +4063,10 @@ app.get('/upgrades/robux', (req, res) => {
  * to an empty grid.
  */
 function renderInventoryPage(req, res, ownerId) {
-  const viewer = req.sessionUser || resolveSessionUser(req) || getUser(req.query.userId || 1);
-  const owner = getUser(ownerId);
+  // A guest viewing an explicit owner is a public-profile visit; a guest with no
+  // id is NOT account 1.
+  const viewer = req.sessionUser || resolveSessionUser(req) || null;
+  const owner = ownerId ? getUser(ownerId) : viewer;
   const assets = getAssets();
 
   const ownedIds = (Array.isArray(owner.inventory) ? owner.inventory : []).map(String);
@@ -4358,15 +4397,21 @@ async function renderAvatarPage2021(req, res, userId) {
 }
 
 app.get('/avatar', async (req, res) => {
-  return renderAvatarPage2021(req, res, req.query.userId || 1);
+  // /my/avatar showed the SIGNED-IN user. A guest has no avatar to edit, so
+  // send them to sign in rather than rendering somebody else's character.
+  const viewer = resolveViewer(req);
+  if (!viewer.user) return res.redirect('/signin?redirect=' + encodeURIComponent('/avatar'));
+  return renderAvatarPage2021(req, res, viewer.user.userId || viewer.user.id);
 });
 
 // The 2021 URL for this page was /my/avatar (it showed the signed-in user).
 // Guests without a session fall back to the demo account, matching /avatar.
 app.get('/my/avatar', async (req, res) => {
   const sessionUser = req.sessionUser || resolveSessionUser(req);
-  const userId = sessionUser ? (sessionUser.userId || sessionUser.id) : (req.query.userId || 1);
-  return renderAvatarPage2021(req, res, userId);
+  // /my/avatar is YOUR avatar. A guest has none, so sign in rather than fall
+  // back to account 1 (which is the owner).
+  if (!sessionUser) return res.redirect('/signin?redirect=' + encodeURIComponent('/my/avatar'));
+  return renderAvatarPage2021(req, res, sessionUser.userId || sessionUser.id);
 });
 
 /**
@@ -4567,7 +4612,7 @@ app.get('/games/:placeId/:slug', (req, res, next) => {
  * from /develop, which is the developer dashboard listing your own places.
  */
 app.get('/create', (req, res) => {
-  const user = req.sessionUser || getUser(req.query.userId || 1);
+  const user = resolveViewer(req).user;
   return res.render('create', {
     title: 'Create - Roblox',
     user,
@@ -4896,8 +4941,12 @@ app.get('/game/:placeId', (req, res) => {
 app.get('/play', (req, res) => {
   const placeId = Number(req.query.placeId || req.query.placeid || 1818);
   const sessionUser = req.sessionUser || resolveSessionUser(req);
-  const queryUserId = Number(req.query.userId || req.query.userid || (sessionUser ? sessionUser.userId : 1));
-  const userId = Number.isFinite(queryUserId) && queryUserId > 0 ? queryUserId : Number(sessionUser ? sessionUser.userId : 1) || 1;
+  // Playing needs an account. This used to fall back to account 1, so a visitor
+  // joined as the owner. Sign in first.
+  if (!sessionUser) {
+    return res.redirect('/signin?redirect=' + encodeURIComponent(req.originalUrl || '/play'));
+  }
+  const userId = Number(sessionUser.userId || sessionUser.id);
   const ticket = req.query.ticket || `LB_${Date.now()}`;
   const jobId = req.query.jobId || req.query.serverJobId || 'local-job';
   const requestPort = Number(req.query.serverPort || req.query.port || gamePort);

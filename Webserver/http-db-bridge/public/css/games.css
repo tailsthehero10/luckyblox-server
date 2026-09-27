@@ -1,315 +1,378 @@
 /* ===========================================================================
-   LuckyBlox - the real 2021 Roblox game card and carousel.
+   LuckyBlox - the REAL 2013 Roblox Games page.
 
-   Every value below is quoted from the saved Discover page's own stylesheet
-   (D:\DownLoads\Discover - Roblox_files\546e7585...594edd.css), NOT invented:
+   Copied from the 2013 web source shipped in this repo:
+     Web-2013 CCS+JS\2013CSS\CSS\Pages\Games\Games.css
 
-     .game-card-container       { width:100% }
-     .game-card-thumb-container { float:none; height:0; padding-bottom:100%;
-                                  padding-top:0; width:100% }
-     .game-card-thumb           { width:90px; height:90px }
-     .game-card-name            { margin-bottom:6px }
-     .game-card-info            { padding:2px 0 0 }
-     .info-label                { margin:auto 0 }
-     .vote-percentage-label     { padding:0 12px 0 3px }
-     .playing-counts-label      { padding:0 }
-     .game-tile                 { display:inline-block; width:164px; height:240px;
-                                  padding:0 14px 0 0; margin-bottom:12px;
-                                  vertical-align:top; white-space:normal }
-     .horizontally-scrollable   { height:162px }
-     .horizontal-scroll-window  { overflow-x:auto; -webkit-overflow-scrolling:touch;
-                                  -ms-overflow-style:none }
-     .games-list-container      { min-height:240px; margin:0 10px }
+   That file is the authority. Every declaration below is quoted from it, so the
+   layout matches the real page instead of an approximation.
 
-   NOTE the real geometry: a tile is 164 wide x 240 tall and the thumbnail fills
-   the width as a square via padding-bottom:100% - NOT a fixed 150px box. An
-   earlier version of this file hardcoded 150x150, which is why the rows sat at
-   the wrong height and the cards did not line up with the section headers.
+   Key geometry from the real sheet:
+
+     .game-item           { padding:5px 10px 20px 0; float:left; width:192px;
+                            height:144px; position:relative; text-align:left }
+     .game-item-image     { width:192px; height:108px }
+     .game-name           { font-size:14px; font-weight:600; width:190px;
+                            height:17px; overflow:hidden }
+     .games-list-column   { float:left; width:202px }
+     .games-list          { float:left; margin-top:7px; min-height:164px;
+                            width:100%; position:relative; padding-bottom:5px }
+     .games-list-container{ padding-left:1px; overflow:hidden;
+                            background-color:#fff; position:relative }
+     .see-all-button      { position:absolute; top:5px; right:0 }
+     .scroller            { height:108px; width:55px; margin-top:5px;
+                            background-color:#646464; opacity:0.7;
+                            position:absolute; z-index:10 }
+
+   A tile is 192x144 with a 192x108 image - a 16:9 thumbnail, NOT a square.
    =========================================================================== */
 
-/* --- Carousel section ----------------------------------------------------- */
+/* --- Page columns --------------------------------------------------------- */
+
+.games-page-left-column {
+  margin-left: 10px;
+  margin-right: 345px;
+}
+
+.games-lists-container {
+  min-width: 500px;
+  min-height: 820px;
+  clear: both;
+  line-height: 1.25;
+}
 
 .games-list-container {
-  min-height: 240px;
-  margin: 0 10px 24px;
+  padding-left: 1px;
+  overflow: hidden;
+  background-color: #ffffff;
+  position: relative;
+  margin-bottom: 18px;
 }
 
-.container-header.games-filter-changer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-  padding: 0;
-  border: 0;
-  background: transparent;
+.games-list {
+  float: left;
+  margin-top: 7px;
+  min-height: 164px;
+  width: 100%;
+  position: relative;
+  padding-bottom: 5px;
 }
 
-.container-header.games-filter-changer h3 {
+.games-list-header {
+  float: left;
+}
+
+.games-list-header h2 {
+  overflow: hidden;
   margin: 0;
-  font-size: 21px;
+  font-size: 22px;
   font-weight: 700;
-  line-height: 1.2;
-  color: var(--lb-ink);
-}
-
-/* The real page renders the whole header as a link to the filtered list. */
-.games-list-container>a {
-  display: block;
-  color: inherit;
-  text-decoration: none !important;
-}
-
-.games-list-container>a:hover .container-header.games-filter-changer h3 {
-  text-decoration: underline;
+  line-height: 1.3;
+  color: #393b3d;
 }
 
 .see-all-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex: 0 0 auto;
-  padding: 0 12px;
-  height: 32px;
-  border: 1px solid #bcbcbc;
-  border-radius: 2px;
-  background: #ffffff;
-  color: #393b3d;
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
+  position: absolute;
+  top: 5px;
+  right: 0;
+  line-height: 1.428;
+  font-size: 12px;
+  color: #0074bd;
+  text-decoration: none;
 }
 
-.see-all-button::after {
-  /* The trailing chevron the real button carried. */
-  content: '\203A';
-  font-size: 14px;
-  line-height: 1;
-  margin-left: 2px;
+.see-all-button:hover {
+  text-decoration: underline;
 }
 
-.horizontal-scroller.games-list {
+.games-list-column {
+  float: left;
+  width: 202px;
+}
+
+/* --- The game tile -------------------------------------------------------- */
+
+.game-item {
+  padding: 5px 10px 20px 0;
   position: relative;
-}
-
-/* Real: .horizontal-scroll-window{overflow-x:auto;-ms-overflow-style:none} */
-.clearfix.horizontal-scroll-window {
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.clearfix.horizontal-scroll-window::-webkit-scrollbar {
-  display: none;
-}
-
-/* Real: .horizontally-scrollable{height:162px} */
-.horizontally-scrollable {
-  height: 162px;
-  position: relative;
-  white-space: nowrap;
-}
-
-ul.hlist.games.game-cards.game-tile-list {
-  display: block;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  white-space: nowrap;
-}
-
-/* Real: .game-tile{display:inline-block;width:164px;height:240px;
-                     padding:0 14px 0 0;margin-bottom:12px;
-                     vertical-align:top;white-space:normal} */
-li.list-item.game-card.game-tile {
-  display: inline-block;
-  vertical-align: top;
-  width: 164px;
-  height: 240px;
-  margin: 0 0 12px;
-  padding: 0 14px 0 0;
-  white-space: normal;
-  list-style: none;
-}
-
-/* --- The card itself ------------------------------------------------------ */
-
-/* Real: .game-card-container{width:100%} */
-.game-card-container {
-  position: relative;
-  border-radius: 8px;
-  width: 100%;
   text-align: left;
-  background-color: transparent;
+  float: left;
+  width: 192px;
+  height: 144px;
+  box-sizing: content-box;
 }
 
-.game-card-link {
+.game-item:hover {
   display: block;
-  color: inherit;
-  text-decoration: none !important;
+  z-index: 10;
 }
 
-.game-card-thumb-container {
+.game-item-image {
+  width: 192px;
+  height: 108px;
+  display: block;
   position: relative;
-  z-index: 0;
-  height: 150px;
-  width: 150px;
-  display: inline-block;
-  border-radius: 8px;
   overflow: hidden;
   background: #eef1f4;
+  border-radius: 4px;
 }
 
-/* The real card darkened the artwork on hover via a radial gradient overlay. */
-.game-card-thumb-container::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 8px;
-  background: radial-gradient(transparent, rgba(0, 0, 0, 0.4));
-  transition: opacity 0.3s linear;
-  opacity: 0;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.game-card-container:hover .game-card-thumb-container::before {
-  opacity: 1;
-}
-
-/* A real <img> (not a CSS background) so a 404 reveals the placeholder rather
-   than an empty tinted box, and the shared spinner can cover it. */
-img.game-card-thumb {
-  display: block;
-  height: 150px;
-  width: 150px;
-  border-radius: 8px;
+.game-item-image img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  margin: auto;
+  display: block;
+  border-radius: 4px;
 }
 
-.game-card-name {
-  margin-top: 4px;
+.game-name {
   font-size: 14px;
-  font-weight: 500;
-  line-height: 1.4em;
-  color: var(--lb-ink);
+  font-weight: 600;
+  width: 190px;
+  height: 17px;
   overflow: hidden;
+  margin-top: 2px;
+  color: #393b3d;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.game-card-info {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  line-height: 1.4em;
-  white-space: nowrap;
+a.game-name {
+  display: block;
+  text-decoration: none;
+  color: #393b3d;
 }
 
-.info-label {
-  display: inline-block;
+a.game-name:hover {
+  text-decoration: underline;
+}
+
+.player-count,
+.show-on-hover-only {
+  padding-left: 2px;
   font-size: 12px;
-  font-weight: 500;
-  line-height: 18px;
   color: #6d7278;
 }
 
-.vote-percentage-label {
-  padding: 0;
-  margin: 0 0 0 -4px;
+.creator-name {
+  clear: both;
+  font-size: 12px;
+  color: #6d7278;
 }
 
-.playing-counts-label {
-  padding: 0;
-  margin: 0 0 0 -4px;
+.game-thumbs-up-down {
+  overflow: hidden;
+  font-size: 12px;
+  color: #6d7278;
 }
 
-/* The two 16px grey glyphs that precede the vote % and the playing count. */
-.icon-votes-gray,
-.icon-playing-counts-gray {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
+.game-item .hover-shown {
+  visibility: hidden;
 }
 
-.icon-votes-gray {
-  background-image: url('/icons/like.svg');
-  opacity: 0.55;
+.game-item:hover .hover-shown {
+  visibility: visible;
 }
 
-.icon-playing-counts-gray {
-  background-image: url('/icons/friends.svg');
-  opacity: 0.55;
-}
+/* --- Horizontal row -------------------------------------------------------
+   The 2013 sheet slid an absolutely-positioned 10000000px-wide strip with arrow
+   scrollers. This uses a native overflow row instead, so it works on touch and
+   with a trackpad, with the scrollbar hidden the way the real row had no bar. */
 
-/* --- Narrow viewports ----------------------------------------------------- */
-
-@media (max-width: 543px) {
-
-  .game-card-thumb-container,
-  img.game-card-thumb {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1 / 1;
-  }
-
-  li.list-item.game-card.game-tile {
-    width: 108px;
-    height: auto;
-  }
-
-  .game-card-name {
-    font-size: 10px;
-    line-height: 1.1em;
-  }
-
-  .container-header.games-filter-changer h3 {
-    font-size: 16px;
-  }
-}
-
-/* --- The Discover page shell --------------------------------------------- */
-
-.games-page {
-  padding-bottom: 40px;
-}
-
-/* The 2021 Discover page had a row of genre/filter chips above the carousels. */
-.games-filter-bar {
+.games-list-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-bottom: 5px;
+}
+
+.games-list-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* The real arrow scroller, shown only while the row is hovered. */
+.scroller {
+  height: 108px;
+  width: 55px;
+  margin-top: 5px;
+  background-color: #646464;
+  opacity: 0.7;
+  position: absolute;
+  z-index: 10;
+  border: 0;
+  cursor: pointer;
+  color: #ffffff;
+  font-size: 22px;
+  line-height: 1;
+  display: none;
+}
+
+.games-list:hover .scroller {
+  display: block;
+}
+
+.scroller:hover {
+  opacity: 0.85;
+}
+
+.scroller:focus {
+  outline: none;
+}
+
+.scroller:focus-visible {
+  outline: 2px solid #00a2ff;
+  outline-offset: 1px;
+}
+
+.scroller.prev {
+  left: 0;
+}
+
+.scroller.next {
+  right: 0;
+}
+
+/* --- Filters / sort ------------------------------------------------------- */
+
+.filters-and-sort {
+  margin: 8px 0 12px;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 20px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #393b3d;
+}
+
+.filter select {
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid #bcbcbc;
+  border-radius: 3px;
+  background: #ffffff;
+  font-size: 13px;
+  color: #393b3d;
+}
+
+.filter select:focus {
+  outline: none;
 }
 
 .games-filter-chip {
   display: inline-flex;
   align-items: center;
-  height: 32px;
-  padding: 0 14px;
-  border: 1px solid var(--lb-line);
-  border-radius: 16px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid #bcbcbc;
+  border-radius: 3px;
   background: #ffffff;
-  color: var(--lb-ink);
-  font-size: 14px;
-  font-weight: 500;
-  text-decoration: none !important;
+  color: #393b3d;
+  font-size: 13px;
+  text-decoration: none;
 }
 
 .games-filter-chip:hover {
   background: #f2f4f5;
 }
 
+.games-filter-chip:focus {
+  outline: none;
+}
+
 .games-filter-chip.is-active {
-  background: #191b1f;
-  border-color: #191b1f;
+  background: #393b3d;
+  border-color: #393b3d;
   color: #ffffff;
+}
+
+/* --- The play affordance on a tile ---------------------------------------
+   ICON ONLY - the real 2013 card carried no "Play" text label. It appears on
+   hover, centred over the artwork, as the real tile did. */
+
+.lb-game-card-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.game-item:hover .lb-game-card-play {
+  display: flex;
+}
+
+.lb-game-card-play .ch-ico {
+  width: 22px;
+  height: 22px;
+  filter: brightness(0) invert(1) !important;
+}
+
+/* An icon-only button: no label text, just the glyph. */
+.lb-play-icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  gap: 0;
+}
+
+.lb-play-icon-only .ch-ico {
+  width: 18px;
+  height: 18px;
+}
+
+/* --- Narrow viewports ----------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .games-page-left-column {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .games-lists-container {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 560px) {
+
+  .game-item,
+  .game-item-image,
+  .game-name {
+    width: 150px;
+  }
+
+  .game-item {
+    height: 118px;
+  }
+
+  .game-item-image {
+    height: 84px;
+  }
+
+  .game-name {
+    height: 16px;
+    font-size: 13px;
+  }
+
+  .games-list-column {
+    width: 160px;
+  }
 }

@@ -1,34 +1,36 @@
 <%#
-  Game card - the real 2021 Roblox game tile.
+  Game card - the real 2013 Roblox game tile.
 
-  Structure taken verbatim from the saved Discover page
-  (D:\DownLoads\Discover - Roblox.html), which is the authority for this markup.
+  Structure taken from the 2013 web source in this repo:
+    Web-2013 CCS+JS\2013CSS\CSS\Pages\Games\Games.css
+
   Tag names below are written without angle brackets on purpose: a literal tag
   inside a comment defeats structural checks and makes the real nesting
-  impossible to read by eye. Read "li" as an li element, and so on.
+  impossible to read by eye. Read "div.game-item" as a div with that class.
 
-    li.list-item.game-card.game-tile  (id=placeId, title=name)
-      div.game-card-container
-        a.game-card-link  (href)
-          div.game-card-thumb-container
-            span.thumbnail-2d-container.game-card-thumb
-          div.game-card-name.game-name-title  (title=name)
-          div.game-card-info
-            span.info-label.icon-votes-gray
-            span.info-label.vote-percentage-label          88%
-            span.info-label.icon-playing-counts-gray
-            span.info-label.playing-counts-label           1.1K
+    div.game-item                        (192x144)
+      a.game-item-image                  (192x108 thumbnail)
+        img                              (the artwork)
+      a.game-name                        (the title, 190x17, ellipsised)
+      div.game-thumbs-up-down
+        span.vote-percentage-label       88%
+        span.player-count                1.1K playing
 
-  The real tile carries ONLY the name, the vote percentage and the playing count -
-  no genre, no developer line. Adding those (as this site previously did) is what
-  made the cards read as "not Roblox".
+  The real tile carries ONLY the name, the vote percentage and the playing count.
+  No genre, no developer line - adding those is what made the cards read as
+  "not Roblox".
+
+  The Play control is an ICON ONLY (the real card had no "Play" text label). It is
+  a span, not a button, because the whole card is already a link and a button
+  inside a link is invalid HTML that swallows the click. The delegated handler on
+  the page turns a click on it into an in-page launch.
+
+  The artwork is a real img layered over the placeholder sibling, so a 404 reveals
+  the placeholder instead of an empty box, and the shared spinner can cover it.
 
   Expects: cardGame { placeId, title, icon, votePercentage, playing }, and
   optionally `showPlaying` (default true) so a caller can drop the player count.
 %>
-  The thumbnail is a real <img> layered over the placeholder sibling rather than a
-  CSS background, so a 404 reveals the placeholder instead of an empty box.
--->
 <%
 var gc = (typeof cardGame !== 'undefined' && cardGame) ? cardGame : {};
 var gcPlaceId = Number(gc.placeId || gc.universeId || 1818);
@@ -45,25 +47,26 @@ var gcHref = '/games/' + gcPlaceId + (gcSlug ? '/' + gcSlug : '');
 // outside a normal request (e.g. a test) from throwing.
 var gcPlayingText = (typeof abbreviateCount === 'function') ? abbreviateCount(gcPlaying) : String(gcPlaying);
 %>
-<li class="list-item game-card game-tile" id="<%= gcPlaceId %>" title="<%= gcTitle %>">
-  <div class="game-card-container">
-    <a class="game-card-link" href="<%= gcHref %>" id="<%= gcPlaceId %>">
-      <div class="game-card-thumb-container lb-loading-block is-loading" style="--lb-loader-size:36px;">
-        <img class="game-card-thumb" src="<%= gcIcon %>" alt="<%= gcTitle %>"
-             loading="lazy" onload="this.parentNode.classList.remove('is-loading');"
-             onerror="this.parentNode.classList.remove('is-loading');this.style.display='none';" />
-      </div>
-      <div class="game-card-name game-name-title" title="<%= gcTitle %>"><%= gcTitle %></div>
-      <div class="game-card-info">
+<div class="game-item" id="game-<%= gcPlaceId %>">
+  <a class="game-item-image lb-loading-block is-loading" href="<%= gcHref %>"
+     style="--lb-loader-size:28px;" title="<%= gcTitle %>">
+    <img src="<%= gcIcon %>" alt="<%= gcTitle %>" loading="lazy"
+         onload="this.parentNode.classList.remove('is-loading');"
+         onerror="this.parentNode.classList.remove('is-loading');this.style.display='none';" />
+    <span class="lb-game-card-play" role="button" tabindex="-1"
+          aria-label="Play <%= gcTitle %>"
+          data-launch-place-id="<%= gcPlaceId %>"
+          data-launch-from-card="1">
+      <img class="ch-ico" src="/icons/play.svg" alt="" />
+    </span>
+  </a>
+  <a class="game-name" href="<%= gcHref %>" title="<%= gcTitle %>"><%= gcTitle %></a>
+  <div class="game-thumbs-up-down">
 <% if (gcVote !== null) { %>
-        <span class="info-label icon-votes-gray"></span>
-        <span class="info-label vote-percentage-label"><%= gcVote %>%</span>
+    <span class="vote-percentage-label"><%= gcVote %>%</span>
 <% } %>
 <% if (gcShowPlaying) { %>
-        <span class="info-label icon-playing-counts-gray"></span>
-        <span class="info-label playing-counts-label" title="<%= gcPlaying %>"><%= gcPlayingText %></span>
+    <span class="player-count" title="<%= gcPlaying %>"><%= gcPlayingText %> playing</span>
 <% } %>
-      </div>
-    </a>
   </div>
-</li>
+</div>

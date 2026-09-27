@@ -1,0 +1,22 @@
+{
+  "1818": {
+    "placeId": 1818,
+    "universeId": 1818,
+    "name": "Studio Settings Test",
+    "description": "Connected to the real place settings API.",
+    "fileName": "Local Publish Test.rbxlx",
+    "filePath": "E:\\LuckyBloxLauncher\\NEW LKL\\Release\\workspace\\saved_places\\Local Publish Test.rbxlx",
+    "version": 1,
+    "author": "LocalPlayer",
+    "authorId": 1,
+    "maxPlayers": 25,
+    "allowHttpRequests": true,
+    "source": "workspace/saved_places/Local Publish Test.rbxlx",
+    "publishedAt": "2026-09-09T14:50:47.204Z",
+    "updatedAt": "2026-09-13T21:22:47.955Z",
+    "visibility": "Public",
+    "genre": "Adventure",
+    "privateServerAllowed": true,
+    "allowThirdPartySales": true
+  }
+}

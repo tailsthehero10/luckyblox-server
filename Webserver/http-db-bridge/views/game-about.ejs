@@ -93,9 +93,10 @@
                      id="gameThumb"
                      onerror="this.style.display='none';var b=document.getElementById('gameThumbBlock');if(b)b.classList.remove('is-loading');" />
               <% } %>
-              <button class="lb-btn lb-btn-primary roblox-play-button" type="button"
-                      id="playBtn" data-launch-place-id="<%= placeId %>">
-                <img class="ch-ico" src="/icons/play.svg" alt="" /> Play
+              <button class="lb-btn lb-btn-primary roblox-play-button lb-play-icon-only" type="button"
+                      id="playBtn" data-launch-place-id="<%= placeId %>"
+                      aria-label="Play <%= g.title %>" title="Play">
+                <img class="ch-ico" src="/icons/play.svg" alt="" />
               </button>
             </div>
 

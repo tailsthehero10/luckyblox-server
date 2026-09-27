@@ -1,0 +1,14 @@
+{
+  "userId": "1",
+  "inventory": [
+    "sword",
+    "shield"
+  ],
+  "currencies": {
+    "coins": 100
+  },
+  "configs": {},
+  "membership": "BuildersClub",
+  "createdAt": "2026-09-09T11:47:51.193Z",
+  "updatedAt": "2026-09-09T11:47:51.193Z"
+}

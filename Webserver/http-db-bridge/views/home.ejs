@@ -94,8 +94,10 @@
             <div class="lb-eyebrow">Featured Experience</div>
             <div class="lb-title-block">
               <h1><%= featuredGame.title %></h1>
-              <button class="lb-btn lb-btn-primary" type="button" data-launch-place-id="<%= featuredGame.placeId %>">
-                <img class="ch-ico" src="/icons/play.svg" alt="" /> Play
+              <button class="lb-btn lb-btn-primary lb-play-icon-only" type="button"
+                      data-launch-place-id="<%= featuredGame.placeId %>"
+                      aria-label="Play <%= featuredGame.title %>" title="Play">
+                <img class="ch-ico" src="/icons/play.svg" alt="" />
               </button>
             </div>
             <div class="lb-meta-row">
@@ -111,75 +113,36 @@
           </div>
         </section>
 
+        <%#
+          The game rows, built from the REAL 2013 markup and CSS
+          (Web-2013 CCS+JS\2013CSS\CSS\Pages\Games\Games.css).
+
+          Each row is a horizontal strip of 192x144 tiles, exactly as the real
+          Discover page was - the same partial the /games page uses, so the two
+          pages can never drift apart.
+
+          A row renders nothing when it has no games, rather than leaving an
+          empty frame with a title.
+        %>
+        <div class="games-lists-container">
+<% homeSections.forEach(function (section) { %>
+          <%- include('partials/games-carousel', { section: section, games: section.games }) %>
+<% }); %>
+        </div>
+
+        <% if (!homeSections.length) { %>
         <section class="lb-panel">
-          <div class="lb-panel-header">
-            <span>Popular</span>
-            <span class="lb-faint"><%= homeGames.length %> experience<%= homeGames.length === 1 ? '' : 's' %></span>
-          </div>
           <div class="lb-panel-body">
-            <% if (homeGames.length) { %>
-              <div class="lb-game-grid">
-                <% homeGames.forEach(function (game) { %>
-                  <a class="lb-game-card" href="/game/<%= game.placeId %>">
-                    <!--
-                      A SQUARE card (1:1), matching the game page and the featured
-                      hero: game artwork is always a square icon, so it is never
-                      shown as a wide banner.
-
-                      The game's own art is layered ON TOP of the placeholder card,
-                      so a game with no icon shows real art and a game whose icon
-                      URL 404s reveals the placeholder instead of an empty box. The
-                      onerror also marks the frame .is-placeholder, which hides the
-                      broken image outright.
-
-                      These are lazy images, so the shared loading block
-                      (decorateLoadingImages in legacy-nav.js) covers the tile while
-                      it loads. The size is raised from the 28px default because a
-                      card tile is a large, empty surface and a small glyph in the
-                      middle of it reads as a broken image.
-                    -->
-                    <div class="lb-game-card-thumb" style="--lb-loader-size:44px;">
-                      <% if (game.icon && /^\/|^https?:\/\//.test(game.icon) && game.icon.indexOf('unsplash') === -1) { %>
-                        <img src="<%= game.icon %>" alt="<%= game.title %>" loading="lazy"
-                             onerror="this.style.display='none';var p=this.parentNode;if(p)p.classList.add('is-placeholder');" />
-                      <% } %>
-                      <img class="roblox-game-card-placeholder" src="/gameplaceholder/card.png" alt="" loading="lazy" />
-
-                      <!--
-                        The play affordance from the real Discover card (44px, rounded).
-                        It is a span, not a nested button element: the whole card is
-                        already a link, and a button inside a link is invalid HTML and
-                        swallows the click. The delegated handler below turns a click on
-                        it into an in-page launch, so pressing it starts the game rather
-                        than navigating to the game page.
-
-                        NOTE: the tag names above are written without angle brackets on
-                        purpose. A literal tag inside a comment defeats structural
-                        checks (a naive tag count sees an unclosed element) and makes
-                        the real nesting impossible to read by eye.
-                      -->
-                      <span class="lb-game-card-play" role="button" tabindex="-1"
-                            aria-label="Play <%= game.title %>"
-                            data-launch-place-id="<%= game.placeId %>"
-                            data-launch-from-card="1">
-                        <img class="ch-ico" src="/icons/play.svg" alt="" />
-                      </span>
-                    </div>
-                    <div class="lb-game-card-title"><%= game.title %></div>
-                    <div class="lb-game-card-sub"><%= game.genre %> &middot; <%= Number(game.playerCount) || 0 %> playing</div>
-                  </a>
-                <% }); %>
-              </div>
-            <% } else { %>
-              <div class="lb-muted">No experiences have been published yet.</div>
-            <% } %>
+            <div class="lb-muted">No experiences have been published yet.</div>
           </div>
         </section>
+        <% } %>
 
         <div class="lb-content-grid">
           <section class="lb-panel">
             <div class="lb-panel-header"><span>Account</span></div>
             <div class="lb-panel-body">
+<% if (user) { %>
               <div class="lb-stat-list">
                 <span>Username</span><strong><%= user.username %></strong>
                 <span>Membership</span><strong><%= user.membershipStatus || user.membership || 'None' %></strong>
@@ -190,6 +153,14 @@
                 <a class="lb-btn lb-btn-secondary" href="/users/<%= user.userId %>/profile">View Profile</a>
                 <a class="lb-btn lb-btn-secondary" href="/develop">Create</a>
               </div>
+<% } else { %>
+              <%# A guest. Show a sign-in prompt rather than somebody else's account. %>
+              <div class="lb-muted">Sign in to see your account, friends and creations.</div>
+              <div class="lb-action-row">
+                <a class="lb-btn lb-btn-primary" href="/signin">Log In</a>
+                <a class="lb-btn lb-btn-secondary" href="/signup">Sign Up</a>
+              </div>
+<% } %>
             </div>
           </section>
         </div>
