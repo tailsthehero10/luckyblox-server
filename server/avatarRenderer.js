@@ -73,6 +73,22 @@ function shade([r, g, b], factor) {
   return [r * factor, g * factor, b * factor];
 }
 
+/**
+ * Pick an edge colour that stays visible against the fill it outlines.
+ *
+ * Perceived brightness (the ITU-R BT.601 luma weights) rather than a plain
+ * average, because the eye weights green far more heavily than blue and a plain
+ * mean misjudges saturated colours.
+ *
+ * Dark fills get a LIGHTER stroke and light fills a darker one, so the figure
+ * always reads as separate lit blocks. Without this, a Really-black
+ * (BrickColor 1002) account was drawn as one undifferentiated silhouette.
+ */
+function outlineFor([r, g, b]) {
+  const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+  return luma < 110 ? [255, 255, 255] : [0, 0, 0];
+}
+
 // ---------------------------------------------------------------------------
 // Geometry helpers
 // ---------------------------------------------------------------------------
@@ -83,37 +99,70 @@ function shade([r, g, b], factor) {
  * (x, y, z) is the front-bottom-left corner in "world" units; w/h/d are the
  * extents. The projection maps world X to screen right-down, world Z to screen
  * right-up, and world Y to screen down - the standard 2:1 isometric look the
- * Roblox thumbnail uses for a three-quarter standing pose.
+ * (x, y, z) is the front-bottom-left corner in "world" units; w/h/d are the
+ * extents. The projection maps world X to screen right-down and world Z to
+ * screen right-up, which gives the standard 2:1 isometric look the Roblox
+ * thumbnail uses for a three-quarter standing pose.
+ *
+ * World Y GROWS UPWARD, so screen-Y is SUBTRACTED (`sy = ... - y`).
+ *
+ * That sign is the whole reason the figure used to be drawn upside down: the
+ * callers stack the body upward from the feet (`legTop`, `torsoTop`, `headTop`
+ * are all increasingly positive), so with `+ y` the HEAD - being the most
+ * positive offset - was projected to the BOTTOM of the frame and the feet to
+ * the top. Subtracting puts the head on top, which is what the layout maths
+ * always intended.
  */
 function iso(x, y, z) {
-  return { sx: (x - z) * 0.866, sy: (x + z) * 0.5 + y };
+  return { sx: (x - z) * 0.866, sy: (x + z) * 0.5 - y };
 }
 
-function box(x, y, z, w, h, d, baseColor) {
+/**
+ * A box in isometric projection, centred on the world origin in X and Z.
+ *
+ * `cx` is the box's centre on the world X axis and `cz` its centre on Z, so a
+ * caller never has to think about which corner it is anchoring. The previous
+ * signature passed the FRONT-BOTTOM-LEFT corner while the callers passed what
+ * they believed to be a centre - which is why a 2-wide torso came out shifted
+ * to the left of a 1-wide leg instead of straddling it.
+ */
+function box(cx, y, cz, w, h, d, baseColor) {
   const front = shade(baseColor, 1.0);
   const side = shade(baseColor, 0.78);
   const top = shade(baseColor, 1.18);
 
-  // Eight corners of the box.
+  // The outline has to separate two ADJACENT parts, not just be darker than the
+  // fill. `shade(baseColor, 0.6)` is fine on a mid-tone but on a near-black body
+  // colour it is black-on-black, so a dark account rendered as a solid unlit
+  // silhouette with no visible head, arms or legs. Choosing the stroke by how
+  // dark the fill actually is keeps every rig legible: dark bodies get a lighter
+  // edge, light bodies get a darker one.
+  const stroke = hex(outlineFor(front));
+
+  // Translate the centred inputs into the corner the projection works from.
+  const x = cx - w / 2;
+  const z = cz - d / 2;
+
+  // Eight corners of the box. World Y grows upward, so +h is the TOP face.
   const p = (dx, dy, dz) => iso(x + dx, y + dy, z + dz);
 
   const fbl = p(0, 0, d);        // front bottom left
   const fbr = p(w, 0, d);        // front bottom right
-  const ftl = p(0, -h, d);       // front top left
-  const ftr = p(w, -h, d);       // front top right
+  const ftl = p(0, h, d);        // front top left
+  const ftr = p(w, h, d);        // front top right
 
   const bbl = p(0, 0, 0);
   const bbr = p(w, 0, 0);
-  const btl = p(0, -h, 0);
-  const btr = p(w, -h, 0);
+  const btl = p(0, h, 0);
+  const btr = p(w, h, 0);
 
   const pts = (arr) => arr.map((q) => `${q.sx.toFixed(2)},${q.sy.toFixed(2)}`).join(' ');
 
   // Front face, then the right side, then the top. Painted in that order so the
   // nearer faces overlap correctly.
-  return `<polygon points="${pts([fbl, fbr, ftr, ftl])}" fill="${hex(front)}" stroke="${hex(shade(baseColor, 0.6))}" stroke-width="0.6" stroke-linejoin="round"/>`
-    + `<polygon points="${pts([fbr, bbr, btr, ftr])}" fill="${hex(side)}" stroke="${hex(shade(baseColor, 0.6))}" stroke-width="0.6" stroke-linejoin="round"/>`
-    + `<polygon points="${pts([ftl, ftr, btr, btl])}" fill="${hex(top)}" stroke="${hex(shade(baseColor, 0.6))}" stroke-width="0.6" stroke-linejoin="round"/>`;
+  return `<polygon points="${pts([fbl, fbr, ftr, ftl])}" fill="${hex(front)}" stroke="${stroke}" stroke-width="0.8" stroke-linejoin="round"/>`
+    + `<polygon points="${pts([fbr, bbr, btr, ftr])}" fill="${hex(side)}" stroke="${stroke}" stroke-width="0.8" stroke-linejoin="round"/>`
+    + `<polygon points="${pts([ftl, ftr, btr, btl])}" fill="${hex(top)}" stroke="${stroke}" stroke-width="0.8" stroke-linejoin="round"/>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -127,10 +176,6 @@ function box(x, y, z, w, h, d, baseColor) {
  * 1x2x1, each leg 1x2x1. Everything is scaled by `u` (units -> pixels).
  */
 function drawR6(colors, u, opts) {
-  const ox = 0;
-  const oy = 0;
-  const oz = 0;
-
   const head = rgbOf(colors.headColorId);
   const torso = rgbOf(colors.torsoColorId);
   const larm = rgbOf(colors.leftArmColorId);
@@ -138,6 +183,7 @@ function drawR6(colors, u, opts) {
   const lleg = rgbOf(colors.leftLegColorId);
   const rleg = rgbOf(colors.rightLegColorId);
 
+  // Real R6 studs. Y now grows UPWARD from the feet (y = 0 at the ground).
   const legH = 2 * u;
   const torsoH = 2 * u;
   const armH = 2 * u;
@@ -145,36 +191,56 @@ function drawR6(colors, u, opts) {
   const headW = 2 * u;
   const bodyW = 2 * u;
   const depth = 1 * u;
+  const limbW = 1 * u;
 
-  const legTop = oy + legH;
-  const torsoTop = legTop + torsoH;
-  const headTop = torsoTop + headH;
+  const legBottom = 0;
+  const torsoBottom = legH;
+  const armBottom = torsoBottom;
+  const headBottom = torsoBottom + torsoH;
+
+  // Every box is given its CENTRE, so a 2-wide torso straddles x=0 and the two
+  // 1-wide legs sit either side of it. Each part is also given its own z centre
+  // so the rig reads as one solid body rather than two offset slabs.
+  const zc = 0;
+  const legOffset = bodyW / 2 - limbW / 2;   // 0.5u outward from the midline
+  const armOffset = bodyW / 2 + limbW / 2;   // just outside the torso
 
   let svg = '';
 
-  // Legs (drawn first: they are behind the torso in this pose).
-  svg += box(ox - bodyW / 2, legTop, oz, u, legH, depth, lleg);
-  svg += box(ox + bodyW / 2 - u, legTop, oz, u, legH, depth, rleg);
+  // Painting order is load-bearing. Faces are painted back-to-front, and the
+  // TORSO was previously painted AFTER the arms - so it covered them completely
+  // and the figure read as one solid block with no shoulders. The arms only sit
+  // outside the torso by half a stud, so any overlap at all hides them.
+  //
+  // Order: legs (furthest back), arms, torso, head, face (front-most).
+  svg += box(-legOffset, legBottom, zc, limbW, legH, depth, lleg);
+  svg += box(legOffset, legBottom, zc, limbW, legH, depth, rleg);
 
-  // Arms.
-  svg += box(ox - bodyW / 2 - u, torsoTop, oz, u, armH, depth, larm);
-  svg += box(ox + bodyW / 2, torsoTop, oz, u, armH, depth, rarm);
+  // Arms hang level with the torso, from the shoulder down.
+  svg += box(-armOffset, armBottom, zc, limbW, armH, depth, larm);
+  svg += box(armOffset, armBottom, zc, limbW, armH, depth, rarm);
 
   // Torso.
-  svg += box(ox - bodyW / 2, torsoTop, oz, bodyW, torsoH, depth, torso);
+  svg += box(0, torsoBottom, zc, bodyW, torsoH, depth, torso);
 
-  // Head - centred on the torso, slightly wider than the body.
-  svg += box(ox - headW / 2, headTop, oz, headW, headH, depth, head);
+  // Head, centred on the torso and one stud tall.
+  svg += box(0, headBottom, zc, headW, headH, depth, head);
 
   // Face, drawn on the front plane of the head.
   if (opts && opts.face !== false) {
-    const f = iso(ox - headW / 2, headTop, oz + depth);
-    const fw = headW * 0.866;
-    const fh = headH * 0.5;
-    svg += faceSvg(f.sx + fw * 0.5, f.sy + fh * 0.5, u * 0.5);
+    const f = iso(0, headBottom + headH / 2, zc + depth / 2);
+    svg += faceSvg(f.sx, f.sy, u * 0.5, head);
   }
 
-  return svg;
+  // The layout is returned alongside the markup so callers that composite
+  // overlay items know where the head and torso actually are.
+  return {
+    svg,
+    headTop: headBottom + headH,
+    headW,
+    torsoTop: torsoBottom + torsoH,
+    bodyW,
+  };
 }
 
 /**
@@ -190,6 +256,8 @@ function drawR15(colors, u, opts) {
   const lleg = rgbOf(colors.leftLegColorId);
   const rleg = rgbOf(colors.rightLegColorId);
 
+  // R15 is the same silhouette with a slightly taller stack and slimmer limbs,
+  // which is what distinguishes it from R6 at thumbnail size. Y grows upward.
   const legH = 2.2 * u;
   const torsoH = 2.1 * u;
   const armH = 2.2 * u;
@@ -199,41 +267,55 @@ function drawR15(colors, u, opts) {
   const depth = 0.9 * u;
   const limbW = 0.85 * u;
 
-  const legTop = legH;
-  const torsoTop = legTop + torsoH;
-  const headTop = torsoTop + headH;
+  const legBottom = 0;
+  const torsoBottom = legH;
+  const armBottom = torsoBottom;
+  const headBottom = torsoBottom + torsoH;
+
+  const zc = 0;
+  const legOffset = bodyW / 2 - limbW / 2;
+  const armOffset = bodyW / 2 + limbW / 2;
 
   let svg = '';
-  svg += box(-bodyW / 2 + 0.1 * u, legTop, 0, limbW, legH, depth, lleg);
-  svg += box(bodyW / 2 - limbW - 0.1 * u, legTop, 0, limbW, legH, depth, rleg);
 
-  svg += box(-bodyW / 2 - limbW, torsoTop - armH * 0.02, 0, limbW, armH, depth, larm);
-  svg += box(bodyW / 2, torsoTop - armH * 0.02, 0, limbW, armH, depth, rarm);
+  // Same back-to-front order as R6: legs, arms, torso, head, then the face.
+  svg += box(-legOffset, legBottom, zc, limbW, legH, depth, lleg);
+  svg += box(legOffset, legBottom, zc, limbW, legH, depth, rleg);
 
-  svg += box(-bodyW / 2, torsoTop, 0, bodyW, torsoH, depth, torso);
+  svg += box(-armOffset, armBottom, zc, limbW, armH, depth, larm);
+  svg += box(armOffset, armBottom, zc, limbW, armH, depth, rarm);
 
-  svg += box(-headW / 2, headTop, 0.05 * u, headW, headH, depth * 0.95, head);
+  svg += box(0, torsoBottom, zc, bodyW, torsoH, depth, torso);
+
+  svg += box(0, headBottom, zc, headW, headH, depth * 0.95, head);
 
   if (opts && opts.face !== false) {
-    const f = iso(-headW / 2, headTop, depth * 0.95 + 0.05 * u);
-    const fw = headW * 0.866;
-    const fh = headH * 0.5;
-    svg += faceSvg(f.sx + fw * 0.5, f.sy + fh * 0.5, u * 0.45);
+    const f = iso(0, headBottom + headH / 2, zc + depth * 0.95 / 2);
+    svg += faceSvg(f.sx, f.sy, u * 0.45, head);
   }
 
-  return svg;
+  return {
+    svg,
+    headTop: headBottom + headH,
+    headW,
+    torsoTop: torsoBottom + torsoH,
+    bodyW,
+  };
 }
 
 /** The classic Roblox smile face, drawn at (cx, cy) with radius r. */
-function faceSvg(cx, cy, r) {
+function faceSvg(cx, cy, r, headColor) {
+  // The face is hard-coded dark, which disappears on a dark head - so the ink is
+  // chosen from the head colour's own luminance, exactly like the box outline.
+  const ink = hex(outlineFor(headColor || [163, 162, 165]));
   const eye = r * 0.22;
   const eyeY = cy - r * 0.25;
   const smile = r * 0.45;
   return `<g>`
-    + `<ellipse cx="${(cx - r * 0.4).toFixed(2)}" cy="${eyeY.toFixed(2)}" rx="${eye.toFixed(2)}" ry="${(eye * 1.15).toFixed(2)}" fill="#1b2a34"/>`
-    + `<ellipse cx="${(cx + r * 0.4).toFixed(2)}" cy="${eyeY.toFixed(2)}" rx="${eye.toFixed(2)}" ry="${(eye * 1.15).toFixed(2)}" fill="#1b2a34"/>`
+    + `<ellipse cx="${(cx - r * 0.4).toFixed(2)}" cy="${eyeY.toFixed(2)}" rx="${eye.toFixed(2)}" ry="${(eye * 1.15).toFixed(2)}" fill="${ink}"/>`
+    + `<ellipse cx="${(cx + r * 0.4).toFixed(2)}" cy="${eyeY.toFixed(2)}" rx="${eye.toFixed(2)}" ry="${(eye * 1.15).toFixed(2)}" fill="${ink}"/>`
     + `<path d="M ${(cx - smile).toFixed(2)} ${(cy + r * 0.15).toFixed(2)} Q ${cx.toFixed(2)} ${(cy + r * 0.85).toFixed(2)} ${(cx + smile).toFixed(2)} ${(cy + r * 0.15).toFixed(2)}" `
-    + `fill="none" stroke="#1b2a34" stroke-width="${(r * 0.14).toFixed(2)}" stroke-linecap="round"/>`
+    + `fill="none" stroke="${ink}" stroke-width="${(r * 0.14).toFixed(2)}" stroke-linecap="round"/>`
     + `</g>`;
 }
 
@@ -243,8 +325,15 @@ function faceSvg(cx, cy, r) {
  * Each equipped asset is drawn on top of the figure by category, so a hat appears
  * on the head and a shirt tints the torso - the same composition the real
  * thumbnail does. Unknown categories are skipped rather than drawn wrongly.
+ *
+ * @param {object} item     the resolved asset record
+ * @param {number} u        unit size in px
+ * @param {number} headScreenY  screen-Y of the TOP of the head
+ * @param {number} torsoScreenY screen-Y of the TOP of the torso
+ * @param {number} headW    the head's width in px (so a hat can be sized to it)
+ * @param {number} bodyW    the torso's width in px (so a shirt can be sized to it)
  */
-function overlayFor(item, u, headTopY, torsoTopY) {
+function overlayFor(item, u, headScreenY, torsoScreenY, headW, bodyW) {
   const name = String(item && (item.name || item.assetType) || '').toLowerCase();
   const type = String((item && item.assetType) || '').toLowerCase();
 
@@ -253,32 +342,34 @@ function overlayFor(item, u, headTopY, torsoTopY) {
   const isPants = /pants|jeans|shorts|trousers/.test(name) || type === 'pants';
 
   if (isHat) {
-    // A simple brimmed hat sitting on the crown of the head.
-    const w = u * 1.7;
+    // A brimmed hat resting on the crown. Screen-Y grows DOWNWARD, so the crown
+    // is at a SMALLER y than the top of the head - hence the subtraction.
+    const w = headW * 0.9;
     const h = u * 0.55;
-    const brimW = u * 2.1;
-    const cx = 0;
-    const y = headTopY - u * 0.15;
+    const brimW = headW * 1.15;
+    const y = headScreenY - u * 0.02;
     return `<g>`
-      + `<ellipse cx="${cx}" cy="${y.toFixed(2)}" rx="${(brimW / 2).toFixed(2)}" ry="${(u * 0.28).toFixed(2)}" fill="#2b2f36" opacity="0.92"/>`
-      + `<rect x="${(cx - w / 2).toFixed(2)}" y="${(y - h).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="${(u * 0.1).toFixed(2)}" fill="#3a3f47"/>`
+      + `<ellipse cx="0" cy="${y.toFixed(2)}" rx="${(brimW / 2).toFixed(2)}" ry="${(u * 0.28).toFixed(2)}" fill="#2b2f36" opacity="0.92"/>`
+      + `<rect x="${(-w / 2).toFixed(2)}" y="${(y - h).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="${(u * 0.1).toFixed(2)}" fill="#3a3f47"/>`
       + `</g>`;
   }
 
   if (isShirt) {
     // Tint the torso block rather than replacing it, so the body colour still
-    // shows through the way a real shirt texture does.
-    const w = u * 1.9;
+    // shows through the way a real shirt texture does. The torso occupies the
+    // 2u of screen height BELOW its top edge.
+    const w = bodyW * 0.96;
     const h = u * 1.8;
-    return `<rect x="${(-w / 2).toFixed(2)}" y="${torsoTopY.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" `
+    return `<rect x="${(-w / 2).toFixed(2)}" y="${(torsoScreenY + u * 0.1).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" `
       + `rx="${(u * 0.08).toFixed(2)}" fill="#2f6fd0" opacity="0.55"/>`;
   }
 
   if (isPants) {
-    const w = u * 1.9;
-    const h = u * 1.6;
-    const legTopY = torsoTopY + u * 2.05;
-    return `<rect x="${(-w / 2).toFixed(2)}" y="${legTopY.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" `
+    // Below the torso: the legs run from the torso's bottom edge to the feet.
+    const w = bodyW * 0.96;
+    const h = u * 2.0;
+    const legsTopY = torsoScreenY + u * 2.1;
+    return `<rect x="${(-w / 2).toFixed(2)}" y="${legsTopY.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" `
       + `rx="${(u * 0.08).toFixed(2)}" fill="#2a3b56" opacity="0.55"/>`;
   }
 
@@ -314,38 +405,130 @@ function renderAvatarSvg(user, size, opts) {
     ? options.wearing
     : (Array.isArray(user && user.currentlyWearing) ? [] : []);
 
-  const headTopY = -(u * 5.05);
-  const torsoTopY = headTopY + u * 1.05;
+  // Each rig reports its own layout, so the overlays are positioned from the
+  // geometry that was ACTUALLY drawn instead of from a second guess at where the
+  // head and torso ended up. That guess is what put the hat and the shirt in the
+  // wrong place once the rig proportions changed.
+  const laid = rig === 'R6' ? drawR6(colors, u, options) : drawR15(colors, u, options);
+  const body = laid.svg;
 
-  let body = rig === 'R6' ? drawR6(colors, u, options) : drawR15(colors, u, options);
+  // Screen-Y grows DOWNWARD, so the TOP of a part is its screen-Y minus its
+  // height; `laid` already supplies those top edges in screen space.
+  const headScreenTop = iso(0, laid.headTop, 0).sy;
+  const torsoScreenTop = iso(0, laid.torsoTop, 0).sy;
 
-  // Overlays sit above the body but below nothing else.
   let overlays = '';
   wearing.forEach((item) => {
-    overlays += overlayFor(item, u, headTopY, torsoTopY);
+    overlays += overlayFor(item, u, headScreenTop, torsoScreenTop, laid.headW, laid.bodyW);
   });
 
-  // The projection puts x in [-w, w]; pad the viewBox so no edge is clipped and
-  // the figure is optically centred rather than mathematically centred.
-  const halfW = targetPx * 0.55;
-  const vbX = -halfW;
-  const vbY = -(targetPx * 1.06);
-  const vbW = halfW * 2;
-  const vbH = targetPx * 1.18;
+  // The viewBox is measured from the geometry that was actually emitted, NOT
+  // assumed.
+  //
+  // The previous version hardcoded a box around y = -(targetPx * 1.06) and then
+  // translated the body DOWN by targetPx * 0.44. But the isometric projection
+  // maps world-Y onto screen-Y by ADDING (see iso(): sy = (x + z) * 0.5 + y),
+  // and every part of the figure is placed at a POSITIVE y - legs start at 0 and
+  // the stack grows upward from there. So the body always landed at roughly
+  // y = 0..targetPx * 0.94, while the box it was measured against sat entirely
+  // in negative y. The figure was drawn completely OUTSIDE its own frame and the
+  // avatar rendered as an empty square on every page.
+  //
+  // Measuring the real bounds means the frame is correct for any rig, any unit
+  // size, and any overlay a worn item adds - the failure mode cannot come back
+  // just because the proportions change.
+  const bounds = measureSvgBounds(body + overlays);
 
+  // A little breathing room so a stroke on the outermost edge is not clipped.
+  const pad = Math.max(2, u * 0.12);
+  const vbX = bounds.minX - pad;
+  const vbY = bounds.minY - pad;
+  const vbW = Math.max(1, bounds.maxX - bounds.minX + pad * 2);
+  const vbH = Math.max(1, bounds.maxY - bounds.minY + pad * 2);
+
+  // `width`/`height` keep the requested pixel size for layout; the viewBox
+  // carries the geometry, so preserveAspectRatio keeps the figure uncropped
+  // even when the measured box is not square.
   return `<svg class="lb-avatar-svg" viewBox="${vbX.toFixed(1)} ${vbY.toFixed(1)} ${vbW.toFixed(1)} ${vbH.toFixed(1)}" `
-    + `width="${targetPx}" height="${targetPx}" role="img" `
+    + `width="${targetPx}" height="${targetPx}" preserveAspectRatio="xMidYMid meet" role="img" `
     + `aria-label="${escapeAttr((user && user.username) || 'Avatar')}" `
     + `xmlns="http://www.w3.org/2000/svg">`
-    + `<g transform="translate(0 ${(targetPx * 0.44).toFixed(2)})">`
     + body
     + overlays
-    + `</g>`
     + `</svg>`;
 }
 
 function escapeAttr(value) {
   return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * The painted extent of a chunk of SVG, in the SVG's own user units.
+ *
+ * Every shape this renderer emits is a <polygon> (boxes) or a <rect>/<ellipse>
+ * (the face and the item overlays), so those are the geometry that has to be
+ * read. Reading it back rather than recomputing it from the layout maths keeps
+ * this honest: whatever drawR6/drawR15/overlayFor actually produced is what the
+ * viewBox will frame, including anything a future rig adds.
+ *
+ * @param {string} markup the body + overlays markup
+ * @returns {{minX:number,minY:number,maxX:number,maxY:number}}
+ */
+function measureSvgBounds(markup) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  const note = (x, y) => {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  };
+
+  // <polygon points="x,y x,y ...">
+  const polygonRe = /<polygon[^>]*\spoints="([^"]*)"/g;
+  let match;
+  while ((match = polygonRe.exec(markup))) {
+    for (const pair of match[1].trim().split(/\s+/)) {
+      const [x, y] = pair.split(',').map(Number);
+      note(x, y);
+    }
+  }
+
+  // <rect x y width height>
+  const rectRe = /<rect[^>]*\sx="([^"]*)"[^>]*\sy="([^"]*)"[^>]*\swidth="([^"]*)"[^>]*\sheight="([^"]*)"/g;
+  while ((match = rectRe.exec(markup))) {
+    const x = Number(match[1]);
+    const y = Number(match[2]);
+    const w = Number(match[3]);
+    const h = Number(match[4]);
+    note(x, y);
+    note(x + w, y + h);
+  }
+
+  // <ellipse cx cy rx ry>
+  const ellipseRe = /<ellipse[^>]*\scx="([^"]*)"[^>]*\scy="([^"]*)"[^>]*\srx="([^"]*)"[^>]*\sry="([^"]*)"/g;
+  while ((match = ellipseRe.exec(markup))) {
+    const cx = Number(match[1]);
+    const cy = Number(match[2]);
+    const rx = Number(match[3]);
+    const ry = Number(match[4]);
+    note(cx - rx, cy - ry);
+    note(cx + rx, cy + ry);
+  }
+
+  // A <path> (the smile) cannot be measured without a path parser; it is always
+  // drawn inside the head box, which the polygon pass above has already covered.
+  if (!Number.isFinite(minX)) {
+    // Nothing measurable: fall back to a unit box so the caller still gets a
+    // valid (if empty) viewBox instead of "Infinity".
+    return { minX: 0, minY: 0, maxX: 1, maxY: 1 };
+  }
+
+  return { minX, minY, maxX, maxY };
 }
 
 module.exports = {
@@ -354,4 +537,6 @@ module.exports = {
   rgbOf,
   hex,
   shade,
+  outlineFor,
+  measureSvgBounds,
 };
