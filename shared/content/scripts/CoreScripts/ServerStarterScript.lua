@@ -1,4 +1,4 @@
-_G.AdminPasswordPublic = 'password=91131616'
+_G.AdminPasswordPublic = 'password=65282440'
 
 local bodytype="Custom"
 local starterplayer=game:GetService("StarterPlayer")
