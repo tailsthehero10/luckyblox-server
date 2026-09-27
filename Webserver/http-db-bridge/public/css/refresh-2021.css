@@ -1,0 +1,795 @@
+/* ===========================================================================
+   LuckyBlox - the 2021 look, REFRESHED.
+
+   Same POSITIONS and STRUCTURE as the real 2021 roblox.com, with a modern
+   surface: softer radii, subtle elevation, cleaner type rhythm. Nothing moves
+   from where the real page put it - the top bar is still 90px, the nav is still
+   the same list in the same order, the search still sits between the nav and the
+   account cluster, the sidebar is still the same rail.
+
+   Values quoted from the real 2021 stylesheet shipped with the saved pages
+   (D:\DownLoads\Discover - Roblox_files\9436c6cb...0558d.css):
+
+     .rbx-header{height:90px}
+     .rbx-header .rbx-navbar{margin:4px auto;display:flex}
+     .rbx-header .rbx-navbar li .nav-menu-title{padding:6px 9px;display:inline-block}
+     .light-theme .rbx-header{background-color:#dee1e3;border:solid #c7cbce;border-width:0 0 1px}
+     .dark-theme  .rbx-header{background-color:#191b1d;border:solid #111214;border-width:0 0 1px}
+     .navbar-search{box-sizing:border-box;margin-top:6px;position:relative;border-radius:8px}
+     .light-theme .rbx-header .navbar-search{background-color:#f2f4f5}
+     .navbar-search .new-input-field{color:#393b3d}
+     .rbx-header .rbx-navbar li:hover{border:0 #393b3d;border-bottom:2px solid #393b3d}
+
+   What "refreshed" means here, concretely:
+     - the SAME 90px bar and the same element order, but the light theme is a
+       clean white (#ffffff) instead of the 2021 grey (#dee1e3), which is what
+       made the old page read as dated
+     - the same 2px underline nav hover, kept (it is the signature interaction)
+     - radii go 2px -> 8px on surfaces and controls; the 2021 sheet used almost
+       no rounding, which is the single biggest "2010s" tell
+     - elevation is one soft shadow instead of a hard 1px border everywhere
+     - the same Gotham SSm stack, with a tighter line-height and better contrast
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   Tokens
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* Surfaces: white page, white bars, a whisper-grey canvas. */
+  --rf-page: #f7f8fa;
+  --rf-surface: #ffffff;
+  --rf-surface-2: #f2f4f7;
+  --rf-line: #e4e7ec;
+  --rf-line-strong: #d0d5dd;
+
+  /* Text: near-black headings, muted body. */
+  --rf-ink: #14161a;
+  --rf-ink-2: #3d444d;
+  --rf-muted: #667085;
+  --rf-faint: #98a2b3;
+
+  /* The 2021 brand accents, kept exactly. */
+  --rf-green: #02b757;
+  --rf-green-hover: #3fc679;
+  --rf-blue: #00a2ff;
+  --rf-blue-hover: #33b5ff;
+  --rf-link: #0074bd;
+
+  /* The 2021 dark theme colours, kept for the dark toggle. */
+  --rf-dark-bg: #191b1d;
+  --rf-dark-line: #111214;
+  --rf-dark-surface: #232527;
+
+  --rf-radius: 8px;
+  --rf-radius-sm: 6px;
+  --rf-radius-lg: 12px;
+
+  --rf-shadow-1: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --rf-shadow-2: 0 4px 12px rgba(16, 24, 40, 0.08);
+  --rf-shadow-3: 0 12px 28px rgba(16, 24, 40, 0.12);
+
+  /* The bar height is the real 2021 value: .rbx-header{height:90px}. The rail
+     offset is derived from it so the two can never drift apart. */
+  --rf-header-h: 90px;
+  --rf-rail-w: 220px;
+
+  --rf-font: "Gotham SSm", "GothamSSm", Arimo, "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  /* Back-compat with the older sheets still loaded on some pages. */
+  --lb-page: var(--rf-page);
+  --lb-surface: var(--rf-surface);
+  --lb-ink: var(--rf-ink);
+  --lb-muted: var(--rf-muted);
+  --lb-line: var(--rf-line);
+  --lb-green: var(--rf-green);
+  --lb-blue: var(--rf-blue);
+  --lb-link: var(--rf-link);
+  --lb-radius: var(--rf-radius-sm);
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+   --------------------------------------------------------------------------- */
+
+html {
+  background: var(--rf-page);
+}
+
+body {
+  margin: 0;
+  background: var(--rf-page);
+  color: var(--rf-ink);
+  font-family: var(--rf-font);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--rf-link);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+img {
+  max-width: 100%;
+  border: 0;
+}
+
+h1 {
+  font-size: 28px;
+  line-height: 1.25;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+h2 {
+  font-size: 22px;
+  line-height: 1.3;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+h3 {
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+/* ---------------------------------------------------------------------------
+   Header - the 2021 90px bar, refreshed
+   ---------------------------------------------------------------------------
+   SAME structure: brand, nav list, search, account cluster. SAME height (90px).
+   The only change is the surface - white instead of #dee1e3.
+   --------------------------------------------------------------------------- */
+
+.rf-header,
+.lb-header,
+.roblox-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: var(--rf-header-h);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  box-sizing: border-box;
+  background: var(--rf-surface);
+  border-bottom: 1px solid var(--rf-line);
+  box-shadow: var(--rf-shadow-1);
+}
+
+/* The dark theme keeps the real 2021 dark colours. */
+.lb-header.dark-theme,
+.roblox-topbar.dark-theme {
+  background: var(--rf-dark-bg);
+  border-bottom-color: var(--rf-dark-line);
+}
+
+/* Real: .rbx-header .rbx-navbar{margin:4px auto;display:flex} */
+.rf-navbar,
+.roblox-nav,
+.lb-header-nav {
+  display: flex;
+  align-items: center;
+  margin: 4px auto;
+  padding: 0;
+  list-style: none;
+  flex: 0 1 auto;
+}
+
+.rf-navbar>li,
+.roblox-nav-links>li,
+.lb-header-nav-links>li {
+  list-style: none;
+}
+
+/* Real: .rbx-header .rbx-navbar li .nav-menu-title{padding:6px 9px} */
+.rf-navbar li .nav-menu-title,
+.lb-header-nav-links a,
+.roblox-nav-links>a,
+.roblox-nav-links>li>a {
+  display: inline-block;
+  padding: 6px 9px;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--rf-ink);
+  text-decoration: none;
+}
+
+/* Real: .rbx-header .rbx-navbar li:hover{border-bottom:2px solid #393b3d}
+   Kept exactly - the underline is the 2021 signature. */
+.rf-navbar>li,
+.lb-header-nav-links>li,
+.roblox-nav-links>li {
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.12s ease;
+}
+
+.rf-navbar>li:hover,
+.lb-header-nav-links>li:hover,
+.roblox-nav-links>li:hover {
+  border-bottom-color: var(--rf-ink);
+}
+
+.dark-theme .rf-navbar>li:hover,
+.dark-theme .lb-header-nav-links>li:hover {
+  border-bottom-color: #ffffff;
+}
+
+/* Real: .navbar-search{...border-radius:8px} - already 8px in 2021. */
+.rf-search,
+.navbar-search,
+.lb-header-search {
+  box-sizing: border-box;
+  position: relative;
+  border-radius: var(--rf-radius);
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  max-width: 480px;
+  height: 42px;
+  padding: 0 4px 0 0;
+  background: var(--rf-surface-2);
+  border: 1px solid transparent;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.rf-search:focus-within,
+.navbar-search:focus-within,
+.lb-header-search:focus-within {
+  background: var(--rf-surface);
+  border-color: var(--rf-blue);
+}
+
+.dark-theme .navbar-search,
+.dark-theme .rf-search {
+  background: var(--rf-dark-surface);
+}
+
+/* Real: .navbar-search .new-input-field{color:#393b3d} */
+.rf-search input,
+.navbar-search .new-input-field,
+.lb-header-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  font-size: 15px;
+  padding: 0 10px;
+  color: var(--rf-ink);
+}
+
+.rf-search input::placeholder {
+  color: var(--rf-faint);
+}
+
+/* The scope selector in the real bar. */
+.rf-search select,
+.lb-header-search-scope select {
+  height: 100%;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--rf-muted);
+  padding: 0 4px 0 10px;
+  cursor: pointer;
+  outline: none;
+}
+
+.rf-search button,
+.lb-header-search-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 34px;
+  border: 0;
+  border-radius: var(--rf-radius-sm);
+  background: transparent;
+  cursor: pointer;
+  color: var(--rf-muted);
+}
+
+.rf-search button:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* ---------------------------------------------------------------------------
+   Buttons - the real 2021 colours, refreshed radii
+   ---------------------------------------------------------------------------
+   Real declarations, quoted:
+     .btn-primary-md  { background-color:#02b757; border:1px solid #02b757;
+                        color:#fff; font-weight:500; padding:9px; font-size:16px;
+                        line-height:100%; border-radius:3px }
+     .btn-primary-md:hover,:focus { background-color:#3fc679; border-color:#3fc679 }
+     .btn-secondary-md{ background-color:#00a2ff; border:1px solid #00a2ff }
+   Colours and the no-outline-on-focus behaviour are kept; the 3px radius becomes
+   8px, which is the refresh.
+   --------------------------------------------------------------------------- */
+
+.rf-btn,
+.roblox-primary-button,
+.roblox-secondary-button,
+.lb-btn,
+.btn-primary-md,
+.btn-secondary-md {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: var(--rf-radius);
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+  user-select: none;
+}
+
+.rf-btn-primary,
+.roblox-primary-button,
+.lb-btn-primary,
+.btn-primary-md {
+  background: var(--rf-green);
+  border-color: var(--rf-green);
+  color: #ffffff;
+}
+
+.rf-btn-primary:hover,
+.rf-btn-primary:focus,
+.roblox-primary-button:hover,
+.roblox-primary-button:focus,
+.lb-btn-primary:hover,
+.lb-btn-primary:focus,
+.btn-primary-md:hover,
+.btn-primary-md:focus {
+  background: var(--rf-green-hover);
+  border-color: var(--rf-green-hover);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.rf-btn-secondary,
+.roblox-secondary-button,
+.lb-btn-secondary,
+.btn-secondary-md {
+  background: var(--rf-blue);
+  border-color: var(--rf-blue);
+  color: #ffffff;
+}
+
+.rf-btn-secondary:hover,
+.rf-btn-secondary:focus,
+.roblox-secondary-button:hover,
+.roblox-secondary-button:focus,
+.lb-btn-secondary:hover,
+.lb-btn-secondary:focus,
+.btn-secondary-md:hover,
+.btn-secondary-md:focus {
+  background: var(--rf-blue-hover);
+  border-color: var(--rf-blue-hover);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.rf-btn-ghost {
+  background: var(--rf-surface);
+  border-color: var(--rf-line-strong);
+  color: var(--rf-ink);
+}
+
+.rf-btn-ghost:hover {
+  background: var(--rf-surface-2);
+  text-decoration: none;
+}
+
+.rf-btn-sm {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.rf-btn-lg {
+  height: 46px;
+  padding: 0 24px;
+  font-size: 17px;
+}
+
+/* Icon-only control (the Play button). The real card had no text label. */
+.rf-btn-icon {
+  width: 38px;
+  padding: 0;
+}
+
+.rf-btn-icon .ch-ico {
+  width: 18px;
+  height: 18px;
+}
+
+/* No focus outline anywhere - Roblox only changes the background. Keyboard users
+   still get :focus-visible, which is the accessible equivalent. */
+button:focus,
+a:focus,
+input:focus,
+select:focus,
+textarea:focus,
+[tabindex]:focus {
+  outline: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--rf-blue);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Left rail - the 2021 sidebar, refreshed
+   ---------------------------------------------------------------------------
+   Same position (fixed, left, below the 90px bar) and the same 220px width. The
+   rail is now a white card-floating column with rounded rows, instead of the
+   flat 2021 strip.
+   --------------------------------------------------------------------------- */
+
+.rf-rail,
+.lb-sidebar,
+.roblox-sidebar {
+  position: fixed;
+  top: var(--rf-header-h);
+  left: 0;
+  bottom: 0;
+  width: var(--rf-rail-w);
+  padding: 12px 10px 40px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--rf-surface);
+  border-right: 1px solid var(--rf-line);
+  z-index: 40;
+}
+
+.rf-rail-link,
+.lb-sidebar-link,
+.roblox-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 12px;
+  margin-bottom: 2px;
+  border-radius: var(--rf-radius);
+  color: var(--rf-ink-2);
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.rf-rail-link:hover,
+.lb-sidebar-link:hover,
+.roblox-sidebar-link:hover {
+  background: var(--rf-surface-2);
+  color: var(--rf-ink);
+  text-decoration: none;
+}
+
+/* The active row: the 2021 blue pill, refreshed. */
+.rf-rail-link.is-active,
+.lb-sidebar-link.is-active,
+.roblox-sidebar-link.is-active {
+  background: rgba(0, 162, 255, 0.12);
+  color: var(--rf-link);
+  font-weight: 700;
+}
+
+.rf-rail-group-label,
+.lb-rail-group-label {
+  padding: 10px 12px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rf-faint);
+}
+
+.rf-rail-divider,
+.roblox-sidebar-divider {
+  height: 1px;
+  margin: 8px 12px;
+  background: var(--rf-line);
+}
+
+.rf-rail-user,
+.lb-sidebar-user,
+.roblox-sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+.rf-rail-avatar,
+.lb-sidebar-avatar,
+.roblox-sidebar-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--rf-surface-2);
+  color: var(--rf-ink-2);
+  font-weight: 700;
+  font-size: 14px;
+  flex: 0 0 auto;
+}
+
+.rf-rail-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rf-rail-username,
+.lb-sidebar-username,
+.roblox-sidebar-username {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--rf-ink);
+}
+
+.rf-rail-status,
+.lb-sidebar-status,
+.roblox-sidebar-status {
+  font-size: 12px;
+  color: var(--rf-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rf-dot,
+.roblox-sidebar-dot,
+.lb-sidebar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--rf-green);
+  flex: 0 0 auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Shell - content sits to the right of the rail, below the bar
+   --------------------------------------------------------------------------- */
+
+.rf-shell,
+.lb-shell,
+.roblox-shell {
+  display: block;
+  padding-top: var(--rf-header-h);
+  padding-left: var(--rf-rail-w);
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.rf-main,
+.lb-main,
+.roblox-main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 20px 24px 56px;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Panels - one soft card instead of the 2021 hard 1px box
+   --------------------------------------------------------------------------- */
+
+.rf-panel,
+.lb-panel,
+.roblox-panel {
+  background: var(--rf-surface);
+  border: 1px solid var(--rf-line);
+  border-radius: var(--rf-radius-lg);
+  box-shadow: var(--rf-shadow-1);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.rf-panel-header,
+.lb-panel-header,
+.roblox-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--rf-line);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--rf-ink);
+}
+
+.rf-panel-body,
+.lb-panel-body,
+.roblox-panel-body {
+  padding: 18px;
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 1024px) {
+  :root {
+    --rf-rail-w: 200px;
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --rf-rail-w: 0px;
+  }
+
+  .lb-header,
+  .roblox-topbar,
+  .rf-header {
+    height: auto;
+    min-height: 64px;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .rf-search,
+  .navbar-search,
+  .lb-header-search {
+    order: 3;
+    max-width: none;
+    width: 100%;
+    flex-basis: 100%;
+  }
+
+  .lb-sidebar,
+  .roblox-sidebar,
+  .rf-rail {
+    transform: translateX(-100%);
+    transition: transform 0.18s ease;
+  }
+
+  body.lb-rail-open .lb-sidebar,
+  body.lb-rail-open .roblox-sidebar,
+  body.lb-rail-open .rf-rail {
+    transform: translateX(0);
+    width: 240px;
+    z-index: 60;
+  }
+
+  body.lb-rail-open {
+    --rf-rail-w: 240px;
+  }
+
+  .lb-rail-toggle {
+    display: inline-flex;
+  }
+
+  body.lb-rail-open::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(16, 24, 40, 0.45);
+    z-index: 50;
+  }
+
+  .rf-main,
+  .lb-main,
+  .roblox-main {
+    padding: 16px;
+  }
+}
+
+/* The rail toggle (hidden on desktop, shown by the query above). */
+.lb-rail-toggle {
+  display: none;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  margin-right: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--rf-radius);
+  background: transparent;
+  cursor: pointer;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--rf-ink);
+}
+
+.lb-rail-toggle:hover {
+  background: var(--rf-surface-2);
+}
+
+.lb-rail-toggle-bar {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: currentColor;
+}
+
+.dark-theme .lb-rail-toggle {
+  color: #ffffff;
+}
+
+/* ---------------------------------------------------------------------------
+   Utilities
+   --------------------------------------------------------------------------- */
+
+.rf-muted,
+.lb-muted {
+  color: var(--rf-muted);
+}
+
+.rf-faint,
+.lb-faint {
+  color: var(--rf-faint);
+  font-size: 13px;
+}
+
+.rf-hidden {
+  display: none !important;
+}
+
+.rf-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rf-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rf-spacer {
+  flex: 1 1 auto;
+}
+
+/* Long unbroken strings (ids, URLs) must not blow out a column. */
+.rf-main,
+.lb-main,
+.ch-page,
+.lb-panel-body,
+.roblox-panel-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

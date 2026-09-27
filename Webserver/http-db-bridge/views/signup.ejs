@@ -1,368 +1,178 @@
 <!DOCTYPE html>
 <html lang="en" class="<%= themeClass || '' %>">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= title %></title>
+  <title>
+    <%= title %>
+  </title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/css/roblox.css" />
-  <link rel="stylesheet" href="/css/lb-select.css" />
-  <style>
-    body {
-      margin: 0;
-      /* The background image is set on .signin-shell (so it can be blurred
-         without blurring the card). This is only the fallback colour. */
-      background: #0f172a;
-      color: #1d2433;
-      font-family: "Gotham SSm", Arimo, "Segoe UI", Arial, sans-serif;
-    }
-
-    .signin-shell {
-      position: relative;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 28px;
-      /* Background image with a light blur. The blur lives on this ::before layer
-         so the card above it stays sharp. */
-      overflow: hidden;
-    }
-
-    .signin-shell::before {
-      content: "";
-      position: fixed;
-      /* Fixed to the viewport so the image always covers the whole screen, no
-         matter how tall the content is - no white bands top or bottom. */
-      inset: -40px;
-      background-image: url('/sign-background');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      /* "not too much" blur, plus a slight darkening so white cards read well */
-      filter: blur(6px) brightness(0.85);
-      z-index: 0;
-    }
-
-    .signin-card {
-      position: relative;
-      z-index: 1;
-      width: min(460px, 100%);
-      background: #ffffff;
-      border: 1px solid #d8e1ee;
-      border-radius: 16px;
-      box-shadow: 0 12px 28px rgba(32, 52, 88, 0.12);
-      overflow: hidden;
-    }
-
-    .signin-header {
-      background: linear-gradient(180deg, #2f5ea8 0%, #224d8e 100%);
-      color: #ffffff;
-      text-align: center;
-      padding: 20px 18px 18px;
-      border-bottom: 1px solid rgba(0,0,0,0.1);
-    }
-
-    .signin-brand {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      font-size: 1.1rem;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
-
-    .signin-brand-mark {
-      width: 28px;
-      height: 28px;
-      display: block;
-      object-fit: contain;
-      flex: 0 0 auto;
-    }
-
-    .signin-body {
-      padding: 26px 26px 20px;
-    }
-
-    .signin-title {
-      margin: 0 0 6px;
-      font-size: 2rem;
-      font-weight: 800;
-      letter-spacing: -0.05em;
-      color: #1d2433;
-    }
-
-    .signin-subtitle {
-      margin: 0 0 18px;
-      color: #5c697d;
-      font-size: 0.96rem;
-    }
-
-    .signin-form {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    .signin-field {
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-    }
-
-    .signin-field label {
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #536076;
-    }
-
-    .signin-field input {
-      width: 100%;
-      height: 46px;
-      border: 1px solid #ccd7e7;
-      border-radius: 8px;
-      background: #f7f9fc;
-      padding: 0 12px;
-      font-size: 1rem;
-      color: #1d2433;
-      outline: none;
-      box-sizing: border-box;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-
-    .signin-field input:focus {
-      border-color: #5d8fe2;
-      box-shadow: 0 0 0 3px rgba(93, 143, 226, 0.12);
-      background: #ffffff;
-    }
-
-    /* Birthday: three side-by-side dropdowns (Month / Day / Year), matching the
-       Roblox 2021 create-account form layout. */
-    .birthday-row {
-      display: grid;
-      grid-template-columns: 1.4fr 1fr 1.1fr;
-      gap: 8px;
-    }
-
-    .birthday-row select {
-      height: 46px;
-      border: 1px solid #ccd7e7;
-      border-radius: 8px;
-      background: #f7f9fc;
-      padding: 0 8px;
-      font-size: 0.95rem;
-      color: #1d2433;
-      outline: none;
-      box-sizing: border-box;
-      width: 100%;
-    }
-
-    /* The visible control is the custom trigger (see /lb-select.js), so it needs
-       the same 46px height and radius the native select above used to carry. */
-    .birthday-row .lb-select-trigger {
-      height: 46px;
-      border-radius: 8px;
-    }
-
-    .birthday-row select:focus {
-      border-color: #5d8fe2;
-      box-shadow: 0 0 0 3px rgba(93, 143, 226, 0.12);
-      background: #ffffff;
-    }
-
-    .signin-field input.input-error {
-      border-color: #d9534f;
-      box-shadow: 0 0 0 3px rgba(217, 83, 79, 0.12);
-    }
-
-    .signin-button {
-      margin-top: 8px;
-      width: 100%;
-      height: 48px;
-      border: none;
-      border-radius: 10px;
-      background: linear-gradient(180deg, #1bc15b 0%, #0ca04f 100%);
-      color: #ffffff;
-      font-size: 1.05rem;
-      font-weight: 800;
-      cursor: pointer;
-      box-shadow: 0 10px 20px rgba(13, 160, 79, 0.18);
-      transition: filter 0.15s, opacity 0.15s;
-    }
-
-    .signin-button:hover {
-      filter: brightness(1.03);
-    }
-
-    .signin-button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .signin-error {
-      margin: 0 0 10px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid #f1b0b0;
-      background: #fff0f0;
-      color: #bb3d3d;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-
-    .signin-meta {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      margin-top: 18px;
-      font-size: 0.83rem;
-      color: #5d697a;
-    }
-
-    .signin-meta a {
-      color: #2357b5;
-      text-decoration: none;
-      font-weight: 700;
-    }
-
-    .signin-meta a:hover {
-      text-decoration: underline;
-    }
-
-    .signin-hint {
-      margin: 0 0 14px;
-      padding: 8px 12px;
-      border-radius: 8px;
-      background: #eef5ff;
-      border: 1px solid #c9ddff;
-      color: #4a6fa5;
-      font-size: 0.82rem;
-      line-height: 1.5;
-    }
-  </style>
+  <link rel="stylesheet" href="/css/refresh-2021.css" />
+  <link rel="stylesheet" href="/css/auth.css" />
 </head>
-<body class="lb-auth">
-  <div class="signin-shell">
-    <div class="signin-card">
-      <div class="signin-header">
-        <div class="signin-brand">
-          <img class="signin-brand-mark" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
-          <span>LuckyBlox</span>
-        </div>
+<%# Create account - matching the REAL 2021 Roblox sign-up page. Same rules as the sign-in page (the real site used one
+  shared auth stylesheet for both), quoted from D:\DownLoads\Discover - Roblox_files\5eb9680d...b2d42.css:
+  .login-container{margin:0 auto;max-width:400px} .login-container .login-header{margin-bottom:18px;text-align:center}
+  .login-container .username-form-group{margin-bottom:18px} The real create-account form was, top to bottom: Birthday -
+  three side-by-side dropdowns (Month / Day / Year) Username - text field Password - password field Gender - optional
+  select [Sign Up] - the green submit terms line - the fine print under the button NOTE: the real 2021 form asked for
+  BIRTHDAY FIRST, before the username - that order is kept here because it is what the reference shows. Expects: title,
+  errorMessage, username, redirect, csrfToken. %>
+
+  <body class="auth-page<%= (typeof themeOn !== 'undefined' && themeOn) ? ' dark-theme' : '' %>">
+
+    <div class="auth-container">
+
+      <div class="auth-header">
+        <a href="/" aria-label="LuckyBlox home">
+          <img class="auth-logo" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
+        </a>
+        <h1 class="auth-title">Sign Up</h1>
+        <p class="auth-subtitle">Create a LuckyBlox account</p>
       </div>
 
-      <div class="signin-body">
-        <h1 class="signin-title">Create account</h1>
-        <p class="signin-subtitle">Make a real LuckyBlox account and start playing with your own profile.</p>
-
-        <% if (errorMessage) { %>
-          <div class="signin-error"><%= errorMessage %></div>
+      <% if (errorMessage) { %>
+        <div class="auth-error" role="alert">
+          <%= errorMessage %>
+        </div>
         <% } %>
 
-        <form class="signin-form" method="POST" action="/signup" id="signupForm">
-          <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>" />
-          <input type="hidden" name="redirect" value="<%= typeof redirect !== 'undefined' ? redirect : '' %>" />
+          <form method="POST" action="/signup" id="signupForm" novalidate>
+            <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>" />
+            <% if (redirect) { %>
+              <input type="hidden" name="redirect" value="<%= redirect %>" />
+              <% } %>
 
-          <div class="signin-field">
-            <label>Birthday</label>
-            <div class="birthday-row">
-              <select class="lb-select" id="birthMonth" name="birthMonth" aria-label="Birth month" required>
-                <option value="">Month</option>
-                <% ['January','February','March','April','May','June','July','August','September','October','November','December'].forEach(function(m, i) { %>
-                  <option value="<%= i + 1 %>"><%= m %></option>
-                <% }); %>
-              </select>
-              <select class="lb-select" id="birthDay" name="birthDay" aria-label="Birth day" required>
-                <option value="">Day</option>
-                <% for (var d = 1; d <= 31; d++) { %>
-                  <option value="<%= d %>"><%= d %></option>
-                <% } %>
-              </select>
-              <select class="lb-select" id="birthYear" name="birthYear" aria-label="Birth year" required>
-                <option value="">Year</option>
-                <% for (var y = new Date().getFullYear(); y >= 1900; y--) { %>
-                  <option value="<%= y %>"><%= y %></option>
-                <% } %>
-              </select>
-            </div>
+                <%# Birthday first, exactly as the real form ordered it. Three dropdowns in a row, not a single date
+                  input. %>
+                  <div class="auth-field">
+                    <label class="auth-label" for="birthMonth">Birthday</label>
+                    <div class="auth-birthday">
+                      <select class="auth-select" id="birthMonth" name="birthMonth" aria-label="Birth month" required>
+                        <option value="">Month</option>
+                        <% ['January','February','March','April','May','June','July','August','September','October','November','December'].forEach(function
+                          (m, i) { %>
+                          <option value="<%= i + 1 %>">
+                            <%= m %>
+                          </option>
+                          <% }); %>
+                      </select>
+                      <select class="auth-select" id="birthDay" name="birthDay" aria-label="Birth day" required>
+                        <option value="">Day</option>
+                        <% for (var d=1; d <=31; d++) { %>
+                          <option value="<%= d %>">
+                            <%= d %>
+                          </option>
+                          <% } %>
+                      </select>
+                      <select class="auth-select" id="birthYear" name="birthYear" aria-label="Birth year" required>
+                        <option value="">Year</option>
+                        <% var thisYear=new Date().getFullYear(); for (var y=thisYear; y>= thisYear - 100; y--) { %>
+                          <option value="<%= y %>">
+                            <%= y %>
+                          </option>
+                          <% } %>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="auth-field">
+                    <label class="auth-label" for="username">Username</label>
+                    <input class="auth-input" id="username" name="username" type="text" value="<%= username || '' %>"
+                      autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" required />
+                    <div class="auth-help">3-20 characters. Letters, numbers and underscores.</div>
+                  </div>
+
+                  <div class="auth-field">
+                    <label class="auth-label" for="password">Password</label>
+                    <input class="auth-input" id="password" name="password" type="password" autocomplete="new-password"
+                      required />
+                    <div class="auth-help">At least 8 characters.</div>
+                  </div>
+
+                  <div class="auth-field auth-field--last">
+                    <label class="auth-label" for="confirmPassword">Confirm Password</label>
+                    <input class="auth-input" id="confirmPassword" name="confirmPassword" type="password"
+                      autocomplete="new-password" required />
+                  </div>
+
+                  <div class="auth-field">
+                    <label class="auth-label" for="gender">Gender <span class="auth-help">(optional)</span></label>
+                    <select class="auth-select" id="gender" name="gender">
+                      <option value="NotSpecified">Not specified</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                  </div>
+
+                  <button class="auth-submit" type="submit" id="signupSubmit">Sign Up</button>
+
+                  <p class="auth-terms">
+                    By clicking Sign Up, you are agreeing to the LuckyBlox Terms of Use and
+                    Privacy Policy. This is a private, local deployment and is not affiliated
+                    with Roblox Corporation.
+                  </p>
+          </form>
+
+          <div class="auth-signup-option">
+            <span class="no-account-text">Already have an account?</span>
+            <a class="auth-signup-link"
+              href="/signin<%= redirect ? ('?redirect=' + encodeURIComponent(redirect)) : '' %>">Sign In</a>
           </div>
 
-          <div class="signin-field">
-            <label for="username">Username</label>
-            <input id="username" name="username" type="text" value="<%= username || '' %>" autocomplete="username" required />
-          </div>
-
-          <div class="signin-field">
-            <label for="displayName">Display name (optional)</label>
-            <input id="displayName" name="displayName" type="text" placeholder="Defaults to your username" />
-          </div>
-
-          <div class="signin-field">
-            <label for="password">Password</label>
-            <input id="password" name="password" type="password" autocomplete="new-password" required />
-          </div>
-
-          <div class="signin-field">
-            <label for="confirmPassword">Confirm password</label>
-            <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" required />
-          </div>
-
-          <div class="signin-field">
-            <label for="gender">Gender</label>
-            <select class="lb-select" id="gender" name="gender">
-              <option value="NotSpecified">Not specified</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-            </select>
-          </div>
-
-          <button class="signin-button" type="submit" id="signupSubmit">Sign Up</button>
-        </form>
-
-        <div class="signin-meta">
-          <span>Already have an account? <a href="/signin">Sign in</a></span>
-          <a href="/games">Browse as guest</a>
-        </div>
-      </div>
     </div>
-  </div>
-  <script>
-    (function() {
-      var form = document.getElementById('signupForm');
-      var btn = document.getElementById('signupSubmit');
-      form.addEventListener('submit', function() {
-        var u = document.getElementById('username').value.trim();
-        var p = document.getElementById('password').value;
-        var cp = document.getElementById('confirmPassword').value;
-        var valid = true;
-        if (!u || u.length < 3) {
-          document.getElementById('username').classList.add('input-error');
-          valid = false;
-        } else {
-          document.getElementById('username').classList.remove('input-error');
+
+    <script>
+      // Client-side pre-check only; the server re-validates everything.
+      (function () {
+        var form = document.getElementById('signupForm');
+        var btn = document.getElementById('signupSubmit');
+        if (!form) return;
+
+        function mark(el, bad) {
+          if (!el) return;
+          if (bad) el.classList.add('input-error');
+          else el.classList.remove('input-error');
         }
-        if (!p || p.length < 4) {
-          document.getElementById('password').classList.add('input-error');
-          valid = false;
-        } else {
-          document.getElementById('password').classList.remove('input-error');
-        }
-        if (p !== cp) {
-          document.getElementById('confirmPassword').classList.add('input-error');
-          valid = false;
-        } else {
-          document.getElementById('confirmPassword').classList.remove('input-error');
-        }
-        if (!valid) return false;
-        btn.disabled = true;
-        btn.textContent = 'Creating account...';
-        return true;
-      });
-    })();
-  </script>
-<%- include('partials/scripts') %>
-</body>
+
+        form.addEventListener('submit', function () {
+          var u = document.getElementById('username');
+          var p = document.getElementById('password');
+          var cp = document.getElementById('confirmPassword');
+          var bm = document.getElementById('birthMonth');
+          var bd = document.getElementById('birthDay');
+          var by = document.getElementById('birthYear');
+          var valid = true;
+
+          if (!bm.value || !bd.value || !by.value) {
+            mark(bm, true); mark(bd, true); mark(by, true); valid = false;
+          } else {
+            mark(bm, false); mark(bd, false); mark(by, false);
+          }
+
+          var name = u.value.trim();
+          if (name.length < 3 || name.length > 20) { mark(u, true); valid = false; }
+          else { mark(u, false); }
+
+          if (p.value.length < 8) { mark(p, true); valid = false; }
+          else { mark(p, false); }
+
+          if (p.value !== cp.value) { mark(cp, true); valid = false; }
+          else { mark(cp, false); }
+
+          if (!valid) return false;
+
+          btn.disabled = true;
+          btn.textContent = 'Creating Account...';
+          return true;
+        });
+      }());
+    </script>
+
+    <%- include('partials/scripts') %>
+  </body>
+
 </html>

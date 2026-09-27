@@ -3585,8 +3585,11 @@ app.get('/friends', (req, res) => {
 });
 
 app.get('/badges', (req, res) => {
+  // A guest has no badges to show. This used to fall back to account 1 (the
+  // owner) and then crash now that guests resolve to null - so send them to
+  // sign in rather than rendering somebody else's badges.
   const viewer = resolveViewer(req);
-  const userId = viewer.user ? (viewer.user.userId || viewer.user.id) : null;
+  if (!viewer.user) return res.redirect('/signin?redirect=' + encodeURIComponent('/badges'));
   const user = viewer.user;
   const badges = Array.isArray(user.badges) ? user.badges : [];
 
@@ -3822,6 +3825,9 @@ app.get('/develop', (req, res) => {
   // to sign in), never somebody else's data.
   const sessionUser = req.sessionUser || resolveSessionUser(req);
   const user = sessionUser || null;
+  // `userId` was never defined here, so the ownership filter below compared
+  // authorId against NaN - every experience was hidden from its own creator.
+  const userId = user ? (user.userId || user.id) : null;
   const isOwner = isOwnerUser(user);
   const signedIn = Boolean(sessionUser);
 
@@ -3948,7 +3954,7 @@ function renderCatalogItemPage(req, res, assetId) {
   }
 
   const id = String(asset.id != null ? asset.id : asset.assetId);
-  const ownedIds = new Set((Array.isArray(user.inventory) ? user.inventory : []).map(String));
+  const ownedIds = new Set((Array.isArray(user && user.inventory) ? user.inventory : []).map(String));
 
   return res.render('catalog-item', {
     title: `${asset.name || 'Item'} - Roblox`,
@@ -4067,8 +4073,12 @@ function renderInventoryPage(req, res, ownerId) {
   // id is NOT account 1.
   const viewer = req.sessionUser || resolveSessionUser(req) || null;
   const owner = ownerId ? getUser(ownerId) : viewer;
+  // A guest with no id has no inventory to show. Without this guard `owner` was
+  // null and the line below threw, which is what 500'd /inventory.
+  if (!owner) {
+    return res.redirect('/signin?redirect=' + encodeURIComponent(req.originalUrl || '/inventory'));
+  }
   const assets = getAssets();
-
   const ownedIds = (Array.isArray(owner.inventory) ? owner.inventory : []).map(String);
   const wearingIds = new Set((Array.isArray(owner.currentlyWearing) ? owner.currentlyWearing : []).map(String));
 
@@ -4102,10 +4112,12 @@ function renderInventoryPage(req, res, ownerId) {
   return res.render('inventory', {
     title: `${owner.username} - Inventory | LuckyBlox`,
     user: viewer,
-    currency: getCurrencyForUser(viewer),
+    // A guest has no wallet. getCurrencyForUser(null) would throw, so pass an
+    // explicit empty one - the view renders 0 rather than crashing.
+    currency: viewer ? getCurrencyForUser(viewer) : { robux: 0, coins: 0, tickets: 0 },
     ownerId: String(owner.userId || ownerId),
     ownerName: owner.username || 'Player',
-    isSelf: String(viewer.userId || '') === String(owner.userId || ownerId),
+    isSelf: Boolean(viewer) && String(viewer.userId || '') === String(owner.userId || ownerId),
     items,
     itemCount: items.length,
     typeOptions,
@@ -4138,14 +4150,14 @@ app.get('/users/:id/inventory', (req, res) => {
  * price.
  */
 function renderCatalogPage2021(req, res) {
-  const sessionUser = req.sessionUser || resolveSessionUser(req);
-  const userId = req.query.userId
-    || (sessionUser && (sessionUser.userId || sessionUser.id))
-    || 1;
-  const user = getUser(userId);
+  // The signed-in account, or a guest. This used to be
+  // `req.query.userId || sessionUserId || 1` - so a signed-out visitor was shown
+  // account 1's inventory (the deployment owner's owned/wearing state).
+  const viewer = resolveViewer(req);
+  const user = viewer.user;
 
-  const ownedIds = new Set((Array.isArray(user.inventory) ? user.inventory : []).map(String));
-  const wearingIds = new Set((Array.isArray(user.currentlyWearing) ? user.currentlyWearing : []).map(String));
+  const ownedIds = new Set((Array.isArray(user && user.inventory) ? user.inventory : []).map(String));
+  const wearingIds = new Set((Array.isArray(user && user.currentlyWearing) ? user.currentlyWearing : []).map(String));
 
   const all = Object.values(getAssets());
 
@@ -4190,16 +4202,41 @@ function renderCatalogPage2021(req, res) {
     return Number(b.owned) - Number(a.owned) || a.name.localeCompare(b.name);
   });
 
+  // Paginate. The catalog holds ~180 assets and rendering every tile with its
+  // thumbnail made the page ~287 KB - the same bloat that made /avatar unusable.
+  // The 2021 shop paged its results; so does this.
+  const PAGE_SIZE = 42;
+  const totalItems = sorted.length;
+  const pageCount = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  const requestedPage = Number(req.query.page) || 1;
+  const page = Math.min(Math.max(1, requestedPage), pageCount);
+  const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Build the pagination links from the current filters, so paging never drops
+  // the category or the sort.
+  const pageHref = (n) => {
+    const q = new URLSearchParams();
+    if (selected && selected !== 'All Categories') q.set('category', selected);
+    if (sort && sort !== 'relevance') q.set('sort', sort);
+    if (n > 1) q.set('page', String(n));
+    const qs = q.toString();
+    return '/catalog' + (qs ? '?' + qs : '');
+  };
+
   res.render('catalog', {
     title: 'Avatar Shop - Roblox',
     user,
-    currency: getCurrencyForUser(user),
-    items: sorted,
+    currency: user ? getCurrencyForUser(user) : { robux: 0, coins: 0, tickets: 0 },
+    items: pageItems,
     categories,
     selectedCategory: selected,
     selectedSort: sort,
-    totalItems: items.length,
+    totalItems,
     ownedCount: items.filter((i) => i.owned).length,
+    // Paging state for the view.
+    page,
+    pageCount,
+    pageHref,
     abbreviateCount,
   });
 }
@@ -4374,20 +4411,48 @@ app.get('/groups/:id', (req, res) => {
  */
 async function renderAvatarPage2021(req, res, userId) {
   const user = getUser(userId);
-  const assets = Object.values(getAssets());
+  if (!user) return res.redirect('/signin');
+
+  // The inventory panel lists what the ACCOUNT OWNS, not the whole catalog.
+  //
+  // This used to be `Object.values(getAssets())` - every asset on the server -
+  // so a fresh account was shown 180 items it did not own. That is what made the
+  // page ~235 KB and the "currently wearing" state meaningless.
+  const allAssets = Object.values(getAssets());
+  const byId = new Map(allAssets.map((a) => [String(a.id), a]));
+
+  const ownedIds = Array.isArray(user.inventory) ? user.inventory.map(String) : [];
+  const wearingIds = Array.isArray(user.currentlyWearing) ? user.currentlyWearing.map(String) : [];
+
+  // Owned items, plus anything currently worn (a worn item is always owned, but
+  // this keeps the list correct if the two ever disagree).
+  const ownedSet = new Set(ownedIds.concat(wearingIds));
+  const ownedAssets = Array.from(ownedSet)
+    .map((id) => byId.get(id))
+    .filter(Boolean);
+
+  // A "Get More" strip: the catalog minus what is already owned, capped so the
+  // page stays small. The full list lives on /catalog.
+  const SUGGEST_LIMIT = 24;
+  const suggestions = allAssets
+    .filter((a) => !ownedSet.has(String(a.id)))
+    .slice(0, SUGGEST_LIMIT);
+
   const avatar = await resolveProfileAvatar(user);
 
   res.render('avatar', {
     title: `${user.username} - Avatar | LuckyBlox`,
     user,
-    assets,
+    // Only what this account owns (the "Currently Wearing" + inventory panels).
+    assets: ownedAssets,
+    // The "Get More" strip, deliberately capped.
+    suggestedAssets: suggestions,
+    ownedCount: ownedAssets.length,
+    catalogCount: allAssets.length,
     currency: getCurrencyForUser(user),
-    // The wearing list powers the "Selected" state on each asset card.
-    wearingList: Array.isArray(user.currentlyWearing) ? user.currentlyWearing : [],
-    // Real avatar data: the render plus one record per equipped item.
+    wearingList: wearingIds,
     avatar,
     wearing: getWearingForUser(user),
-    // 2021 body facts, read from the account rather than invented.
     avatarType: user.avatarType || (user.avatar && user.avatar.playerAvatarType) || 'R15',
     bodyColors: (user.avatar && user.avatar.bodyColors) || {},
     scales: (user.avatar && user.avatar.scales) || { height: 1, width: 1, head: 1, depth: 1, proportion: 0, bodyType: 0 },

@@ -10,6 +10,7 @@
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/refresh-2021.css" />
   <link rel="stylesheet" href="/css/roblox-ui.css" />
   <link rel="stylesheet" href="/css/lb-select.css" />
 </head>
@@ -35,8 +36,12 @@
                   <div>
                     <h1>Avatar Shop</h1>
                     <div class="lb-faint">
-                      <%= totalItems %> item<%= totalItems===1 ? '' : 's' %> &middot;
-                          <%= ownedCount %> owned by <%= user.username %>
+                      <%= totalItems %> item<%= totalItems===1 ? '' : 's' %>
+<% if (user) { %>
+                      &middot; <%= ownedCount %> owned by <%= user.username %>
+<% } else { %>
+                      &middot; <a href="/signin">Sign in</a> to see what you own
+<% } %>
                     </div>
                   </div>
 
@@ -119,6 +124,26 @@
                           </div>
                         </div>
                         <% } %>
+
+<%#
+  Pagination. The shop holds ~180 assets; rendering every tile with its
+  thumbnail made this page ~287 KB. The 2021 shop paged its results, and the
+  links carry the current category + sort so paging never drops a filter.
+%>
+<% if (pageCount > 1) { %>
+                        <nav class="lb-pager" aria-label="Catalog pages">
+<% if (page > 1) { %>
+                          <a class="lb-pager-link" href="<%= pageHref(page - 1) %>">Previous</a>
+<% } %>
+<% for (var p = 1; p <= pageCount; p++) { %>
+                          <a class="lb-pager-link<%= p === page ? ' is-active' : '' %>"
+                             href="<%= pageHref(p) %>"<%= p === page ? ' aria-current="page"' : '' %>><%= p %></a>
+<% } %>
+<% if (page < pageCount) { %>
+                          <a class="lb-pager-link" href="<%= pageHref(page + 1) %>">Next</a>
+<% } %>
+                        </nav>
+<% } %>
                   </section>
                 </div>
               </main>

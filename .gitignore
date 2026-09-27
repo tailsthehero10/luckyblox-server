@@ -16,3 +16,19 @@ Webserver/http-db-bridge/data/site-status.json
 Webserver/http-db-bridge/data/[0-9]*.json
 # The local storage clone, if it is ever nested inside this repo.
 Luckyblox-Storage-1/
+
+# Kilo's worktree cache. `.kilo/worktrees` holds a FULL DUPLICATE CLONE of this
+# repository - measured at 5.28 GB - so it must never be committed or shipped in
+# a build context. It was previously excluded only via .git/info/exclude, which
+# is local to one machine; anyone cloning the repo would otherwise pick it up.
+.kilo/
+**/.kilo/
+worktrees/
+
+# Installer build artefacts (rebuild with tools/installer/build-installer.bat).
+tools/installer/*.exe
+*.pdb
+
+# Local scratch.
+*.tmp
+*.tmp-*

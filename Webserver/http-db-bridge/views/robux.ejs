@@ -10,6 +10,7 @@
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/refresh-2021.css" />
   <link rel="stylesheet" href="/css/roblox-ui.css" />
 </head>
 <%# Robux landing page. /upgrades/robux is linked from the header on every page, but no route existed, so it was a dead
@@ -33,7 +34,7 @@
                   <div
                     style="display:flex;align-items:center;gap:8px;font-size:32px;font-weight:700;margin-bottom:14px;">
                     <img class="ch-ico" src="/icons/robux.svg" alt="" style="width:28px;height:28px;" />
-                    <%= (currency && currency.robux) || user.robux || 0 %>
+                    <%= (currency && currency.robux) || (user && user.robux) || 0 %>
                   </div>
 
                   <p style="color:#555555;margin:0 0 16px;">
@@ -45,10 +46,10 @@
                     <div class="roblox-panel-body">
                       <div class="lb-game-meta-list">
                         <div class="lb-game-meta-row"><span>Account</span><strong>
-                            <%= user.username %>
+                            <%= user ? user.username : 'Guest' %>
                           </strong></div>
                         <div class="lb-game-meta-row"><span>Membership</span><strong>
-                            <%= user.membershipStatus || user.membership || 'None' %>
+                            <%= user ? (user.membershipStatus || user.membership || 'None') : 'None' %>
                           </strong></div>
                         <div class="lb-game-meta-row"><span>Coins</span><strong>
                             <%= (currency && currency.coins) || 0 %>
@@ -62,7 +63,11 @@
 
                   <div class="lb-action-row" style="margin-top:16px;">
                     <a class="lb-btn lb-btn-primary" href="/catalog">Browse the Avatar Shop</a>
-                    <a class="lb-btn lb-btn-secondary" href="/avatar?userId=<%= user.userId %>">Customize Avatar</a>
+<% if (user) { %>
+                    <a class="lb-btn lb-btn-secondary" href="/avatar">Customize Avatar</a>
+<% } else { %>
+                    <a class="lb-btn lb-btn-secondary" href="/signin">Log In</a>
+<% } %>
                   </div>
                 </div>
               </div>

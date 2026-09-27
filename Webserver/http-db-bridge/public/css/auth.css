@@ -1,0 +1,356 @@
+/* ===========================================================================
+   LuckyBlox - the sign in / sign up pages, matching the REAL 2021 Roblox rules.
+
+   Values quoted from the real 2021 stylesheet shipped with the saved pages
+   (D:\DownLoads\Discover - Roblox_files\5eb9680d...b2d42.css), which is the
+   authority. NOT modernized past what Roblox actually did:
+
+     .login-container{margin:0 auto;max-width:400px}
+     .login-container .login-header{margin-bottom:18px;text-align:center}
+     .login-container .username-form-group{margin-bottom:18px}
+     .login-container .password-form-group{margin-bottom:0}
+     .login-container .login-button{margin:6px 0 12px}
+     .login-container .forgot-credentials-link{font-size:16px;font-weight:300;
+                                               margin-top:12px}
+     .login-container .signup-option{margin:24px 0}
+     .login-container .no-account-text{font-weight:400}
+     .login-container .signup-link{margin-left:6px}
+     .login-container .play-as-guest,.play-as-guest-divider{margin:12px 0}
+     .login-container .play-as-guest-button{margin-left:12px;
+                                            vertical-align:baseline}
+     .horizontal-login-form .form-control{height:34px;padding-top:6px;
+                                          padding-bottom:6px}
+     .resend-email-link:link{color:#00a2ff}
+
+   So: a NARROW 400px centred column, a centred header, 18px between fields, a
+   plain blue link for "Forgot Password or Username", and a sign-up line below.
+   No blurred hero, no rounded-pill card, no gradient - the 2021 page was plain.
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   Page
+   --------------------------------------------------------------------------- */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 20px;
+  box-sizing: border-box;
+  background: #ffffff;
+}
+
+.auth-page.dark-theme {
+  background: #191b1d;
+}
+
+/* Real: .login-container{margin:0 auto;max-width:400px} */
+.auth-container {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* Real: .login-container .login-header{margin-bottom:18px;text-align:center} */
+.auth-header {
+  margin-bottom: 18px;
+  text-align: center;
+}
+
+.auth-logo {
+  display: block;
+  width: 150px;
+  height: auto;
+  margin: 0 auto 16px;
+}
+
+.auth-title {
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.25;
+  margin: 0 0 4px;
+  color: #393b3d;
+}
+
+.dark-theme .auth-title {
+  color: #ffffff;
+}
+
+.auth-subtitle {
+  font-size: 15px;
+  font-weight: 400;
+  color: #6d7278;
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Fields
+   ---------------------------------------------------------------------------
+   Real: .horizontal-login-form .form-control{height:34px;padding:6px 0}
+   The 2021 field was 34px tall with a plain 1px border and a 3px radius.
+   --------------------------------------------------------------------------- */
+
+.auth-field {
+  margin-bottom: 18px;
+}
+
+/* Real: .login-container .password-form-group{margin-bottom:0} */
+.auth-field--last {
+  margin-bottom: 0;
+}
+
+.auth-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #393b3d;
+  margin-bottom: 6px;
+}
+
+.dark-theme .auth-label {
+  color: #e8eaed;
+}
+
+.auth-input,
+.auth-select {
+  display: block;
+  width: 100%;
+  height: 42px;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  border: 1px solid #b8bec6;
+  border-radius: 3px;
+  background: #ffffff;
+  color: #393b3d;
+  font-family: inherit;
+  font-size: 16px;
+  outline: none;
+}
+
+.auth-input:focus,
+.auth-select:focus {
+  border-color: #00a2ff;
+  box-shadow: 0 0 0 2px rgba(0, 162, 255, 0.18);
+}
+
+.auth-input.input-error {
+  border-color: #d42222;
+  box-shadow: 0 0 0 2px rgba(212, 34, 34, 0.14);
+}
+
+.auth-help {
+  font-size: 12px;
+  color: #6d7278;
+  margin-top: 6px;
+}
+
+/* ---------------------------------------------------------------------------
+   The birthday row (Month / Day / Year) - the real create-account form had
+   three side-by-side dropdowns, not one date field.
+   --------------------------------------------------------------------------- */
+
+.auth-birthday {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1.1fr;
+  gap: 8px;
+}
+
+/* ---------------------------------------------------------------------------
+   Buttons
+   ---------------------------------------------------------------------------
+   Real: .login-container .login-button{margin:6px 0 12px}
+         .btn-primary-md{background-color:#02b757;border-radius:3px;padding:9px}
+   --------------------------------------------------------------------------- */
+
+.auth-submit {
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin: 6px 0 12px;
+  padding: 9px;
+  border: 1px solid #02b757;
+  border-radius: 3px;
+  background: #02b757;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  text-align: center;
+}
+
+.auth-submit:hover,
+.auth-submit:focus {
+  background: #3fc679;
+  border-color: #3fc679;
+  outline: none;
+}
+
+.auth-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ---------------------------------------------------------------------------
+   Links and the sign-up / guest lines
+   --------------------------------------------------------------------------- */
+
+/* Real: .login-container .forgot-credentials-link{font-size:16px;
+                                                    font-weight:300;
+                                                    margin-top:12px} */
+.auth-forgot {
+  display: block;
+  margin-top: 12px;
+  font-size: 16px;
+  font-weight: 300;
+  color: #0074bd;
+  text-decoration: none;
+}
+
+.auth-forgot:hover {
+  text-decoration: underline;
+}
+
+/* Real: .login-container .signup-option{margin:24px 0}
+         .login-container .no-account-text{font-weight:400}
+         .login-container .signup-link{margin-left:6px} */
+.auth-signup-option {
+  margin: 24px 0;
+  font-size: 15px;
+  font-weight: 400;
+  color: #393b3d;
+}
+
+.dark-theme .auth-signup-option {
+  color: #e8eaed;
+}
+
+.auth-signup-link {
+  margin-left: 6px;
+  color: #0074bd;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.auth-signup-link:hover {
+  text-decoration: underline;
+}
+
+/* Real: .play-as-guest,.play-as-guest-divider{margin:12px 0}
+         .play-as-guest-button{margin-left:12px;vertical-align:baseline} */
+.auth-guest {
+  margin: 12px 0;
+  font-size: 15px;
+  color: #393b3d;
+}
+
+.auth-guest-button {
+  margin-left: 12px;
+  vertical-align: baseline;
+}
+
+.auth-divider {
+  position: relative;
+  margin: 24px 0 0;
+  text-align: center;
+}
+
+.auth-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e3e5e8;
+}
+
+.auth-divider-text {
+  position: relative;
+  display: inline-block;
+  padding: 0 12px;
+  background: #ffffff;
+  color: #6d7278;
+  font-size: 13px;
+}
+
+.dark-theme .auth-divider-text {
+  background: #191b1d;
+}
+
+/* ---------------------------------------------------------------------------
+   Errors
+   --------------------------------------------------------------------------- */
+
+.auth-error {
+  display: block;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  border: 1px solid #f0c0c0;
+  border-radius: 3px;
+  background: #fdf2f2;
+  color: #a02020;
+  font-size: 14px;
+}
+
+.auth-success {
+  display: block;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  border: 1px solid #bfe6cd;
+  border-radius: 3px;
+  background: #f2fbf5;
+  color: #106b39;
+  font-size: 14px;
+}
+
+/* Real: .resend-email-link:link{color:#00a2ff} */
+.auth-link {
+  color: #00a2ff;
+  text-decoration: none;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
+/* ---------------------------------------------------------------------------
+   Terms / fine print on the create-account page
+   --------------------------------------------------------------------------- */
+
+.auth-terms {
+  margin-top: 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6d7278;
+}
+
+/* ---------------------------------------------------------------------------
+   Narrow screens
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 543px) {
+  .auth-page {
+    padding: 28px 16px;
+  }
+
+  .auth-birthday {
+    grid-template-columns: 1.2fr 1fr 1fr;
+  }
+
+  .auth-title {
+    font-size: 22px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   No focus outline on the controls - the 2021 sheet only changed the border.
+   --------------------------------------------------------------------------- */
+
+.auth-input:focus-visible,
+.auth-select:focus-visible,
+.auth-submit:focus-visible {
+  outline: none;
+}

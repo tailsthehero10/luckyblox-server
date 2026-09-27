@@ -980,7 +980,7 @@ namespace LuckyBlox.Installer
             BackColor = Color.FromArgb(242, 244, 245);
 
             BuildUi();
-            Shown += (s, e) => Refresh();
+            Shown += (s, e) => RefreshState();
         }
 
         private void BuildUi()
@@ -1108,7 +1108,13 @@ namespace LuckyBlox.Installer
         }
 
         /// <summary>Read both the local state and the server's published build.</summary>
-        private void Refresh()
+        /// <remarks>
+        /// Named RefreshState, not Refresh: Control already has a Refresh() that
+        /// repaints the control, and hiding it (which the compiler warns about)
+        /// means a caller written against the base class silently gets the wrong
+        /// one. The name makes the intent explicit.
+        /// </remarks>
+        private void RefreshState()
         {
             _state = InstallState.Read(_root);
             _versionLabel.Text = "Install folder: " + InstallerConfig.InstallDir(_root)
@@ -1250,7 +1256,7 @@ namespace LuckyBlox.Installer
                         _launchButton.Visible = true;
                         _launchButton.Enabled = true;
                     }
-                    Refresh();
+                    RefreshState();
                 }));
             });
         }
@@ -1364,7 +1370,7 @@ namespace LuckyBlox.Installer
                 try
                 {
                     var build = new ManifestClient(InstallerConfig.BaseUrl).Fetch();
-                    Console.WriteLine("server      : " + (build.IsValid ? build.Version : "(no build published)"));
+                    Console.WriteLine("published   : " + (build.IsValid ? build.Version : "(no build published)"));
 
                     if (!build.IsValid) return 2;
                     if (!state.PlayerInstalled) return 1;
@@ -1375,7 +1381,7 @@ namespace LuckyBlox.Installer
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("server      : unreachable (" + ex.Message + ")");
+                    Console.WriteLine("published   : unreachable (" + ex.Message + ")");
                     return state.PlayerInstalled ? 0 : 1;
                 }
             }

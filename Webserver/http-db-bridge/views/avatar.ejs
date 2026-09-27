@@ -10,6 +10,7 @@
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/refresh-2021.css" />
   <link rel="stylesheet" href="/css/roblox-ui.css" />
   <link rel="stylesheet" href="/css/avatar.css" />
 </head>
@@ -278,41 +279,80 @@
           <div class="roblox-panel">
             <div class="roblox-panel-header">
               <img class="ch-ico ch-ico-sm" src="/icons/assets.svg" alt="" /> Inventory
+              <span class="lb-faint"><%= ownedCount %> item<%= ownedCount === 1 ? '' : 's' %></span>
             </div>
             <div class="roblox-panel-body">
+              <%#
+                ONLY what this account owns. This used to render the entire catalog
+                (every asset on the server), which is why the page was ~235 KB and a
+                fresh account appeared to own 180 items it had never bought.
+              %>
               <% if (assets.length) { %>
                 <div class="roblox-asset-grid">
-                  <% const wearingList = Array.isArray(user.currentlyWearing) ? user.currentlyWearing : []; %>
-                    <% assets.forEach((asset) => { %>
-                      <% const isSelected = wearingList.includes(String(asset.id)); %>
-                        <div class="roblox-asset-card <%= isSelected ? 'selected' : '' %>"
-                          data-asset-id="<%= asset.id %>">
-                          <div class="roblox-asset-preview">
-                            <% if (asset.thumbnail || asset.image) { %>
-                              <img src="<%= asset.thumbnail || asset.image %>" alt="<%= asset.name %>"
-                                loading="lazy" onerror="this.style.display='none';" />
-                              <% } else { %>
-                                <%= String(asset.name || '?').slice(0, 1).toUpperCase() %>
-                                <% } %>
-                          </div>
-                          <div class="roblox-asset-name">
-                            <%= asset.name %>
-                          </div>
-                          <div class="roblox-asset-type">
-                            <%= asset.assetType || asset.className %> &middot; ID <%= asset.id %>
-                          </div>
-                          <button class="roblox-secondary-button" type="button"
-                            data-select-asset="<%= asset.id %>">
-                            <%= isSelected ? 'Selected' : 'Select' %>
-                          </button>
-                        </div>
-                        <% }) %>
+                  <% assets.forEach(function (asset) { %>
+                    <% var isSelected = wearingList.indexOf(String(asset.id)) !== -1; %>
+                    <div class="roblox-asset-card <%= isSelected ? 'selected' : '' %>"
+                      data-asset-id="<%= asset.id %>">
+                      <div class="roblox-asset-preview">
+                        <% if (asset.thumbnail || asset.image) { %>
+                          <img src="<%= asset.thumbnail || asset.image %>" alt="<%= asset.name %>"
+                            loading="lazy" onerror="this.style.display='none';" />
+                        <% } else { %>
+                          <%= String(asset.name || '?').slice(0, 1).toUpperCase() %>
+                        <% } %>
+                      </div>
+                      <div class="roblox-asset-name"><%= asset.name %></div>
+                      <div class="roblox-asset-type">
+                        <%= asset.assetType || asset.className %>
+                      </div>
+                      <button class="roblox-secondary-button" type="button"
+                        data-select-asset="<%= asset.id %>">
+                        <%= isSelected ? 'Wearing' : 'Wear' %>
+                      </button>
+                    </div>
+                  <% }); %>
                 </div>
-                <% } else { %>
-                  <div class="lb-muted">No items are available in the local catalog yet.</div>
-                  <% } %>
+              <% } else { %>
+                <div class="lb-muted">
+                  You do not own any items yet.
+                  <a href="/catalog">Browse the Avatar Shop</a> to get some.
+                </div>
+              <% } %>
             </div>
           </div>
+
+          <%#
+            A capped "Get More" strip. The full catalog lives on /catalog; showing
+            all of it here is what made this page enormous.
+          %>
+          <% if (suggestedAssets && suggestedAssets.length) { %>
+          <div class="roblox-panel">
+            <div class="roblox-panel-header">
+              <img class="ch-ico ch-ico-sm" src="/icons/store.svg" alt="" /> Get More
+              <a class="lb-btn lb-btn-secondary lb-btn-xs" href="/catalog">See all <%= catalogCount %></a>
+            </div>
+            <div class="roblox-panel-body">
+              <div class="roblox-asset-grid">
+                <% suggestedAssets.forEach(function (asset) { %>
+                  <a class="roblox-asset-card" href="/catalog/<%= asset.id %>">
+                    <div class="roblox-asset-preview">
+                      <% if (asset.thumbnail || asset.image) { %>
+                        <img src="<%= asset.thumbnail || asset.image %>" alt="<%= asset.name %>"
+                          loading="lazy" onerror="this.style.display='none';" />
+                      <% } else { %>
+                        <%= String(asset.name || '?').slice(0, 1).toUpperCase() %>
+                      <% } %>
+                    </div>
+                    <div class="roblox-asset-name"><%= asset.name %></div>
+                    <div class="roblox-asset-type">
+                      <%= asset.price ? (asset.price + ' Robux') : (asset.assetType || asset.className) %>
+                    </div>
+                  </a>
+                <% }); %>
+              </div>
+            </div>
+          </div>
+          <% } %>
         </div>
       </div>
       </main>

@@ -1,286 +1,122 @@
 <!DOCTYPE html>
 <html lang="en" class="<%= themeClass || '' %>">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= title %></title>
+  <title>
+    <%= title %>
+  </title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/css/roblox.css" />
-  <style>
-    body {
-      margin: 0;
-      /* The background image is set on .signin-shell (so it can be blurred
-         without blurring the card). This is only the fallback colour. */
-      background: #0f172a;
-      color: #1d2433;
-      font-family: "Gotham SSm", Arimo, "Segoe UI", Arial, sans-serif;
-    }
-
-    .signin-shell {
-      position: relative;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 28px;
-      /* Background image with a light blur. The blur lives on this ::before layer
-         so the card above it stays sharp. */
-      overflow: hidden;
-    }
-
-    .signin-shell::before {
-      content: "";
-      position: fixed;
-      /* Fixed to the viewport so the image always covers the whole screen, no
-         matter how tall the content is - no white bands top or bottom. */
-      inset: -40px;
-      background-image: url('/sign-background');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      /* "not too much" blur, plus a slight darkening so white cards read well */
-      filter: blur(6px) brightness(0.85);
-      z-index: 0;
-    }
-
-    .signin-card {
-      position: relative;
-      z-index: 1;
-      width: min(460px, 100%);
-      background: #ffffff;
-      border: 1px solid #d8e1ee;
-      border-radius: 16px;
-      box-shadow: 0 12px 28px rgba(32, 52, 88, 0.12);
-      overflow: hidden;
-    }
-
-    .signin-header {
-      background: linear-gradient(180deg, #2f5ea8 0%, #224d8e 100%);
-      color: #ffffff;
-      text-align: center;
-      padding: 20px 18px 18px;
-      border-bottom: 1px solid rgba(0,0,0,0.1);
-    }
-
-    .signin-brand {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      font-size: 1.1rem;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
-
-    .signin-brand-mark {
-      width: 28px;
-      height: 28px;
-      display: block;
-      object-fit: contain;
-      flex: 0 0 auto;
-    }
-
-    .signin-body {
-      padding: 26px 26px 20px;
-    }
-
-    .signin-title {
-      margin: 0 0 6px;
-      font-size: 2rem;
-      font-weight: 800;
-      letter-spacing: -0.05em;
-      color: #1d2433;
-    }
-
-    .signin-subtitle {
-      margin: 0 0 18px;
-      color: #5c697d;
-      font-size: 0.96rem;
-    }
-
-    .signin-form {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    .signin-field {
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-    }
-
-    .signin-field label {
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #536076;
-    }
-
-    .signin-field input {
-      width: 100%;
-      height: 46px;
-      border: 1px solid #ccd7e7;
-      border-radius: 8px;
-      background: #f7f9fc;
-      padding: 0 12px;
-      font-size: 1rem;
-      color: #1d2433;
-      outline: none;
-      box-sizing: border-box;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-
-    .signin-field input:focus {
-      border-color: #5d8fe2;
-      box-shadow: 0 0 0 3px rgba(93, 143, 226, 0.12);
-      background: #ffffff;
-    }
-
-    .signin-field input.input-error {
-      border-color: #d9534f;
-      box-shadow: 0 0 0 3px rgba(217, 83, 79, 0.12);
-    }
-
-    .signin-button {
-      margin-top: 8px;
-      width: 100%;
-      height: 48px;
-      border: none;
-      border-radius: 10px;
-      background: linear-gradient(180deg, #1bc15b 0%, #0ca04f 100%);
-      color: #ffffff;
-      font-size: 1.05rem;
-      font-weight: 800;
-      cursor: pointer;
-      box-shadow: 0 10px 20px rgba(13, 160, 79, 0.18);
-      transition: filter 0.15s, opacity 0.15s;
-    }
-
-    .signin-button:hover {
-      filter: brightness(1.03);
-    }
-
-    .signin-button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .signin-error {
-      margin: 0 0 10px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid #f1b0b0;
-      background: #fff0f0;
-      color: #bb3d3d;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-
-    .signin-meta {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      margin-top: 18px;
-      font-size: 0.83rem;
-      color: #5d697a;
-    }
-
-    .signin-meta a {
-      color: #2357b5;
-      text-decoration: none;
-      font-weight: 700;
-    }
-
-    .signin-meta a:hover {
-      text-decoration: underline;
-    }
-
-    .signin-hint {
-      margin: 0 0 14px;
-      padding: 8px 12px;
-      border-radius: 8px;
-      background: #eef5ff;
-      border: 1px solid #c9ddff;
-      color: #4a6fa5;
-      font-size: 0.82rem;
-      line-height: 1.5;
-    }
-  </style>
+  <link rel="stylesheet" href="/css/refresh-2021.css" />
+  <link rel="stylesheet" href="/css/auth.css" />
 </head>
-<body class="lb-auth">
-  <div class="signin-shell">
-    <div class="signin-card">
-      <div class="signin-header">
-        <div class="signin-brand">
-          <img class="signin-brand-mark" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
-          <span>LuckyBlox</span>
-        </div>
+<%# Sign in - matching the REAL 2021 Roblox login page. Rules copied from the real 2021 stylesheet shipped with the
+  saved pages (D:\DownLoads\Discover - Roblox_files\5eb9680d...b2d42.css): .login-container{margin:0
+  auto;max-width:400px} .login-container .login-header{margin-bottom:18px;text-align:center} .login-container
+  .username-form-group{margin-bottom:18px} .login-container .password-form-group{margin-bottom:0} .login-container
+  .login-button{margin:6px 0 12px} .login-container .forgot-credentials-link{font-size:16px;font-weight:300;
+  margin-top:12px} .login-container .signup-option{margin:24px 0} .login-container .no-account-text{font-weight:400}
+  .login-container .signup-link{margin-left:6px} .login-container .play-as-guest,.play-as-guest-divider{margin:12px 0}
+  So the page is a NARROW 400px centred column on white: a centred header, two stacked fields, a green submit, a
+  plain "Forgot Password or Username" link, then the sign-up line. That is the whole page. This replaced a blurred photo
+  hero with a gradient card and 16px radii, which was far more modernized than anything Roblox shipped in 2021. Expects:
+  title, errorMessage, hintMessage, redirect, username, csrfToken. %>
+
+  <body class="auth-page<%= (typeof themeOn !== 'undefined' && themeOn) ? ' dark-theme' : '' %>">
+
+    <div class="auth-container">
+
+      <div class="auth-header">
+        <a href="/" aria-label="LuckyBlox home">
+          <img class="auth-logo" src="/site-icon/luckyblox.png" alt="LuckyBlox" />
+        </a>
+        <h1 class="auth-title">Sign In</h1>
       </div>
 
-      <div class="signin-body">
-        <h1 class="signin-title">Welcome back</h1>
-        <p class="signin-subtitle">Sign in to build, play, and publish your experiences.</p>
-
-        <% if (errorMessage) { %>
-          <div class="signin-error"><%= errorMessage %></div>
-        <% } %>
-
-        <% if (hintMessage) { %>
-          <div class="signin-hint"><%= hintMessage %></div>
-        <% } %>
-
-        <form class="signin-form" method="POST" action="/signin" id="signinForm">
-          <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>" />
-          <input type="hidden" name="redirect" value="<%= typeof redirect !== 'undefined' ? redirect : '' %>" />
-          <div class="signin-field">
-            <label for="username">Username</label>
-            <input id="username" name="username" type="text" value="<%= typeof username !== 'undefined' ? username : '' %>" autocomplete="username" required />
-          </div>
-
-          <div class="signin-field">
-            <label for="password">Password</label>
-            <input id="password" name="password" type="password" autocomplete="current-password" required />
-          </div>
-
-          <button class="signin-button" type="submit" id="signinSubmit">Sign In</button>
-        </form>
-
-        <div class="signin-meta">
-          <span>Need an account? <a href="/signup">Create one</a></span>
-          <a href="/games">Browse as guest</a>
+      <% if (errorMessage) { %>
+        <div class="auth-error" role="alert">
+          <%= errorMessage %>
         </div>
-      </div>
+        <% } %>
+          <% if (hintMessage) { %>
+            <div class="auth-success" role="status">
+              <%= hintMessage %>
+            </div>
+            <% } %>
+
+              <form method="POST" action="/signin" id="signinForm" novalidate>
+                <input type="hidden" name="_csrf" value="<%= csrfToken || '' %>" />
+                <% if (redirect) { %>
+                  <input type="hidden" name="redirect" value="<%= redirect %>" />
+                  <% } %>
+
+                    <div class="auth-field">
+                      <label class="auth-label" for="username">Username</label>
+                      <input class="auth-input" id="username" name="username" type="text" value="<%= username || '' %>"
+                        autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" required />
+                    </div>
+
+                    <div class="auth-field auth-field--last">
+                      <label class="auth-label" for="password">Password</label>
+                      <input class="auth-input" id="password" name="password" type="password"
+                        autocomplete="current-password" required />
+                    </div>
+
+                    <button class="auth-submit" type="submit" id="signinSubmit">Sign In</button>
+
+                    <a class="auth-forgot" href="/signin?reset=1">Forgot Password or Username?</a>
+              </form>
+
+              <div class="auth-signup-option">
+                <span class="no-account-text">Don't have an account?</span>
+                <a class="auth-signup-link"
+                  href="/signup<%= redirect ? ('?redirect=' + encodeURIComponent(redirect)) : '' %>">Sign Up</a>
+              </div>
+
+              <div class="auth-divider">
+                <span class="auth-divider-text">or</span>
+              </div>
+
+              <div class="auth-guest">
+                Play without an account.
+                <a class="auth-guest-button" href="/games">Browse as guest</a>
+              </div>
+
     </div>
-  </div>
-  <script>
-    (function() {
-      var form = document.getElementById('signinForm');
-      var btn = document.getElementById('signinSubmit');
-      form.addEventListener('submit', function() {
-        var u = document.getElementById('username').value.trim();
-        var p = document.getElementById('password').value;
-        var valid = true;
-        if (!u) {
-          document.getElementById('username').classList.add('input-error');
-          valid = false;
-        } else {
-          document.getElementById('username').classList.remove('input-error');
-        }
-        if (!p) {
-          document.getElementById('password').classList.add('input-error');
-          valid = false;
-        } else {
-          document.getElementById('password').classList.remove('input-error');
-        }
-        if (!valid) return false;
-        btn.disabled = true;
-        btn.textContent = 'Signing in...';
-        return true;
-      });
-    })();
-  </script>
-<%- include('partials/scripts') %>
-</body>
+
+    <script>
+      // Client-side pre-check only. The server re-validates everything; this just
+      // avoids a round trip for an obviously empty field and gives the inline red
+      // border the real form used.
+      (function () {
+        var form = document.getElementById('signinForm');
+        var btn = document.getElementById('signinSubmit');
+        if (!form) return;
+
+        form.addEventListener('submit', function () {
+          var u = document.getElementById('username');
+          var p = document.getElementById('password');
+          var valid = true;
+
+          if (!u.value.trim()) { u.classList.add('input-error'); valid = false; }
+          else { u.classList.remove('input-error'); }
+
+          if (!p.value) { p.classList.add('input-error'); valid = false; }
+          else { p.classList.remove('input-error'); }
+
+          if (!valid) return false;
+
+          btn.disabled = true;
+          btn.textContent = 'Signing In...';
+          return true;
+        });
+      }());
+    </script>
+
+    <%- include('partials/scripts') %>
+  </body>
+
 </html>

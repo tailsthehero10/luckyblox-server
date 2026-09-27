@@ -1,5 +1,5 @@
 **/node_modules
-***/node_modules/**
+**/node_modules/**
 node_modules
 .git
 .github
@@ -10,13 +10,69 @@ node_modules
 build/
 dist/
 
-# Heavy local/runtime artifacts that must not ship in the image:
+# ---------------------------------------------------------------------------
+# Build context
+# ---------------------------------------------------------------------------
+# The context was ~2.95 GB, which is why every deploy transferred gigabytes and
+# took minutes. Two causes:
+#
+#   1. .kilo/worktrees holds a full DUPLICATE CLONE of this repository (5.28 GB
+#      of Clients/, Webserver/, Maps/). The bare `.kilo` entry did not reliably
+#      exclude it, so it was uploaded on every build.
+#   2. The 60-90 MB client installers under public/downloads and www/downloads
+#      are artefacts, not source - they are rebuilt by tools/installer, and
+#      uploading three copies of an 87 MB .exe dwarfs the actual code.
+#
+# Everything below is either a duplicate, a build artefact, or local-only state.
+# ---------------------------------------------------------------------------
+
+# Full duplicate clones of the repo (the single biggest offender).
 .kilo
+.kilo/
+**/.kilo
+**/.kilo/**
+worktrees
+**/worktrees/**
+
+# Local editor / tool state.
 .vscode
-Webserver/bin/apache/logs
-Webserver/bin/database
+.idea
+*.swp
+
+# Runtime artefacts and logs.
 **/*.log
+**/*.tmp
+**/*.tmp-*
+run.log
+run.err
+g.err
 **/authdigest_shm.*
 **/httpd.pid
+
+# Apache/PHP runtime dirs - not needed to build or run the Node services.
+Webserver/bin/apache/logs
+Webserver/bin/database
+
+# Client installers: large binaries that the build does not consume. The server
+# serves these from disk at runtime when present, so they are copied in
+# separately by the deploy if they are wanted.
+Webserver/http-db-bridge/public/downloads
+Webserver/www/downloads
+
+# Local-only data and workspaces.
 workspace/saved_places
 Uploads
+
+# The 2013 web reference material (CSS/JS read while rebuilding the pages). It is
+# ~103 MB and nothing at runtime reads it - the styles were copied into
+# public/css/*.css. Kept in the repo for reference, excluded from the image.
+Web-2013 CCS+JS
+
+# NOTE: Maps/ and Clients/ are deliberately NOT ignored. gameMapResolver.js
+# builds the game catalog from Maps/ at boot, and Clients/ is served to the game
+# clients (AppSettings.xml, ClientSettings, the binaries), so both are required
+# at runtime - ignoring either would break the site.
+
+# Test fixtures and docs that do not ship.
+tests
+TODO.md

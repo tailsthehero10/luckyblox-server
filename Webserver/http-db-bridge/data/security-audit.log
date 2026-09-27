@@ -20,3 +20,4 @@
 {"at":"2026-09-26T21:26:30.140Z","event":"csrf_rejected","path":"/signin","ip":"127.0.0.1"}
 {"at":"2026-09-26T21:27:25.379Z","event":"signin_bad_password","ip":"127.0.0.1","username":"tailsthehero10","failures":1}
 {"at":"2026-09-26T21:30:54.524Z","event":"signin_success","ip":"127.0.0.1","userId":"1","username":"tailsthehero10"}
+{"at":"2026-09-27T11:07:34.967Z","event":"signin_user_not_found","ip":"127.0.0.1","username":"tailsthehero10"}

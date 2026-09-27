@@ -465,4 +465,50 @@ textarea:focus-visible,
 }
 .lb-friend-chip.is-online .lb-friend-chip-dot {
   background: #02b757;
+}/* ---------------------------------------------------------------------------
+   Catalog pagination
+   ---------------------------------------------------------------------------
+   The shop holds ~180 assets; rendering every tile at once made the page
+   ~287 KB. Paging it keeps each page small. Styled with the 2021 palette.
+   --------------------------------------------------------------------------- */
+
+.lb-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--lb-line, #e4e7ec);
+}
+
+.lb-pager-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--lb-line-strong, #d0d5dd);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--lb-ink, #14161a);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.lb-pager-link:hover {
+  background: #f2f4f7;
+  text-decoration: none;
+}
+.lb-pager-link.is-active {
+  background: #00a2ff;
+  border-color: #00a2ff;
+  color: #ffffff;
+  font-weight: 700;
+}
+.lb-pager-link:focus { outline: none; }
+.lb-pager-link:focus-visible {
+  outline: 2px solid #00a2ff;
+  outline-offset: 2px;
 }

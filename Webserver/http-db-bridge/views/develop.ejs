@@ -10,6 +10,7 @@
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/refresh-2021.css" />
   <link rel="stylesheet" href="/css/roblox-ui.css" />
   <link rel="stylesheet" href="/css/develop.css" />
 </head>
@@ -27,14 +28,14 @@
       <section class="ch-hero">
         <div class="ch-avatar">
           <% if (typeof profileAvatar !== 'undefined' && profileAvatar && profileAvatar.fullBodyUrl) { %>
-            <img src="<%= profileAvatar.fullBodyUrl %>" alt="<%= user.username %>" />
+            <img src="<%= profileAvatar.fullBodyUrl %>" alt="<%= user ? user.username : 'Guest' %>" />
           <% } else { %>
-            <%= String(user.username || 'L').slice(0, 1).toUpperCase() %>
+            <%= String((user && user.username) || 'G').slice(0, 1).toUpperCase() %>
           <% } %>
         </div>
         <div class="ch-hero-main">
           <div class="ch-eyebrow">Creator Hub</div>
-          <h1><%= user.username %>'s Creations</h1>
+          <h1><%= user ? (user.username + "'s Creations") : 'Creator Hub' %></h1>
           <div class="ch-hero-meta">
             <span class="ch-chip"><img class="ch-ico ch-ico-sm" src="/icons/studio.svg" alt="" /> <%= isOwner ? 'Owner' : 'Creator' %></span>
             <span class="ch-chip"><img class="ch-ico ch-ico-sm" src="/icons/games.svg" alt="" /> <%= stats.places %> experiences</span>
@@ -44,7 +45,7 @@
         </div>
         <div class="ch-hero-actions">
           <a class="ch-btn ch-btn-primary" href="/dev/create"><img class="ch-ico" src="/icons/plus.svg" alt="" /> New Experience</a>
-          <a class="ch-btn ch-btn-ghost" href="/studio?userId=<%= user.userId %>"><img class="ch-ico" src="/icons/upload.svg" alt="" /> Open Studio</a>
+          <a class="ch-btn ch-btn-ghost" href="<%= user ? ('/studio?userId=' + user.userId) : '/signin' %>"><img class="ch-ico" src="/icons/upload.svg" alt="" /> Open Studio</a>
         </div>
       </section>
 
@@ -196,7 +197,7 @@
                   <div class="ch-action-sub">Images, audio, meshes</div>
                 </div>
               </a>
-              <a class="ch-action" href="/avatar?userId=<%= user.userId %>">
+              <a class="ch-action" href="<%= user ? '/avatar' : '/signin' %>">
                 <div class="ch-action-ico"><img class="ch-ico" src="/icons/palette.svg" alt="" /></div>
                 <div>
                   <div class="ch-action-name">Customize avatar</div>
@@ -219,12 +220,12 @@
             </div>
             <div class="ch-panel-body">
               <div class="ch-muted" style="font-size:0.85rem;line-height:1.6;">
-                Studio connects to <strong><%= studioBaseUrl %></strong> and authenticates as <strong><%= user.username %></strong>.
+                Studio connects to <strong><%= studioBaseUrl %></strong> and authenticates as <strong><%= user ? user.username : 'your account' %></strong>.
                 The game server listens on <strong><%= studioHost %>:<%= studioPort %></strong>.
               </div>
               <div class="ch-hero-actions" style="margin-top:12px;">
                 <button class="ch-btn ch-btn-blue ch-btn-sm" type="button" id="launchStudioBtn2"><img class="ch-ico ch-ico-sm" src="/icons/studio.svg" alt="" /> Launch Studio</button>
-                <a class="ch-btn ch-btn-light ch-btn-sm" href="/studio?userId=<%= user.userId %>"><img class="ch-ico ch-ico-sm" src="/icons/code.svg" alt="" /> Web tools</a>
+                <a class="ch-btn ch-btn-light ch-btn-sm" href="<%= user ? ('/studio?userId=' + user.userId) : '/signin' %>"><img class="ch-ico ch-ico-sm" src="/icons/code.svg" alt="" /> Web tools</a>
               </div>
               <div class="ch-muted" id="studioStatus" style="font-size:0.78rem;margin-top:10px;" hidden></div>
             </div>
