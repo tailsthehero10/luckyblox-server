@@ -3167,6 +3167,12 @@ app.post('/signup', requireCsrf, (req, res) => {
     title: 'Create account - LuckyBlox',
     errorMessage: message,
     username,
+    // The view reads `redirect` (to carry the destination through a failed
+    // attempt) and `csrfToken` (to re-arm the form). Neither was passed, so the
+    // template threw "redirect is not defined" and EVERY signup error returned a
+    // blank 400 - which is why signup looked broken.
+    redirect: String(req.body.redirect || req.query.redirect || ''),
+    csrfToken: res.locals.csrfToken || '',
     basePath: res.locals.basePath || '',
   });
 
@@ -7321,13 +7327,18 @@ app.use((req, res) => {
   });
 });
 
-// Restore data from the free remote store (if LUCKYBLOX_SYNC is set) BEFORE the
-// server accepts requests, so the first request already sees the recovered
-// accounts/games. When nothing is configured this resolves immediately.
+// Restore data from the durable store before the server accepts requests, so the
+// first request already sees the recovered accounts/games. Postgres is tried
+// first when DATABASE_URL is set; otherwise the LUCKYBLOX_SYNC mirror is used.
+// When neither is configured this resolves immediately.
 storage.restoreFromRemote()
   .then((result) => {
     if (result && result.enabled) {
-      console.log(`[luckyblox] remote sync: restored ${result.loaded.length} file(s) from ${result.mode}`);
+      // `mode` only exists on the GitHub/HTTP backends; Postgres does not set it,
+      // and interpolating it printed "restored 0 file(s) from undefined". Name the
+      // backend explicitly instead.
+      const where = result.mode || (result.ok === false ? 'store' : 'postgres');
+      console.log(`[luckyblox] restored ${result.loaded.length} document(s) from ${where}`);
     }
     // Content folders (place files, maps, settings) are opt-in. When on, pull
     // them too so created games have their actual content after a redeploy.
@@ -7353,6 +7364,7 @@ storage.restoreFromRemote()
       // instance without a disk they will not, and that looks like "fake" data.
       const store = storage.describeStorage();
       console.log(`[luckyblox] data dir: ${store.dataDir}`);
+      console.log(`[luckyblox] storage backend: ${store.backend}`);
       console.log(`[luckyblox] persistence: ${store.persistent ? 'ON' : 'OFF'} - ${store.note}`);
       // Say explicitly what backs the path, so a set-but-unbacked LUCKYBLOX_DATA_DIR
       // cannot masquerade as a real disk.
@@ -7363,24 +7375,27 @@ storage.restoreFromRemote()
         console.warn('[luckyblox] WARNING: data dir is not backed by a Render Disk. '
           + 'Attach one, or set LUCKYBLOX_SYNC, or accounts will be lost on redeploy.');
       }
-      if (store.remote && store.remote.enabled) {
+      if (store.backend === 'postgres') {
+        console.log(`[luckyblox] database: ${store.postgres && store.postgres.ready
+          ? 'connected (schema ready)'
+          : 'configured but not reached yet'}`);
+      } else if (store.remote && store.remote.enabled) {
         // "local" is a sibling git clone, not a remote host - calling it remote
         // storage in the log would mislead anyone reading the boot output into
         // thinking the data had left the machine.
         const label = store.remote.mode === 'local' ? 'local mirror' : 'free remote storage';
         console.log(`[luckyblox] ${label}: ${store.remote.mode} - ${store.remote.note}`);
       } else {
-        // Absence of this line is itself the signal: sync is not configured.
+        // Absence of this line is itself the signal: no durable store is set.
         // Spell out the fix, because this is the one line that decides whether
         // accounts survive a redeploy and "not configured" alone does not say how.
-        console.log('[luckyblox] free remote storage: not configured (LUCKYBLOX_SYNC unset)');
-        console.log('[luckyblox]   -> to persist for free, set on this host:');
+        console.log('[luckyblox] no durable store configured. Pick ONE:');
+        console.log('[luckyblox]   A) Postgres (recommended, free at neon.tech):');
+        console.log('[luckyblox]      DATABASE_URL=postgresql://user:pw@host/db?sslmode=require');
+        console.log('[luckyblox]   B) a git mirror (free, GitHub):');
         console.log('[luckyblox]      LUCKYBLOX_SYNC=github');
         console.log('[luckyblox]      LUCKYBLOX_SYNC_TOKEN=<fine-grained PAT, Contents: Read+Write>');
-        console.log('[luckyblox]      (repo defaults to tailsthehero10/Luckyblox-Storage-1;'
-          + ' override with LUCKYBLOX_SYNC_REPO)');
-        console.log('[luckyblox]   -> or run on the same machine as the storage clone with'
-          + ' LUCKYBLOX_SYNC=local');
+        console.log('[luckyblox]   C) a sibling clone on this machine: LUCKYBLOX_SYNC=local');
       }
 
       // Periodically prune expired rate-limit buckets so memory stays bounded.

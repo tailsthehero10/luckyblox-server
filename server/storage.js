@@ -26,6 +26,7 @@ const fs = require('fs');
 const path = require('path');
 const runtime = require('./runtimeConfig');
 const remoteStore = require('./remoteStore');
+const postgresStore = require('./postgresStore');
 
 const repoRoot = runtime.rootDir;
 const bundledDataDir = path.join(repoRoot, 'Webserver', 'http-db-bridge', 'data');
@@ -139,9 +140,17 @@ function writeJson(fileName, data) {
   try {
     fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
     fs.renameSync(tmpPath, filePath);
-    // Mirror to the free remote store (if configured) so the data outlives this
-    // container. Debounced and best-effort - it never blocks or throws here.
-    remoteStore.saveFile(fileName, data);
+    // Mirror to the durable backend. Both are best-effort and debounced - a
+    // slow network write must never block or fail a request.
+    //
+    // Postgres is tried first because it is a real database (queryable, with
+    // timestamps); the GitHub/HTTP mirror stays for deployments that prefer a
+    // git history of the data instead.
+    if (postgresStore.ENABLED) {
+      postgresStore.writeDoc(fileName, data).catch(() => { /* logged inside */ });
+    } else {
+      remoteStore.saveFile(fileName, data);
+    }
     return true;
   } catch (error) {
     console.error(`[luckyblox] writeJson ${fileName} failed: ${error.message}`);
@@ -163,11 +172,25 @@ function writeJson(fileName, data) {
  */
 async function restoreFromRemote() {
   ensureDataDir();
+
+  // Postgres is the durable backend when configured. It is tried first, and the
+  // result shape is the same so the caller does not care which is in use.
+  if (postgresStore.ENABLED) {
+    return postgresStore.restoreToDir(dataDir);
+  }
+
   return remoteStore.loadAll(dataDir);
 }
 
 /** Push any queued writes immediately (used on shutdown). Best effort. */
 async function flushRemote() {
+  if (postgresStore.ENABLED) {
+    // Everything is written on the request path already, so there is no queue to
+    // drain - just close the pool cleanly so an in-flight query can finish.
+    const pushed = await postgresStore.pushFromDir(dataDir);
+    await postgresStore.close();
+    return { ok: true, enabled: true, pushed: pushed.pushed || [] };
+  }
   return remoteStore.flush();
 }
 
@@ -204,7 +227,11 @@ function deleteJson(fileName) {
   } catch (error) {
     console.error(`[luckyblox] deleteJson ${fileName} failed: ${error.message}`);
   }
-  remoteStore.deleteFile(fileName);
+  if (postgresStore.ENABLED) {
+    postgresStore.deleteDoc(fileName).catch(() => { /* logged inside */ });
+  } else {
+    remoteStore.deleteFile(fileName);
+  }
   return true;
 }
 
@@ -246,14 +273,20 @@ function describeStorage() {
 
   return {
     dataDir,
+    // `backend` names the durable store in use, so the boot log and the owner
+    // diagnostics can say plainly where data actually lives.
+    backend: postgresStore.ENABLED ? 'postgres' : (remote.enabled ? remote.mode : 'local-files'),
+    postgres: postgresStore.describe(),
     // `persistent` is the headline "will this survive?" answer.
-    persistent: isPersistent || remote.enabled,
+    persistent: postgresStore.ENABLED || isPersistent || remote.enabled,
     localPersistent: isPersistent,
     onRender,
     viaRenderDisk,
     unbacked: unbackedOnRender,
     remote,
-    note,
+    note: postgresStore.ENABLED
+      ? 'Data is stored in Postgres and will survive redeploys.'
+      : note,
   };
 }
 

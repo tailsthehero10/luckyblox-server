@@ -1,12 +1,22 @@
 {
-  "lb_8766bb77cc0634119e74909c3adea5d1bcc4d5073a3b8fef": {
-    "sessionId": "lb_8766bb77cc0634119e74909c3adea5d1bcc4d5073a3b8fef",
-    "userId": "1",
-    "username": "tailsthehero10",
-    "csrfToken": "lb_8766bb77cc0634119e74909c3adea5d1bcc4d5073a3b8fef.e1111b73829be4dc11e77fa8faa4c00e.88f4cc24c03d8823946500f6d38f566b16b480bb9a0eba5265675ed072639ea5",
+  "lb_c781b2d9b44724895db1b999b1406dfbc99c899f4113b065": {
+    "sessionId": "lb_c781b2d9b44724895db1b999b1406dfbc99c899f4113b065",
+    "userId": "2",
+    "username": "DebugUser33307",
+    "csrfToken": "lb_c781b2d9b44724895db1b999b1406dfbc99c899f4113b065.0f382923fbcd7c39a3e8ff4b2d656957.643906d38a646399d588733ab3b11a6a1fe99782369caa3bc9c2f20edb029882",
     "ip": "127.0.0.1",
-    "userAgent": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.19041.7725",
-    "expiresAt": 1790501454514,
-    "createdAt": 1790458254514
+    "userAgent": "node",
+    "expiresAt": 1790571933474,
+    "createdAt": 1790528733474
+  },
+  "lb_4d789070b07fd2633120b17008d7ad2c382e9e7a41368038": {
+    "sessionId": "lb_4d789070b07fd2633120b17008d7ad2c382e9e7a41368038",
+    "userId": "3",
+    "username": "NeonUser53077",
+    "csrfToken": "lb_4d789070b07fd2633120b17008d7ad2c382e9e7a41368038.e9212fba574d8befc8a25489e2ae3795.ec6dbf00f13bc4d214b4d432a28e41feb6ccd6cbc47362c537eecc8789da1681",
+    "ip": "127.0.0.1",
+    "userAgent": "node",
+    "expiresAt": 1790573653303,
+    "createdAt": 1790530453303
   }
 }

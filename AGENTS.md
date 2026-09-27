@@ -25,10 +25,21 @@ LuckyBlox is a local Roblox-style game platform served from a release folder. Ap
 - PBKDF2-SHA512 password hashing: 210000 iterations, 64-byte key length.
 - Static assets under `Webserver/www/site-icon/` and `Webserver/www/gameplaceholder/`.
 
-## Persistence (free, no disk needed)
+## Persistence (Postgres — DONE, or a free git mirror)
+- **Postgres is the primary backend.** Set `DATABASE_URL` and `server/postgresStore.js`
+  stores one row per logical file (table `blobs`: name/data jsonb/updated_at).
+  `server/storage.js` writes through to it and pulls from it on boot. Verified
+  against a live Neon database. See NEON-SETUP.md.
+- `pg` is required: `cd Webserver/http-db-bridge && npm install pg`. It resolves
+  from the bridge's node_modules even though postgresStore.js lives at the root.
+- Alternative with no database: `server/remoteStore.js` mirrors the JSON files to
+  a FREE store — `LUCKYBLOX_SYNC=github` (private repo + fine-grained token) or
+  `LUCKYBLOX_SYNC=http` (any JSON blob endpoint) or `LUCKYBLOX_SYNC=local`
+  (sibling git clone). Unset = local JSON files only.
 - A `.env` file in the release root is read at boot by `server/envFile.js` (called
   from `server.js` and `Webserver/http-db-bridge/server.js`). A real environment
   variable always beats the file. `tests/env-file.test.js` guards this.
+- Test: `node tests/postgres-store.test.js` (fake `pg`), `node tests/remoteStore.test.js`.
 - Data lives in `Webserver/http-db-bridge/data/`. On a host without a persistent
   disk (Render free tier) the container filesystem is wiped on redeploy.
 - `server/remoteStore.js` mirrors the data files to a FREE store so they survive

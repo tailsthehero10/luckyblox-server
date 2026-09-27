@@ -1,4 +1,4 @@
-i s'use strict';
+'use strict';
 // Local probe: sign up + sign in and report what each page really renders.
 // Run: node tools/probe-local.js
 const BASE = process.env.PROBE_BASE || 'http://127.0.0.1:3001';

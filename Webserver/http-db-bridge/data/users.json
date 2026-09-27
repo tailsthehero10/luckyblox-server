@@ -1,1 +1,160 @@
-﻿{}
+{
+  "2": {
+    "userId": "2",
+    "username": "DebugUser33307",
+    "displayName": "DebugUser33307",
+    "gender": "NotSpecified",
+    "password": "7c7d6396fc71361943964fed1d74448c425f068d79397fee505eda45f66febb23ee50bf3be29475704bcd2ccee020e201f63fa54f415a1aed6c5b3b61cda1e56",
+    "passwordSalt": "0faaace232b367680903f50142e0f573",
+    "passwordVersion": 3,
+    "role": "player",
+    "bio": "Hi, I'm new to LuckyBlox!",
+    "joinDate": "2026-09-27T17:05:33.469Z",
+    "created": "2026-09-27T17:05:33.469Z",
+    "birthday": "2000-01-01",
+    "membershipStatus": "None",
+    "membership": "None",
+    "robux": 0,
+    "currencies": {
+      "robux": 0,
+      "coins": 0,
+      "tickets": 0
+    },
+    "inventory": [
+      "607702162",
+      "1029025",
+      "25330901"
+    ],
+    "currentlyWearing": [
+      "607702162"
+    ],
+    "wearing": [
+      "607702162"
+    ],
+    "stats": {
+      "friends": 0,
+      "following": 0,
+      "created": 0,
+      "plays": 0,
+      "followers": 0,
+      "badges": 1,
+      "gameVisits": 0
+    },
+    "friends": [],
+    "following": [],
+    "followers": [],
+    "badges": [
+      {
+        "id": "welcome",
+        "name": "Welcome to LuckyBlox",
+        "description": "Joined LuckyBlox",
+        "icon": "W",
+        "earnedDate": "2026-09-27T17:05:33.469Z"
+      }
+    ],
+    "avatar": {
+      "gender": "NotSpecified",
+      "playerAvatarType": "R15",
+      "scales": {
+        "height": 1,
+        "width": 1,
+        "head": 1,
+        "depth": 1,
+        "proportion": 0,
+        "bodyType": 0
+      },
+      "bodyColors": {
+        "headColorId": 1002,
+        "torsoColorId": 1002,
+        "rightArmColorId": 1002,
+        "leftArmColorId": 1002,
+        "rightLegColorId": 1002,
+        "leftLegColorId": 1002
+      },
+      "currentlyWearing": [
+        "607702162"
+      ]
+    },
+    "profileUrl": "/users/2/profile",
+    "updatedAt": "2026-09-27T17:05:33.469Z"
+  },
+  "3": {
+    "userId": "3",
+    "username": "NeonUser53077",
+    "displayName": "NeonUser53077",
+    "gender": "NotSpecified",
+    "password": "56ec4be40a0ef03bfca892190b0afd85110307bc9b7f02cf2036c8c620c46ab491f01e1e7fa1237688105c52db68e64fc7afcd7c9a112a3c4e9518eae2f67319",
+    "passwordSalt": "1fd3191ffba6043027c049648de188c1",
+    "passwordVersion": 3,
+    "role": "player",
+    "bio": "Hi, I'm new to LuckyBlox!",
+    "joinDate": "2026-09-27T17:34:13.298Z",
+    "created": "2026-09-27T17:34:13.298Z",
+    "birthday": "2000-01-01",
+    "membershipStatus": "None",
+    "membership": "None",
+    "robux": 0,
+    "currencies": {
+      "robux": 0,
+      "coins": 0,
+      "tickets": 0
+    },
+    "inventory": [
+      "607702162",
+      "1029025",
+      "25330901"
+    ],
+    "currentlyWearing": [
+      "607702162"
+    ],
+    "wearing": [
+      "607702162"
+    ],
+    "stats": {
+      "friends": 0,
+      "following": 0,
+      "created": 0,
+      "plays": 0,
+      "followers": 0,
+      "badges": 1,
+      "gameVisits": 0
+    },
+    "friends": [],
+    "following": [],
+    "followers": [],
+    "badges": [
+      {
+        "id": "welcome",
+        "name": "Welcome to LuckyBlox",
+        "description": "Joined LuckyBlox",
+        "icon": "W",
+        "earnedDate": "2026-09-27T17:34:13.298Z"
+      }
+    ],
+    "avatar": {
+      "gender": "NotSpecified",
+      "playerAvatarType": "R15",
+      "scales": {
+        "height": 1,
+        "width": 1,
+        "head": 1,
+        "depth": 1,
+        "proportion": 0,
+        "bodyType": 0
+      },
+      "bodyColors": {
+        "headColorId": 1002,
+        "torsoColorId": 1002,
+        "rightArmColorId": 1002,
+        "leftArmColorId": 1002,
+        "rightLegColorId": 1002,
+        "leftLegColorId": 1002
+      },
+      "currentlyWearing": [
+        "607702162"
+      ]
+    },
+    "profileUrl": "/users/3/profile",
+    "updatedAt": "2026-09-27T17:34:13.298Z"
+  }
+}
