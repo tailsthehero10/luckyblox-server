@@ -5,8 +5,8 @@ REM It asks https://luckyblox-server.onrender.com for a real launch ticket,
 REM runs the game server locally, and opens the 2021M client against it.
 REM
 REM Usage:
-REM   Settings\DEV-PLAY.bat                  (place 1818)
-REM   Settings\DEV-PLAY.bat --place 1818     (pick a place)
+REM   Settings\DEV-PLAY.bat                  (place 2020)
+REM   Settings\DEV-PLAY.bat --place 2020     (pick a place)
 REM   Settings\DEV-PLAY.bat --dry-run        (resolve only, launch nothing)
 
 setlocal
