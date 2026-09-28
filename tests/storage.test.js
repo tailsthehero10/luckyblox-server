@@ -36,9 +36,28 @@ test('honours LUCKYBLOX_DATA_DIR', () => {
 });
 
 test('seeds bundled defaults into an empty persistent dir', () => {
-  const users = storage.readJson('users.json', {});
-  assert.ok(users['1'], 'bundled user 1 was seeded');
-  assert.ok(fs.existsSync(path.join(tmpDir, 'users.json')), 'file copied to temp dir');
+  // The seed is whatever the bundled data dir currently holds, so assert the
+  // MECHANISM rather than a particular account: the file must have been copied
+  // into the persistent dir, and reading it back must give the same content.
+  //
+  // This used to assert `users['1']` - the seeded owner account. That record was
+  // deliberately removed: a real deployment starts empty so every name on the
+  // site belongs to somebody who actually registered, and id 1 is reserved for
+  // the operator (see createDefaultUsers in the bridge). Asserting the old
+  // fixture made the test fail the moment the fixture was corrected.
+  const seeded = path.join(tmpDir, 'users.json');
+  assert.ok(fs.existsSync(seeded), 'users.json copied to the persistent dir');
+
+  const bundled = path.join(
+    path.resolve(__dirname, '..'),
+    'Webserver', 'http-db-bridge', 'data', 'users.json',
+  );
+  const expected = JSON.parse(fs.readFileSync(bundled, 'utf8'));
+  assert.deepStrictEqual(
+    storage.readJson('users.json', {}),
+    expected,
+    'the seeded copy must match the bundled defaults exactly',
+  );
 });
 
 test('writeJson then readJson round-trips', () => {

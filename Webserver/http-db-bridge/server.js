@@ -41,6 +41,7 @@ const {
   publicPort,
   publicBaseUrl,
   publicHostname,
+  publicProtocol,
   gamePort,
   gameServerHost,
 } = require(path.join(__dirname, '..', '..', 'server', 'runtimeConfig'));
@@ -291,7 +292,7 @@ function resolveClientAssetDir(clientName) {
 // live public origin here - the same rewrite server.js does on its own path.
 // Each client's own path suffix is preserved (2021M expects a trailing /home/,
 // 2022M does not) because dropping it breaks the client's routing.
-function rewriteAppSettingsBaseUrl(body, origin, clientName) {
+function rewriteAppSettingsBaseUrl(body, origin, clientName, requestedOrigin) {
   const match = String(body).match(/<BaseUrl>[\s\S]*?<\/BaseUrl>/i);
   if (!match) return body;
   // Prefer the suffix pinned for this client; fall back to whatever path the
@@ -301,10 +302,59 @@ function rewriteAppSettingsBaseUrl(body, origin, clientName) {
     const existing = (match[0].match(/<BaseUrl>([\s\S]*?)<\/BaseUrl>/i) || [])[1] || '';
     suffix = suffixFromBaseUrl(existing);
   }
+  // The client's BaseUrl must be reachable FROM THE MACHINE THE CLIENT RUNS ON,
+  // and must use the scheme the browser actually used. Two failures this avoids:
+  //
+  //   1. On a public deployment the configured origin is https://<host>; handing
+  //      an http:// URL (or vice versa) makes the client drop every request.
+  //   2. On localhost the configured origin may be a PUBLIC host (or the port the
+  //      process bound to), which is unreachable from the desktop - so a client
+  //      launched from http://localhost/LuckBlox.site.tk/ would be pointed at the
+  //      internet instead of back at the machine it is running on.
+  //
+  // A same-origin request is therefore authoritative: if the request reached us
+  // on a host, that host is reachable by definition. Anything else falls back to
+  // the configured public origin.
+  const base = requestedOrigin || origin;
   return String(body).replace(
     /<BaseUrl>[\s\S]*?<\/BaseUrl>/i,
-    `<BaseUrl>${origin}/LuckBlox.site.tk${suffix}</BaseUrl>`,
+    `<BaseUrl>${base}/LuckBlox.site.tk${suffix}</BaseUrl>`,
   );
+}
+
+/**
+ * The origin the CLIENT should be told to use, derived from the request itself.
+ *
+ * scheme: honour the reverse proxy's X-Forwarded-Proto (Render terminates TLS in
+ * front of us, so req.protocol is plain http even on the public HTTPS site),
+ * then the configured protocol, then whatever the socket used.
+ * host:   the Host header, which is exactly the name the caller reached us by.
+ *
+ * Loopback hosts are normalised to the configured port so a client launched
+ * against 127.0.0.1 and one launched against localhost agree.
+ */
+function requestOrigin(req, fallback) {
+  try {
+    const forwardedProto = String(req.headers['x-forwarded-proto'] || '')
+      .split(',')[0]
+      .trim()
+      .toLowerCase();
+    const scheme = forwardedProto === 'https' || forwardedProto === 'http'
+      ? forwardedProto
+      : (req.secure ? 'https' : publicProtocol || 'http');
+
+    const forwardedHost = String(req.headers['x-forwarded-host'] || '')
+      .split(',')[0]
+      .trim();
+    const host = forwardedHost || String(req.headers.host || '').trim();
+    if (!host || !/^[A-Za-z0-9.\-\[\]:_]+$/.test(host)) {
+      return fallback;
+    }
+
+    return `${scheme}://${host}`;
+  } catch (error) {
+    return fallback;
+  }
 }
 
 // Express needs a fixed root, so mount a resolver that picks the right file on
@@ -329,7 +379,12 @@ function serveClientAsset(subPath) {
     if (!file) return next();
 
     if (path.basename(file).toLowerCase() === 'appsettings.xml') {
-      const body = rewriteAppSettingsBaseUrl(fs.readFileSync(file, 'utf8'), publicOrigin, clientName);
+      const body = rewriteAppSettingsBaseUrl(
+        fs.readFileSync(file, 'utf8'),
+        publicOrigin,
+        clientName,
+        requestOrigin(req, publicOrigin),
+      );
       res.set('Content-Type', 'application/xml; charset=utf-8');
       res.set('Cache-Control', 'no-store');
       res.set('X-LuckyBlox-Client', clientName);
@@ -1293,23 +1348,48 @@ function bodyColorPalette() {
 }
 
 /**
- * Render a user's character as the blocky R6 figure roblox.com drew in 2021:
- * head, torso, two arms, two legs, each filled from the saved body colours.
- * This is the single source of truth for the figure, so a player looks the same
- * on the profile, the home page and the avatar editor.
+ * Render a user's character as the blocky figure roblox.com drew, on the correct
+ * R6/R15 rig, in the account's saved BrickColor body colours, with equipped items
+ * composited on top. This is the single source of truth for the figure, so a
+ * player looks the same on the profile, the home page and the avatar editor.
+ *
+ * The returned markup is a WRAPPER plus the SVG. The wrapper is the thing that
+ * carries the layout box: `.lb-avatar-figure` is 10em tall and every part is sized
+ * in `em`, so a single `font-size` resizes the artwork AND the space reserved for
+ * it together. Sizing with `transform: scale()` (what this used to do) draws the
+ * figure larger while still reserving the ORIGINAL box, so the avatar spilled out
+ * of its panel and overlapped whatever followed it - which is what made the
+ * profile and home pages look like elements were half inside each other.
+ *
+ * The inner SVG is told to fill that box (width/height 100%), so the drawn size
+ * and the reserved space can never disagree again.
  *
  * @param {object} user  normalized user (uses avatar.bodyColors)
- * @param {number} size  pixel height of the figure (240px = the 1x geometry)
+ * @param {number} size  target height in px; font-size is derived as size / 10
  */
 function renderAvatarFigure(user, size) {
-  // Delegates to the real 3D renderer. The old implementation here returned six
-  // flat coloured rectangles with a literal ":B" text face - a colour diagram,
-  // not a character - which is why every avatar on the site looked wrong.
-  // server/avatarRenderer.js draws a shaded isometric figure in the account's
-  // actual BrickColor body colours, on the correct R6/R15 rig, with equipped
-  // items composited on top.
+  const wanted = Number(size) > 0 ? Number(size) : 240;
+  // 10em tall: font-size = target height / 10. Rounded to 3dp so the emitted
+  // value is stable and short rather than a long float.
+  const fontPx = Math.round((wanted / 10) * 1000) / 1000;
+
   const wearing = getWearingForUser(user);
-  return avatarRenderer.renderAvatarSvg(user, size, { wearing });
+  // The SVG is generated at the wrapper's own box size so its internal viewBox
+  // measurement matches what is actually displayed (no upscale blur).
+  const svg = avatarRenderer.renderAvatarSvg(user, wanted, { wearing });
+
+  return `<div class="lb-avatar-figure" style="font-size:${fontPx}px;" role="img" `
+    + `aria-label="${escapeHtmlAttribute((user && user.username) || 'Avatar')}">${svg}</div>`;
+}
+
+/** Escape a value for use inside a double-quoted HTML attribute. */
+function escapeHtmlAttribute(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**

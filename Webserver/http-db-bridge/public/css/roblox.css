@@ -2547,15 +2547,15 @@ a.roblox-brand:hover {
   border: 1px solid var(--border-line);
 }
 
-/* The BIG thumbnail is a wide 16:9 render and FILLS its frame, so `cover` is
-   correct here. This used to be `contain` with a comment about the square icon -
-   that was fixing the wrong problem: a square icon was being placed in the wide
-   slot. The slot now gets a 16:9 image, so nothing needs fitting. The square
-   placeholder layered underneath is fitted separately (see .roblox-game-thumb-base). */
+/* Game artwork is SQUARE (1:1) everywhere on this site - the game page thumbnail,
+   the home game cards and the featured hero - so the art must be FITTED, never
+   cropped. `cover` on a square source inside a wider frame trims the icon's left
+   and right edges off, which is exactly what the square game icons were losing.
+   `contain` keeps the whole render visible and letterboxes it inside the frame. */
 .roblox-game-thumb-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center center;
   display: block;
 }
@@ -3988,6 +3988,17 @@ button.roblox-sidebar-link { min-height: 34px; }
   height: 10em;      /* 240 / 24 */
   flex: 0 0 auto;
   margin: 0 auto;
+}
+
+/* The real 3D figure is an <svg> inside that box. It fills the box rather than
+   carrying its own width/height, so the drawn size and the reserved layout space
+   are the same thing - the wrapper alone decides how big the avatar is. */
+.lb-avatar-figure > .lb-avatar-svg,
+.lb-avatar-figure > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
 .lb-af-part { position: absolute; }

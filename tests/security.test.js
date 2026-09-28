@@ -56,7 +56,28 @@ test('username policy enforces format', () => {
   assert.strictEqual(sec.checkUsernamePolicy('ab').ok, false);
   assert.strictEqual(sec.checkUsernamePolicy('has space').ok, false);
   assert.strictEqual(sec.checkUsernamePolicy('_leading').ok, false);
-  assert.strictEqual(sec.checkUsernamePolicy('tailsthehero10').ok, true);
+  // A well-formed, unreserved name is accepted. This used to be asserted with
+  // `tailsthehero10` - the OWNER's name - and expected ok:true. That was the
+  // inverse of what the site needs: the owner is identified by username, so if
+  // that name could be registered the registrant would be handed owner + admin
+  // on the spot (see isOwnerUser in the bridge). The policy correctly rejects it,
+  // so the positive case is now a name nobody owns.
+  assert.strictEqual(sec.checkUsernamePolicy('SkyBuilder42').ok, true);
+});
+
+test('username policy rejects the owner and reserved names', () => {
+  // The impersonation vector this policy exists to close. Reserved names are
+  // rejected by the format check itself, AND again by the signup routes as
+  // defence in depth - so this asserts both entry points of that rule.
+  assert.strictEqual(sec.checkUsernamePolicy('tailsthehero10').ok, false);
+  assert.strictEqual(sec.checkUsernamePolicy('admin').ok, false);
+  assert.strictEqual(sec.checkUsernamePolicy('Roblox').ok, false);
+  assert.strictEqual(sec.checkUsernamePolicy('_Admin_').ok, false);
+  // A name that merely CONTAINS a reserved brand word is refused too, otherwise
+  // "RobloxFan123" would still read as official.
+  assert.strictEqual(sec.checkUsernamePolicy('RobloxFan123').ok, false);
+  assert.strictEqual(sec.isReservedUsername('tailsthehero10'), true);
+  assert.strictEqual(sec.isReservedUsername('SkyBuilder42'), false);
 });
 
 test('rateLimit allows up to limit then blocks', () => {
