@@ -705,6 +705,60 @@ const hashPassword = security.hashPassword;
 const verifyPassword = security.verifyPassword;
 
 /**
+ * The option lists a Roblox creator sees in Studio, so the LuckyBlox Studio
+ * settings page offers the same choices rather than a free-text box.
+ *
+ * Roblox's own experience settings use these exact genre categories and device
+ * names. A free-text genre is what let a game be tagged "asdf" - the site then
+ * had a filter chip nothing else matched, so the game could never be found by
+ * browsing.
+ */
+const ROBLOX_GENRES = [
+  'Adventure',
+  'Building',
+  'Comedy',
+  'Fighting',
+  'FPS',
+  'Horror',
+  'Medieval',
+  'Military',
+  'Naval',
+  'Obby',
+  'Parkour',
+  'Racing',
+  'RPG',
+  'Sci-Fi',
+  'Social',
+  'Sports',
+  'Survival',
+  'Town and City',
+  'Western',
+  'Ninja',
+  'Puzzle',
+  'Simulation',
+  'Educational',
+  'Music',
+  'Showcase',
+];
+
+/** The devices Roblox lets a creator enable for an experience. */
+const ROBLOX_PLAYABLE_DEVICES = [
+  'Computer',
+  'Phone',
+  'Tablet',
+  'Console',
+  'VR',
+];
+
+/** Roblox's experience age-rating choices. */
+const ROBLOX_AGE_RATINGS = [
+  'All Ages',
+  '9+',
+  '13+',
+  '17+',
+];
+
+/**
  * The account that owns the deployment. ID 1 is the owner, matching
  * tailsthehero10 on the live site. Ownership grants creator/admin abilities.
  */
@@ -1051,6 +1105,15 @@ function createDefaultGames() {
       title: 'LuckyBlox Arena',
       description: 'A local Roblox-style competitive hub with quests, social features, and classic game discovery.',
       developer: 'LuckyBlox Studio',
+      // The built-in games belong to the DEPLOYMENT OWNER.
+      //
+      // They used to carry no author at all, so the Studio could only say
+      // "Author: LuckyBlox Studio" with no id behind it - which made the
+      // ownership check meaningless and the "You own this" row a guess. Naming
+      // the owner here is what makes "id 1 owns the pre-added games" true rather
+      // than assumed.
+      authorId: Number(OWNER_USER_ID) || 1,
+      author: OWNER_USERNAME,
       icon: DEFAULT_GAME_ICON,
       genre: 'Adventure',
       // Real counters only. This deployment just started, so a brand new game
@@ -1066,6 +1129,14 @@ function createDefaultGames() {
         dislikes: 0,
       },
       tags: ['Action', 'Adventure', 'Multiplayer'],
+      visibility: 'Public',
+      maxPlayers: 20,
+      allowHttpRequests: true,
+      privateServerAllowed: true,
+      allowThirdPartySales: true,
+      isFriendsOnly: false,
+      playableDevices: 'Computer',
+      ageRating: 'All Ages',
       updatedAt: new Date().toISOString(),
     };
 
@@ -1079,8 +1150,19 @@ function createDefaultGames() {
       title: entry.title || `Game ${placeId}`,
       description: 'A local map packaged as a playable LuckyBlox experience.',
       developer: 'LuckyBlox Studio',
+      // Imported maps are the owner's too - they ship with the deployment.
+      authorId: Number(OWNER_USER_ID) || 1,
+      author: OWNER_USERNAME,
       icon: DEFAULT_GAME_ICON,
       genre: 'Adventure',
+      visibility: 'Public',
+      maxPlayers: 20,
+      allowHttpRequests: true,
+      privateServerAllowed: true,
+      allowThirdPartySales: true,
+      isFriendsOnly: false,
+      playableDevices: 'Computer',
+      ageRating: 'All Ages',
       // Honest counters: a freshly imported map has no plays yet.
       playerCount: 0,
       likes: 0,
@@ -1578,9 +1660,33 @@ function ensureSeedData() {
   if (!fs.existsSync(gamesPath)) {
     writeJson(gamesPath, createDefaultGames());
   } else {
+    // Import maps that are not in the store yet - WITHOUT touching what is there.
+    //
+    // This used to REPLACE the whole file with the catalog whenever the store held
+    // only {1818}. That is destructive in two ways: it discarded a real, edited
+    // 1818 record, and it baked the catalog's DERIVED data (map filenames, a
+    // different id per map) into games.json, so the store stopped describing what
+    // a creator had actually saved. It also left the catalog ids - 1848, 2007,
+    // 2024, ... - as the file's real contents.
+    //
+    // Merging only MISSING ids keeps the import behaviour (a fresh clone still
+    // gains its games on first boot) while leaving every stored record alone.
     const current = readJson(gamesPath, {});
-    if (current && typeof current === 'object' && Object.keys(current).length === 1 && current['1818']) {
-      writeJson(gamesPath, createDefaultGames());
+    if (!current || typeof current !== 'object' || Array.isArray(current)) {
+      writeJson(gamesPath, {});
+    } else {
+      const defaults = createDefaultGames();
+      let added = 0;
+      for (const [key, record] of Object.entries(defaults)) {
+        if (!current[key]) {
+          current[key] = record;
+          added += 1;
+        }
+      }
+      if (added > 0) {
+        writeJson(gamesPath, current);
+        console.log(`[luckyblox] imported ${added} built-in game(s) into the store`);
+      }
     }
   }
 }
@@ -1710,24 +1816,48 @@ function getGames() {
   if (catalog && catalog.length > 0) {
     catalog.forEach((entry, index) => {
       const placeId = Number(entry.placeId || 1800 + index + 1);
+      const existing = merged[String(placeId)] || {};
+
+      // mapTitle is only a FALLBACK. The map file's name is a starting point for a
+      // game nobody has edited yet; once a creator renames it in the Studio, that
+      // name must survive. This assignment used to be unconditional
+      // (`title: entry.title || ...`), so every load overwrote the saved title
+      // with the map filename - which is why a Studio rename never appeared on the
+      // site: games.json held the new name and this line threw it away.
+      const mapTitle = entry.title || `Game ${placeId}`;
+      const hasCreatorTitle = typeof existing.title === 'string' && existing.title.trim() !== '';
+
       merged[String(placeId)] = {
-        ...(merged[String(placeId)] || {}),
+        ...existing,
         placeId,
-        title: entry.title || `Game ${placeId}`,
-        description: merged[String(placeId)]?.description || 'A local map packaged as a playable LuckyBlox experience.',
-        developer: merged[String(placeId)]?.developer || 'LuckyBlox Studio',
-        icon: merged[String(placeId)]?.icon || DEFAULT_GAME_ICON,
-        genre: merged[String(placeId)]?.genre || 'Adventure',
-        playerCount: Number(merged[String(placeId)]?.playerCount || 0),
-        likes: Number(merged[String(placeId)]?.likes || 0),
-        favorites: Number(merged[String(placeId)]?.favorites || 0),
-        activeServers: Array.isArray(merged[String(placeId)]?.activeServers) ? merged[String(placeId)].activeServers : [`${gameServerHost}:${gamePort}`],
-        serverList: Array.isArray(merged[String(placeId)]?.serverList) ? merged[String(placeId)].serverList : [`${gameServerHost}:${gamePort}`],
-        votes: merged[String(placeId)]?.votes || { likes: 78, dislikes: 22 },
-        tags: Array.isArray(merged[String(placeId)]?.tags) ? merged[String(placeId)].tags : ['Community', 'Playtest'],
-        updatedAt: merged[String(placeId)]?.updatedAt || new Date().toISOString(),
-        mapFile: entry.filename || null,
-        mapPath: entry.path || null,
+        title: hasCreatorTitle ? existing.title : mapTitle,
+        description: existing.description || 'A local map packaged as a playable LuckyBlox experience.',
+        developer: existing.developer || 'LuckyBlox Studio',
+        // Ownership must survive this merge. Without it an imported map lost its
+        // author every load and the Studio could not say who owned it.
+        authorId: Number(existing.authorId || OWNER_USER_ID) || 1,
+        author: existing.author || OWNER_USERNAME,
+        visibility: existing.visibility || 'Public',
+        maxPlayers: Number(existing.maxPlayers || 20),
+        allowHttpRequests: existing.allowHttpRequests !== false,
+        privateServerAllowed: existing.privateServerAllowed !== false,
+        allowThirdPartySales: existing.allowThirdPartySales !== false,
+        isFriendsOnly: Boolean(existing.isFriendsOnly),
+        playableDevices: existing.playableDevices || 'Computer',
+        ageRating: existing.ageRating || 'All Ages',
+        icon: existing.icon || DEFAULT_GAME_ICON,
+        genre: existing.genre || 'Adventure',
+        playerCount: Number(existing.playerCount || 0),
+        likes: Number(existing.likes || 0),
+        favorites: Number(existing.favorites || 0),
+        activeServers: Array.isArray(existing.activeServers) ? existing.activeServers : [`${gameServerHost}:${gamePort}`],
+        serverList: Array.isArray(existing.serverList) ? existing.serverList : [`${gameServerHost}:${gamePort}`],
+        votes: existing.votes || { likes: 0, dislikes: 0 },
+        tags: Array.isArray(existing.tags) ? existing.tags : ['Community', 'Playtest'],
+        updatedAt: existing.updatedAt || new Date().toISOString(),
+        // Where the map came from, so the place can still be resolved to a file.
+        mapFile: entry.filename || existing.mapFile || null,
+        mapPath: entry.path || existing.mapPath || null,
       };
     });
   }
@@ -2285,6 +2415,229 @@ function savePlaceSettings(placeId, updates) {
   return getPlaceSettings(normalized);
 }
 
+/**
+ * The game fields a creator can edit, copied from one store to the other.
+ *
+ * `title`/`name` and `icon`/`iconUrl` are the same fact under two names: the
+ * STUDIO calls them name and iconUrl (matching Roblox's own Studio), the SITE
+ * calls them title and icon (matching the public game page). Keeping both
+ * spellings in this list is what stops the two views drifting apart again.
+ */
+const GAME_EDITABLE_FIELDS = [
+  ['name', 'title'],
+  ['description', 'description'],
+  ['genre', 'genre'],
+  ['visibility', 'visibility'],
+  ['maxPlayers', 'maxPlayers'],
+  ['iconUrl', 'icon'],
+  ['coverUrl', 'cover'],
+  ['playableDevices', 'playableDevices'],
+  ['ageRating', 'ageRating'],
+];
+
+/**
+ * The toggles a creator can set, which need real booleans rather than strings.
+ *
+ * An HTML form sends `'true'`/`'false'` as TEXT, so `'false'` is a truthy string
+ * in JavaScript - assigning it straight through would turn a disabled setting
+ * back ON. These are parsed explicitly.
+ */
+const GAME_BOOLEAN_FIELDS = [
+  ['allowHttpRequests', 'allowHttpRequests'],
+  ['privateServerAllowed', 'privateServerAllowed'],
+  ['allowThirdPartySales', 'allowThirdPartySales'],
+  ['isFriendsOnly', 'isFriendsOnly'],
+  ['studioAccessToApisAllowed', 'studioAccessToApisAllowed'],
+];
+
+/**
+ * The games store as it exists ON DISK, with no catalog or seed merged in.
+ *
+ * THE RULE: only this may be written back.
+ *
+ * `getGames()` returns a MERGED view - it layers the map catalog and the built-in
+ * seed over the file, and it DERIVES a title from each map's filename. That view
+ * is correct to READ and wrong to WRITE: persisting it bakes derived data into the
+ * file, and because catalog entries carry different ids it also replaced real rows
+ * (a game stored as 1818 became the catalog's 1848, and the edited 1818 record was
+ * gone). A save must never destroy a different game.
+ *
+ * @returns {object} the raw file contents, never a merged view
+ */
+function getStoredGames() {
+  const stored = readJson(gamesPath, {});
+  return stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
+}
+
+/**
+ * Persist an edited game to BOTH stores, in the shape each one expects.
+ *
+ * THE BUG THIS FIXES
+ * ------------------
+ * The Studio settings form wrote `places.json`. The public game page, the games
+ * list and the home carousel all read `games.json`. Nothing bridged the two, so
+ * a creator could rename a game, change its genre and set an icon, get a
+ * cheerful "Settings saved successfully!", and see NO change anywhere on the
+ * site - no error, no warning, just a setting that went nowhere.
+ *
+ * `tests/studio-settings-reach.test.js` is the regression test: it saves through
+ * the Studio and asserts the change is visible on the public page.
+ *
+ * @returns {object} the game record as the SITE now sees it
+ */
+function saveGameSettings(placeId, updates) {
+  const normalized = normalizePlaceId(placeId);
+  const key = String(normalized);
+  const body = updates || {};
+
+  // 1. places.json - the place record: file, version, author, and the settings.
+  savePlaceSettings(normalized, body);
+
+  // 2. games.json - what every public surface reads.
+  //
+  //    Read the RAW FILE, never getGames(). getGames() merges the map catalog and
+  //    the seed and derives titles from map filenames; writing that view back baked
+  //    derived data into the file and replaced real rows with catalog entries, so a
+  //    save could quietly destroy a different game. See getStoredGames().
+  const games = getStoredGames();
+  const current = games[key] || {};
+  const next = { ...current };
+
+  for (const [placeField, gameField] of GAME_EDITABLE_FIELDS) {
+    const value = body[placeField];
+    if (value === undefined || value === null || value === '') continue;
+    next[gameField] = value;
+  }
+
+  // Booleans, parsed. `'false'` is a truthy string, so it must never be assigned
+  // raw - see GAME_BOOLEAN_FIELDS.
+  for (const [placeField, gameField] of GAME_BOOLEAN_FIELDS) {
+    const value = body[placeField];
+    if (value === undefined || value === null || value === '') continue;
+    next[gameField] = value === 'true' || value === true || value === 'on' || value === '1';
+  }
+
+  // Numbers must be numbers: a genre arrives as a string and must stay one, but
+  // maxPlayers comes back from a form as text and the page prints it raw.
+  if (body.maxPlayers !== undefined && body.maxPlayers !== '') {
+    const n = Number(body.maxPlayers);
+    if (Number.isFinite(n) && n > 0) next.maxPlayers = n;
+  }
+
+  // A game with no author is claimed by the DEPLOYMENT OWNER, not by account 1
+  // blindly - the built-in games exist before anybody signs up, and the owner is
+  // the person who edits them (see OWNER_USER_ID).
+  if (!next.authorId) next.authorId = Number(OWNER_USER_ID) || 1;
+  if (!next.developer) next.developer = 'LuckyBlox Studio';
+
+  // Defaults for a record that has never been saved before, so the public page
+  // and the Studio agree on the initial state rather than showing `undefined`.
+  if (next.visibility === undefined) next.visibility = 'Public';
+  if (next.maxPlayers === undefined) next.maxPlayers = 20;
+  if (next.allowHttpRequests === undefined) next.allowHttpRequests = true;
+  if (next.privateServerAllowed === undefined) next.privateServerAllowed = true;
+  if (next.allowThirdPartySales === undefined) next.allowThirdPartySales = true;
+  if (next.isFriendsOnly === undefined) next.isFriendsOnly = false;
+
+  // Metrics the public page shows. Preserved rather than reset, so editing a
+  // setting never wipes a real count.
+  next.placeId = normalized;
+  next.playerCount = Number(current.playerCount || 0);
+  next.likes = Number(current.likes || 0);
+  next.favorites = Number(current.favorites || 0);
+  next.votes = current.votes || { likes: 0, dislikes: 0 };
+  next.activeServers = Array.isArray(current.activeServers) ? current.activeServers : [];
+  next.serverList = Array.isArray(current.serverList) ? current.serverList : [];
+  next.tags = Array.isArray(current.tags) ? current.tags : [];
+  next.createdAt = current.createdAt || new Date().toISOString();
+  next.updatedAt = new Date().toISOString();
+
+  games[key] = next;
+  writeJson(gamesPath, games);
+
+  return next;
+}
+
+/**
+ * The next place id nothing is using yet.
+ *
+ * A NEW game must not collide with an existing one. The create route used to pick
+ * `1818 + random(5000)`, which could land on a game that already existed and
+ * silently overwrite it - so creating a game could destroy a different one.
+ */
+function nextFreePlaceId() {
+  const games = getGames();
+  const placeRecords = readJson(path.join(dataDir, 'places.json'), {});
+  const used = new Set(
+    [...Object.keys(games), ...Object.keys(placeRecords)]
+      .map(Number)
+      .filter(Number.isFinite),
+  );
+
+  // Start above the built-in ids (which sit in the 1800s) so a created game never
+  // looks like a shipped map, and walk up to the first gap.
+  let candidate = 100000;
+  while (used.has(candidate)) candidate += 1;
+  return candidate;
+}
+
+/**
+ * Create the games.json record for a new game, so it is visible on the SITE.
+ *
+ * Writing only the .rbxlx left the game in a state where the Studio listed it and
+ * nothing else knew it existed: not the games list, not search, not the home
+ * carousel, and /game/<id> served a fallback. One function now creates the record
+ * in the shape every public surface reads.
+ *
+ * @returns {object} the stored game record
+ */
+function createGameRecord(placeId, fields) {
+  const normalized = normalizePlaceId(placeId);
+  const key = String(normalized);
+  const input = fields || {};
+
+  const games = getStoredGames();
+  const now = new Date().toISOString();
+
+  const record = {
+    placeId: normalized,
+    title: String(input.title || `Game ${normalized}`),
+    description: String(input.description || 'Created in LuckyBlox Studio.'),
+    developer: String(input.author || 'LuckyBlox Studio'),
+    authorId: Number(input.authorId || OWNER_USER_ID) || 1,
+    author: String(input.author || OWNER_USERNAME),
+    icon: String(input.icon || DEFAULT_GAME_ICON),
+    genre: String(input.genre || 'Adventure'),
+    visibility: String(input.visibility || 'Public'),
+    maxPlayers: Number(input.maxPlayers || 20),
+    playableDevices: String(input.playableDevices || 'Computer'),
+    ageRating: String(input.ageRating || 'All Ages'),
+    allowHttpRequests: input.allowHttpRequests !== false,
+    privateServerAllowed: input.privateServerAllowed !== false,
+    allowThirdPartySales: input.allowThirdPartySales !== false,
+    isFriendsOnly: Boolean(input.isFriendsOnly),
+    // A brand-new game has no plays, likes or favourites. Real zeros, not
+    // invented numbers.
+    playerCount: 0,
+    likes: 0,
+    favorites: 0,
+    activeServers: [],
+    serverList: [],
+    votes: { likes: 0, dislikes: 0 },
+    tags: Array.isArray(input.tags) ? input.tags : [],
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  // An optional cover is dropped rather than stored as undefined, so JSON.stringify
+  // does not write a null the page then has to guard against.
+  if (input.cover) record.cover = String(input.cover);
+
+  games[key] = record;
+  writeJson(gamesPath, games);
+  return record;
+}
+
 function saveUser(userId, nextState) {
   const users = getUsers();
   const current = getUser(userId);
@@ -2460,9 +2813,31 @@ function createAuthTicket(userId, placeId, serverContext = {}) {
 function getGameEntry(placeId) {
   const games = getGames();
   const normalizedPlaceId = normalizePlaceIdInput(placeId);
+
+  // A game saved in games.json WINS for its own id.
+  //
+  // This used to resolve the key through the map catalog first, and
+  // `resolveRequestedPlace` always returns SOMETHING - it falls back to
+  // `catalog[0]` when the id is not a known map. So a game that exists only in
+  // games.json (every game created through the Studio, and every built-in the
+  // owner edits) resolved to a DIFFERENT place's catalog entry, and the page then
+  // rendered that other game. The creator's own record was never read - which is
+  // the other half of "I changed the settings and nothing happened".
+  const direct = games[String(normalizedPlaceId)];
+  if (direct) {
+    return direct;
+  }
+
   const catalogEntry = resolveRequestedPlace(normalizedPlaceId, buildPlaceCatalogFromMaps());
   const key = String(catalogEntry.placeId || normalizedPlaceId || 1818);
-  const fallback = games[key] || games['1818'] || Object.values(games)[0] || {
+
+  // Only use the catalog match when it actually IS the requested place. A
+  // fallback to catalog[0] must not hijack the request for an unknown id.
+  if (games[key] && Number(catalogEntry.placeId) === Number(normalizedPlaceId)) {
+    return games[key];
+  }
+
+  const fallback = {
     placeId: Number(catalogEntry.placeId || normalizedPlaceId || 1818),
     title: catalogEntry.title || 'LuckyBlox Arena',
     description: 'Local LuckyBlox game',
@@ -2474,7 +2849,7 @@ function getGameEntry(placeId) {
     favorites: 0,
     activeServers: [`${gameServerHost}:${gamePort}`],
     serverList: [`${gameServerHost}:${gamePort}`],
-    votes: { likes: 80, dislikes: 20 },
+    votes: { likes: 0, dislikes: 0 },
     tags: ['Playtest'],
     mapFile: catalogEntry.filename || null,
     mapPath: catalogEntry.path || null,
@@ -6914,25 +7289,94 @@ app.get('/api/me', (req, res) => {
 });
 
 /**
- * Account settings page. A real, working settings surface for the signed-in
- * user: profile (display name / bio / theme / email), privacy and appearance.
- * Guests are sent to sign in first, because there is nothing to save for them.
+ * Account settings, as REAL URLS.
+ *
+ * WHAT WAS BROKEN
+ * ---------------
+ * Only `/settings` existed. The four sections were reached by a `#hash` that the
+ * page's own script swapped in with `history.replaceState`, so:
+ *
+ *   - `/settings/account`, `/settings/privacy`, `/settings/appearance` and
+ *     `/settings/profile` all returned 404 - there was no route to answer them;
+ *   - a refresh landed on Profile whatever section you were in, because a hash
+ *     never reaches the server;
+ *   - the link could not be shared or bookmarked - the recipient got the first tab;
+ *   - the browser's Back button did nothing, since replaceState does not add an
+ *     entry to the history.
+ *
+ * Each section is now its own path. The in-page script keeps using the History API
+ * so switching tabs is instant, but it writes a REAL path, and these routes are
+ * what serve it on arrival, on refresh and on a shared link.
+ *
+ * `/settings/password` and `/settings/security` are accepted too: the older nav
+ * referenced a Security section, and a link that used to exist should not start
+ * 404ing.
  */
+const SETTINGS_SECTIONS = [
+  { slug: 'profile', label: 'Profile' },
+  { slug: 'appearance', label: 'Appearance' },
+  { slug: 'privacy', label: 'Privacy' },
+  { slug: 'account', label: 'Account' },
+  // Aliases: same panel, different URL. `security` maps to the account panel
+  // because the toggles that matter there (sign-out, password) live in it.
+  { slug: 'security', label: 'Account', aliasOf: 'account' },
+  { slug: 'password', label: 'Account', aliasOf: 'account' },
+];
+
+function renderSettingsPage(req, res, section, userId) {
+  const user = getUser(userId);
+
+  // Only ever render the signed-in account's own settings.
+  if (String(user.userId || user.id) !== String(userId)) {
+    return res.redirect('/settings');
+  }
+
+  return res.render('settings', {
+    title: `${section.label} Settings - LuckyBlox`,
+    user,
+    currency: getCurrencyForUser(user),
+    adminBadge: getAdminBadge(user),
+    // Which panel to open on first paint. The view uses this instead of relying
+    // on a client-side hash that the server never sees.
+    activeSection: section.aliasOf || section.slug,
+    settingsSections: SETTINGS_SECTIONS,
+    basePath: '/settings',
+  });
+}
+
 app.get('/settings', (req, res) => {
   const sessionUser = req.sessionUser || resolveSessionUser(req);
   if (!sessionUser) {
     return res.redirect('/signin?redirect=' + encodeURIComponent('/settings'));
   }
   const userId = sessionUser.userId || sessionUser.id || 1;
-  const user = getUser(userId);
 
-  res.render('settings', {
-    title: 'Settings - LuckyBlox',
-    user,
-    currency: getCurrencyForUser(user),
-    adminBadge: getAdminBadge(user),
-  });
+  // An old link may carry the section as a query (`?tab=privacy`). Honour it, and
+  // redirect to the real path so the URL the visitor keeps is the canonical one.
+  const wanted = String(req.query.tab || req.query.section || '').toLowerCase();
+  if (wanted && SETTINGS_SECTIONS.some((s) => s.slug === wanted)) {
+    return res.redirect(`/settings/${wanted}`);
+  }
+
+  return renderSettingsPage(req, res, SETTINGS_SECTIONS[0], userId);
 });
+
+/**
+ * One route per section. Registered from the table above so the list of valid
+ * sections cannot drift from the list the page links to.
+ */
+for (const section of SETTINGS_SECTIONS) {
+  app.get(`/settings/${section.slug}`, (req, res) => {
+    const sessionUser = req.sessionUser || resolveSessionUser(req);
+    if (!sessionUser) {
+      // Preserve WHERE they were going, so sign-in returns them to this section
+      // rather than dumping them on Profile.
+      return res.redirect('/signin?redirect=' + encodeURIComponent(`/settings/${section.slug}`));
+    }
+    const userId = sessionUser.userId || sessionUser.id || 1;
+    return renderSettingsPage(req, res, section, userId);
+  });
+}
 
 /**
  * Save account settings. Only ever writes the *signed-in* user's own record -
@@ -7122,8 +7566,41 @@ app.post('/api/v1/places', express.raw({ type: '*/*', limit: '250mb' }), (req, r
   fs.mkdirSync(savedPlacesDir, { recursive: true });
   const filePath = path.join(savedPlacesDir, fileName);
   fs.writeFileSync(filePath, typeof content === 'string' ? content : JSON.stringify(content, null, 2));
-  const placeId = Number(req.query.placeId || req.body?.placeId || 1818 + Math.floor(Math.random() * 5000));
-  res.json({ ok: true, placeId, fileName, filePath, name: placeName });
+
+  // Use the caller's id when given, otherwise the next FREE one. The old default
+  // was `1818 + random(5000)`, which could collide with an existing game and
+  // silently overwrite it.
+  const asked = Number(req.query.placeId || req.body?.placeId || 0);
+  const placeId = asked > 0 ? asked : nextFreePlaceId();
+
+  // REGISTER the game. This used to write the .rbxlx to disk and return an id,
+  // and nothing else - so the place showed up in the Studio's own list but the
+  // game never appeared on the site: not in the games list, not in search, not on
+  // the home page, and /game/<id> served a fallback. Creating a game has to put it
+  // where the game pages read from.
+  const user = resolveSessionUser(req);
+  const created = createGameRecord(placeId, {
+    title: placeName,
+    description: String(req.body?.description || 'Created in LuckyBlox Studio.'),
+    genre: String(req.body?.genre || 'Adventure'),
+    authorId: user ? String(user.userId || user.id) : (Number(OWNER_USER_ID) || 1),
+    author: (user && user.username) || OWNER_USERNAME,
+    visibility: String(req.body?.visibility || 'Public'),
+    maxPlayers: Number(req.body?.maxPlayers || 20),
+  });
+
+  // Mirror the place row too, so the Studio's place list and the site's game list
+  // describe the same thing.
+  savePlaceSettings(placeId, {
+    name: placeName, description: created.description, genre: created.genre,
+    visibility: created.visibility, maxPlayers: created.maxPlayers,
+    author: created.author, authorId: Number(created.authorId) || 1,
+    fileName, filePath, version: 1,
+  });
+
+  storage.pushContentToRemote().catch(() => { /* best effort */ });
+
+  res.json({ ok: true, placeId, fileName, filePath, name: placeName, game: created });
 });
 
 app.get('/api/v1/places/:placeId', (req, res) => {
@@ -7191,11 +7668,42 @@ function requireDevAuth(req, res, next) {
 
 app.get('/dev', requireDevAuth, (req, res) => {
   const user = getDevUser(req);
-  const places = Object.values(readJson(path.join(dataDir, 'places.json'), {}));
+  const placeRecords = readJson(path.join(dataDir, 'places.json'), {});
   const games = Object.values(getGames());
   const assets = Object.values(getAssets());
+
+  // The Studio's list is derived from the GAMES STORE, not from places.json alone.
+  //
+  // places.json only has a row once a place file has been created or saved, so a
+  // built-in game (and every game that exists only in the store) was missing from
+  // this page entirely - the Studio showed one game while the site showed fifty.
+  // Every game is now listed, with its place metadata merged in when it exists.
+  const places = games
+    .map((game) => {
+      const id = String(game.placeId || '');
+      const record = placeRecords[id] || {};
+      return {
+        placeId: Number(game.placeId),
+        universeId: Number(game.placeId),
+        name: game.title || record.name || `Place ${game.placeId}`,
+        description: game.description || record.description || '',
+        genre: game.genre || record.genre || 'Adventure',
+        visibility: game.visibility || record.visibility || 'Public',
+        maxPlayers: Number(game.maxPlayers || record.maxPlayers || 20),
+        icon: game.icon || DEFAULT_GAME_ICON,
+        author: game.author || record.author || game.developer || 'LuckyBlox Studio',
+        authorId: Number(game.authorId || record.authorId || OWNER_USER_ID) || 1,
+        // File metadata only exists once the place has been saved.
+        fileName: record.fileName || '',
+        filePath: record.filePath || '',
+        version: Number(record.version || 1),
+        updatedAt: game.updatedAt || record.updatedAt || '',
+      };
+    })
+    .sort((a, b) => a.placeId - b.placeId);
+
   res.render('dev/home', {
-    title: 'LuckyBlox Studio - dev.LuckBlox.site.tk',
+    title: 'LuckyBlox Studio - LuckyBlox',
     user,
     places,
     games,
@@ -7232,15 +7740,39 @@ app.post('/dev/create', requireDevAuth, express.urlencoded({ extended: true, lim
     visibility: body.visibility || 'Public',
   };
   fs.writeFileSync(filePath, JSON.stringify(placeData, null, 2));
-  const placeId = Number(req.query.placeId || Date.now() % 100000);
+
+  // A new game needs an id nothing else is using. `Date.now() % 100000` produced
+  // an id from the clock, which repeats every 100 seconds of wall time - creating
+  // two games in the same window, or one that collided with an existing game,
+  // silently overwrote the other.
+  const asked = Number(req.query.placeId || body.placeId || 0);
+  const placeId = asked > 0 ? asked : nextFreePlaceId();
+
+  // REGISTER IT ON THE SITE. This route wrote the .rbxlx and a places.json row and
+  // stopped - so a game created in the Studio was listed in the Studio and was
+  // invisible everywhere else: not in the games list, not in search, not on the
+  // home page, and /game/<id> fell back to a placeholder. `createGameRecord`
+  // writes the record every public surface reads.
+  const created = createGameRecord(placeId, {
+    title: placeName,
+    description: placeData.description,
+    genre: placeData.genre,
+    visibility: placeData.visibility,
+    maxPlayers: placeData.maxPlayers,
+    authorId: devUser.userId || devUser.id || OWNER_USER_ID,
+    author: devUser.username || OWNER_USERNAME,
+  });
+
   const places = readJson(path.join(dataDir, 'places.json'), {});
   places[String(placeId)] = {
     placeId, universeId: placeId, name: placeName, description: placeData.description,
     fileName, filePath, version: 1,
-    author: String(devUser.username || 'Creator'),
-    authorId: Number(devUser.userId || devUser.id || 1),
+    author: created.author,
+    authorId: Number(created.authorId) || 1,
     maxPlayers: placeData.maxPlayers,
-    allowHttpRequests: true, visibility: placeData.visibility, genre: placeData.genre, updatedAt: new Date().toISOString(),
+    allowHttpRequests: true, visibility: placeData.visibility, genre: placeData.genre,
+    createdAt: created.createdAt,
+    updatedAt: created.updatedAt,
   };
   writeJson(path.join(dataDir, 'places.json'), places);
 
@@ -7248,22 +7780,52 @@ app.post('/dev/create', requireDevAuth, express.urlencoded({ extended: true, lim
   // actual content survives a redeploy, not just its index row.
   storage.pushContentToRemote().catch(() => { /* best effort */ });
 
-  res.json({ ok: true, placeId, fileName, filePath });
+  res.json({ ok: true, placeId, fileName, filePath, name: placeName, game: created });
 });
 
 app.get('/dev/game/:placeId/settings', requireDevAuth, (req, res) => {
   const user = getDevUser(req);
   const placeId = Number(req.params.placeId || 1818);
-  const places = readJson(path.join(dataDir, 'places.json'), {});
-  const place = places[String(placeId)] || {
-    placeId, universeId: placeId, name: `Place ${placeId}`, description: '',
-    fileName: `place-${placeId}.rbxlx`, version: 1, author: 'LocalPlayer', maxPlayers: 20,
-    allowHttpRequests: true, visibility: 'Public', genre: 'Adventure', iconUrl: '',
-  };
+
+  // The form must open on the values the SITE is actually serving, not on a
+  // stale places.json row. It previously read places.json alone, so a game whose
+  // real title/icon/genre live in games.json showed the form's placeholders - the
+  // Studio displayed one thing while the site displayed another, and saving then
+  // "changed" values that had never been shown.
+  const game = getGameEntry(placeId);
+  const place = getPlaceSettings(placeId);
+
+  // One object for the view: places.json supplies the file/version/author
+  // metadata, games.json supplies everything a creator edits.
   res.render('dev/settings', {
-    title: `${place.name} - Settings`,
+    title: `${game.title || place.name} - Settings`,
     user,
-    place,
+    place: {
+      ...place,
+      placeId: Number(place.placeId || placeId),
+      universeId: Number(place.universeId || placeId),
+      // Studio spelling on the left, site value on the right.
+      name: game.title || place.name || `Place ${placeId}`,
+      description: game.description || place.description || '',
+      genre: game.genre || place.genre || 'Adventure',
+      visibility: game.visibility || place.visibility || 'Public',
+      maxPlayers: Number(game.maxPlayers || place.maxPlayers || 20),
+      iconUrl: game.icon || place.iconUrl || '',
+      coverUrl: game.cover || place.coverUrl || '',
+      playableDevices: game.playableDevices || place.playableDevices || 'Computer',
+      allowHttpRequests: game.allowHttpRequests !== false,
+      privateServerAllowed: game.privateServerAllowed !== false,
+      allowThirdPartySales: game.allowThirdPartySales !== false,
+      isFriendsOnly: Boolean(game.isFriendsOnly),
+      ageRating: game.ageRating || place.ageRating || 'All Ages',
+      // Ownership: id 1 is the deployment owner and holds the built-in games.
+      authorId: Number(game.authorId || place.authorId || OWNER_USER_ID),
+      author: game.developer || place.author || 'LuckyBlox Studio',
+    },
+    genres: ROBLOX_GENRES,
+    deviceOptions: ROBLOX_PLAYABLE_DEVICES,
+    ageRatings: ROBLOX_AGE_RATINGS,
+    isOwnerOfGame: isOwnerUser(user),
     currency: getCurrencyForUser(user),
     adminBadge: getAdminBadge(user),
   });
@@ -7271,22 +7833,13 @@ app.get('/dev/game/:placeId/settings', requireDevAuth, (req, res) => {
 
 app.post('/dev/game/:placeId/settings', requireDevAuth, (req, res) => {
   const placeId = Number(req.params.placeId || 1818);
-  const places = readJson(path.join(dataDir, 'places.json'), {});
-  if (!places[String(placeId)]) {
-    places[String(placeId)] = {
-      placeId, universeId: placeId, name: `Place ${placeId}`, version: 1, author: 'LocalPlayer', authorId: 1,
-    };
-  }
-  const p = places[String(placeId)];
-  p.name = req.body?.name || p.name;
-  p.description = req.body?.description || p.description;
-  p.visibility = req.body?.visibility || p.visibility;
-  p.genre = req.body?.genre || p.genre;
-  p.maxPlayers = Number(req.body?.maxPlayers || p.maxPlayers || 20);
-  p.iconUrl = req.body?.iconUrl || p.iconUrl;
-  p.updatedAt = new Date().toISOString();
-  writeJson(path.join(dataDir, 'places.json'), places);
-  res.json({ ok: true, place: p });
+  const body = req.body || {};
+
+  // Writes through to BOTH stores. Writing only places.json is what made this
+  // form a no-op on the public site - see saveGameSettings.
+  const game = saveGameSettings(placeId, body);
+
+  res.json({ ok: true, place: getPlaceSettings(placeId), game });
 });
 
 app.get('/dev/assets', requireDevAuth, (req, res) => {

@@ -10,6 +10,19 @@
   <link rel="stylesheet" href="/css/develop.css" />
 </head>
 <body>
+<%
+  // Which game the Studio nav should open.
+  //
+  // EVERY Studio page used to hardcode /dev/game/1818/settings, so clicking
+  // Settings while editing any other game opened 1818 instead - the settings
+  // you asked for appeared not to load, and a save then wrote to the wrong
+  // place. This resolves the id from whatever the view actually has.
+  var studioPlaceId = (typeof place !== "undefined" && place && place.placeId)
+    ? Number(place.placeId)
+    : ((typeof places !== "undefined" && Array.isArray(places) && places.length)
+      ? Number(places[0].placeId || places[0].universeId || 1818)
+      : 1818);
+%>
   <header class="roblox-topbar">
     <div class="roblox-brand">
       <span class="roblox-brand-mark">R</span>
@@ -47,7 +60,7 @@
       <div class="dev-sidebar-brand">Studio</div>
       <a href="/dev"><span class="dev-sidebar-icon">&#8962;</span> Home</a>
       <a href="/dev/create"><span class="dev-sidebar-icon"><img class="ch-ico" src="/icons/plus.svg" alt="" /></span> Create</a>
-      <a href="/dev/game/1818/settings" class="active"><span class="dev-sidebar-icon"><img class="ch-ico" src="/icons/settings.svg" alt="" /></span> Settings</a>
+      <a href="/dev/game/<%- studioPlaceId %>/settings" class="active"><span class="dev-sidebar-icon"><img class="ch-ico" src="/icons/settings.svg" alt="" /></span> Settings</a>
       <a href="/dev/assets"><span class="dev-sidebar-icon"><img class="ch-ico" src="/icons/assets.svg" alt="" /></span> Assets</a>
       <a href="/dev/docs"><span class="dev-sidebar-icon">&#8505;</span> API Docs</a>
     </aside>
@@ -56,29 +69,44 @@
       <div class="dev-header">
         <div>
           <h1>Game Settings</h1>
-          <div class="dev-header-subtitle">Configure <%= place.name %> &mdash; Place ID: <%= place.placeId %></div>
+          <div class="dev-header-subtitle">Configure <%= place.name %> &mdash; Place ID: <%- Number(place.placeId) %></div>
         </div>
       </div>
 
-      <form id="settingsForm" class="dev-form" method="POST" action="/dev/game/<%= place.placeId %>/settings">
+      <%# The save result is reported here, in the page, rather than through
+          alert(). An alert is dismissed and leaves no trace of what was saved, so
+          the previous version could not tell the difference between "saved, and
+          the site changed" and "saved, and nothing happened". %>
+      <div class="dev-notice" id="saveStatus" role="status" aria-live="polite" hidden></div>
+
+      <form id="settingsForm" class="dev-form" method="POST" action="/dev/game/<%- Number(place.placeId) %>/settings">
         <label>
           Experience Name
           <input name="name" type="text" value="<%= place.name || '' %>" required maxlength="100" />
+          <small class="dev-help">Shown on the game page, the home carousel and search.</small>
         </label>
 
         <label>
           Description
-          <textarea name="description" maxlength="500"><%= place.description || '' %></textarea>
+          <textarea name="description" maxlength="1000" rows="4"><%= place.description || '' %></textarea>
+          <small class="dev-help">The text under “About” on the game page.</small>
         </label>
 
+        <%# Genre is a CHOICE, not a text box. Roblox lists a fixed set of genres, and
+            the site builds its Discover filter chips from whatever genres exist -
+            so a typed-in value produced a filter nothing else could match. %>
         <label>
           Genre
-          <input name="genre" type="text" value="<%= place.genre || 'Adventure' %>" maxlength="50" />
+          <select name="genre" class="lb-select">
+            <% (genres || []).forEach(function (g) { %>
+              <option value="<%= g %>" <%= (place.genre === g) ? 'selected' : '' %>><%= g %></option>
+            <% }); %>
+          </select>
         </label>
 
         <label>
           Visibility
-          <select name="visibility">
+          <select name="visibility" class="lb-select">
             <option value="Public" <%= place.visibility === 'Public' ? 'selected' : '' %>>Public</option>
             <option value="Friends" <%= place.visibility === 'Friends' ? 'selected' : '' %>>Friends</option>
             <option value="Private" <%= place.visibility === 'Private' ? 'selected' : '' %>>Private</option>
@@ -86,24 +114,83 @@
         </label>
 
         <label>
-          Max Players
+          Max Players (per server)
           <input name="maxPlayers" type="number" min="1" max="200" value="<%= place.maxPlayers || 20 %>" />
         </label>
 
         <label>
-          Game Icon URL (512x512)
-          <input name="iconUrl" type="url" value="<%= place.iconUrl || '' %>" placeholder="https://..." />
+          Playable Devices
+          <select name="playableDevices" class="lb-select">
+            <% (deviceOptions || []).forEach(function (d) { %>
+              <option value="<%= d %>" <%= place.playableDevices === d ? 'selected' : '' %>><%= d %></option>
+            <% }); %>
+          </select>
+        </label>
+
+        <label>
+          Age Rating
+          <select name="ageRating" class="lb-select">
+            <% (ageRatings || []).forEach(function (a) { %>
+              <option value="<%= a %>" <%= place.ageRating === a ? 'selected' : '' %>><%= a %></option>
+            <% }); %>
+          </select>
+        </label>
+
+        <fieldset class="dev-fieldset">
+          <legend>Security</legend>
+          <label class="dev-check">
+            <input type="checkbox" name="allowHttpRequests" value="true"
+                   <%= place.allowHttpRequests !== false ? 'checked' : '' %> />
+            Allow HTTP Requests
+          </label>
+          <label class="dev-check">
+            <input type="checkbox" name="allowThirdPartySales" value="true"
+                   <%= place.allowThirdPartySales !== false ? 'checked' : '' %> />
+            Allow Third Party Sales
+          </label>
+        </fieldset>
+
+        <fieldset class="dev-fieldset">
+          <legend>Access</legend>
+          <label class="dev-check">
+            <input type="checkbox" name="privateServerAllowed" value="true"
+                   <%= place.privateServerAllowed !== false ? 'checked' : '' %> />
+            Allow Private Servers
+          </label>
+          <label class="dev-check">
+            <input type="checkbox" name="isFriendsOnly" value="true"
+                   <%= place.isFriendsOnly ? 'checked' : '' %> />
+            Friends Only
+          </label>
+        </fieldset>
+
+        <label>
+          Game Icon URL
+          <input name="iconUrl" type="text" value="<%= place.iconUrl || '' %>"
+                 placeholder="/gameplaceholder/card.png or https://..." />
+          <small class="dev-help">
+            Shown as the square card on the home page and as the game-page icon.
+            Artwork is a 1:1 square. Leave blank for the shipped placeholder.
+          </small>
+        </label>
+
+        <label>
+          Cover / Thumbnail URL
+          <input name="coverUrl" type="text" value="<%= place.coverUrl || '' %>"
+                 placeholder="/gameplaceholder/game-thumb.png or https://..." />
+          <small class="dev-help">The wide 16:9 image at the top of the game page.</small>
         </label>
 
         <div class="dev-btn-row">
           <button type="submit" class="dev-btn primary">Save Settings</button>
           <button type="button" class="dev-btn secondary" id="reloadBtn">Reload</button>
+          <a class="dev-btn secondary" href="/game/<%= place.placeId %>" target="_blank" rel="noopener">View game page</a>
         </div>
       </form>
 
       <div style="margin-top:24px;">
         <div class="dev-notice info">
-          Game icon must be a 512x512 PNG. Upload via the Assets page to manage images.
+          Saving here updates the live game page, the home carousel and search.
         </div>
 
         <h2 style="margin:0 0 12px; font-size:16px;">Game Info</h2>
@@ -111,7 +198,8 @@
           <tbody>
             <tr><td style="color:var(--dev-muted); width:160px;">Place ID</td><td><%= place.placeId %></td></tr>
             <tr><td style="color:var(--dev-muted);">Universe ID</td><td><%= place.universeId || place.placeId %></td></tr>
-            <tr><td style="color:var(--dev-muted);">Author</td><td><%= place.author || 'LocalPlayer' %></td></tr>
+            <tr><td style="color:var(--dev-muted);">Owner</td><td><%= place.author || 'LuckyBlox Studio' %> <span style="color:var(--dev-muted);">(id <%= place.authorId %>)</span></td></tr>
+            <tr><td style="color:var(--dev-muted);">You own this</td><td><%= isOwnerOfGame ? 'Yes' : 'No' %></td></tr>
             <tr><td style="color:var(--dev-muted);">Version</td><td><%= place.version || 1 %></td></tr>
             <tr><td style="color:var(--dev-muted);">File</td><td><code style="font-size:12px;"><%= place.fileName || 'N/A' %></code></td></tr>
             <tr><td style="color:var(--dev-muted);">Last Updated</td><td><%= place.updatedAt ? new Date(place.updatedAt).toLocaleString() : 'Never' %></td></tr>
@@ -124,21 +212,55 @@
   <script>
     document.getElementById('settingsForm').addEventListener('submit', async (event) => {
       event.preventDefault();
-      const formData = new FormData(event.target);
+      const form = event.target;
+      const formData = new FormData(form);
       const payload = {};
       for (const [key, value] of formData.entries()) payload[key] = value;
-      // Raw (<%- %>) - this is a URL inside a JS template literal, and the escaped
-      // form would emit &#34; subtly corrupting the request path.
-      const response = await fetch(`/dev/game/<%- Number(place.placeId) %>/settings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(payload).toString()
-      });
-      const data = await response.json();
-      if (data.ok) {
-        alert('Settings saved successfully!');
-      } else {
-        alert('Failed to save settings.');
+
+      // An UNCHECKED checkbox is omitted from FormData entirely, so the server
+      // cannot tell "the user unchecked it" from "the field was not on the page".
+      // Every toggle is therefore sent explicitly as 'true' or 'false'.
+      for (const box of form.querySelectorAll('input[type="checkbox"]')) {
+        payload[box.name] = box.checked ? 'true' : 'false';
+      }
+
+      const status = document.getElementById('saveStatus');
+      const btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      // ASCII on purpose: this is a JS string literal, so an HTML entity here
+      // would be assigned verbatim and shown as "&hellip;" on the button.
+      btn.textContent = 'Saving...';
+
+      try {
+        // Raw (<%- %>) - this is a URL inside a JS template literal, and the escaped
+        // form would emit &#34; subtly corrupting the request path.
+        const response = await fetch(`/dev/game/<%- Number(place.placeId) %>/settings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+          body: new URLSearchParams(payload).toString()
+        });
+
+        // A redirect means the session expired; fetch follows it to the sign-in
+        // page and the JSON parse then fails with a confusing error.
+        if (response.redirected || !response.headers.get('content-type')?.includes('application/json')) {
+          throw new Error('Your session has expired. Sign in again and retry.');
+        }
+
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.message || 'The server rejected the settings.');
+
+        // Report the values the SERVER saved, not the ones typed - so a field the
+        // server normalised or ignored is visible rather than assumed.
+        status.hidden = false;
+        status.textContent = 'Saved. The game page, home carousel and search now show "'
+          + (data.game && data.game.title ? data.game.title : payload.name) + '".';
+      } catch (error) {
+        status.hidden = false;
+        status.textContent = error.message || 'Could not save the settings.';
+        status.classList.add('is-error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save Settings';
       }
     });
 

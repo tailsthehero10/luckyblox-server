@@ -257,8 +257,7 @@ body.theme-dark .lb-header {
 }
 
 /* Real: .btn-secondary-xs{... padding:4px; font-size:12px; border-radius:3px} */
-.btn-secondary-xs,
-.see-all-button {
+.btn-secondary-xs {
   user-select: none;
   background-color: var(--rbx-blue);
   border: 1px solid var(--rbx-blue);

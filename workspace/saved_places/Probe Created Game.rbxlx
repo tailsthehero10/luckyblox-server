@@ -1,0 +1,7 @@
+{
+  "name": "Probe Created Game",
+  "description": "Made by the test.",
+  "genre": "Racing",
+  "maxPlayers": 12,
+  "visibility": "Public"
+}

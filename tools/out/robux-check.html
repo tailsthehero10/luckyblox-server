@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Robux icon check</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #fff;
+    }
+
+    h2 {
+      font-size: 14px;
+      color: #666;
+      margin: 24px 0 8px;
+    }
+
+    /* Light header: the real 2021 bar colour. */
+    .bar-light {
+      background: #dee1e3;
+      padding: 14px 18px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .bar-dark {
+      background: #191b1d;
+      padding: 14px 18px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .bar-light .lb-robux {
+      color: #393b3d;
+    }
+
+    .bar-dark .lb-robux {
+      color: #ffffff;
+    }
+
+    /* Exactly how the site paints it: a mask filled with the text colour. */
+    .lb-robux {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .lb-robux::before {
+      content: "";
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+      background-color: currentColor;
+      -webkit-mask: url("/icons/robux.svg") center / contain no-repeat;
+      mask: url("/icons/robux.svg") center / contain no-repeat;
+    }
+
+    .big::before {
+      width: 64px;
+      height: 64px;
+    }
+
+    .huge::before {
+      width: 140px;
+      height: 140px;
+    }
+
+    /* As an <img>, which cannot use currentColor - proves the fallback too. */
+    .as-img {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>1. In the light header (should be dark, readable)</h2>
+  <div class="bar-light">
+    <span class="lb-robux">123</span>
+    <span class="lb-robux big">123</span>
+  </div>
+
+  <h2>2. In the dark header (should be white, readable)</h2>
+  <div class="bar-dark">
+    <span class="lb-robux">123</span>
+    <span class="lb-robux big">123</span>
+  </div>
+
+  <h2>3. Large, so the shape is visible</h2>
+  <div style="color:#393b3d"><span class="lb-robux huge"></span></div>
+
+  <h2>4. The raw file (shape only)</h2>
+  <div class="as-img">
+    <img src="/icons/robux.svg" width="140" height="140" alt="robux">
+    <img src="/icons/robux.svg" width="64" height="64" alt="robux">
+    <img src="/icons/robux.svg" width="32" height="32" alt="robux">
+    <img src="/icons/robux.svg" width="16" height="16" alt="robux">
+  </div>
+</body>
+
+</html>

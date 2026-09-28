@@ -129,6 +129,55 @@ quoted, say so in a comment instead of inventing it.
       in the header keeps its marker in sync with the document. Verified: the glyph
       is `rgb(96,104,109)` on the light bar and `rgb(255,255,255)` on the dark one.
 
+### Round 3 — the Studio, HTTPS, and creating games (the owner's report)
+
+- [x] **Every Studio "Settings" link opened game 1818.** All 10 Studio views
+      hardcoded `href="/dev/game/1818/settings"` in the nav and sidebar - 19
+      occurrences. Clicking Settings while editing ANY other game opened 1818, so
+      the settings you asked for appeared not to load and a save then wrote to the
+      wrong place. The links now resolve the id from the game in view, and
+      `tests/studio-links.test.js` fails on any hardcoded id.
+- [x] **The Studio listed only the places that had a saved FILE.** `/dev` built its
+      list from `places.json`, which is empty until a place is saved, so one game
+      was shown while the site showed fifty. It now lists every game from the store,
+      merging in file metadata where it exists. Verified: 1 game -> 5 distinct.
+- [x] **Creating a game did not create a GAME.** `/dev/create` and
+      `POST /api/v1/places` wrote the `.rbxlx` and a `places.json` row and stopped -
+      so a game made in the Studio was invisible on the site: not in the games list,
+      not in search, not on the home page, and `/game/<id>` served a fallback. Both
+      now call `createGameRecord()`, which writes the record every public surface
+      reads. Guarded by `tests/studio-create-game.test.js`.
+- [x] **Creating a game could OVERWRITE a different game.** The id came from the
+      clock (`Date.now() % 100000`, which repeats every 100 seconds) or
+      `1818 + random(5000)`. Replaced with `nextFreePlaceId()`, which walks to the
+      first unused id. The test asserts an existing game survives a create.
+- [x] **A boot-time migration DELETED real games.** When `games.json` held only
+      `{1818}`, startup replaced the entire file with the map catalog. That is two
+      bugs at once: it discarded whatever the owner had saved on 1818, and it baked
+      the catalog's DERIVED data (per-map ids and filenames) into the store, so the
+      file stopped describing what a creator actually saved. It now imports only
+      MISSING ids and never touches a stored record.
+- [x] **Saving a game could persist a merged view over the store.** `getGames()`
+      layers the catalog and seed over the file and DERIVES titles from map
+      filenames - correct to read, destructive to write. `saveGameSettings` and
+      `createGameRecord` now read the raw file via `getStoredGames()`. Found by the
+      new test, which caught the create route wiping an existing record.
+- [x] **HTTPS: verified, not assumed.** `tests/studio-http-https.test.js` drives the
+      Studio over plain http AND as the https deployment serves it (TLS terminated
+      in front, `X-Forwarded-Proto: https`) and asserts: the settings page renders,
+      no insecure URL appears on an https page (mixed content is what would make
+      "online features just not work"), the save persists, the public page shows it,
+      and the client's `AppSettings.xml` carries the MATCHING scheme - `https://` on
+      the public origin, `http://localhost:PORT` locally.
+- [x] **The client IS installable from the server.** Verified by fetching it:
+      `/download/client` -> 200, the installer (31,744 bytes); `/download/client/binary`
+      -> 200, the client build (36,185,992 bytes); `/api/client/status` and
+      `/api/client/build-info` -> 200. All four answer over the public HTTPS origin
+      too, so a visitor can download and install from the live site.
+- [x] **`/dev/create`'s page title said "Create - LuckyBlox"**, the same string as
+      `/create`, so the two were indistinguishable in the tab and in history. The
+      Studio pages now title themselves consistently.
+
 ### Round 2 — found by rendering pages rather than reading them
 
 Every one of these was invisible to the tests and to the HTML sweep. They were
@@ -136,8 +185,13 @@ caught by loading pages in a real browser and screenshotting them:
 
 - [x] **Mojibake in the source (30+ lines).** Em dashes and ellipses had been
       re-encoded as latin-1 at some point and rendered as garbage - including page
-      TITLES, so the browser tab read `LuckyBlox أ¢â‚¬â€ Status`. Repaired across
-      13 files by `tools/fix-mojibake.js`; `tests/no-mojibake.test.js` guards it.
+      TITLES, so the browser tab showed the garbage instead of an em dash before
+      the page name. Repaired across 13 files by `tools/fix-mojibake.js`;
+      `tests/no-mojibake.test.js` guards it.
+
+      NOTE: this entry must not QUOTE a damaged sequence. Writing one as an example
+      puts it back in the source, and the guard then (correctly) fails on the very
+      note describing the fix. See `tools/find-mojibake.js` for the byte patterns.
 - [x] **`robux.svg` was invalid XML.** Its explanatory comment contained `--`
       sequences, and a double hyphen is ILLEGAL inside an XML comment - the
       browser rejected the whole file at that line, so the glyph degraded to a
@@ -226,6 +280,45 @@ because "the tests are red" was sending every session after the wrong thing:
       returning 200).
 
 ## P2 — features not built yet
+
+- [x] **Studio game settings now reach the live site, and cover the full Roblox
+      field set.** This was the owner's question ("I can change their game icons
+      and game type, and the studio could have the same settings but I don't know
+      if it works"). It did NOT work, for two separate reasons:
+
+      1. **The Studio wrote `places.json`; every public surface reads `games.json`.**
+         Nothing bridged them. A creator could rename a game, change its genre and
+         set an icon, get "Settings saved successfully!", and see NO change
+         anywhere - no error, no warning. `saveGameSettings()` now writes BOTH
+         stores, with a field map (`name`/`title`, `iconUrl`/`icon`, …) so the two
+         views cannot drift apart again.
+      2. **`getGameEntry()` resolved the WRONG GAME.** It looked the key up in the
+         map catalog first, and `resolveRequestedPlace()` always returns something -
+         it falls back to `catalog[0]` for an unknown id. So a game that existed
+         only in games.json resolved to a different place's catalog entry and the
+         page rendered that other game. It now trusts games.json for its own id.
+      3. **`getGames()` overwrote the saved title with the map filename on every
+         load** (`title: entry.title || ...`, unconditional). The map name is only a
+         fallback now.
+
+      The settings form went from 5 fields to the full Roblox set: **25 genres as a
+      dropdown** (was a free-text box, which is how a game got tagged "asdf" and
+      became unfindable), visibility, max players, **playable devices**, **age
+      rating**, and the Security/Access toggles (HTTP requests, third-party sales,
+      private servers, friends-only), plus icon and cover URLs. It reports what was
+      saved instead of raising an `alert()` nobody can re-read, and unchecking a box
+      now saves `false` rather than being silently omitted (an unchecked checkbox
+      sends nothing, and `'false'` is a truthy string).
+
+      Guarded by `tests/studio-settings-reach.test.js`, which saves through the
+      Studio and asserts the change is on the public page, that the game is owned
+      by id 1, that counters survive an edit, and that booleans stay boolean.
+
+- [x] **The built-in games are owned by id 1, recorded rather than assumed.** They
+      carried no `authorId` at all, so "id 1 owns the pre-added games" was a
+      premise nothing enforced - and any later ownership check would have refused
+      the owner access to their own games. `createDefaultGames()` and the catalog
+      merge now both name the owner, and the Studio shows a real "You own this" row.
 
 - [~] **Installer / launcher app** — `tools/installer/LuckybloxInstaller.cs` builds
       and installs/updates both Player and Studio; the site serves it from

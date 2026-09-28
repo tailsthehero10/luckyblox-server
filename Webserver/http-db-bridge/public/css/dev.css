@@ -325,6 +325,69 @@ body {
   color: #5ac8fa;
 }
 
+/* The save result. Green by default (success), red on .is-error. It replaces the
+   alert() the form used to raise, which left no record of what was saved.
+   Scoped to #saveStatus only - styling every .dev-notice green would override the
+   .info variant above it (which has the same specificity and comes first). */
+#saveStatus {
+  background: rgba(2,183,87,0.08);
+  border: 1px solid rgba(2,183,87,0.25);
+  color: #02b757;
+}
+
+#saveStatus[hidden] { display: none; }
+
+#saveStatus.is-error {
+  background: rgba(212,34,34,0.08);
+  border-color: rgba(212,34,34,0.3);
+  color: #d42222;
+}
+
+/* Helper text under a field. Explains what the setting does and, where it
+   matters (artwork), the shape the image must be. */
+.dev-help {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--dev-muted);
+}
+
+/* A group of related toggles, the way Studio groups Security and Access. */
+.dev-fieldset {
+  border: 1px solid var(--dev-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 4px 0;
+}
+
+.dev-fieldset legend {
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--dev-muted);
+}
+
+/* A checkbox row: the box and its label on one line, not stacked. */
+.dev-form label.dev-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 4px 0;
+}
+
+.dev-form label.dev-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  flex: 0 0 auto;
+  accent-color: var(--dev-accent);
+}
+
 .dev-upload-zone {
   border: 2px dashed var(--dev-border);
   border-radius: 10px;

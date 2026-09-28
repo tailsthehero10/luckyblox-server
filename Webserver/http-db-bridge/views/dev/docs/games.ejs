@@ -10,6 +10,19 @@
   <link rel="stylesheet" href="/css/develop.css" />
 </head>
 <body>
+<%
+  // Which game the Studio nav should open.
+  //
+  // EVERY Studio page used to hardcode /dev/game/1818/settings, so clicking
+  // Settings while editing any other game opened 1818 instead - the settings
+  // you asked for appeared not to load, and a save then wrote to the wrong
+  // place. This resolves the id from whatever the view actually has.
+  var studioPlaceId = (typeof place !== "undefined" && place && place.placeId)
+    ? Number(place.placeId)
+    : ((typeof places !== "undefined" && Array.isArray(places) && places.length)
+      ? Number(places[0].placeId || places[0].universeId || 1818)
+      : 1818);
+%>
   <header class="roblox-topbar">
     <div class="roblox-brand">
       <span class="roblox-brand-mark">R</span>
@@ -18,7 +31,7 @@
     <nav class="roblox-nav" aria-label="Main navigation">
       <div class="roblox-nav-links">
         <a href="/dev">Home</a>
-        <a href="/dev/game/1818/settings">Game</a>
+        <a href="/dev/game/<%- studioPlaceId %>/settings">Game</a>
         <a href="/dev/assets">Assets</a>
         <a href="/dev/docs" class="active">API</a>
         <div class="roblox-more-pages">
@@ -47,7 +60,7 @@
       <div class="dev-sidebar-brand">Studio</div>
       <a href="/dev"><span class="dev-sidebar-icon">&#8962;</span> Home</a>
       <a href="/dev/create"><span class="dev-sidebar-icon"><img class="ch-ico" src="/icons/plus.svg" alt="" /></span> Create</a>
-      <a href="/dev/game/1818/settings"><span class="dev-sidebar-icon"><img class="ch-ico" src="/icons/settings.svg" alt="" /></span> Settings</a>
+      <a href="/dev/game/<%- studioPlaceId %>/settings"><span class="dev-sidebar-icon"><img class="ch-ico" src="/icons/settings.svg" alt="" /></span> Settings</a>
       <a href="/dev/assets"><span class="dev-sidebar-icon"><img class="ch-ico" src="/icons/assets.svg" alt="" /></span> Assets</a>
       <a href="/dev/docs"><span class="dev-sidebar-icon">&#8505;</span> API Docs</a>
       <a href="/dev/docs/games" class="active"><span class="dev-sidebar-icon">&#9654;</span> Game Engine</a>

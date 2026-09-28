@@ -1,0 +1,7 @@
+{
+  "name": "New One",
+  "description": "",
+  "genre": "Adventure",
+  "maxPlayers": 20,
+  "visibility": "Public"
+}

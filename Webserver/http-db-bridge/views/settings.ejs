@@ -29,16 +29,39 @@
       duplicating them, so there is exactly one place to change an avatar.
     -->
     <div class="settings-window">
+      <%
+        // The four sections the SERVER knows about, so the nav can never link to a
+        // path that has no route. Aliases (security, password) are filtered out of
+        // the nav - they are accepted URLs, not separate tabs.
+        var navSections = (typeof settingsSections !== 'undefined' && settingsSections)
+          ? settingsSections.filter(function (s) { return !s.aliasOf; })
+          : [
+            { slug: 'profile', label: 'Profile' },
+            { slug: 'appearance', label: 'Appearance' },
+            { slug: 'privacy', label: 'Privacy' },
+            { slug: 'account', label: 'Account' },
+          ];
+        var currentSection = (typeof activeSection !== 'undefined' && activeSection)
+          ? activeSection : 'profile';
+      %>
+      <%# Real PATHS, not `#hash` links.
+
+          The hash form was the bug: `href="#account"` never reaches the server, so
+          /settings/account 404'd, a refresh always landed back on Profile, the
+          browser Back button did nothing, and a shared link opened the wrong tab.
+          These resolve to /settings/<section>, which the server routes.
+
+          data-panel stays, because the in-page script still switches instantly
+          once the page is loaded - it just writes a real path now. %>
       <aside class="settings-sidebar" role="tablist" aria-label="Settings sections">
         <div class="settings-sidebar-title">Settings</div>
-        <a href="#profile" class="settings-nav-link is-active" role="tab" aria-selected="true"
-           data-panel="profile">Profile</a>
-        <a href="#appearance" class="settings-nav-link" role="tab" aria-selected="false"
-           data-panel="appearance">Appearance</a>
-        <a href="#privacy" class="settings-nav-link" role="tab" aria-selected="false"
-           data-panel="privacy">Privacy</a>
-        <a href="#account" class="settings-nav-link" role="tab" aria-selected="false"
-           data-panel="account">Account</a>
+        <% navSections.forEach(function (s) { %>
+        <a href="/settings/<%= s.slug %>"
+           class="settings-nav-link<%= s.slug === currentSection ? ' is-active' : '' %>"
+           role="tab"
+           aria-selected="<%= s.slug === currentSection ? 'true' : 'false' %>"
+           data-panel="<%= s.slug %>"><%= s.label %></a>
+        <% }); %>
       </aside>
 
       <main class="settings-main">
@@ -51,7 +74,13 @@
 
         <form id="settingsForm">
           <!-- Profile -->
-          <section class="settings-panel" id="panel-profile" role="tabpanel">
+          <%# `hidden` is set from the SERVER's activeSection, not hardcoded to
+              Profile. A direct visit to /settings/privacy has to render the Privacy
+              panel on first paint - if the server always marks Profile visible, the
+              right URL still shows the wrong panel until JavaScript runs, and shows
+              it forever if JavaScript fails. %>
+          <section class="settings-panel" id="panel-profile" role="tabpanel"
+                   <%= currentSection === 'profile' ? '' : 'hidden' %>>
             <div class="roblox-panel">
               <div class="roblox-panel-header">
                 <img class="ch-ico ch-ico-sm" src="/icons/profile.svg" alt="" /> Profile
@@ -94,7 +123,8 @@
           </section>
 
           <!-- Appearance -->
-          <section class="settings-panel" id="panel-appearance" role="tabpanel" hidden>
+          <section class="settings-panel" id="panel-appearance" role="tabpanel"
+                   <%= currentSection === 'appearance' ? '' : 'hidden' %>>
             <div class="roblox-panel">
               <div class="roblox-panel-header">
                 <img class="ch-ico ch-ico-sm" src="/icons/palette.svg" alt="" /> Appearance
@@ -132,7 +162,8 @@
           </section>
 
           <!-- Privacy -->
-          <section class="settings-panel" id="panel-privacy" role="tabpanel" hidden>
+          <section class="settings-panel" id="panel-privacy" role="tabpanel"
+                   <%= currentSection === 'privacy' ? '' : 'hidden' %>>
             <div class="roblox-panel">
               <div class="roblox-panel-header">
                 <img class="ch-ico ch-ico-sm" src="/icons/lock.svg" alt="" /> Privacy
@@ -154,7 +185,8 @@
           </section>
 
           <!-- Account -->
-          <section class="settings-panel" id="panel-account" role="tabpanel" hidden>
+          <section class="settings-panel" id="panel-account" role="tabpanel"
+                   <%= currentSection === 'account' ? '' : 'hidden' %>>
             <div class="roblox-panel">
               <div class="roblox-panel-header">
                 <img class="ch-ico ch-ico-sm" src="/icons/settings.svg" alt="" /> Account
@@ -232,12 +264,27 @@
       applyTheme(savedTheme);
 
       // --- The section list SWITCHES the visible panel (one window at a time),
-      // which is what a settings window does. The old code scrolled to an anchor
-      // and left every card on the page, which is not a window.
+      // which is what a settings window does.
       var links = document.querySelectorAll('.settings-nav-link');
       var panels = document.querySelectorAll('.settings-panel');
 
-      function showPanel(key) {
+      // The base path, from the server, so this is not hardcoded here.
+      var BASE = <%- JSON.stringify(typeof basePath !== 'undefined' && basePath ? basePath : '/settings') %>;
+
+      /**
+       * Show one panel and put the section in the URL as a REAL PATH.
+       *
+       * This used to write `'#' + key`. A hash never reaches the server, so:
+       *   - /settings/account had no route and 404'd;
+       *   - refresh always came back to Profile;
+       *   - Back did nothing (replaceState adds no history entry);
+       *   - a shared link opened the wrong tab.
+       *
+       * `history.pushState` with a real path fixes all four: Back walks the
+       * sections, a refresh requests the right URL, and the server now renders the
+       * matching panel (see the activeSection local).
+       */
+      function showPanel(key, push) {
         panels.forEach(function (panel) {
           panel.hidden = panel.id !== ('panel-' + key);
         });
@@ -246,26 +293,63 @@
           l.classList.toggle('is-active', on);
           l.setAttribute('aria-selected', on ? 'true' : 'false');
         });
-        // Keep the section in the URL so a refresh / back button lands on the
-        // same section, exactly like a real settings deep link.
-        if (window.history && window.history.replaceState) {
-          window.history.replaceState(null, '', '#' + key);
+
+        var url = BASE + '/' + key;
+        if (window.location.pathname !== url) {
+          // pushState for a deliberate click (so Back returns to the previous
+          // section); replaceState for the initial sync (so the first paint does
+          // not add a bogus history entry).
+          var method = push ? 'pushState' : 'replaceState';
+          if (window.history && window.history[method]) {
+            window.history[method]({ section: key }, '', url);
+          }
         }
       }
 
       links.forEach(function (link) {
         link.addEventListener('click', function (e) {
+          // A real navigation would reload the page for each tab. Intercept it and
+          // switch in place, then push a REAL path so Back, refresh and sharing
+          // all still work - the anchor's href is the fallback for no-JS.
           e.preventDefault();
-          showPanel(link.getAttribute('data-panel'));
+          showPanel(link.getAttribute('data-panel'), true);
         });
       });
 
-      // Open the section named in the URL hash (e.g. /settings#privacy), and
-      // default to Profile when there is none or it does not exist.
+      // The browser's Back/Forward buttons move between sections without a reload,
+      // so the panel has to follow the URL. Without this, Back changed the address
+      // bar and left the wrong panel on screen.
+      window.addEventListener('popstate', function () {
+        var path = String(window.location.pathname || '');
+        var slug = path.indexOf(BASE + '/') === 0 ? path.slice((BASE + '/').length) : 'profile';
+        showPanel(isKnown(slug) ? slug : 'profile', false);
+      });
+
+      function isKnown(slug) {
+        return Array.prototype.some.call(links, function (l) {
+          return l.getAttribute('data-panel') === slug;
+        });
+      }
+
+      /**
+       * Open the section the URL asks for.
+       *
+       * The path is the source of truth (/settings/privacy). A legacy `#hash` on an
+       * old bookmark is honoured too, so a link saved before this change still
+       * works, and is then rewritten to the real path.
+       *
+       * The initial call uses replaceState, NOT pushState: the server already
+       * rendered the right panel, so pushing here would add a duplicate history
+       * entry identical to the current one - the user would press Back and appear
+       * to stay put.
+       */
       (function initialPanel() {
-        var wanted = String(window.location.hash || '').replace('#', '');
-        var known = Array.prototype.map.call(links, function (l) { return l.getAttribute('data-panel'); });
-        showPanel(known.indexOf(wanted) !== -1 ? wanted : 'profile');
+        var path = String(window.location.pathname || '');
+        var fromPath = path.indexOf(BASE + '/') === 0 ? path.slice((BASE + '/').length) : '';
+        var fromHash = String(window.location.hash || '').replace('#', '');
+
+        var wanted = isKnown(fromPath) ? fromPath : (isKnown(fromHash) ? fromHash : 'profile');
+        showPanel(wanted, false);
       }());
 
       var status = document.getElementById('settingsStatus');

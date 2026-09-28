@@ -42,7 +42,19 @@
 
 .games-lists-container {
   min-width: 500px;
-  min-height: 820px;
+  /* The real 2013 sheet sets min-height: 820px. That value existed to reserve room
+     for the page's RIGHT-HAND AD COLUMN, which sat beside the lists and had to be
+     able to fill a tall area.
+
+     LuckyBlox serves no ads, so the 820px was pure empty space: on a deployment
+     with three carousels the content is about 640px tall, leaving a ~180px void
+     under the last row, and on a page with one row it is a ~400px void. A
+     screenshot showed exactly that - a large blank band beneath Recently Updated
+     before the next section.
+
+     `min-height: 0` lets the container size to its content. The real value is kept
+     in this comment so the change is auditable rather than looking like a mistake. */
+  min-height: 0;
   clear: both;
   line-height: 1.25;
 }
@@ -104,14 +116,31 @@
 }
 
 .see-all-button {
-  /* In normal flow inside .games-list-top, so it can never overlap the title. The
-     real sheet positioned it absolutely against a floated heading; that only
-     works while the heading is shorter than the space left for it. */
+  /* A TEXT LINK, not a button.
+
+     `roblox-ui.css` grouped this with `.btn-secondary-xs`, which paints a filled
+     blue pill with white text. The real 2013 sheet styles See All with nothing but
+     `line-height: 1.428` - it is a blue link sitting beside the row title, and a
+     screenshot of /games showed a row of solid blue boxes instead.
+
+     Listed after that sheet's rule and with a class+element-free selector of equal
+     weight, so this rule must come from a sheet that loads later (games.css does).
+     The properties are spelled out rather than relying on
+     `all: revert`, so a future sheet cannot half-override it. */
   flex: 0 0 auto;
+  display: inline-block;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  height: auto;
   line-height: 1.428;
   font-size: 12px;
+  font-weight: 400;
   color: #0074bd;
   text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .see-all-button:hover {
@@ -121,7 +150,7 @@
 .games-list-column {
   float: left;
   /* One tile plus its gutter, so a row advances by a whole tile. */
-  width: 128px;
+  width: 206px;
 }
 
 /* --- The game tile -------------------------------------------------------- */
@@ -133,9 +162,9 @@
   float: left;
   /* The real sheet is 192x144 holding a 192x108 wide image. The art shipped here
      is SQUARE, so the feature box is square too (108x108) and the tile is sized to
-     hold it: 108 art + 17 name + ~16 stats + padding. */
-  width: 118px;
-  height: 160px;
+     hold it: 108 art + a two-line name (34px) + the stats line + padding. */
+  width: 196px;
+  height: 186px;
   box-sizing: content-box;
 }
 
@@ -178,14 +207,25 @@
 .game-name {
   font-size: 14px;
   font-weight: 600;
-  /* Matches the (now square) feature box so the title aligns with the art. */
-  width: 108px;
-  height: 17px;
+  /* The TITLE is not the frame. Making this 108px to "match the square art" (which
+     is what I did when the frame went square) truncated every name to about twelve
+     characters - "LinkFix 4901...", "2007 - Com..." - because that is all that fits
+     in 108px at 14px type.
+
+     The real 2013 tile gave the name the full column width and let it WRAP to two
+     lines with a fixed height, which is how a Roblox game name is actually shown.
+     196px is the column minus its gutter; two lines at 17px is the real box. */
+  width: 196px;
+  height: 34px;
   overflow: hidden;
   margin-top: 2px;
   color: #393b3d;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 17px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 a.game-name {
@@ -432,17 +472,18 @@ a.game-name:hover {
   }
 
   .game-item {
-    width: 94px;
-    height: 138px;
+    width: 150px;
+    height: 166px;
   }
 
   .game-name {
-    width: 84px;
-    height: 16px;
+    width: 150px;
+    height: 32px;
     font-size: 13px;
+    line-height: 16px;
   }
 
   .games-list-column {
-    width: 104px;
+    width: 160px;
   }
 }

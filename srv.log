@@ -1,0 +1,15 @@
+[luckyblox] restored 15 active session(s)
+[luckyblox] owner account: tailsthehero10 (id 1) via id+username
+LuckyBlox HTTP DB bridge listening on http://0.0.0.0:39005
+LuckyBlox public base URL: http://localhost:39005
+[luckyblox] data dir: E:\LuckyBloxLauncher\NEW LKL\Release\luckyblox-server\Webserver\http-db-bridge\data
+[luckyblox] storage backend: local-files
+[luckyblox] persistence: OFF - Data is stored in the container filesystem and WILL BE LOST on redeploy. Set LUCKYBLOX_DATA_DIR / attach a Render Disk, OR set LUCKYBLOX_SYNC to mirror to a FREE store (see server/remoteStore.js).
+[luckyblox] storage: render=no renderDisk=no localPersistent=no
+[luckyblox] no durable store configured. Pick ONE:
+[luckyblox]   A) Postgres (recommended, free at neon.tech):
+[luckyblox]      DATABASE_URL=postgresql://user:pw@host/db?sslmode=require
+[luckyblox]   B) a git mirror (free, GitHub):
+[luckyblox]      LUCKYBLOX_SYNC=github
+[luckyblox]      LUCKYBLOX_SYNC_TOKEN=<fine-grained PAT, Contents: Read+Write>
+[luckyblox]   C) a sibling clone on this machine: LUCKYBLOX_SYNC=local

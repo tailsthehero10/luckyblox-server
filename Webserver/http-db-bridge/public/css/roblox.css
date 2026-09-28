@@ -470,8 +470,8 @@ img.roblox-brand-mark {
   height: 16px;
   flex: 0 0 auto;
   background-color: currentColor;
-  -webkit-mask: url('/icons/robux.svg') center / contain no-repeat;
-  mask: url('/icons/robux.svg') center / contain no-repeat;
+  -webkit-mask: url('/icons/robux-mask.png') center / contain no-repeat;
+  mask: url('/icons/robux-mask.png') center / contain no-repeat;
 }
 
 .roblox-icon-button {
@@ -2878,16 +2878,24 @@ img.roblox-brand-mark {
 /*
   The Robux glyph.
 
-  robux.svg is now RECOLOURABLE: it uses fill="currentColor" through a mask, so
-  it follows the surrounding text colour - white on the dark header, black/dark
-  on a light surface. It no longer needs an invert filter, and the old
-  filter:none exceptions are gone because there is nothing to neutralise.
+  The mask source is ROBLOX'S OWN TEXTURE, not a redrawn or traced icon:
 
-  These are ::before pseudo-elements, so the icon cannot inherit color from the
-  element directly - a background SVG is its own document and currentColor does
-  not resolve. It is applied as a CSS MASK instead, painted with
-  background-color: currentColor. That is what makes one file work on light and
-  dark surfaces with no filter.
+    Webserver/http-db-bridge/public/icons/robux-mask.png
+    (copied from Clients/2020M/content/textures/ui/common/robux@3x.png)
+
+  Why a PNG: a CSS mask reads only the ALPHA channel, so Roblox's white-on-
+  transparent icon is already exactly what a themeable glyph needs - the ink is
+  the shape, and the colour comes from `background-color: currentColor` below.
+
+  What this replaced: an SVG traced from a screenshot by VTracer. The trace was
+  wrong - its inner counter is a SQUARE, so the badge rendered as a hexagon with a
+  square hole instead of Roblox's hexagonal ring with a square centre. Two attempts
+  to repair the SVG (a hand-drawn replacement, then an embedded-base64 shim) both
+  made it worse; the honest fix is to use the artwork Roblox ships.
+
+  A PNG mask needs no viewBox, cannot be clipped by a wrong one, and is
+  pixel-exact. This is the whole point of the mask technique: ONE file works on
+  light and dark surfaces with no filter.
 */
 .roblox-robux::before,
 .lb-robux::before {
@@ -2896,8 +2904,8 @@ img.roblox-brand-mark {
   height: 16px;
   flex: 0 0 auto;
   background-color: currentColor;
-  -webkit-mask: url("/icons/robux.svg") center / contain no-repeat;
-  mask: url("/icons/robux.svg") center / contain no-repeat;
+  -webkit-mask: url("/icons/robux-mask.png") center / contain no-repeat;
+  mask: url("/icons/robux-mask.png") center / contain no-repeat;
 }
 
 /* The inline price glyph uses the same mask technique. */
@@ -2907,8 +2915,8 @@ img.roblox-brand-mark {
   height: 12px;
   flex: 0 0 auto;
   background-color: currentColor;
-  -webkit-mask: url("/icons/robux.svg") center / contain no-repeat;
-  mask: url("/icons/robux.svg") center / contain no-repeat;
+  -webkit-mask: url("/icons/robux-mask.png") center / contain no-repeat;
+  mask: url("/icons/robux-mask.png") center / contain no-repeat;
 }
 
 .lb-icon-button,
@@ -2927,12 +2935,37 @@ img.roblox-brand-mark {
 
 .ch-ico { width: 20px; height: 20px; display: block; object-fit: contain; }
 .ch-ico-sm { width: 14px; height: 14px; }
-/* Icons on the dark header must read white. */
+/* Header icons follow the THEME, rather than being force-inverted.
+
+   The old rule was `filter: brightness(0) invert(1)` on every /icons/ image in
+   the bar - a blanket repaint of dark art to white. That only works while every
+   icon is dark and the bar is always dark. It is wrong on both counts now:
+
+     * the bar is LIGHT grey in the light theme (#dee1e3), so white icons vanish;
+     * dropdown/like/star/robux use fill="currentColor", so inverting them
+       double-applies the colour and the shape disappears into the bar.
+
+   The icons are authored to inherit the text colour, so the bar only has to set
+   that colour - which it already does per theme via --lb-header-text/muted.
+   `opacity` is left to keep faint glyphs (the caret) from reading solid. */
 .lb-header .ch-ico,
 .roblox-topbar .ch-ico,
 .roblox-topbar img[src^="/icons/"],
-.lb-header img[src^="/icons/"] { filter: brightness(0) invert(1) !important; opacity: 1 !important; }
-/* The Robux mark keeps its own colours. */
+.lb-header img[src^="/icons/"] { filter: none !important; opacity: 0.9; }
+
+/* Icon BUTTONS (search, notifications, settings) are a lighter grey than the
+   nav text on the real bar. */
+.lb-header .lb-icon-button .ch-ico,
+.lb-header .roblox-icon-button .ch-ico {
+  filter: none !important;
+  opacity: 0.72;
+}
+
+.lb-header .lb-icon-button:hover .ch-ico,
+.lb-header .roblox-icon-button:hover .ch-ico { opacity: 1; }
+
+/* The Robux mark is a mask filled with the text colour, so it needs no filter at
+   all - that is the whole point of the mask technique. */
 .roblox-robux::before,
 .roblox-topbar img[src*="robux"],
 .lb-header img[src*="robux"] { filter: none !important; }
@@ -4308,8 +4341,10 @@ button.roblox-sidebar-link { min-height: 34px; }
   height: 12px;
   flex: 0 0 auto;
   background-color: currentColor;
-  -webkit-mask: url("/icons/robux.svg") center / contain no-repeat;
-  mask: url("/icons/robux.svg") center / contain no-repeat;
+  /* Roblox's own texture, as a mask - see the header glyph rule for why a mask
+     reads the alpha channel and therefore needs no colour of its own. */
+  -webkit-mask: url("/icons/robux-mask.png") center / contain no-repeat;
+  mask: url("/icons/robux-mask.png") center / contain no-repeat;
 }
 
 /* ---------------------------------------------------------------------------
@@ -6163,10 +6198,12 @@ header.lb-header .lb-header-search-btn {
   display: grid;
   place-items: center;
 }
-header.lb-header .lb-header-search-btn .ch-ico { width: 16px; height: 16px; }
-/* The search glyph is dark art and must read on BOTH bars. */
-header.lb-header.dark-theme .lb-header-search-btn .ch-ico { filter: brightness(0) invert(1) !important; }
-header.lb-header.light-theme .lb-header-search-btn .ch-ico { filter: none !important; }
+header.lb-header .lb-header-search-btn .ch-ico { width: 16px; height: 16px; filter: none !important; }
+/* The search glyph carries its colour through fill="currentColor", so it reads on
+   BOTH bars without a filter. This used to force-invert it on the dark theme,
+   which was correct while the file hardcoded a dark fill - but once the fill
+   became currentColor the invert flipped an already-correct glyph, so the icon
+   was the one thing in the bar still painted by a filter rather than by colour. */
 
 /* --- Right-hand cluster ---------------------------------------------------- */
 header.lb-header .lb-header-right,
@@ -6179,11 +6216,17 @@ header.lb-header.light-theme .roblox-icon-button:hover { background: rgba(0, 0, 
 header.lb-header.dark-theme .lb-icon-button:hover,
 header.lb-header.dark-theme .roblox-icon-button:hover { background: rgba(255, 255, 255, 0.1) !important; }
 
-/* Header icons follow the bar's own theme, not the page's. */
+/* Header icons follow the bar's own theme, not the page's.
+
+   Both branches now use `filter: none`. The icons carry their colour through
+   `fill="currentColor"` (or the mask technique), and the bar sets the text colour
+   per theme - so inverting on the dark bar would flip an already-correct glyph
+   back to the wrong shade. The colour difference between the two themes comes
+   from --lb-header-text/--lb-header-muted, not from a filter. */
 header.lb-header.light-theme .ch-ico,
 header.lb-header.light-theme img[src^="/icons/"] { filter: none !important; opacity: 0.85; }
 header.lb-header.dark-theme .ch-ico,
-header.lb-header.dark-theme img[src^="/icons/"] { filter: brightness(0) invert(1) !important; opacity: 1; }
+header.lb-header.dark-theme img[src^="/icons/"] { filter: none !important; opacity: 1; }
 
 /* The Robux mark keeps its own colours on either bar. */
 header.lb-header .roblox-robux::before,

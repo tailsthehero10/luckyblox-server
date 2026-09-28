@@ -154,12 +154,74 @@ check('every icon parses as XML (a malformed SVG renders as a blank or blob)', (
 
 // --- The specific glyph the header masks -------------------------------------
 
-check('robux.svg exists and gives the mask a scalable shape', () => {
+check('robux.svg displays Roblox\'s REAL artwork', () => {
   const file = path.join(ICONS_DIR, 'robux.svg');
   assert.ok(fs.existsSync(file), 'icons/robux.svg is missing');
   const svg = fs.readFileSync(file, 'utf8');
-  assert.ok(/viewBox\s*=\s*["']0 0 2[0-9] 2[0-9]["']/.test(svg), 'expected a 24x24-style viewBox');
-  assert.ok(/fill\s*=\s*["']currentColor["']/.test(svg), 'expected fill="currentColor"');
+
+  // WHAT THIS REPLACED, and why the assertion looks like this.
+  //
+  // The file used to be a VTracer trace of a screenshot, and the trace was WRONG:
+  // its inner counter is a square, so the badge rendered as a hexagon with a
+  // square hole instead of Roblox's hexagonal ring with a square centre. Two
+  // attempts to repair the SVG made it worse - a hand-drawn replacement, then an
+  // SVG with an embedded base64 raster, which rendered as a broken image.
+  //
+  // The honest fix is to stop drawing it: Roblox ships the artwork with the client
+  // and it is in this repo. The file now DISPLAYS that texture.
+  const isTrace = /VTracer/i.test(svg);
+  const isHandDrawn = /M12 1\.4 21\.2/.test(svg);
+  const displaysRealArtwork = /<image\b[^>]*href="\/icons\/robux-mask\.png"/.test(svg)
+    || /<image\b[^>]*href="data:image\/png/.test(svg);
+
+  assert.ok(!isTrace, 'robux.svg is a VTracer trace again - that trace has the wrong counter');
+  assert.ok(!isHandDrawn, 'robux.svg is the hand-drawn stand-in, not the real artwork');
+  assert.ok(
+    displaysRealArtwork,
+    'robux.svg must display Roblox\'s own artwork (icons/robux-mask.png), not traced geometry',
+  );
+});
+
+check('the Robux mask source is the real Roblox texture, white on transparent', () => {
+  // The CSS mask points at robux-mask.png, copied from
+  // Clients/2020M/content/textures/ui/common/robux@3x.png. A mask reads only the
+  // ALPHA channel, so a white-on-transparent glyph is exactly what a themeable
+  // icon needs: the ink is the shape, and the element supplies the colour.
+  const mask = path.join(ICONS_DIR, 'robux-mask.png');
+  assert.ok(fs.existsSync(mask), 'icons/robux-mask.png is missing - the header mask would fall back to nothing');
+
+  const png = fs.readFileSync(mask);
+  assert.strictEqual(png.slice(1, 4).toString('ascii'), 'PNG', 'robux-mask.png is not a PNG');
+
+  const width = png.readUInt32BE(16);
+  const height = png.readUInt32BE(20);
+  assert.strictEqual(width, height, `expected a square icon, got ${width}x${height}`);
+  assert.ok(width >= 64, `expected a reasonably sized icon, got ${width}px`);
+});
+
+check('the CSS masks the Robux glyph from the real texture', () => {
+  const css = fs.readFileSync(
+    path.join(__dirname, '..', 'Webserver', 'http-db-bridge', 'public', 'css', 'roblox.css'),
+    'utf8',
+  );
+  assert.ok(
+    /mask:\s*url\(["']?\/icons\/robux-mask\.png/.test(css),
+    'roblox.css does not mask the Robux glyph from /icons/robux-mask.png',
+  );
+  assert.ok(
+    !/mask:\s*url\(["']?\/icons\/robux\.svg/.test(css),
+    'roblox.css still masks from robux.svg - the traced SVG was the wrong shape',
+  );
+});
+
+check('robux.svg is not the hand-drawn approximation', () => {
+  // The exact opening of the replacement that was written at one point. Named
+  // explicitly so a reintroduction is caught by name, not by a loose heuristic.
+  const svg = fs.readFileSync(path.join(ICONS_DIR, 'robux.svg'), 'utf8');
+  assert.ok(
+    !/M12 1\.4 21\.2/.test(svg),
+    'robux.svg is the hand-drawn stand-in, not the real Roblox artwork',
+  );
 });
 
 check('no icon relies on negative-only coordinates with no viewBox', () => {
