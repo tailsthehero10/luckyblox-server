@@ -94,7 +94,7 @@ LuckyBlox is a local Roblox-style game platform served from a release folder. Ap
 
 ## Sheets and source encoding
 - These files are UTF-8. Never write them with a tool that re-encodes to latin-1:
-  `&middot;` and em dashes become mojibake (`آ·`, `â€”`) and render verbatim on the
+  `&middot;` and em dashes become mojibake (`آ·`, `—`) and render verbatim on the
   page. `tests/view-structure.test.js` scans for those byte sequences.
 - Avoid a literal `<div>` inside an HTML comment or a JS string when it is not
   real markup - it defeats naive structure checks and makes the nesting

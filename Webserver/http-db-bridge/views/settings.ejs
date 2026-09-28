@@ -188,14 +188,43 @@
   </div>
   </div>
 
-  <script src="/lb-select.js"></script>
+  <%# The closing tags above balance everything opened at the top:
+
+        lb-page         (16)  .lb-shell (19)  .lb-main (22)  .settings-window (31)
+        settings-main   (44, closed by </main>)
+
+      Four divs open, so four </div> are needed. There were only three, and the
+      browser silently supplied the fourth when it reached </body> - which is why
+      nothing errored and the page still LOOKED right while the DOM was one level
+      shallower than the markup intended. That class of bug (an unclosed element
+      re-nesting every later panel) is the one the project notes call a "glitch".
+
+      One closer per line, in the reverse order they were opened, so the pairing is
+      readable by eye. %>
+
+  <%# The shared page scripts (loading.js + legacy-nav.js + lb-select.js). This page
+      used to ship <script src="/lb-select.js"> by hand and nothing else, so
+      LBLoading and the legacy image spinner were undefined here while every other
+      page had them - the loader markup had no code behind it. Included ABOVE the
+      inline script below, which reads window.LBLoading. %>
+  <%- include('partials/scripts') %>
   <script>
     (function () {
       'use strict';
 
       // --- Theme: apply the saved theme immediately, site-wide via a body class.
       var root = document.documentElement;
-      var savedTheme = <%= JSON.stringify(user.theme || 'light') %>;
+      // `<%- %>` (unescaped) is REQUIRED here. With `<%= %>` EJS HTML-escapes the
+      // quotes, so the browser received `var savedTheme = &#34;light&#34;;` - a syntax
+      // error that killed this whole IIFE. showPanel was never defined and no
+      // click handler was attached, so the tabs did nothing (the URL hash still
+      // changed, because that is the anchor's own default behaviour and it made
+      // the control LOOK wired).
+      //
+      // The value is JSON.stringify'd, which escapes quotes and backslashes for a
+      // JS string context, and this is the page's own stored theme - so emitting
+      // it raw is safe as well as necessary.
+      var savedTheme = <%- JSON.stringify(user.theme || 'light') %>;
       function applyTheme(theme) {
         root.classList.toggle('theme-dark', theme === 'dark');
         document.body.classList.toggle('theme-dark', theme === 'dark');

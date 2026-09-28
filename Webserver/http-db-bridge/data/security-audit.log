@@ -25,3 +25,14 @@
 {"at":"2026-09-27T16:59:58.641Z","event":"signin_user_not_found","ip":"127.0.0.1","username":"Probe398470"}
 {"at":"2026-09-27T17:05:33.480Z","event":"signup_success","ip":"127.0.0.1","userId":"2","username":"DebugUser33307"}
 {"at":"2026-09-27T17:34:13.311Z","event":"signup_success","ip":"127.0.0.1","userId":"3","username":"NeonUser53077"}
+{"at":"2026-09-28T13:09:18.180Z","event":"signin_success","ip":"127.0.0.1","userId":"1","username":"tailsthehero10"}
+{"at":"2026-09-28T13:09:30.885Z","event":"signin_success","ip":"127.0.0.1","userId":"1","username":"tailsthehero10"}
+{"at":"2026-09-28T13:10:05.937Z","event":"api_login_success","ip":"127.0.0.1","userId":"1"}
+{"at":"2026-09-28T13:30:29.602Z","event":"signin_success","ip":"127.0.0.1","userId":"1","username":"tailsthehero10"}
+{"at":"2026-09-28T13:40:50.735Z","event":"signin_success","ip":"127.0.0.1","userId":"1","username":"tailsthehero10"}
+{"at":"2026-09-28T13:41:31.715Z","event":"api_login_success","ip":"127.0.0.1","userId":"1"}
+{"at":"2026-09-28T13:49:57.338Z","event":"signin_success","ip":"127.0.0.1","userId":"1","username":"tailsthehero10"}
+{"at":"2026-09-28T13:50:16.114Z","event":"signin_success","ip":"127.0.0.1","userId":"1","username":"tailsthehero10"}
+{"at":"2026-09-28T13:50:55.836Z","event":"signin_success","ip":"127.0.0.1","userId":"1","username":"tailsthehero10"}
+{"at":"2026-09-28T13:51:47.027Z","event":"signin_success","ip":"127.0.0.1","userId":"1","username":"tailsthehero10"}
+{"at":"2026-09-28T13:54:25.986Z","event":"signin_success","ip":"127.0.0.1","userId":"1","username":"tailsthehero10"}

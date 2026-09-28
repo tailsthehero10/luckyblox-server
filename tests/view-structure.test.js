@@ -13,7 +13,7 @@
  *      just lays out wrong.
  *
  *   2. Mojibake. A UTF-8 file read or written as latin-1 turns "&middot;" and an
- *      em dash into garbage ("آ·", "â€”") that renders on the page verbatim.
+ *      em dash into garbage ("آ·", "—") that renders on the page verbatim.
  *
  *   3. Sizing the avatar figure with transform: scale(), which draws the figure
  *      larger without reserving the space for it.

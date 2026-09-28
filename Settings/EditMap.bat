@@ -1,2 +1,2 @@
-"E:\LuckyBloxLauncher\NEW LKL\Release\\Clients\2022M\RobloxStudioBeta.exe" -localPlaceFile "E:\LuckyBloxLauncher\NEW LKL\Release\Maps\2018 - Full_mm2_Newest_Game.rbxl"
+"E:\LuckyBloxLauncher\NEW LKL\Release\luckyblox-server\\Clients\2022M\RobloxStudioBeta.exe" -localPlaceFile "E:\LuckyBloxLauncher\NEW LKL\Release\luckyblox-server\Maps\2015 - Epic Minigames.rbxl"
  exit

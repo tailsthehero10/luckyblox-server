@@ -37,7 +37,51 @@ var hUserId = hUser ? hUser.userId : null;
 var hRobux = hCurrency.robux != null ? hCurrency.robux : (hUser ? (hUser.robux || 0) : 0);
 var hDark = (typeof themeOn !== 'undefined') ? !!themeOn : false;
 %>
-<header class="lb-header roblox-topbar<%= hDark ? ' dark-theme' : ' light-theme' %>">
+<%#
+  The header carries BOTH theme markers, plus a script that keeps them honest.
+
+  The bug this fixes: the header used to be stamped with exactly one of
+  `light-theme` / `dark-theme` at RENDER time (from the saved `theme` field),
+  while the site-wide toggle adds `theme-dark` to `<html>` and `<body>` at RUN
+  time. Nothing ever removed the stamped class, so `.light-theme .rbx-header`
+  matched forever: changing the theme in Settings left the bar light while the
+  text tokens flipped to dark-theme, and the username and the Robux balance
+  became white-on-light-grey - invisible.
+
+  Now the header states the theme it was RENDERED with, and the script below
+  swaps that pair to match `<html>` the moment anything changes it - including
+  the very first paint, so a saved dark theme is applied before it shows.
+%>
+<header class="lb-header roblox-topbar <%= hDark ? 'dark-theme' : 'light-theme' %>">
+  <script>
+    // Keep the header's theme marker in sync with the document's. Runs immediately
+    // (the header is parsed before the page body) and on every later change.
+    (function () {
+      var header = document.currentScript && document.currentScript.parentNode;
+      if (!header) return;
+      function sync() {
+        var dark = document.documentElement.classList.contains('dark-theme')
+          || document.documentElement.classList.contains('theme-dark')
+          || (document.body && (document.body.classList.contains('dark-theme')
+            || document.body.classList.contains('theme-dark')));
+        header.classList.toggle('dark-theme', dark);
+        header.classList.toggle('light-theme', !dark);
+      }
+      sync();
+      // The toggle writes the class onto <html>/<body>; observe those directly so
+      // the header follows without every page having to call a hook.
+      try {
+        new MutationObserver(sync).observe(document.documentElement, {
+          attributes: true, attributeFilter: ['class'],
+        });
+        if (document.body) {
+          new MutationObserver(sync).observe(document.body, {
+            attributes: true, attributeFilter: ['class'],
+          });
+        }
+      } catch (error) { /* older browsers: the initial sync still applies */ }
+    }());
+  </script>
   <!--
     Mobile rail toggle.
 
@@ -124,10 +168,22 @@ var hDark = (typeof themeOn !== 'undefined') ? !!themeOn : false;
               aria-haspopup="true" aria-expanded="false"
               aria-controls="accountMenuPanel" title="<%= hUser.username %>">
         <span class="lb-account-avatar">
+          <%# The account's own character, not a letter.
+
+              This rendered `String(username).slice(0,1)` - a bare "T" for
+              tailsthehero10 - whenever the account had no `avatar.headshotUrl`,
+              which is the case for every locally registered account. So the bar
+              showed a stray letter instead of a person, and it read as text
+              beside the username rather than as an avatar.
+
+              `lbAvatarFigure` draws the real shaded R6/R15 figure in the saved
+              BrickColor palette, the same renderer the profile and friends pages
+              use. The headshot still layers on top when the account HAS one,
+              fitted so a square render is never cropped. %>
+          <%- include('avatar-figure', { user: hUser, size: 32 }) %>
           <% if (hUser.avatar && hUser.avatar.headshotUrl) { %>
-          <img src="<%= hUser.avatar.headshotUrl %>" alt="" />
-          <% } else { %>
-          <%= String(hUser.username || 'L').slice(0, 1).toUpperCase() %>
+          <img class="lb-account-headshot" src="<%= hUser.avatar.headshotUrl %>" alt=""
+               loading="lazy" onerror="this.onerror=null;this.remove();" />
           <% } %>
         </span>
         <span class="lb-account-name"><%= hUser.username %></span>
@@ -137,10 +193,10 @@ var hDark = (typeof themeOn !== 'undefined') ? !!themeOn : false;
       <div class="lb-account-dropdown" id="accountMenuPanel" role="menu">
         <div class="lb-account-dropdown-head">
           <span class="lb-account-dropdown-avatar">
+            <%- include('avatar-figure', { user: hUser, size: 48 }) %>
             <% if (hUser.avatar && hUser.avatar.headshotUrl) { %>
-            <img src="<%= hUser.avatar.headshotUrl %>" alt="" />
-            <% } else { %>
-            <%= String(hUser.username || 'L').slice(0, 1).toUpperCase() %>
+            <img class="lb-account-headshot" src="<%= hUser.avatar.headshotUrl %>" alt=""
+                 loading="lazy" onerror="this.onerror=null;this.remove();" />
             <% } %>
           </span>
           <span class="lb-account-dropdown-identity">

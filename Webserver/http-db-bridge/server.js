@@ -796,7 +796,7 @@ function requireSessionUser(req) {
 }
 
 /**
- * The Roblox admin badge. There is exactly ONE admin badge أ¢â‚¬â€‌ you either have
+ * The Roblox admin badge. There is exactly ONE admin badge —â€‌ you either have
  * admin or you don't. The image ships in Assets/roles/admin.png (extracted from
  * the bundled 2021M client) and is served at /assets/roles/admin.png.
  *
@@ -1552,7 +1552,7 @@ function ensureSeedData() {
 
   // Migrate any legacy plaintext password to a salted hash at boot. The login
   // route only accepts salted hashes, so without this the default account (and
-  // any account created before hashing) can never sign in أ¢â‚¬â€‌ and on a fresh
+  // any account created before hashing) can never sign in —â€‌ and on a fresh
   // container the seed data is regenerated every deploy, so this must run here
   // rather than relying on someone calling /luckblox-salt-setup by hand.
   upgradeLegacyPasswords();
@@ -2772,7 +2772,7 @@ function isPreviewAllowed(reqPath) {
   return PREVIEW_ALLOWLIST.some((rx) => rx.test(reqPath));
 }
 
-/** Real status for the preview page أ¢â‚¬â€‌ computed from live server state. */
+/** Real status for the preview page —â€‌ computed from live server state. */
 function getPreviewStatus() {
   let players = 0;
   for (const server of activeGameServers) {
@@ -2803,14 +2803,14 @@ app.get('/api/preview-status', (req, res) => {
 
 app.get('/preview', (req, res) => {
   res.render('preview', {
-    title: 'LuckyBlox أ¢â‚¬â€‌ Live Preview',
+    title: 'LuckyBlox \u2014 Live Preview',
     stage: PREVIEW_STAGE,
     teasers: PREVIEW_TEASERS,
   });
 });
 
 // ---------------------------------------------------------------------------
-// Site status أ¢â‚¬â€‌ public status page + owner open/close controls
+// Site status —â€‌ public status page + owner open/close controls
 // ---------------------------------------------------------------------------
 // The owner can flip the site between open, work in progress, maintenance and
 // closed without editing code or redeploying. /sitestat always shows the real
@@ -2877,7 +2877,7 @@ app.get('/api/site-status', (req, res) => {
 app.get('/sitestat', (req, res) => {
   const user = req.sessionUser || null;
   res.render('sitestat', {
-    title: 'LuckyBlox أ¢â‚¬â€‌ Site status',
+    title: 'LuckyBlox \u2014 Site status',
     status: siteStatusPayload(),
     user,
     isOwner: Boolean(user && isOwnerUser(user)),
@@ -2961,7 +2961,7 @@ app.use((req, res, next) => {
   }
 
   return res.status(503).render('closed', {
-    title: 'LuckyBlox أ¢â‚¬â€‌ ' + state.label,
+    title: 'LuckyBlox \u2014 ' + state.label,
     status: siteStatusPayload(),
   });
 });
@@ -3694,7 +3694,7 @@ app.get('/badges', (req, res) => {
 
 /**
  * Owner-only gate. Any route wrapped with this only runs for the deployment
- * owner (ID 1 / tailsthehero10). Everyone else gets 403 أ¢â‚¬â€‌ enforced server-side,
+ * owner (ID 1 / tailsthehero10). Everyone else gets 403 —â€‌ enforced server-side,
  * not just hidden in the UI.
  */
 function requireOwner(req, res, next) {
@@ -3905,7 +3905,7 @@ app.get('/studio', (req, res) => {
 });
 
 /**
- * Creator Hub أ¢â‚¬â€‌ the LuckyBlox equivalent of create.roblox.com. Shows the real
+ * Creator Hub —â€‌ the LuckyBlox equivalent of create.roblox.com. Shows the real
  * experiences and assets belonging to the signed-in account, plus live counts.
  * Guests can view it but publishing actions prompt them to sign in.
  */
@@ -4000,7 +4000,10 @@ app.get('/develop', (req, res) => {
     }));
 
   res.render('develop', {
-    title: 'Create - LuckyBlox',
+    // Was 'Create - LuckyBlox' - a copy-paste from the /create route, so the
+    // browser tab said "Create" on the Creator Hub (and /develop and /create were
+    // indistinguishable in history and in search results).
+    title: 'Creator Hub - LuckyBlox',
     user,
     isOwner,
     signedIn,

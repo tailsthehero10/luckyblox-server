@@ -38,10 +38,18 @@ var sbItems = [
 <% if (sbUser) { %>
   <div class="lb-sidebar-user roblox-sidebar-user">
     <div class="lb-sidebar-avatar roblox-sidebar-avatar">
+      <%# The account's own character, not a letter.
+
+          This rendered `String(username).slice(0,1)` - a bare "T" for
+          tailsthehero10 - whenever the account had no `avatar.headshotUrl`,
+          which is every locally registered account. It reads as stray text next
+          to the name rather than as an avatar, and it is the same defect that was
+          in the header chip. `lbAvatarFigure` draws the real figure; a headshot
+          still layers over it when the account has one. %>
+      <%- include('avatar-figure', { user: sbUser, size: 36 }) %>
       <% if (sbUser.avatar && sbUser.avatar.headshotUrl) { %>
-      <img src="<%= sbUser.avatar.headshotUrl %>" alt="" />
-      <% } else { %>
-      <%= String(sbUser.username || 'L').slice(0, 1).toUpperCase() %>
+      <img class="lb-sidebar-headshot" src="<%= sbUser.avatar.headshotUrl %>" alt=""
+           loading="lazy" onerror="this.onerror=null;this.remove();" />
       <% } %>
     </div>
     <div class="lb-sidebar-identity">

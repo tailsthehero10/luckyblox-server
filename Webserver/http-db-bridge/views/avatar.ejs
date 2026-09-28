@@ -403,8 +403,11 @@
       }());
 
       // --- Local editor state, seeded from what the account actually saved. ---
-      var rig = '<%= avatarType %>';
-      var gender = '<%= curGender %>';
+      // Raw output (<%- %>): these are JavaScript string literals, and EJS's
+      // escaped form (<%= %>) turns their quotes into &#34;, which is a syntax
+      // error that kills the rest of this script.
+      var rig = <%- JSON.stringify(String(avatarType || 'R15')) %>;
+      var gender = <%- JSON.stringify(String(curGender || 'NotSpecified')) %>;
       var bodyColors = <%- JSON.stringify(bodyColors || {}) %>;
       var scales = <%- JSON.stringify(scales || {}) %>;
       var dirty = false;

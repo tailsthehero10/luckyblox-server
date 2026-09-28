@@ -381,18 +381,31 @@ a.game-name:hover {
   filter: brightness(0) invert(1) !important;
 }
 
-/* An icon-only button: no label text, just the glyph. */
+/* An icon-only button: no label text, just the glyph.
+
+   It is ROUND and square-proportioned. The generic button rule above sets
+   `height:36px; padding:0 16px; border-radius:2px`, which produced a wide, barely
+   rounded rectangle - the green box with a play triangle that a screenshot of
+   /game/1818 showed sitting over the artwork. The 2021 page's play control on a
+   thumbnail is a circle, so the padding is removed and the radius set to 50%. */
 .lb-play-icon-only {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 12px;
   gap: 0;
+  padding: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  aspect-ratio: 1 / 1;
 }
 
 .lb-play-icon-only .ch-ico {
   width: 18px;
   height: 18px;
+  /* The glyph is drawn slightly left of centre in its own box; nudging it right
+     by a hair makes it read as centred in the circle. */
+  margin-left: 2px;
 }
 
 /* --- Narrow viewports ----------------------------------------------------- */

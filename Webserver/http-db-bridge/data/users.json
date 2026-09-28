@@ -1,4 +1,48 @@
 {
+  "1": {
+    "userId": "1",
+    "username": "tailsthehero10",
+    "displayName": "tailsthehero10",
+    "password": "427fe9fb02d47a86834f6493422f7ec9e2c001af29f8facfddc58bd474a6b9ee0851439699f77a32f94c6355dd3bc9da8db0f8fe7847a7183607e9f83ab7669b",
+    "passwordSalt": "96d78e0ad8911d9173e21c7b85d9c192",
+    "passwordVersion": 3,
+    "role": "owner",
+    "membershipStatus": "None",
+    "membership": "None",
+    "robux": 0,
+    "currencies": {
+      "robux": 0,
+      "coins": 0,
+      "tickets": 0
+    },
+    "inventory": [],
+    "currentlyWearing": [],
+    "friends": [],
+    "stats": {
+      "friends": 0,
+      "following": 0,
+      "created": 0,
+      "plays": 0,
+      "followers": 0,
+      "badges": 0,
+      "gameVisits": 0
+    },
+    "joinDate": "2026-09-28T13:08:18.786Z",
+    "created": "2026-09-28T13:08:18.787Z",
+    "bio": "Owner of this LuckyBlox deployment.",
+    "avatar": {
+      "bodyColors": {
+        "headColorId": 24,
+        "torsoColorId": 23,
+        "leftArmColorId": 24,
+        "rightArmColorId": 24,
+        "leftLegColorId": 119,
+        "rightLegColorId": 119
+      },
+      "playerAvatarType": "R6"
+    },
+    "avatarType": "R6"
+  },
   "2": {
     "userId": "2",
     "username": "DebugUser33307",

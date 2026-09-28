@@ -726,7 +726,7 @@ const HOST = bindHost;
 // can retry with backoff rather than exploding.
 server.on('error', (error) => {
   if (error && error.code === 'EADDRINUSE') {
-    console.error(`[luckyblox] proxy cannot bind ${HOST}:${PORT} â€” address already in use. `
+    console.error(`[luckyblox] proxy cannot bind ${HOST}:${PORT} — address already in use. `
       + 'Another instance is still running, or the port was not released yet.');
     process.exit(1);
   }

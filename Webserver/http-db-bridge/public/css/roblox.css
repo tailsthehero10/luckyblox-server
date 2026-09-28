@@ -380,7 +380,7 @@ img.roblox-brand-mark {
 .roblox-more-pages-btn {
   background: transparent;
   border: 0;
-  color: #d8d8d8 !important;
+  color: var(--lb-header-muted) !important;
   cursor: pointer;
   font-size: 13px !important;
   font-weight: 500;
@@ -1304,7 +1304,7 @@ img.roblox-brand-mark {
 
 .legacy-global-nav a {
   padding: 16px 0 !important;
-  color: #d8d8d8 !important;
+  color: var(--lb-header-muted) !important;
   background: transparent !important;
   border: 0 !important;
   border-radius: 0 !important;
@@ -1500,18 +1500,22 @@ body {
 }
 
 .roblox-nav a {
-  color: #d8d8d8 !important;
+  /* Was a hardcoded #d8d8d8 (light grey, for the old DARK bar only). On the light
+     theme the bar is #dee1e3, so light-grey-on-light-grey made the nav, the
+     username and the Robux balance nearly invisible. The token is correct for
+     whichever theme is active. */
+  color: var(--lb-header-muted) !important;
   opacity: 1 !important;
 }
 
 .roblox-nav a:hover {
-  color: #ffffff !important;
+  color: var(--lb-header-text) !important;
   text-decoration: none !important;
 }
 
 .roblox-right {
   gap: 10px !important;
-  color: #d8d8d8 !important;
+  color: var(--lb-header-muted) !important;
   font-size: 12px !important;
 }
 
@@ -1525,7 +1529,7 @@ body {
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
-  color: #d8d8d8 !important;
+  color: var(--lb-header-muted) !important;
 }
 
 .roblox-hero,
@@ -1733,12 +1737,12 @@ body {
 
   .roblox-more-pages-dropdown a {
     padding: 8px 16px !important;
-    color: #d8d8d8 !important;
+    color: var(--lb-header-muted) !important;
   }
 
   .roblox-more-pages-dropdown a:hover {
     background: rgba(255,255,255,0.06) !important;
-    color: #ffffff !important;
+    color: var(--lb-header-text) !important;
   }
 }
 
@@ -2018,7 +2022,7 @@ pre,
   font-weight: 500 !important;
   letter-spacing: 0.02em !important;
   text-transform: uppercase !important;
-  color: #ffffff !important;
+  color: var(--lb-header-text) !important;
 }
 
 .roblox-brand img,
@@ -2036,7 +2040,7 @@ pre,
 }
 
 .roblox-nav a {
-  color: #d8d8d8 !important;
+  color: var(--lb-header-muted) !important;
   font-size: 13px !important;
   font-weight: 400 !important;
   text-decoration: none !important;
@@ -2045,23 +2049,23 @@ pre,
 }
 
 .roblox-nav a:hover {
-  color: #ffffff !important;
+  color: var(--lb-header-text) !important;
   border-bottom-color: #ffffff !important;
 }
 
 .roblox-right {
   margin-left: auto !important;
   gap: 14px !important;
-  color: #ffffff !important;
+  color: var(--lb-header-text) !important;
 }
 
 .roblox-robux {
-  color: #ffffff !important;
+  color: var(--lb-header-text) !important;
   font-size: 13px !important;
 }
 
 .roblox-icon-button {
-  color: #d8d8d8 !important;
+  color: var(--lb-header-muted) !important;
   font-size: 15px !important;
 }
 
@@ -2090,7 +2094,7 @@ pre,
   border-radius: 0 !important;
   background: #00a2e8 !important;
   border: 1px solid #00a2e8 !important;
-  color: #ffffff !important;
+  color: var(--lb-header-text) !important;
   font-size: 14px !important;
   font-weight: 500 !important;
 }
@@ -2134,7 +2138,7 @@ pre,
 
 /* --- 2021 header actions (Sign Up / Log In) ------------------------------ */
 .roblox-header-action {
-  color: #d8d8d8 !important;
+  color: var(--lb-header-muted) !important;
   font-size: 13px !important;
   font-weight: 500 !important;
   padding: 6px 10px !important;
@@ -2143,7 +2147,7 @@ pre,
 }
 
 .roblox-header-action:hover {
-  color: #ffffff !important;
+  color: var(--lb-header-text) !important;
   text-decoration: none !important;
 }
 
@@ -2221,11 +2225,11 @@ a:active {
 .roblox-topbar a,
 .roblox-topbar a:link,
 .roblox-topbar a:visited {
-  color: #d8d8d8 !important;
+  color: var(--lb-header-muted) !important;
 }
 
 .roblox-topbar a:hover {
-  color: #ffffff !important;
+  color: var(--lb-header-text) !important;
   text-decoration: none !important;
 }
 
@@ -2243,12 +2247,12 @@ a:active {
 .roblox-nav a,
 .roblox-nav a:link,
 .roblox-nav a:visited {
-  color: #d8d8d8 !important;
+  color: var(--lb-header-muted) !important;
   text-decoration: none !important;
 }
 
 .roblox-nav a:hover {
-  color: #ffffff !important;
+  color: var(--lb-header-text) !important;
   text-decoration: none !important;
 }
 
@@ -2273,7 +2277,7 @@ button:focus,
 .roblox-status-open {
   background: #00b259 !important;
   border-color: #00b259 !important;
-  color: #ffffff !important;
+  color: var(--lb-header-text) !important;
 }
 
 /* Work in progress / maintenance / closed — neutral grey, per the 2021 theme. */
@@ -2282,7 +2286,7 @@ button:focus,
 .roblox-status-locked {
   background: #606060 !important;
   border-color: #606060 !important;
-  color: #ffffff !important;
+  color: var(--lb-header-text) !important;
 }
 
 /* --- Status page shell ---------------------------------------------------- */
@@ -3755,16 +3759,37 @@ button.roblox-sidebar-link { min-height: 34px; }
    z-index matters here: the artwork is itself positioned (the real art at z-index
    1, over the placeholder at 0), so without an explicit layer the button would be
    painted underneath the image and disappear. */
-.lb-game-thumb .roblox-play-button {
+/* A round play control on the game page thumbnail.
+
+   SPECIFICITY MATTERS HERE. `refresh-2021.css` and `roblox-ui.css` both load
+   AFTER roblox.css and set `.lb-btn`/.roblox-primary-button border-radius to
+   `var(--rf-radius)` / `3px`. Those rules tie on specificity with a two-class
+   selector and win on source order, so `border-radius: 50%` was simply ignored
+   and the control stayed an almost-square rectangle.
+
+   Qualifying with the thumbnail class AND the element name (0,2,1) puts it above
+   every one of them, and `!important` settles the radius outright - this is a
+   deliberate shape, not a theme value, so nothing should override it. */
+.lb-game-thumb .roblox-play-button,
+.lb-game-thumb .lb-btn.lb-play-icon-only,
+.lb-game-hero .lb-play-icon-only {
   position: absolute;
   left: 14px;
   bottom: 14px;
   z-index: 2;
   transform: none;
-  height: 48px;
-  padding: 0 30px;
-  font-size: 18px;
+  width: 56px !important;
+  height: 56px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+
+.lb-game-thumb .roblox-play-button .ch-ico,
+.lb-game-hero .lb-play-icon-only .ch-ico {
+  width: 22px;
+  height: 22px;
+  margin-left: 2px;
 }
 
 /*
@@ -5285,7 +5310,8 @@ body.lb-studio .studio-place h3 {
 
 /* Round avatar, 26px, exactly as the 2021 bar rendered it. */
 .lb-account-avatar,
-.roblox-account-avatar {
+.roblox-account-avatar,
+.lb-account-dropdown-avatar {
   width: 26px;
   height: 26px;
   flex: 0 0 auto;
@@ -5293,19 +5319,50 @@ body.lb-studio .studio-place h3 {
   overflow: hidden;
   background: #3a3f47;
   color: #ffffff;
-  display: grid;
-  place-items: center;
+  /* The container centres whatever is inside: the drawn figure, or the headshot
+     layered over it. It is a positioning context so the two can stack. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
 }
 
+.lb-account-dropdown-avatar {
+  width: 40px;
+  height: 40px;
+}
+
+/* The blocky figure inside the round account chip.
+
+   The figure is a 10em-tall box sized by font-size, so it is scaled down to fit:
+   26px chip -> font-size 2.6px, 40px chip -> 4px. `contain` on the headshot keeps
+   a square render whole instead of cropping it to the circle. */
+.lb-account-avatar .lb-avatar-figure,
+.lb-account-dropdown-avatar .lb-avatar-figure {
+  font-size: 2.6px;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.lb-account-dropdown-avatar .lb-avatar-figure {
+  font-size: 4px;
+}
+
+/* The headshot layers OVER the figure, so a 404 reveals the character rather
+   than an empty circle. */
+.lb-account-headshot,
 .lb-account-avatar img,
 .roblox-account-avatar img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  z-index: 1;
 }
 
 /* The name truncates rather than wrapping, so a long username cannot push the
@@ -5344,19 +5401,38 @@ body.lb-studio .studio-place h3 {
   white-space: nowrap;
 }
 
-/* The avatar may now contain an <img> (the account headshot) rather than a
-   letter, so it needs to clip its contents to the circle. */
+/* The avatar holds the drawn character figure, with an optional headshot layered
+   over it, so it centres its contents and clips them to the circle. */
 .lb-sidebar-avatar,
 .roblox-sidebar-avatar {
   overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* The figure is a 10em-tall box sized by font-size; 36px target -> 3.6px. */
+.lb-sidebar-avatar .lb-avatar-figure,
+.roblox-sidebar-avatar .lb-avatar-figure {
+  font-size: 3.6px;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+/* The headshot sits ON TOP of the figure, so a 404 reveals the character rather
+   than an empty circle. `contain` keeps a square render whole instead of
+   cropping it to the circle's edges. */
+.lb-sidebar-headshot,
 .lb-sidebar-avatar img,
 .roblox-sidebar-avatar img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  z-index: 1;
 }
 
 /* The identity block is the first thing in the rail, so it must not add the
@@ -6347,12 +6423,26 @@ header.lb-header.dark-theme .roblox-header-action {
 .lb-game-hero::after,
 .roblox-game-hero::after { content: ""; display: table; clear: both; }
 
-/* The big thumbnail: a fixed 640x360 carousel, floated left. */
+/* The card floats left, with the info column beside it. */
 .lb-game-hero > div:first-child,
 .lb-game-hero .lb-game-thumb,
 .roblox-game-hero .roblox-game-thumb {
   float: left;
 }
+
+/* The game page thumbnail is the WIDE 16:9 hero (1680x945).
+
+   This is the ONE place game artwork is deliberately not square, and the asset
+   confirms it: `Webserver/gameplaceholder/game-thumb-1680x945.png` is a real
+   1680x945 render, served by `/gameplaceholder/game-thumb.png`. The square
+   236x236 card is the ICON, shown in the info column beside this - two different
+   pieces of art for two different slots.
+
+   I briefly changed this to a square (originally 640x360, then 360x360) on the
+   mistaken reading that "artwork is square everywhere" applied here too. It does
+   not: making the box square letterboxes the wide render into grey bands above
+   and below, which is exactly what a screenshot of /game/1818 showed. The rule is
+   about the CARD art (home tiles, featured hero, game icon), not this hero. */
 .lb-game-thumb,
 .roblox-game-thumb {
   width: 640px !important;
@@ -6386,6 +6476,7 @@ header.lb-header.dark-theme .roblox-header-action {
     width: 100% !important;
     max-width: 768px !important;
     height: auto !important;
+    aspect-ratio: 16 / 9;
     margin: 0 auto;
   }
   .lb-game-info,

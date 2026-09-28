@@ -42,7 +42,7 @@
 
     <%# Standard page hero, same rhythm as every other page: avatar-sized mark on
         the left, title and meta beside it, left aligned. No oversized statement
-        heading and no special-case treatment â€” the preview is a normal page that
+        heading and no special-case treatment — the preview is a normal page that
         happens to describe the server. %>
     <section class="roblox-hero">
       <div class="roblox-avatar-poster">
@@ -58,10 +58,10 @@
         </div>
 
         <div class="roblox-meta-row">
-          <span class="roblox-meta-pill" id="statusState">Checkingâ€¦</span>
+          <span class="roblox-meta-pill" id="statusState">Checking&hellip;</span>
           <span class="roblox-meta-pill">Stage: <%= stage %></span>
-          <span class="roblox-meta-pill" id="statusPlayers">Players: â€“</span>
-          <span class="roblox-meta-pill" id="statusGames">Experiences: â€“</span>
+          <span class="roblox-meta-pill" id="statusPlayers">Players: &ndash;</span>
+          <span class="roblox-meta-pill" id="statusGames">Experiences: &ndash;</span>
         </div>
 
         <div class="roblox-description">
@@ -98,7 +98,7 @@
   </div>
 
   <script>
-    // Poll the real status endpoint. If it fails we show "offline" â€”
+    // Poll the real status endpoint. If it fails we show "offline" —
     // nothing here fabricates a number.
     (function () {
       var stateEl = document.getElementById('statusState');
@@ -110,8 +110,8 @@
           .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('bad status')); })
           .then(function (data) {
             stateEl.textContent = data.ok ? 'Online' : 'Degraded';
-            playersEl.textContent = 'Players: ' + (typeof data.players === 'number' ? data.players : 'â€“');
-            gamesEl.textContent = 'Experiences: ' + (typeof data.games === 'number' ? data.games : 'â€“');
+            playersEl.textContent = 'Players: ' + (typeof data.players === 'number' ? data.players : '\u2013');
+            gamesEl.textContent = 'Experiences: ' + (typeof data.games === 'number' ? data.games : '\u2013');
           })
           .catch(function () {
             stateEl.textContent = 'Offline';

@@ -86,6 +86,36 @@
   --lb-blue: var(--rf-blue);
   --lb-link: var(--rf-link);
   --lb-radius: var(--rf-radius-sm);
+
+  /* --- The header text tokens follow the header's OWN background. -------------
+
+     roblox.css defines these for a DARK bar (#0f1a2b) and sets
+     --lb-header-text: #ffffff. But the light theme's bar is light grey
+     (.light-theme .rbx-header { background-color: #dee1e3 }, quoted from the 2021
+     sheet), so white text stayed white ON light grey: the username, the Robux
+     balance and the Robux glyph were all near-invisible, and the glyph is painted
+     with background-color: currentColor through a mask, so it vanished with them.
+
+     The light theme therefore uses the real 2021 ink colours. The dark theme
+     re-declares these below, so both stay correct. */
+  --lb-header: #dee1e3;
+  --lb-header-2: #d3d7da;
+  --lb-header-line: #c7cbce;
+  --lb-header-text: #393b3d;
+  --lb-header-muted: #60686d;
+}
+
+/* --- Dark theme: the same tokens, for the dark bar -------------------------- */
+.dark-theme,
+.theme-dark,
+html.dark-theme,
+body.theme-dark {
+  /* Real: .dark-theme .rbx-header { background-color: #191b1d } */
+  --lb-header: #191b1d;
+  --lb-header-2: #232527;
+  --lb-header-line: #111214;
+  --lb-header-text: #ffffff;
+  --lb-header-muted: #b8bec4;
 }
 
 /* ---------------------------------------------------------------------------

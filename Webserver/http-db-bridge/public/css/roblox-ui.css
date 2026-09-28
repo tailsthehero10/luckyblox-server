@@ -61,13 +61,27 @@
 }
 
 .light-theme .rbx-header,
-.lb-header.light-theme {
+.lb-header.light-theme,
+/* The site's theme toggle puts the class on <html> and <body>, not on the header
+   element. Matching only `.dark-theme .rbx-header` therefore missed the real case:
+   the header KEPT its light background while the text tokens went dark-theme, so
+   the username and the Robux balance turned white on a light-grey bar and became
+   invisible. These selectors cover the way the theme is actually applied. */
+html.light-theme .rbx-header,
+body.light-theme .rbx-header,
+html.light-theme .lb-header {
   background-color: var(--rbx-header-bg-light);
   border-bottom: 1px solid var(--rbx-header-border-light);
 }
 
 .dark-theme .rbx-header,
-.lb-header.dark-theme {
+.lb-header.dark-theme,
+html.dark-theme .rbx-header,
+body.dark-theme .rbx-header,
+html.theme-dark .rbx-header,
+body.theme-dark .rbx-header,
+html.dark-theme .lb-header,
+body.theme-dark .lb-header {
   background-color: var(--rbx-header-bg-dark);
   border-bottom: 1px solid var(--rbx-header-border-dark);
 }

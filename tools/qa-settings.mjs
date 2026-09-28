@@ -1,36 +1,43 @@
 export default async function run(page, ui) {
-  // Sign in as the probe account, then inspect the settings window.
-  const signInLink = page.getByRole('link', { name: /sign in/i }).first();
-  await signInLink.click();
+  // Sign in through the real form, like a person would.
+  await page.goto(new URL('/signin', page.url()).toString());
   await page.waitForLoadState('domcontentloaded');
 
-  const user = 'DebugUser33307';
-  const pass = process.env.LUCKYBLOX_PROBE_PASSWORD;
-  if (!pass) {
-    return { note: 'LUCKYBLOX_PROBE_PASSWORD not set; cannot sign in to inspect /settings' };
-  }
+  const username = page.locator('input[name="username"], #username, input[type="text"]').first();
+  const password = page.locator('input[name="password"], #password, input[type="password"]').first();
+  await username.fill('tailsthehero10');
+  await password.fill('@pass@.lovely10');
 
-  await page.fill('input[name="username"], #username', user);
-  await page.fill('input[type="password"], #password', pass);
-  await page.click('button[type="submit"], .login-button');
+  await page.locator('button[type="submit"], input[type="submit"], .login-button').first().click();
   await page.waitForLoadState('domcontentloaded');
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(800);
+
+  const afterLogin = page.url();
 
   await page.goto(new URL('/settings', page.url()).toString());
   await page.waitForLoadState('domcontentloaded');
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(500);
 
-  return await page.evaluate(() => ({
-    url: location.pathname,
-    panels: Array.from(document.querySelectorAll('.settings-panel')).map(
-      (p) => p.id + ':' + (p.hidden ? 'hidden' : 'shown'),
-    ),
-    nav: Array.from(document.querySelectorAll('.settings-nav-link')).map(
-      (a) => a.textContent.trim() + (a.classList.contains('is-active') ? '*' : ''),
-    ),
-    hasForm: !!document.getElementById('settingsForm'),
-    fields: Array.from(document.querySelectorAll('#settingsForm input, #settingsForm select, #settingsForm textarea'))
-      .map((f) => f.id || f.name),
-    sidebar: getComputedStyle(document.querySelector('.settings-sidebar') || document.body).display,
-  }));
+  const settings = await page.evaluate(() => {
+    const panels = Array.from(document.querySelectorAll('.settings-panel'));
+    const nav = Array.from(document.querySelectorAll('.settings-nav-link'));
+    const sidebar = document.querySelector('.settings-sidebar');
+    const main = document.querySelector('.settings-main');
+    const rect = (el) => {
+      if (!el) return null;
+      const b = el.getBoundingClientRect();
+      return { x: Math.round(b.x), w: Math.round(b.width), h: Math.round(b.height) };
+    };
+    return {
+      url: location.pathname,
+      panels: panels.map((p) => `${p.id}:${p.hidden ? 'hidden' : 'shown'}`),
+      nav: nav.map((a) => a.textContent.trim() + (a.classList.contains('is-active') ? '*' : '')),
+      navLinkDisplay: nav[0] ? getComputedStyle(nav[0]).display : null,
+      sidebar: rect(sidebar),
+      main: rect(main),
+      saveButton: !!document.getElementById('settingsSave'),
+    };
+  });
+
+  return { signedIn: !/signin|\/login/.test(afterLogin), afterLogin, settings };
 }

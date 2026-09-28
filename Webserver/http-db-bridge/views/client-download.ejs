@@ -146,7 +146,7 @@
           var res = await fetch('/api/launch-game', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ placeId: <%= Number(defaultPlaceId) || 1818 %> }),
+            body: JSON.stringify({ placeId: <%- Number(defaultPlaceId) || 1818 %> }),
           });
 
           if (res.status === 401) {

@@ -120,10 +120,13 @@
 
   <script>
     // Track the place the user is working on: it changes when they open a place.
-    let placeId = <%= (places && places[0] && places[0].placeId) || 1818 %>;
-    let placeName = <%= JSON.stringify((places && places[0] && places[0].name) || 'LuckyBlox Place') %>;
-    const currentUserId = <%= Number(user.userId) || 1 %>;
-    const currentUserName = <%= JSON.stringify(user.username || 'Creator') %>;
+    // Raw output (<%- %>) throughout this block. `<%= %>` HTML-escapes, so every
+    // string literal below became `&#34;LuckyBlox Place&#34;` and the whole script
+    // failed to parse - Studio's UI was inert.
+    let placeId = <%- Number((places && places[0] && places[0].placeId) || 1818) %>;
+    let placeName = <%- JSON.stringify(String((places && places[0] && places[0].name) || 'LuckyBlox Place')) %>;
+    const currentUserId = <%- Number(user.userId) || 1 %>;
+    const currentUserName = <%- JSON.stringify(String((user && user.username) || 'Creator')) %>;
 
     async function callApi(path, payload) {
       const response = await fetch(path, {

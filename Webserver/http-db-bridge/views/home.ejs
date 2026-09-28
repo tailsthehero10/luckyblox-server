@@ -9,6 +9,12 @@
   <link rel="stylesheet" href="/css/roblox.css" />
   <link rel="stylesheet" href="/css/refresh-2021.css" />
   <link rel="stylesheet" href="/css/roblox-ui.css" />
+  <%# games.css carries the game-carousel layout (.games-list-row, .game-item,
+      .games-list-column) that this page renders via partials/games-carousel. It
+      was not linked here, so every rule in it was absent and the rows fell back to
+      unstyled block flow: 36 tiles stacked vertically down a 3,156px-tall column
+      instead of scrolling sideways. The page LOOKED like a list, not an error. %>
+  <link rel="stylesheet" href="/css/games.css" />
 </head>
 <%#
   Home / Discover. The real 2021 home page was a sidebar plus a grid of game
