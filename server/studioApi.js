@@ -349,7 +349,11 @@ function buildToolboxItem(record, index = 0) {
     genres: [kind.toLowerCase()],
     created: record.updatedAt || new Date().toISOString(),
     contentUrl,
-    thumbnailUrl: `https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80`,
+    // The shipped LOCAL placeholder, not a hotlinked third-party stock photo.
+    // Every other page resolves artwork to /gameplaceholder/card.png; this one
+    // still pointed Studio at an external image, so a Studio-published asset
+    // displayed somebody else's unrelated picture (and broke offline).
+    thumbnailUrl: record.thumbnailUrl || '/gameplaceholder/card.png',
     version: Number(record.version || 1),
   };
 }

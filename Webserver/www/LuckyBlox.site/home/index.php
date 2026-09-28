@@ -253,7 +253,7 @@ $mapCount = count($maps);
             border: 1px solid var(--line);
             background:
                 linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
-                url('https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1200&q=80') center/cover no-repeat;
+                url('/gameplaceholder/card.png') center/cover no-repeat;
             position: relative;
             overflow: hidden;
             box-shadow: var(--shadow);

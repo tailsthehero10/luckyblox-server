@@ -42,17 +42,32 @@
     </header>
 
     <section class="roblox-hero">
-      <div class="roblox-game-icon" style="background-image: url('<%= gameName ? 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=240&q=80' : '' %>');"></div>
+      <%# The game icon is the SAME square art rule as everywhere else: a real <img>
+          layered over the shipped local placeholder, never a hotlinked stock photo
+          and never a CSS background-image. A background-image cannot be covered by
+          the shared loading spinner, and a 404 leaves an empty tinted box instead
+          of revealing the placeholder. %>
+      <div class="roblox-game-icon">
+        <img class="roblox-game-icon-img"
+             src="<%= (game && game.icon) || '/gameplaceholder/card.png' %>"
+             alt="" loading="lazy"
+             onerror="this.onerror=null;this.src='/gameplaceholder/card.png';" />
+      </div>
 
       <div>
-        <div class="roblox-eyebrow">Play</div>
+        <div class="roblox-eyebrow">Joining</div>
         <div class="roblox-title-block">
           <h1><%= gameName %></h1>
-          <button class="roblox-play-button" type="button" id="playNowBtn"
+          <%# Icon only - no "Play" text label beside it, matching the rest of the
+              site (the 2013 tile and game page both used a bare glyph). %>
+          <button class="roblox-play-button lb-play-icon-only" type="button" id="playNowBtn"
                   data-place-id="<%= placeId %>"
                   data-server-port="<%= serverPort %>"
                   data-job-id="<%= jobId %>"
-                  data-ticket="<%= ticket %>">Play now</button>
+                  data-ticket="<%= ticket %>"
+                  title="Play" aria-label="Play">
+            <img class="ch-ico" src="/icons/play.svg" alt="" />
+          </button>
         </div>
 
         <div class="roblox-meta-row">

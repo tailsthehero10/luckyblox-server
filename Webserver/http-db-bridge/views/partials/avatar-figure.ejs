@@ -1,41 +1,31 @@
 <%
-  var figUser = (typeof user !== "undefined" && user) ? user : {};
-  var figAvatar = figUser.avatar || {};
-  var figColors = figAvatar.bodyColors || {};
-  function figRgb(id) {
-    if (typeof bodyColorRgb === "function") return "rgb(" + bodyColorRgb(id) + ")";
-    return "#a3a2a5";
-  }
-  function figPick(key) {
-    var value = figColors[key];
-    return figRgb(value != null ? value : 1002);
-  }
   /**
-   * The figure is sized by a font-size on a 10em-tall box, so the requested
-   * height is converted once here and the CSS does the rest.
+   * The blocky character figure, drawn by the ONE shared renderer.
    *
-   * A named size class is preferred because it is the same value every page uses
-   * and keeps the drawn size and the reserved layout space in agreement; an
-   * arbitrary pixel height still works by setting font-size directly, so callers
-   * are not restricted to the fixed set.
+   * This partial used to hand-build six flat coloured rectangles with a literal
+   * ":B" text face - a colour DIAGRAM, not a character. That is why every avatar
+   * on the site looked wrong, and why a friend's tile showed a grey box whatever
+   * their account held. server/avatarRenderer.js draws the real shaded isometric
+   * figure in the account's own BrickColor body colours, on the correct R6/R15
+   * rig, with equipped items composited on top.
+   *
+   * `lbAvatarFigure` is the same helper the profile, home and avatar pages use, so
+   * there is exactly one implementation and every page agrees. It emits a wrapper
+   * carrying the layout box (10em tall, sized by font-size) plus the SVG inside.
+   *
+   * Expects: user (the account record), size (target height in px).
    */
-  var figSize = (typeof size !== "undefined" && size) ? Number(size) : 240;
+  var figSize = (typeof size !== 'undefined' && size) ? Number(size) : 240;
   if (!Number.isFinite(figSize) || figSize <= 0) figSize = 240;
-  // 10em tall: font-size = target height / 10.
-  var figFont = Math.round((figSize / 10) * 1000) / 1000;
-  var figClasses = {
-    150: 'lb-avatar-figure--xs',
-    220: 'lb-avatar-figure--sm',
-    300: 'lb-avatar-figure--md',
-    352: 'lb-avatar-figure--lg'
-  };
-  var figModifier = figClasses[figSize] || '';
+  var figUserObj = (typeof user !== 'undefined' && user) ? user : {};
 -%>
-<div class="lb-avatar-figure <%= figModifier %>" style="font-size:<%= figFont %>px;" role="img" aria-label="Avatar">
-  <div class="lb-af-part lb-af-head" style="background:<%= figPick("headColorId") %>;"><span class="lb-af-face">:B</span></div>
-  <div class="lb-af-part lb-af-torso" style="background:<%= figPick("torsoColorId") %>;"></div>
-  <div class="lb-af-part lb-af-larm" style="background:<%= figPick("leftArmColorId") %>;"></div>
-  <div class="lb-af-part lb-af-rarm" style="background:<%= figPick("rightArmColorId") %>;"></div>
-  <div class="lb-af-part lb-af-lleg" style="background:<%= figPick("leftLegColorId") %>;"></div>
-  <div class="lb-af-part lb-af-rleg" style="background:<%= figPick("rightLegColorId") %>;"></div>
-</div>
+<% if (typeof lbAvatarFigure === 'function') { %>
+<%- lbAvatarFigure(figUserObj, figSize) %>
+<% } else { %>
+<%# Defensive fallback. lbAvatarFigure is attached in the bridge's res.locals, so
+    it is always present in the running site; this branch exists so a partial
+    rendered outside that context (a test harness, a script) still emits a shaped
+    box rather than throwing and taking the whole page down. %>
+<div class="lb-avatar-figure" style="font-size:<%= Math.round((figSize / 10) * 1000) / 1000 %>px;"
+     role="img" aria-label="Avatar"></div>
+<% } %>

@@ -89,7 +89,15 @@ async function waitForReady(serverProcess) {
     });
     assert.equal(emptyPasswordRes.statusCode, 401, 'an empty password must never authenticate');
 
-    // The launch route drives the client and must stay available in preview mode.
+    // The launch route drives the client and must stay REACHABLE in preview mode.
+    //
+    // "Reachable" is the point: the gate used to answer 503 preview-mode here,
+    // which locked everyone out of the client. It must never do that again. But a
+    // 200 is not the correct answer either for a request with no session - playing
+    // requires an account, and the route used to silently fall back to user 1 (the
+    // owner), which let anyone join as the owner without authenticating. So the
+    // assertion is: not blocked by the preview gate (not 503), and correctly
+    // refused for want of a session (401).
     const launchRes = await request({
       method: 'POST',
       pathName: '/api/launch-game',
@@ -97,10 +105,16 @@ async function waitForReady(serverProcess) {
       body: JSON.stringify({ userId: 1, placeId: 1818 }),
     });
 
-    assert.equal(launchRes.statusCode, 200, 'launch route must stay available in preview mode');
+    assert.notEqual(launchRes.statusCode, 503, 'the launch route must not be swallowed by preview mode');
+    assert.equal(
+      launchRes.statusCode,
+      401,
+      'an unauthenticated launch must be refused rather than falling back to user 1',
+    );
     const launchBody = JSON.parse(launchRes.body);
-    assert.equal(launchBody.ok, true, 'launch route should report ok');
-    assert.ok(launchBody.ticket, 'launch route should issue a real ticket');
+    assert.equal(launchBody.ok, false, 'a refused launch must not report success');
+    assert.ok(!launchBody.ticket, 'a refused launch must not issue a ticket');
+    assert.ok(launchBody.signInUrl, 'a refused launch should point at sign-in');
 
     console.log('session-auth-flow test passed');
   } finally {

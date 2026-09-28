@@ -3628,13 +3628,17 @@ button.roblox-sidebar-link { min-height: 34px; }
   justify-content: center;
 }
 
-/* The thumbnail art FILLS its frame. It is a wide render, so `cover` is correct
-   here - the earlier `contain` was a workaround for a square icon being placed in
-   a 16:9 frame, which no longer happens. */
+/* The thumbnail art is FITTED, not cropped. Game artwork on this site is a
+   SQUARE card (1:1) everywhere - the game page thumbnail, the home game cards and
+   the featured hero - so `cover` trims the icon's left and right edges off. This
+   rule previously said `cover` and, being the LAST declaration of the selector in
+   the file, it silently overrode the `contain` rule above it: the cascade made the
+   first rule dead code and every square game icon lost its edges. Both rules now
+   say the same thing so the winner is unambiguous. */
 .roblox-game-thumb-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center center;
   display: block;
 }
@@ -3666,6 +3670,27 @@ button.roblox-sidebar-link { min-height: 34px; }
   background: #eef1f4 center/cover no-repeat;
   border: 1px solid var(--lb-line-soft);
   flex: 0 0 auto;
+}
+
+/* Game artwork is a real <img> inside the icon frame, not a CSS background-image.
+   A background-image cannot be covered by the shared loading spinner, and a 404
+   leaves an empty tinted box instead of revealing the placeholder. The art is
+   SQUARE, so it is fitted (contain) rather than cropped. */
+.roblox-game-icon {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.roblox-game-icon-img,
+.lb-game-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+  display: block;
 }
 
 .lb-game-title,
@@ -4354,6 +4379,103 @@ button.roblox-sidebar-link { min-height: 34px; }
 .lb-presence-online { background: var(--lb-green); }
 .lb-presence-away   { background: var(--lb-amber, #e2a400); }
 .lb-presence-offline { background: #b6bcc2; }
+
+/* ---------------------------------------------------------------------------
+   Friends row -- the real 2013 layout
+   ---------------------------------------------------------------------------
+   Quoted from the 2013 sheet this repo ships:
+     Web-2013 CCS+JS\2013CSS\CSS\Pages\Friends.css
+
+       .friends-container { display:inline-block; width:850px }
+       .friend-container  { float:left; margin:10px; width:100px; height:130px;
+                            position:relative }
+       .friend-avatar     { margin:0 0 8px 0; width:100px; height:100px; z-index:0 }
+       .friend-name       { margin:0 0 5px 0; text-overflow:ellipsis;
+                            white-space:nowrap; overflow:hidden }
+
+   The previous markup was a single-column text list with a letter tile, which is
+   why the page read as "bad" - it was not the friends row at all. */
+.lb-friends-container {
+  display: inline-block;
+  width: 100%;
+  max-width: 850px;
+}
+
+.lb-friend-container {
+  float: left;
+  margin: 10px;
+  width: 100px;
+  height: 130px;
+  position: relative;
+  text-decoration: none;
+  color: inherit;
+}
+
+.lb-friend-avatar {
+  margin: 0 0 8px 0;
+  width: 100px;
+  height: 100px;
+  position: relative;
+  z-index: 0;
+  background: #eef1f4;
+  border: 1px solid var(--lb-line-soft);
+  border-radius: var(--lb-radius);
+  overflow: hidden;
+}
+
+/* The blocky figure is the base layer; a real headshot layers on top when the
+   account has one. Both are fitted, so a square headshot is never cropped and a
+   missing one reveals the figure instead of an empty box. */
+.lb-friend-avatar-base {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.lb-friend-avatar-base .lb-avatar-figure {
+  /* 100x100 tile: the figure is a 10em box, so font-size = 100 / 10. */
+  font-size: 10px;
+}
+
+.lb-friend-avatar-top {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+  display: block;
+  z-index: 1;
+}
+
+/* Presence sits ON the tile, so it needs an explicit z-index above the artwork
+   (the art is layered at 0/1) or it paints underneath the image. */
+.lb-friend-presence {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  z-index: 2;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #ffffff;
+  box-sizing: content-box;
+}
+
+.lb-friend-name {
+  margin: 0 0 5px 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 12px;
+  text-align: center;
+}
+
+.lb-friend-container:hover .lb-friend-name {
+  text-decoration: underline;
+}
 
 /* ---------------------------------------------------------------------------
    Avatar page -- real avatar render + "Currently Wearing"

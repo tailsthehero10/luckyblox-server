@@ -36,28 +36,38 @@ test('honours LUCKYBLOX_DATA_DIR', () => {
 });
 
 test('seeds bundled defaults into an empty persistent dir', () => {
-  // The seed is whatever the bundled data dir currently holds, so assert the
-  // MECHANISM rather than a particular account: the file must have been copied
-  // into the persistent dir, and reading it back must give the same content.
+  // Assert the MECHANISM, not a particular account.
   //
   // This used to assert `users['1']` - the seeded owner account. That record was
   // deliberately removed: a real deployment starts empty so every name on the
   // site belongs to somebody who actually registered, and id 1 is reserved for
-  // the operator (see createDefaultUsers in the bridge). Asserting the old
-  // fixture made the test fail the moment the fixture was corrected.
-  const seeded = path.join(tmpDir, 'users.json');
-  assert.ok(fs.existsSync(seeded), 'users.json copied to the persistent dir');
-
-  const bundled = path.join(
+  // the operator (see createDefaultUsers in the bridge). Asserting the old fixture
+  // made the test fail the moment the fixture was corrected.
+  //
+  // users.json is also gitignored (it holds password hashes), so a fresh clone has
+  // no bundled users.json at all - the test must not depend on one existing.
+  const bundledDir = path.join(
     path.resolve(__dirname, '..'),
-    'Webserver', 'http-db-bridge', 'data', 'users.json',
+    'Webserver', 'http-db-bridge', 'data',
   );
-  const expected = JSON.parse(fs.readFileSync(bundled, 'utf8'));
-  assert.deepStrictEqual(
-    storage.readJson('users.json', {}),
-    expected,
-    'the seeded copy must match the bundled defaults exactly',
-  );
+  const bundledUsers = path.join(bundledDir, 'users.json');
+  const hadBundled = fs.existsSync(bundledUsers);
+  const originalBundled = hadBundled ? fs.readFileSync(bundledUsers) : null;
+
+  // Write a distinct bundled fixture, then prove it is copied into the empty
+  // persistent dir on first read.
+  const fixture = { '77': { userId: '77', username: 'SeedProbe' } };
+  fs.writeFileSync(bundledUsers, JSON.stringify(fixture));
+  try {
+    fs.rmSync(path.join(tmpDir, 'users.json'), { force: true });
+    const seeded = storage.readJson('users.json', {});
+    assert.deepStrictEqual(seeded, fixture, 'bundled defaults must be seeded verbatim');
+    assert.ok(fs.existsSync(path.join(tmpDir, 'users.json')), 'file copied to the temp dir');
+  } finally {
+    // Never leave the probe fixture behind in the shipped data dir.
+    if (hadBundled) fs.writeFileSync(bundledUsers, originalBundled);
+    else fs.rmSync(bundledUsers, { force: true });
+  }
 });
 
 test('writeJson then readJson round-trips', () => {

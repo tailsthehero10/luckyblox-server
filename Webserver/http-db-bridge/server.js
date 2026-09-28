@@ -1244,6 +1244,11 @@ function getFriendsForUser(userId) {
       status,
       online,
       headshotUrl,
+      // The full avatar block is passed through so the friends row can draw the
+      // friend's OWN character. Without it the tile fell back to a flat default
+      // figure (or, before that, a letter), so every friend looked identical.
+      avatar: (friendRecord && friendRecord.avatar) || null,
+      avatarType: (friendRecord && friendRecord.avatarType) || null,
       membership: (friendRecord && (friendRecord.membershipStatus || friendRecord.membership)) || 'None',
       profileUrl: `/users/${Number(friendId || 0)}/profile`,
     };
@@ -4043,7 +4048,7 @@ function renderCatalogItemPage(req, res, assetId) {
   const ownedIds = new Set((Array.isArray(user && user.inventory) ? user.inventory : []).map(String));
 
   return res.render('catalog-item', {
-    title: `${asset.name || 'Item'} - Roblox`,
+    title: `${asset.name || 'Item'} - LuckyBlox`,
     user,
     currency: getCurrencyForUser(user),
     item: {
@@ -4310,7 +4315,10 @@ function renderCatalogPage2021(req, res) {
   };
 
   res.render('catalog', {
-    title: 'Avatar Shop - Roblox',
+    // The site is called LuckyBlox. Several page titles still said "Roblox",
+    // which reads as somebody else's product in the browser tab and in search
+    // results - the last place a name should be wrong.
+    title: 'Avatar Shop - LuckyBlox',
     user,
     currency: user ? getCurrencyForUser(user) : { robux: 0, coins: 0, tickets: 0 },
     items: pageItems,
@@ -4407,7 +4415,7 @@ function renderGroupSearch2021(req, res) {
   });
 
   res.render('group-search', {
-    title: query ? `${query} - Groups - Roblox` : 'Groups - Roblox',
+    title: query ? `${query} - Groups - LuckyBlox` : 'Groups - LuckyBlox',
     user,
     currency: getCurrencyForUser(user),
     groups: sorted,
@@ -4426,7 +4434,7 @@ app.get('/groups/:id', (req, res) => {
 
   if (!owner) {
     return res.status(404).render('group-about', {
-      title: 'Group not found - Roblox',
+      title: 'Group not found - LuckyBlox',
       user,
       currency: getCurrencyForUser(user),
       group: null,
@@ -4463,7 +4471,7 @@ app.get('/groups/:id', (req, res) => {
     ? String(req.query.tab).toLowerCase() : 'about';
 
   res.render('group-about', {
-    title: `${groupNameFor(owner.username)} - Roblox`,
+    title: `${groupNameFor(owner.username)} - LuckyBlox`,
     user,
     currency: getCurrencyForUser(user),
     group: {
@@ -4696,7 +4704,7 @@ function renderGamePage2021(req, res, placeId) {
   const likesPercent = voteTotal > 0 ? Math.round((likes / voteTotal) * 100) : 0;
 
   res.render('game-about', {
-    title: `${game.title} - Roblox`,
+    title: `${game.title} - LuckyBlox`,
     user,
     game,
     placeId,
@@ -4765,7 +4773,7 @@ app.get('/games/:placeId/:slug', (req, res, next) => {
 app.get('/create', (req, res) => {
   const user = resolveViewer(req).user;
   return res.render('create', {
-    title: 'Create - Roblox',
+    title: 'Create - LuckyBlox',
     user,
     currency: getCurrencyForUser(user),
     basePath: res.locals.basePath || '',
@@ -5104,6 +5112,8 @@ app.get('/play', (req, res) => {
 
   const server = activeGameServers.find((s) => s.serverJobId === jobId) || activeGameServers.find((s) => Number(s.placeId) === placeId) || null;
 
+  const game = getGameEntry(placeId);
+
   res.render('play', {
     title: 'LuckyBlox Play',
     user: getUser(userId),
@@ -5112,7 +5122,11 @@ app.get('/play', (req, res) => {
     ticket,
     jobId,
     serverPort: requestPort,
-    gameName: getGameEntry(placeId).title || 'LuckyBlox Arena',
+    // The whole entry, not just its title: the template draws the game's own
+    // artwork. It used to receive only the NAME and hardcoded a hotlinked stock
+    // photo for the icon, so every place showed the same unrelated picture.
+    game,
+    gameName: game.title || 'LuckyBlox Arena',
     server,
   });
 });
@@ -5755,7 +5769,7 @@ app.get('/download', (req, res) => {
   const user = req.query.userId ? getUser(req.query.userId) : (sessionUser || getUser(1));
 
   return res.render('client-download', {
-    title: 'Download LuckyBlox - Roblox',
+    title: 'Download LuckyBlox',
     user,
     currency: getCurrencyForUser(user),
     // The real install state of the machine running this server.

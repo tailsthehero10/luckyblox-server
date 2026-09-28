@@ -1,6 +1,6 @@
-_G.AdminPasswordPublic = 'password=65282440'
+_G.AdminPasswordPublic = 'password=91131616'
 
-local bodytype="Custom"
+local bodytype="R6"
 local starterplayer=game:GetService("StarterPlayer")
 if bodytype~="Custom" then
 if starterplayer:FindFirstChild("StarterCharacter") then

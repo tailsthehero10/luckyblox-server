@@ -44,20 +44,33 @@
           </div>
           <div class="lb-panel-body">
             <% if (friendList.length) { %>
-              <div class="lb-asset-list">
+              <%# The real 2013 friends row: a wrap of 100x130 tiles, each a 100x100
+                  avatar over the name. The previous markup rendered a letter tile
+                  in a single-column list, which is why the page "looked bad" - it
+                  was a text list, not the friends row the real site had. %>
+              <div class="lb-friends-container">
                 <% friendList.forEach(function (friend) { %>
-                  <a class="lb-asset-item" href="<%= friend.profileUrl || ('/users/' + friend.userId + '/profile') %>">
-                    <div class="lb-asset-icon"><%= String(friend.username || 'F').slice(0, 1).toUpperCase() %></div>
-                    <div>
-                      <div class="lb-asset-name"><%= friend.username %></div>
-                      <div class="lb-asset-type"><%= friend.membership %> &middot; <%= friend.status %></div>
+                  <a class="lb-friend-container"
+                     href="<%= friend.profileUrl || ('/users/' + friend.userId + '/profile') %>"
+                     title="<%= friend.username %>">
+                    <div class="lb-friend-avatar">
+                      <%# A real <img> layered over the blocky figure. The figure is
+                          always drawn, so a friend with no headshot still shows a
+                          character rather than an empty box, and a 404 headshot
+                          reveals it instead of collapsing the tile. %>
+                      <div class="lb-friend-avatar-base">
+                        <%- include('partials/avatar-figure', { user: friend, size: 100 }) %>
+                      </div>
+                      <% if (friend.headshotUrl) { %>
+                        <img class="lb-friend-avatar-top" src="<%= friend.headshotUrl %>" alt=""
+                             loading="lazy"
+                             onerror="this.onerror=null;this.remove();" />
+                      <% } %>
+                      <span class="lb-presence-dot lb-presence-<%= friend.online ? 'online' : (friend.status === 'away' ? 'away' : 'offline') %>
+                            lb-friend-presence"
+                            title="<%= friend.online ? 'Online' : (friend.status === 'away' ? 'Away' : 'Offline') %>"></span>
                     </div>
-                    <div class="lb-asset-tag">
-                      <span class="lb-presence">
-                        <span class="lb-presence-dot lb-presence-<%= friend.online ? 'online' : (friend.status === 'away' ? 'away' : 'offline') %>"></span>
-                        <%= friend.online ? 'Online' : (friend.status === 'away' ? 'Away' : 'Offline') %>
-                      </span>
-                    </div>
+                    <div class="lb-friend-name"><%= friend.username %></div>
                   </a>
                 <% }); %>
               </div>

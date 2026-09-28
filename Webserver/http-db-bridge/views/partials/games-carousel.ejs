@@ -33,10 +33,15 @@ var secHref = sec.seeAllHref || ('/games?sort=' + encodeURIComponent(secKey));
 %>
 <% if (secGames.length && secTitle) { %>
 <div class="games-list-container" id="games-list-<%= secKey %>">
-  <div class="games-list-header">
-    <h2><%= secTitle %></h2>
+  <%# The title and the See All button share one row. The real 2013 page absolutely
+      positioned See All over a floated header; with a flex row and normal flow the
+      button can never overlap the title however long a section name is. %>
+  <div class="games-list-top">
+    <div class="games-list-header">
+      <h2><%= secTitle %></h2>
+    </div>
+    <a class="see-all-button" href="<%= secHref %>">See All</a>
   </div>
-  <a class="see-all-button" href="<%= secHref %>">See All</a>
 
   <div class="games-list">
     <div class="games-list-row">
