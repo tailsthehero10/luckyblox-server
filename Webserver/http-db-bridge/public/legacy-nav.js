@@ -266,6 +266,46 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') close();
     });
+
+    // --- Account switcher: forget a saved account --------------------------
+    //
+    // "Forget" only drops the id from THIS browser's list. It does not touch the
+    // account and does not sign anybody out, so it is deliberately not behind a
+    // confirmation - and it says so in the title attribute.
+    //
+    // Delegated from the panel so it also works on a row that was rendered after
+    // this ran (the list is server-rendered today, but the handler should not
+    // depend on that).
+    panel.addEventListener('click', function (e) {
+      var btn2 = e.target.closest ? e.target.closest('[data-forget-user-id]') : null;
+      if (!btn2) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      var userId = btn2.getAttribute('data-forget-user-id');
+      if (!userId) return;
+
+      btn2.disabled = true;
+
+      fetch('/api/accounts/forget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ userId: userId }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data || !data.ok) throw new Error((data && data.message) || 'Could not remove that account.');
+          // Remove the row rather than re-render: the server's list and this DOM
+          // are now the same thing, and the row's avatar is already drawn.
+          var row = btn2.closest ? btn2.closest('.lb-account-switcher-row') : null;
+          if (row && row.parentNode) row.parentNode.removeChild(row);
+        })
+        .catch(function () {
+          // Leave the row in place: if the request failed the account is still
+          // saved, and removing it from the page would be a lie.
+          btn2.disabled = false;
+        });
+    });
   }
 
   /**

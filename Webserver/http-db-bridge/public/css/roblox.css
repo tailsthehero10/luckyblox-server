@@ -6002,6 +6002,137 @@ html.theme-dark .lb-footer-links a { color: var(--lb-ink-2) !important; }/* ----
 .lb-account-signout:hover { background: #fdecec !important; }
 .lb-account-signout .ch-ico { opacity: 1; }
 
+/* ---------------------------------------------------------------------------
+   Account switcher
+   ---------------------------------------------------------------------------
+   The list of accounts this browser has signed in as, shown in the avatar menu.
+   Rows are 36px tall so the whole block stays inside the dropdown; the avatar is
+   a 28px figure (see the .lb-account-switcher-avatar rule below for its font-size,
+   which is what actually sizes the drawn character).
+   --------------------------------------------------------------------------- */
+.lb-account-switcher {
+  padding: 4px 0 2px;
+}
+
+.lb-account-switcher-title {
+  padding: 6px 12px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lb-muted);
+}
+
+.lb-account-switcher-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  min-height: 36px;
+}
+
+.lb-account-switcher-row.is-current {
+  background: var(--lb-surface-alt);
+}
+
+/* The avatar box clips the drawn figure, which is a 10em box sized by font-size. */
+.lb-account-switcher-avatar {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef1f4;
+}
+
+.lb-account-switcher-avatar .lb-avatar-figure {
+  /* 28px target / 10em = 2.8px */
+  font-size: 2.8px;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.lb-account-switcher-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+  line-height: 1.25;
+}
+
+.lb-account-switcher-name strong {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-account-switcher-name span {
+  font-size: 11px;
+  color: var(--lb-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-account-switcher-badge {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--lb-green-dark, #00905a);
+}
+
+.lb-account-switcher-action {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lb-link);
+  text-decoration: none;
+}
+
+.lb-account-switcher-action:hover { text-decoration: underline; }
+
+/* The remove control. It only drops the id from THIS browser's list, so it is a
+   quiet × rather than a destructive-looking button. */
+.lb-account-switcher-forget {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--lb-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lb-account-switcher-forget:hover {
+  background: var(--lb-surface-alt);
+  color: var(--lb-ink);
+}
+
+.lb-account-switcher-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--lb-link);
+  text-decoration: none;
+}
+
+.lb-account-switcher-add:hover { background: var(--lb-surface-alt); }
+.lb-account-switcher-add .ch-ico { width: 16px; height: 16px; opacity: 0.8; }
+
 /* --- Dark theme ------------------------------------------------------------ */
 html.theme-dark .lb-account-dropdown {
   background: var(--lb-surface) !important;

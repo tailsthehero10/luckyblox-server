@@ -51,12 +51,6 @@
                         <div class="lb-game-meta-row"><span>Membership</span><strong>
                             <%= user ? (user.membershipStatus || user.membership || 'None') : 'None' %>
                           </strong></div>
-                        <div class="lb-game-meta-row"><span>Coins</span><strong>
-                            <%= (currency && currency.coins) || 0 %>
-                          </strong></div>
-                        <div class="lb-game-meta-row"><span>Tickets</span><strong>
-                            <%= (currency && currency.tickets) || 0 %>
-                          </strong></div>
                       </div>
                     </div>
                   </div>

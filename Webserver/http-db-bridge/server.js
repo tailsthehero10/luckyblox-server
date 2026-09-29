@@ -621,6 +621,102 @@ function applySessionCookie(res, userId, req) {
   return { sessionId, csrfToken };
 }
 
+/* ---------------------------------------------------------------------------
+ * Account switcher
+ * ---------------------------------------------------------------------------
+ * Roblox's 2021 avatar menu listed the accounts you had signed in as on this
+ * browser, so you could hop between them without retyping a username. This is
+ * the same idea.
+ *
+ * SECURITY - what is and is NOT stored:
+ *
+ *   stored    the account ids you signed in as, on THIS browser
+ *   NOT       any password, ever - not hashed, not encrypted, not at all
+ *
+ * The list lives in a cookie scoped to this browser, not in the account store, so
+ * one person's browser does not learn about anybody else's accounts and the
+ * server keeps no per-account "who else uses this" record. Switching still
+ * requires the password: the switcher only saves you the TYPING of the username,
+ * exactly like Roblox's does when the session has expired.
+ *
+ * The cookie is readable by scripts (httpOnly false) because the header renders
+ * the list; it contains no secret. Its value is a list of numeric ids and nothing
+ * else, and every id is re-validated against the user store on read, so a forged
+ * cookie can only reference an account that exists - and still needs its password.
+ */
+const KNOWN_ACCOUNTS_COOKIE = 'luckblox_known_accounts';
+const KNOWN_ACCOUNTS_MAX = 5;
+
+function recordKnownAccount(res, req, user) {
+  const id = String((user && (user.userId || user.id)) || '');
+  if (!id) return;
+
+  const existing = readKnownAccountIds(req);
+  // Most recent first, no duplicates, bounded so the cookie cannot grow forever.
+  const next = [id, ...existing.filter((x) => x !== id)].slice(0, KNOWN_ACCOUNTS_MAX);
+
+  const isSecure = publicBaseUrl.startsWith('https://') || Boolean(process.env.RENDER);
+  res.cookie(KNOWN_ACCOUNTS_COOKIE, next.join(','), {
+    // NOT httpOnly: the header reads this to render the menu.
+    httpOnly: false,
+    sameSite: 'lax',
+    secure: isSecure,
+    maxAge: 1000 * 60 * 60 * 24 * 365,
+    path: '/',
+  });
+}
+
+/** The account ids this browser has signed in as, validated against the store. */
+function readKnownAccountIds(req) {
+  const cookieMap = parseCookieHeader((req && req.headers && req.headers.cookie) || '');
+  const raw = String(cookieMap[KNOWN_ACCOUNTS_COOKIE] || '');
+  if (!raw) return [];
+
+  // Express URL-ENCODES cookie values, so "1,2" arrives as "1%2C1". Splitting on
+  // a literal comma therefore found nothing and the whole string became one junk
+  // entry - the list appeared to hold a single account that did not exist, and
+  // every real id was silently dropped.
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch (error) {
+    // A malformed percent-sequence means a forged or truncated cookie; fall back
+    // to the raw value and let the numeric filter below reject it.
+  }
+
+  return decoded
+    .split(',')
+    .map((v) => String(v).trim())
+    // Numeric ids only. Anything else in the cookie is ignored rather than used.
+    .filter((v) => /^\d+$/.test(v))
+    .slice(0, KNOWN_ACCOUNTS_MAX);
+}
+
+/**
+ * The accounts to offer in the switcher: the saved ids, minus any that no longer
+ * exist, each with the name and avatar the menu shows.
+ */
+function getKnownAccountsFor(req) {
+  const currentId = String((req.sessionUser && (req.sessionUser.userId || req.sessionUser.id)) || '');
+
+  return readKnownAccountIds(req)
+    .map((id) => {
+      const record = getUser(id);
+      // getUser() returns a placeholder for an unknown id; only real records count.
+      if (!record || !record.username || record.username === 'LocalPlayer') return null;
+      return {
+        userId: String(record.userId || id),
+        username: record.username,
+        displayName: record.displayName || record.username,
+        membership: record.membershipStatus || record.membership || 'None',
+        avatar: record.avatar || null,
+        avatarType: record.avatarType || null,
+        isCurrent: String(record.userId || id) === currentId,
+      };
+    })
+    .filter(Boolean);
+}
+
 app.use((req, res, next) => {
   const sessionUser = resolveSessionUser(req);
   if (sessionUser) {
@@ -631,25 +727,70 @@ app.use((req, res, next) => {
     req.sessionUserId = null;
   }
 
-  // Expose the CSRF token of the *current* session to views. Sign-in and
-  // sign-up forms need a token even before a session exists, so we mint a fresh
-  // anonymous session id + token for guests.
+  // The CSRF token for this request's forms.
+  //
+  // A guest needs one for the sign-in / sign-up forms, and the token is bound to a
+  // session id. That id has to be the SAME one the response will give them, or the
+  // next POST arrives with a token for a session the server cannot find and is
+  // rejected with 403 csrf-token-invalid - which is what happened: /signin handed
+  // out a token but set no cookie, so every first-time sign-in failed.
   const cookieMap = parseCookieHeader(req.headers.cookie || '');
   let sessionId = cookieMap.luckblox_session;
   const session = sessionId ? activeSessions.get(sessionId) : null;
 
   if (!session) {
-    sessionId = security.generateSessionId();
+    // Reuse the id the browser already sent when it has one, even though we have
+    // no server-side record of it (a restart, or a session that expired). Minting
+    // a NEW id here would invalidate the token in a form the visitor already has
+    // open, so a page left open across a restart would submit a dead token.
+    sessionId = sessionId || security.generateSessionId();
     const csrfToken = security.createCsrfToken(sessionId, secretKey);
     const isSecure = publicBaseUrl.startsWith('https://') || Boolean(process.env.RENDER);
-    res.cookie('luckblox_session', sessionId, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: isSecure,
-      maxAge: 1000 * 60 * 60 * 12,
-      path: '/',
-    });
+
+    // ISSUE the cookie, but only if the route did not issue a real one.
+    //
+    // TIMING IS THE WHOLE POINT HERE. This middleware runs BEFORE the route, so at
+    // this moment a sign-in response has no session cookie yet. Writing ours now
+    // would mean POST /api/login emits TWO Set-Cookie headers for
+    // `luckblox_session`, and a browser keeps the LAST one - so the anonymous
+    // cookie would overwrite the real login and every sign-in would return 200 and
+    // then behave as a guest.
+    //
+    // So the write is deferred to the moment headers are finalised, by wrapping
+    // writeHead. NOTE: `res.on('headers')` does NOT work for this - that event is
+    // only emitted when a raw http.ServerResponse writes its headers, and Express
+    // goes through ServerResponse.writeHead, so the handler never ran and the
+    // cookie was never set at all (which is why /signin issued a CSRF token with no
+    // session cookie to validate it against, and every first sign-in got a 403).
+    const originalWriteHead = res.writeHead;
+    let wroteSessionCookie = false;
+
+    res.writeHead = function writeHeadWithGuestSession(...args) {
+      if (!wroteSessionCookie) {
+        wroteSessionCookie = true;
+        const alreadyIssued = res.getHeader('Set-Cookie')
+          && String(res.getHeader('Set-Cookie')).includes('luckblox_session=');
+
+        if (!alreadyIssued) {
+          res.cookie('luckblox_session', sessionId, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: isSecure,
+            maxAge: 1000 * 60 * 60 * 12,
+            path: '/',
+          });
+        }
+      }
+      return originalWriteHead.apply(this, args);
+    };
+
     req.csrfToken = csrfToken;
+
+    // Publish the id so requireCsrf() can validate a token minted for this
+    // session before the cookie exists. A first sign-in has no luckblox_session
+    // cookie on the REQUEST, so without this the CSRF check had no session to
+    // compare against and rejected every first-time sign-in with a 403.
+    req.anonymousSessionId = sessionId;
   } else {
     req.csrfToken = session.csrfToken || security.createCsrfToken(sessionId, secretKey);
   }
@@ -666,6 +807,10 @@ app.use((req, res, next) => {
   res.locals.formatGameDate = formatGameDate;
   res.locals.formatJoinDate = formatJoinDate;
   res.locals.lbAvatarFigure = renderAvatarFigure;
+  // The account switcher's list: the accounts this browser has signed in as.
+  // Available to every template so the header does not have to be passed it by
+  // each of the ~40 routes that render a page.
+  res.locals.knownAccounts = getKnownAccountsFor(req);
   next();
 });
 
@@ -685,8 +830,31 @@ function requireCsrf(req, res, next) {
   }
 
   const cookieMap = parseCookieHeader(req.headers.cookie || '');
-  const sessionId = cookieMap.luckblox_session;
+
+  // The session id to validate against.
+  //
+  // The cookie is the normal case. A FIRST sign-in has no session cookie yet - the
+  // guest session that mints the form's token is only written on the response - so
+  // falling back to the middleware's in-memory id is what makes the very first
+  // POST /signin work. Without this fallback `sessionId` was undefined, every
+  // first-time sign-in was rejected with 403 csrf-token-invalid, and the page
+  // reloaded looking as though the password had been wrong.
+  const sessionId = cookieMap.luckblox_session || req.anonymousSessionId || '';
   const token = (req.body && req.body._csrf) || req.headers['x-csrf-token'];
+
+  // A request carrying a valid AUTH TICKET is an authenticated API client, not a
+  // browser form: it cannot hold a cookie-bound token. Those are authenticated
+  // separately (see the ticket checks in the routes), so they are allowed through
+  // here rather than being forced to fake a CSRF token they can never have.
+  const bearer = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+  const ticketToken = bearer || String(req.headers['x-luckblox-ticket'] || '').trim();
+  if (ticketToken && typeof verifyAuthTicket === 'function') {
+    try {
+      if (verifyAuthTicket(ticketToken)) return next();
+    } catch (error) {
+      // fall through to the normal CSRF rejection
+    }
+  }
 
   if (!sessionId || !security.verifyCsrfToken(String(token || ''), sessionId, secretKey)) {
     audit('csrf_rejected', { path: req.path, ip: security.clientIp(req) });
@@ -1272,18 +1440,25 @@ async function resolveProfileAvatar(user) {
 }
 
 /**
- * Normalise a user's wallet into a single currency object so the UI always has
- * real Robux / coin values, even for accounts created before this field existed.
+ * Normalise a user's wallet into a single currency object.
+ *
+ * ROBLOX IS THE ONLY CURRENCY HERE.
+ *
+ * This used to return `coins` and `tickets` as well, and tickets were DERIVED:
+ *
+ *     tickets: Number(wallets.tickets) || Math.round(robux / 10)
+ *
+ * That invented a balance. An account with 500 Robux was shown 50 Tickets it had
+ * never been granted, in a currency the site does not issue - which is exactly the
+ * kind of made-up number this project avoids elsewhere (see the counters on the
+ * game page, which are real zeros rather than plausible-looking values).
+ *
+ * Roblox retired Tickets in 2016, and LuckyBlox only ever had Robux, so the field
+ * is removed rather than set to zero: absent is honest, and a zero would still
+ * render as a wallet the site implies it supports.
  */
 function getCurrencyForUser(user) {
-  const robux = Number(user && user.robux) || 0;
-  const wallets = (user && user.currencies) || {};
-  return {
-    robux,
-    coins: Number(wallets.coins) || 0,
-    tickets: Number(wallets.tickets) || Math.round(robux / 10),
-    currencySymbol: 'R$',
-  };
+  return { robux: Number(user && user.robux) || 0 };
 }
 
 /**
@@ -1721,6 +1896,20 @@ function upgradeLegacyPasswords() {
  * Runs on every boot and re-hashes only when the configured password does not
  * already match, so a redeploy is idempotent. Returns true when it changed the
  * stored credential.
+ *
+ * IT CREATES THE OWNER WHEN ABSENT.
+ * --------------------------------
+ * This used to `return false` with a warning when no record existed at id 1 -
+ * so on a fresh database, or one seeded without an owner, setting
+ * LUCKYBLOX_OWNER_PASSWORD did NOTHING. The deployment then reported
+ * "owner account: tailsthehero10 (id 1) via id+username" at boot (that message
+ * only compares CONFIG, not stored records) while every sign-in attempt answered
+ * "Unknown username" - a locked-out owner with no error explaining why.
+ *
+ * If a password is configured, an account is now created under the configured
+ * username with that password. An EXISTING record is never renamed or reset
+ * beyond its credential, so running this twice cannot wipe an account's friends,
+ * inventory or currency.
  */
 function applyOwnerPasswordFromEnv() {
   const password = process.env.LUCKYBLOX_OWNER_PASSWORD;
@@ -1729,13 +1918,84 @@ function applyOwnerPasswordFromEnv() {
   }
 
   const users = getUsers();
-  const owner = users[OWNER_USER_ID];
+  let owner = users[OWNER_USER_ID];
+
+  // Fold in a record that already holds the configured username under a
+  // different id, so enabling the password does not create a duplicate account.
   if (!owner) {
-    console.warn(`[luckyblox] LUCKYBLOX_OWNER_PASSWORD set but owner id ${OWNER_USER_ID} was not found`);
-    return false;
+    const byName = Object.entries(users).find(([, u]) => (
+      u && String(u.username || '').toLowerCase() === OWNER_USERNAME
+    ));
+    if (byName) {
+      owner = byName[1];
+      owner.userId = String(owner.userId || byName[0]);
+    }
+  }
+
+  if (!owner) {
+    // Create it. Every field the site reads is present, and the counters are real
+    // zeros rather than invented numbers.
+    const { hash, salt, version } = hashPassword(password);
+    const now = new Date().toISOString();
+
+    owner = {
+      userId: OWNER_USER_ID,
+      username: OWNER_USERNAME,
+      displayName: OWNER_USERNAME,
+      password: hash,
+      passwordSalt: salt,
+      passwordVersion: version,
+      role: 'owner',
+      bio: 'Owner of this LuckyBlox deployment.',
+      membershipStatus: 'None',
+      membership: 'None',
+      robux: 0,
+      currencies: { robux: 0, coins: 0, tickets: 0 },
+      inventory: [],
+      currentlyWearing: [],
+      wearing: [],
+      friends: [],
+      stats: { friends: 0, following: 0, created: 0, plays: 0, followers: 0, badges: 0, gameVisits: 0 },
+      joinDate: now,
+      created: now,
+      avatar: {
+        bodyColors: {
+          headColorId: 24, torsoColorId: 23,
+          leftArmColorId: 24, rightArmColorId: 24,
+          leftLegColorId: 119, rightLegColorId: 119,
+        },
+        playerAvatarType: 'R6',
+      },
+      avatarType: 'R6',
+      updatedAt: now,
+    };
+
+    users[OWNER_USER_ID] = owner;
+    writeJson(usersPath, users);
+    console.log(
+      `[luckyblox] created owner account ${OWNER_USERNAME} (id ${OWNER_USER_ID}) from `
+      + 'LUCKYBLOX_OWNER_PASSWORD',
+    );
+    return true;
+  }
+
+  // The record exists: give it the configured name if it is missing one, and set
+  // the credential. Nothing else about the account is touched.
+  let changed = false;
+  if (!owner.username || String(owner.username).toLowerCase() !== OWNER_USERNAME) {
+    owner.username = owner.username || OWNER_USERNAME;
+    owner.displayName = owner.displayName || owner.username;
+  }
+  if (!owner.role) {
+    owner.role = 'owner';
   }
 
   if (owner.password && owner.passwordSalt && verifyPassword(password, owner.password, owner.passwordSalt)) {
+    // Already correct - but the role/name repairs above may still need saving.
+    if (changed) {
+      users[OWNER_USER_ID] = owner;
+      writeJson(usersPath, users);
+    }
     return false;
   }
 
@@ -3490,9 +3750,22 @@ app.get('/games', (req, res) => {
     { key: 'recently-updated', title: 'Recently Updated', games: byUpdated.slice(0, 12) },
   ].filter((s) => s.games.length > 0);
 
-  // The genre chips come from the games actually present, so a chip can never
-  // filter down to nothing.
-  const genres = Array.from(new Set(cards.map((c) => c.genre).filter(Boolean))).sort();
+  // The genre chips are the FULL Roblox genre list, not just the genres present
+  // in the data.
+  //
+  // Building them from `cards` meant the filter showed whatever happened to
+  // exist - on this deployment every game is tagged "Adventure", so the bar
+  // offered a single chip and there was no way to browse by genre at all. The
+  // chips ARE the Roblox taxonomy, so they are listed in full and sorted
+  // alphabetically for scanning.
+  //
+  // A chip for a genre with no games is still useful: it tells the visitor the
+  // category exists. The page already renders an empty state
+  // ("No experiences match this filter yet."), so selecting one is not a dead end.
+  const genresInData = new Set(cards.map((c) => String(c.genre || '')).filter(Boolean));
+  const genres = [...ROBLOX_GENRES]
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) => ({ name, count: cards.filter((c) => c.genre === name).length, present: genresInData.has(name) }));
 
   res.render('games', {
     title: 'Discover - LuckyBlox',
@@ -3566,6 +3839,11 @@ app.get('/signin', (req, res) => {
     hintMessage,
     redirect,
     username: req.query.username || '',
+    // The form posts a hidden `_csrf` field. res.locals.csrfToken exists, but the
+    // view reads the LOCAL `csrfToken` first - so without this the field rendered
+    // empty and every sign-in POST was rejected with 403 "Security token missing
+    // or expired", which looks exactly like a wrong password.
+    csrfToken: req.csrfToken,
   });
 });
 
@@ -3593,6 +3871,10 @@ app.get('/signup', (req, res) => {
     errorMessage,
     username,
     redirect,
+    // Same reason as /signin: the form's hidden `_csrf` field reads the LOCAL
+    // `csrfToken`, so without this the field is empty and the POST is rejected
+    // with a 403 that reads like a validation failure.
+    csrfToken: req.csrfToken,
   });
 });
 
@@ -3689,9 +3971,14 @@ app.post('/signup', requireCsrf, (req, res) => {
   users[String(nextId)] = created;
   writeJson(usersPath, users);
   applySessionCookie(res, nextId, req);
+  // A brand-new account is an account you are signed in as, so it belongs in the
+  // switcher immediately - otherwise it is missing until the next sign-in.
+  recordKnownAccount(res, req, created);
   syncLocalIdentity(created);
   audit('signup_success', { ip, userId: String(nextId), username });
-  const redirect = req.body.redirect || req.query.redirect || '/dev';
+  // Same default as /signin: a brand-new account lands on the SITE home page, not
+  // on the Creator Hub. A new visitor has nothing to create yet.
+  const redirect = req.body.redirect || req.query.redirect || '/';
   const bp = res.locals.basePath || '';
   return res.redirect(`${bp}${redirect}?welcome=1`);
 });
@@ -3760,6 +4047,10 @@ app.post('/signin', requireCsrf, (req, res) => {
     username,
     hintMessage: '',
     basePath: res.locals.basePath || '',
+    // Re-issue the token. Without it the rendered form's hidden field is empty,
+    // so the visitor corrects their password and is refused for a DIFFERENT
+    // reason (a missing security token) that looks like the same failure.
+    csrfToken: req.csrfToken,
   });
 
   // Rate limit sign-in attempts per IP (20 / 15 min) and per username (10 / 15 min).
@@ -3811,6 +4102,13 @@ app.post('/signin', requireCsrf, (req, res) => {
   security.clearRateLimit(`signin:user:${username.toLowerCase()}`);
 
   const { csrfToken } = applySessionCookie(res, user.userId || user.id || 1, req);
+
+  // Remember the account for the switcher. This is the path the SITE's sign-in form
+  // uses, and it was missed when the feature was added to /api/login - so signing in
+  // through the form worked but the switcher stayed empty, because the only cookie
+  // it received was the session.
+  recordKnownAccount(res, req, user);
+
   // Refresh the client-visible local identity so the launcher and clients load
   // the signed-in account (inventory / avatar / membership) immediately.
   syncLocalIdentity(user);
@@ -3824,7 +4122,13 @@ app.post('/signin', requireCsrf, (req, res) => {
     audit('studio_handshake_linked', { ip, userId: String(user.userId || user.id), nonce: studioNonce });
   }
 
-  const redirect = req.body.redirect || req.query.redirect || '/dev';
+  // Land on the HOME PAGE, not the Creator Hub.
+  //
+  // This defaulted to '/dev', so signing in from the site dropped the visitor on
+  // /dev - a page with different chrome and no site header. /dev is a tool you
+  // navigate TO, not an entry point, and a caller that wants it passes
+  // `redirect=/dev` explicitly (the Studio handshake above does).
+  const redirect = req.body.redirect || req.query.redirect || '/';
   const bp = res.locals.basePath || '';
   return res.redirect(`${bp}${redirect}?signedin=1`);
 });
@@ -3877,9 +4181,19 @@ app.post('/luckblox.site.tk/signin', (req, res) => {
   }
 
   applySessionCookie(res, user.userId || user.id || 1);
+  // Same as /signin: remember the account so the header switcher lists it.
+  recordKnownAccount(res, req, user);
   syncLocalIdentity(user);
   const bp = res.locals.basePath || '';
-  const redirect = req.body.redirect || req.query.redirect || '/dev';
+
+  // Default destination is the HOME PAGE, not /dev.
+  //
+  // This defaulted to '/dev', so signing in from the site dropped the visitor on
+  // the Creator Hub - a page with different chrome and no site header - which is
+  // not where anybody signing in to browse wanted to land. /dev is a tool you
+  // navigate TO; it is not an entry point. A caller that wants it still passes
+  // `redirect=/dev` explicitly.
+  const redirect = req.body.redirect || req.query.redirect || '/';
   return res.json({ ok: true, redirect: `${bp}${redirect}?signedin=1`, userId: user.userId || user.id });
 });
 
@@ -3899,6 +4213,7 @@ app.get('/luckblox.site.tk/signin', (req, res) => {
     redirect,
     username: req.query.username || '',
     basePath: res.locals.basePath || '',
+    csrfToken: req.csrfToken,
   });
 });
 
@@ -3924,6 +4239,7 @@ app.get('/luckblox.site.tk/signup', (req, res) => {
     username,
     redirect,
     basePath: res.locals.basePath || '',
+    csrfToken: req.csrfToken,
   });
 });
 
@@ -5512,6 +5828,9 @@ app.get('/play', (req, res) => {
 app.post('/api/login', (req, res) => {
   const username = String(req.body.username || req.body.userName || req.query.username || '');
   const password = String(req.body.password || req.body.pass || req.query.password || '');
+  // Whether to REMEMBER this account for the switcher. The password itself is
+  // never stored - see recordKnownAccount().
+  const remember = req.body.remember !== false && req.body.remember !== 'false';
   const users = getUsers();
   const match = Object.values(users).find((user) => String(user.username || user.displayName || '').toLowerCase() === username.toLowerCase());
 
@@ -5540,6 +5859,11 @@ app.post('/api/login', (req, res) => {
   const ticket = createAuthTicket(userId, 1818, { port: gamePort, serverJobId: `session-${Date.now()}` });
   const sessionId = applySessionCookie(res, userId);
 
+  // Remember the account for the switcher, on THIS browser only.
+  if (remember) {
+    recordKnownAccount(res, req, user);
+  }
+
   audit('api_login_success', { ip: security.clientIp(req), userId: String(userId) });
 
   return res.json({
@@ -5562,6 +5886,46 @@ app.get('/api/user/:userId', (req, res) => {
   const userId = req.params.userId || 1;
   const publicGames = getPublicGamesForUser(userId);
   res.json({ ok: true, user: serializeUser(userId), publishedGames: publicGames });
+});
+
+/** The accounts this browser has signed in as, for the header switcher. */
+app.get('/api/accounts/known', (req, res) => {
+  res.json({ ok: true, accounts: getKnownAccountsFor(req) });
+});
+
+/**
+ * Forget one saved account.
+ *
+ * Only removes the id from THIS browser's list - it does not touch the account,
+ * and it does not sign anybody out. A visitor tidying their switcher should not be
+ * able to affect the account itself.
+ */
+app.post('/api/accounts/forget', (req, res) => {
+  const wanted = String((req.body && (req.body.userId || req.body.id)) || '').trim();
+  if (!/^\d+$/.test(wanted)) {
+    return res.status(400).json({ ok: false, error: 'bad-user-id', message: 'A numeric userId is required.' });
+  }
+
+  const remaining = readKnownAccountIds(req).filter((id) => id !== wanted);
+  const isSecure = publicBaseUrl.startsWith('https://') || Boolean(process.env.RENDER);
+  res.cookie(KNOWN_ACCOUNTS_COOKIE, remaining.join(','), {
+    httpOnly: false,
+    sameSite: 'lax',
+    secure: isSecure,
+    maxAge: 1000 * 60 * 60 * 24 * 365,
+    path: '/',
+  });
+
+  audit('account_forgotten', { ip: security.clientIp(req), userId: wanted });
+
+  // Report the list AFTER the removal.
+  //
+  // `getKnownAccountsFor(req)` re-reads the REQUEST cookie, which still holds the
+  // old list - the new cookie is only written on the response. So the route
+  // returned the account it had just forgotten, and a caller that trusted the
+  // response (rather than the cookie) saw the removal silently fail.
+  const remainingAccounts = getKnownAccountsFor(req).filter((a) => a.userId !== wanted);
+  return res.json({ ok: true, accounts: remainingAccounts });
 });
 
 app.get('/api/users/:userId/profile', (req, res) => {

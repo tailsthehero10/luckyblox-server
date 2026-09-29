@@ -47,13 +47,24 @@ const SERVER_CANDIDATES = [
 ];
 
 function parseArgs(argv) {
-  const args = { url: DEFAULT_LIVE_URL, place: DEFAULT_PLACE_ID, client: DEFAULT_CLIENT, dryRun: false };
+  const args = {
+    url: DEFAULT_LIVE_URL,
+    place: DEFAULT_PLACE_ID,
+    client: DEFAULT_CLIENT,
+    dryRun: false,
+    // Credentials for the LIVE site. Taken from the environment by default so a
+    // developer can set them once; --user/--pass override for a one-off.
+    user: process.env.LUCKYBLOX_DEV_USER || '',
+    pass: process.env.LUCKYBLOX_DEV_PASS || '',
+  };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === '--url') args.url = argv[++i];
     else if (token === '--place' || token === '--placeid') args.place = Number(argv[++i]) || DEFAULT_PLACE_ID;
     else if (token === '--client') args.client = argv[++i];
     else if (token === '--dry-run') args.dryRun = true;
+    else if (token === '--user' || token === '--username') args.user = argv[++i] || '';
+    else if (token === '--pass' || token === '--password') args.pass = argv[++i] || '';
     else if (token === '--help' || token === '-h') args.help = true;
   }
   args.url = String(args.url || DEFAULT_LIVE_URL).replace(/\/+$/, '');
@@ -64,17 +75,85 @@ function log(step, message) {
   console.log(`[dev-launch] ${step.padEnd(12)} ${message}`);
 }
 
-/** Ask the LIVE site for a launch ticket through the public API. */
-async function requestLaunchTicket(baseUrl, placeId, userId = 1) {
-  const url = `${baseUrl}/api/launch-game`;
-  const res = await fetch(url, {
+/**
+ * Sign in to the LIVE site and return the session cookie.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * Requesting a launch ticket requires a real session: the route used to fall back
+ * to user 1 (the deployment owner) when nobody was signed in, which let anyone
+ * launch as the owner without authenticating. That fallback was removed on
+ * purpose, so this tool - which sent no cookie at all - started getting:
+ *
+ *   401 {"error":"sign-in-required","message":"You need to sign in to play."}
+ *
+ * The tool has to do what a person does: sign in, keep the cookie, and send it with
+ * the launch request. Credentials come from the command line or the environment so
+ * no password is ever stored in the repo.
+ *
+ * @returns {string} the Cookie header value
+ */
+async function signIn(baseUrl, username, password) {
+  const res = await fetch(`${baseUrl}/api/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ userId, placeId }),
+    body: JSON.stringify({ username, password }),
+  });
+
+  const text = await res.text();
+  let payload = null;
+  try { payload = JSON.parse(text); } catch { /* non-JSON body, reported below */ }
+
+  if (!res.ok || !payload || !payload.ok) {
+    const detail = (payload && (payload.message || payload.error)) || text.slice(0, 200);
+    throw new Error(`sign-in failed (${res.status}): ${detail}`);
+  }
+
+  // Node's fetch exposes Set-Cookie through getSetCookie(); fall back to the raw
+  // header for older runtimes. Only the name=value part is sent back.
+  const raw = typeof res.headers.getSetCookie === 'function'
+    ? res.headers.getSetCookie()
+    : [res.headers.get('set-cookie')].filter(Boolean);
+
+  const cookies = raw.map((c) => String(c).split(';')[0]).filter(Boolean);
+  if (!cookies.length) {
+    throw new Error(
+      'signed in but the server returned no session cookie - the site may be '
+      + 'rejecting the request before the session is issued',
+    );
+  }
+  return cookies.join('; ');
+}
+
+/** Ask the LIVE site for a launch ticket through the public API. */
+async function requestLaunchTicket(baseUrl, placeId, cookie) {
+  const url = `${baseUrl}/api/launch-game`;
+  const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
+
+  // The ticket is issued for the SIGNED-IN account. No userId is sent in the body:
+  // the server reads it from the session, and sending one would only invite the
+  // client to disagree with the server about who is playing.
+  if (cookie) headers.Cookie = cookie;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ placeId }),
   });
   const text = await res.text();
   let payload;
   try { payload = JSON.parse(text); } catch { payload = null; }
+
+  if (res.status === 401) {
+    // Distinguish "nobody signed in" from "credentials were rejected", because the
+    // fixes are different and the raw 401 message says neither.
+    throw new Error(
+      'the LIVE site refused the launch (401): not signed in.\n'
+      + '       Pass --user and --pass, or set LUCKYBLOX_DEV_USER / LUCKYBLOX_DEV_PASS.\n'
+      + '       The launch route requires a real session and will not fall back to user 1.',
+    );
+  }
+
   if (!res.ok || !payload || !payload.ok) {
     const detail = payload && (payload.message || payload.error) ? (payload.message || payload.error) : text.slice(0, 200);
     throw new Error(`LIVE site refused the launch (${res.status}): ${detail}`);
@@ -181,7 +260,19 @@ function launchClient(clientDir, { placeId, port, jobId, ticket }) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log('Usage: node tools/dev-launch.js [--place 1818] [--url <live>] [--client 2021M] [--dry-run]');
+    console.log('Usage: node tools/dev-launch.js [options]');
+    console.log('');
+    console.log('  --place <id>     place to play (default 1818)');
+    console.log('  --url <origin>   live site (default ' + DEFAULT_LIVE_URL + ')');
+    console.log('  --client <name>  client folder to launch (default 2021M)');
+    console.log('  --user <name>    account to sign in as (or LUCKYBLOX_DEV_USER)');
+    console.log('  --pass <word>    its password (or LUCKYBLOX_DEV_PASS)');
+    console.log('  --dry-run        resolve everything, launch nothing');
+    console.log('');
+    console.log('The launch route needs a real session, so signing in is required.');
+    console.log('Set the two environment variables once to avoid passing them each run:');
+    console.log('  set LUCKYBLOX_DEV_USER=yourname');
+    console.log('  set LUCKYBLOX_DEV_PASS=yourpassword');
     return;
   }
 
@@ -189,9 +280,22 @@ async function main() {
   log('target', `LIVE site ${args.url}`);
   log('target', `place ${args.place}, client ${args.client}`);
 
-  // 1. Ask the LIVE site for a real launch ticket.
+  // 0. Sign in. A launch ticket belongs to an account, so this comes first.
+  if (!args.user || !args.pass) {
+    throw new Error(
+      'no credentials given, and the LIVE launch route requires a signed-in account.\n'
+      + '       Pass --user and --pass, or set LUCKYBLOX_DEV_USER / LUCKYBLOX_DEV_PASS.\n'
+      + '       (Running with --dry-run still needs them: it resolves a real ticket.)',
+    );
+  }
+
+  log('auth', `signing in as ${args.user}...`);
+  const cookie = await signIn(args.url, args.user, args.pass);
+  log('auth', 'session established');
+
+  // 1. Ask the LIVE site for a real launch ticket, as that account.
   log('ticket', 'requesting launch ticket from LIVE...');
-  const launch = await requestLaunchTicket(args.url, args.place);
+  const launch = await requestLaunchTicket(args.url, args.place, cookie);
   log('ticket', `ok: jobId=${launch.jobId} place=${launch.placeId} livePort=${launch.port}`);
 
   // 2. Run the game server locally (Render cannot host it).

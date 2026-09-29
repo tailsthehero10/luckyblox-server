@@ -31,7 +31,7 @@ var hUser = (typeof user !== 'undefined' && user) ? user : null;
 // Fall back to an empty wallet rather than throwing. A page that forgets to pass
 // `currency` should render "0", not 500 - that is exactly how /friends broke.
 var hCurrency = (typeof currency !== 'undefined' && currency && typeof currency === 'object')
-  ? currency : { robux: 0, coins: 0, tickets: 0 };
+  ? currency : { robux: 0 };
 var hActive = (typeof activeNav !== 'undefined' && activeNav) ? activeNav : '';
 var hUserId = hUser ? hUser.userId : null;
 var hRobux = hCurrency.robux != null ? hCurrency.robux : (hUser ? (hUser.robux || 0) : 0);
@@ -205,7 +205,59 @@ var hDark = (typeof themeOn !== 'undefined') ? !!themeOn : false;
           </span>
         </div>
 
+        <%#
+          The account switcher.
+
+          Roblox's 2021 avatar menu listed the accounts you had signed in as on this
+          browser, so you could hop between them without retyping a username. This
+          is the same list.
+
+          It renders from a cookie holding only account IDs - no password is ever
+          saved - so it survives a sign-out, which is when it matters most. Choosing
+          an account goes to /signin with the username prefilled, so the visitor
+          types only the password. That is the whole feature: it saves the TYPING,
+          never the authentication.
+        %>
+        <% var hKnown = (typeof knownAccounts !== 'undefined' && Array.isArray(knownAccounts))
+             ? knownAccounts : []; %>
+        <% if (hKnown.length) { %>
+        <div class="lb-account-switcher" aria-label="Saved accounts">
+          <div class="lb-account-switcher-title">
+            <%= hKnown.length > 1 ? 'Switch account' : 'Signed in as' %>
+          </div>
+
+          <% hKnown.forEach(function (acct) { %>
+          <div class="lb-account-switcher-row<%= acct.isCurrent ? ' is-current' : '' %>">
+            <span class="lb-account-switcher-avatar">
+              <%- include('avatar-figure', { user: acct, size: 28 }) %>
+            </span>
+            <span class="lb-account-switcher-name">
+              <strong><%= acct.displayName || acct.username %></strong>
+              <span>@<%= acct.username %><% if (acct.isCurrent) { %> &middot; current<% } %></span>
+            </span>
+
+            <% if (acct.isCurrent) { %>
+              <span class="lb-account-switcher-badge">Active</span>
+            <% } else { %>
+              <a class="lb-account-switcher-action"
+                 href="/signin?username=<%= encodeURIComponent(acct.username) %>&amp;redirect=%2F"
+                 title="Sign in as <%= acct.username %>">Switch</a>
+              <button type="button"
+                      class="lb-account-switcher-forget"
+                      data-forget-user-id="<%= acct.userId %>"
+                      title="Remove @<%= acct.username %> from this list"
+                      aria-label="Remove @<%= acct.username %> from this list">&times;</button>
+            <% } %>
+          </div>
+          <% }); %>
+
+          <a class="lb-account-switcher-add" href="/signin">
+            <img class="ch-ico" src="/icons/plus.svg" alt="" /> Use another account
+          </a>
+        </div>
+
         <div class="lb-account-dropdown-divider"></div>
+        <% } %>
 
         <a class="lb-account-dropdown-item" role="menuitem" href="/users/<%= hUserId %>/profile">
           <img class="ch-ico" src="/icons/profile.svg" alt="" /> Profile
