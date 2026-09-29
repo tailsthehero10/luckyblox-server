@@ -7,6 +7,7 @@ REM
 REM Usage:
 REM   Settings\DEV-PLAY.bat                  (place 2020)
 REM   Settings\DEV-PLAY.bat --place 2020     (pick a place)
+REM   Settings\DEV-PLAY.bat --testblox --Testblox10 
 REM   Settings\DEV-PLAY.bat --dry-run        (resolve only, launch nothing)
 
 setlocal

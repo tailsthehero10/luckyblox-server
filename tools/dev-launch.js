@@ -51,11 +51,11 @@ function parseArgs(argv) {
     url: DEFAULT_LIVE_URL,
     place: DEFAULT_PLACE_ID,
     client: DEFAULT_CLIENT,
-    dryRun: false,
+    dryRun: true,
     // Credentials for the LIVE site. Taken from the environment by default so a
     // developer can set them once; --user/--pass override for a one-off.
-    user: process.env.LUCKYBLOX_DEV_USER || '',
-    pass: process.env.LUCKYBLOX_DEV_PASS || '',
+    user: process.env.LUCKYBLOX_DEV_USER || 'testblox',
+    pass: process.env.LUCKYBLOX_DEV_PASS || 'Testblox10',
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -229,7 +229,57 @@ function startLocalGameServer(port, placeId, jobId) {
   });
 }
 
-/** Launch the 2021M player client against the local game server. */
+/**
+ * Point the client at the LIVE site for this session.
+ *
+ * The committed AppSettings.xml carries a placeholder BaseUrl
+ * (http://localhost/LuckBlox.site.tk/) - it is deliberately never a real host.
+ * The 2021M client reads BaseUrl from that file to know where to sign in and
+ * where to fetch its join script from, so a client launched by this tool would
+ * otherwise talk to localhost instead of the deployment that issued the ticket.
+ *
+ * We rewrite ONLY the BaseUrl element and leave the rest of the file alone, and
+ * we back the original up the first time so the committed file can be restored.
+ *
+ * @returns {{baseUrl: string|null, settingsFile: string|null}}
+ */
+function pointClientAtSite(clientDir, baseUrl) {
+  const settingsFile = path.join(clientDir, 'AppSettings.xml');
+  if (!fs.existsSync(settingsFile)) {
+    // No settings file: the client falls back to its own default. Report that
+    // rather than silently pretending we configured it.
+    return { baseUrl: null, settingsFile: null };
+  }
+
+  const original = fs.readFileSync(settingsFile, 'utf8');
+  const backupFile = `${settingsFile}.dev-backup`;
+  if (!fs.existsSync(backupFile)) {
+    fs.writeFileSync(backupFile, original);
+  }
+
+  // The suffix the 2021M client needs. /home/ is where this client's page tree
+  // lives (see CLIENT_BASE_SUFFIX in server.js); a bare origin would hand it the
+  // wrong page tree with no error.
+  const normalized = String(baseUrl).replace(/\/+$/, '');
+  const target = `${normalized}/home/`;
+
+  const updated = /<BaseUrl>[\s\S]*?<\/BaseUrl>/.test(original)
+    ? original.replace(/<BaseUrl>[\s\S]*?<\/BaseUrl>/, `<BaseUrl>${target}</BaseUrl>`)
+    : original.replace(/<\/Settings>/, `    <BaseUrl>${target}</BaseUrl>\n</Settings>`);
+
+  fs.writeFileSync(settingsFile, updated);
+  return { baseUrl: target, settingsFile };
+}
+
+/**
+ * Launch the 2021M player client against the local game server.
+ *
+ * The client is told the LOCAL port explicitly. The ticket from the LIVE site
+ * names the port the *deployment* advertised (e.g. 53641 on Render), where
+ * nothing is listening - the whole point of this tool is that the game server
+ * runs on this PC instead. Passing the live port here is what made the client
+ * connect to a dead address.
+ */
 function launchClient(clientDir, { placeId, port, jobId, ticket }) {
   const exe = path.join(clientDir, 'RobloxPlayerBeta.exe');
   if (!fs.existsSync(exe)) {
@@ -311,7 +361,17 @@ async function main() {
 
   const server = await startLocalGameServer(localPort, launch.placeId, launch.jobId);
 
-  // 3. Point the client at the local game server.
+  // 3. Make the client sign in against the SAME site that issued the ticket.
+  //    Without this the client reads the placeholder BaseUrl in AppSettings.xml
+  //    (http://localhost/LuckBlox.site.tk/) and never reaches the deployment.
+  const settings = pointClientAtSite(clientDir, args.url);
+  if (settings.baseUrl) {
+    log('settings', `client BaseUrl -> ${settings.baseUrl}`);
+  } else {
+    log('settings', 'no AppSettings.xml found; client keeps its own default BaseUrl');
+  }
+
+  // 4. Point the client at the LOCAL game server, not the live advertised port.
   const info = launchClient(clientDir, {
     placeId: launch.placeId,
     port: localPort,
@@ -319,6 +379,7 @@ async function main() {
     ticket: launch.ticket,
   });
   log('client', `launched ${path.basename(info.exe)} (pid ${info.pid})`);
+  log('client', `join -> placeId=${launch.placeId} serverPort=${localPort} jobId=${launch.jobId}`);
 
   console.log('\n[dev-launch] The game server is running. Close this window (or Ctrl+C) to stop it.');
   const stop = () => { server.close(); process.exit(0); };
