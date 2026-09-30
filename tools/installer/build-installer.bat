@@ -97,7 +97,7 @@ echo     LuckybloxInstaller.exe /S                  install silently
 echo     LuckybloxInstaller.exe /Update /S          update only
 echo     LuckybloxInstaller.exe /Uninstall /S       remove
 echo     LuckybloxInstaller.exe /root "C:\Games"    choose the install root
-echo     LuckybloxInstaller.exe /base "https://..." point at a server
+echo     LuckybloxInstaller.exe /base "https://luckyblox-server.onrender.com/" point at a server
 echo.
 pause
 exit /b 0
