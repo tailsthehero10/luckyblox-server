@@ -142,29 +142,44 @@ check('buildId and version are populated for the installer', () => {
   assert.ok(info.version, 'version must be set so the download path is meaningful');
 });
 
-check('installer repairs the shared ContentFolder even when the client is up to date', () => {
+check('installer provisions real PlatformContent files before its up-to-date return', () => {
   const installerSource = fs.readFileSync(
     path.join(PROJECT_ROOT, 'tools', 'installer', 'LuckybloxInstaller.cs'),
     'utf8',
   );
   const runStart = installerSource.indexOf('public InstallResult Run(bool forceReinstall)');
-  const repairCall = installerSource.indexOf('EnsureSharedContentDirectory();', runStart);
+  const repairCall = installerSource.indexOf('EnsurePlatformContent();', runStart);
   const upToDateReturn = installerSource.indexOf('already installed and up to date.', runStart);
   assert.ok(runStart >= 0, 'installer Run method should exist');
   assert.ok(repairCall > runStart, 'installer should ensure the shared content directory');
   assert.ok(
     upToDateReturn < 0 || repairCall < upToDateReturn,
-    'the content directory repair must run before the up-to-date early return',
+    'platform content provisioning must run before the up-to-date early return',
   );
   assert.match(
     installerSource,
-    /Path\.Combine\(\s*InstallerConfig\.InstallDir\(_root\),\s*"shared",\s*"Content"\s*\)/,
-    'the repair should create the exact path referenced by AppSettings.xml',
+    /Path\.Combine\(contentDir,\s*"PlatformContent"\)/,
+    'the installer should provision the path required by the client',
   );
   assert.match(
     installerSource,
     /<ContentFolder>\.\.\/\.\.\/shared\/Content<\/ContentFolder>/,
-    'AppSettings.xml should point at the repaired directory',
+    'AppSettings.xml should use the directory containing PlatformContent',
+  );
+  assert.match(
+    installerSource,
+    /\/api\/client\/platform-content-manifest/,
+    'the installer must obtain the actual shipped asset list from the server',
+  );
+  assert.match(
+    installerSource,
+    /\/PlatformContent\/" \+ escapedPath/,
+    'the installer must download the shipped platform assets',
+  );
+  assert.equal(
+    (installerSource.match(/PromoteFile\(temporary, destination\)/g) || []).length,
+    1,
+    'each downloaded platform asset should be promoted exactly once',
   );
 });
 

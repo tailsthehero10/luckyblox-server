@@ -104,6 +104,18 @@ async function waitForReady(proc) {
       expectedClientSettings,
     );
 
+    const platformManifestResponse = await request('/api/client/platform-content-manifest');
+    assert.equal(platformManifestResponse.status, 200);
+    const platformManifest = JSON.parse(platformManifestResponse.body.toString('utf8'));
+    assert.equal(platformManifest.available, true);
+    assert.ok(platformManifest.files.length > 0);
+    assert.ok(platformManifest.files.some((file) => file.path.startsWith('pc/')));
+
+    const platformAsset = platformManifest.files.find((file) => file.path.startsWith('pc/'));
+    const platformAssetResponse = await request(`/PlatformContent/${platformAsset.path.split('/').map(encodeURIComponent).join('/')}`);
+    assert.equal(platformAssetResponse.status, 200);
+    assert.equal(platformAssetResponse.body.length, platformAsset.size);
+
     const unsupportedApplication = await request('/home/v2/settings/application/UnknownClient');
     assert.equal(unsupportedApplication.status, 400);
 

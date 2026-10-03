@@ -336,7 +336,7 @@ namespace LuckyBlox.Installer
             return long.TryParse(raw, out value) ? value : 0;
         }
 
-        private static string Unescape(string value)
+        public static string Unescape(string value)
         {
             return value.Replace("\\\"", "\"").Replace("\\\\", "\\").Replace("\\/", "/")
                         .Replace("\\n", "\n").Replace("\\t", "\t").Replace("\\r", "\r");
@@ -506,7 +506,7 @@ namespace LuckyBlox.Installer
                 string versionFolder = SafeFolderName(
                     string.IsNullOrEmpty(build.Version) ? build.BuildId : build.Version);
 
-                EnsureSharedContentDirectory();
+                EnsurePlatformContent();
 
                 // --- The update decision ---------------------------------------
                 // Up to date means: a player is installed AND the version we have
@@ -516,6 +516,9 @@ namespace LuckyBlox.Installer
 
                 if (state.PlayerInstalled && sameVersion && !forceReinstall)
                 {
+                    UpdateLocalAppSettings(Path.Combine(
+                        state.VersionsDir,
+                        state.CurrentVersion));
                     result.Ok = true;
                     result.UpToDate = true;
                     result.Message = "LuckyBlox Player " + state.CurrentVersion + " is already installed and up to date.";
@@ -595,14 +598,73 @@ namespace LuckyBlox.Installer
             }
         }
 
-        private void EnsureSharedContentDirectory()
+        private void EnsurePlatformContent()
         {
-            var contentDir = Path.Combine(
-                InstallerConfig.InstallDir(_root),
-                "shared",
-                "Content");
+            var installDir = InstallerConfig.InstallDir(_root);
+            var contentDir = Path.Combine(installDir, "shared", "Content");
+            var platformContentDir = Path.Combine(contentDir, "PlatformContent");
             Directory.CreateDirectory(contentDir);
-            _log("Client content directory ready: " + contentDir);
+            Directory.CreateDirectory(platformContentDir);
+
+            string manifestUrl = _baseUrl + "/api/client/platform-content-manifest";
+            string manifest = ManifestClient.GetString(manifestUrl);
+            if (ManifestClient.JsonRaw(manifest, "available") != "true")
+                throw new InvalidDataException("The server has no client platform-content files to install.");
+
+            var entries = Regex.Matches(
+                manifest,
+                "\\{\\s*\"path\"\\s*:\\s*\"([^\"]+)\"\\s*,\\s*\"size\"\\s*:\\s*(\\d+)\\s*\\}");
+            if (entries.Count == 0)
+                throw new InvalidDataException("The server platform-content manifest is empty or invalid.");
+
+            long totalBytes = 0;
+            foreach (Match entry in entries)
+            {
+                long size;
+                if (!long.TryParse(entry.Groups[2].Value, out size) || size < 0)
+                    throw new InvalidDataException("The server platform-content manifest contains an invalid file size.");
+                totalBytes += size;
+            }
+
+            _log("Checking " + entries.Count + " platform-content files ("
+                + totalBytes.ToString(CultureInfo.InvariantCulture) + " bytes).");
+            string platformRoot = Path.GetFullPath(platformContentDir) + Path.DirectorySeparatorChar;
+            foreach (Match entry in entries)
+            {
+                string relativePath = ManifestClient.Unescape(entry.Groups[1].Value);
+                string[] segments = relativePath.Split(new[] { '/', '\\' }, StringSplitOptions.None);
+                if (segments.Length == 0 || segments.Any(segment =>
+                    string.IsNullOrWhiteSpace(segment) || segment == "." || segment == ".."))
+                    throw new InvalidDataException("The server platform-content manifest contains an unsafe path.");
+
+                long expectedSize = long.Parse(entry.Groups[2].Value, CultureInfo.InvariantCulture);
+                string destination = Path.GetFullPath(Path.Combine(platformContentDir, Path.Combine(segments)));
+                if (!destination.StartsWith(platformRoot, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("The server platform-content manifest contains a path outside its install folder.");
+
+                Directory.CreateDirectory(Path.GetDirectoryName(destination));
+                if (File.Exists(destination) && new FileInfo(destination).Length == expectedSize)
+                {
+                    continue;
+                }
+
+                string escapedPath = string.Join("/", segments.Select(Uri.EscapeDataString));
+                string temporary = destination + ".tmp";
+                SafeDelete(temporary);
+                Download(_baseUrl + "/PlatformContent/" + escapedPath, temporary, expectedSize);
+
+                long actualSize = new FileInfo(temporary).Length;
+                if (actualSize != expectedSize)
+                {
+                    SafeDelete(temporary);
+                    throw new InvalidDataException(
+                        "Platform-content download was incomplete for " + relativePath
+                        + " (expected " + expectedSize + " bytes, received " + actualSize + ").");
+                }
+                PromoteFile(temporary, destination);
+            }
+
+            _log("Client platform content is ready: " + platformContentDir);
         }
 
         /// <summary>

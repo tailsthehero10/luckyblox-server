@@ -470,6 +470,12 @@ if (fs.existsSync(clientContentRoot)) {
   app.use('/content', contentStatic);
 }
 
+const clientPlatformContentRoot = path.join(releaseRoot, 'shared', 'platformcontent');
+if (fs.existsSync(clientPlatformContentRoot)) {
+  app.use('/PlatformContent', express.static(clientPlatformContentRoot));
+  app.use('/platformcontent', express.static(clientPlatformContentRoot));
+}
+
 // Roblox's own game placeholder art (the blocky forest card + the wide banner).
 // The source files have spaces/hashes in their names, so expose them under
 // stable, readable routes that templates can reference directly.
@@ -6795,6 +6801,42 @@ app.get('/api/client/build-info', (req, res) => {
 
 app.get('/api/client/update-manifest', (req, res) => {
   res.json(getClientUpdateManifest());
+});
+
+app.get('/api/client/platform-content-manifest', (req, res) => {
+  if (!fs.existsSync(clientPlatformContentRoot)) {
+    return res.status(404).json({
+      available: false,
+      error: 'platform-content-not-available',
+    });
+  }
+
+  try {
+    const files = [];
+    const visit = (directory) => {
+      for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        const fullPath = path.join(directory, entry.name);
+        if (entry.isDirectory()) {
+          visit(fullPath);
+        } else if (entry.isFile()) {
+          files.push({
+            path: path.relative(clientPlatformContentRoot, fullPath).split(path.sep).join('/'),
+            size: fs.statSync(fullPath).size,
+          });
+        }
+      }
+    };
+
+    visit(clientPlatformContentRoot);
+    files.sort((a, b) => a.path.localeCompare(b.path));
+    return res.json({ available: files.length > 0, files });
+  } catch (error) {
+    console.error('[luckyblox] could not list client platform content:', error);
+    return res.status(500).json({
+      available: false,
+      error: 'platform-content-list-failed',
+    });
+  }
 });
 
 /* Roblox's installer looks for the version manifest on the channel path; keep an
