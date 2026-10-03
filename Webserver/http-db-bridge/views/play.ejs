@@ -127,6 +127,15 @@
             return;
           }
 
+          if (data && data.launchURI && /^luckyblox-player:/i.test(data.launchURI)) {
+            say('The server cannot open apps on your computer. Click here to open LuckyBlox.');
+            var launchLink = document.createElement('a');
+            launchLink.href = data.launchURI;
+            launchLink.textContent = 'Open LuckyBlox';
+            statusLine.replaceChildren(launchLink);
+            return;
+          }
+
           // Not installed - offer the installer.
           if (data && data.client && data.client.downloadUrl) {
             say('The LuckyBlox client is not installed.');

@@ -516,9 +516,11 @@ namespace LuckyBlox.Installer
 
                 if (state.PlayerInstalled && sameVersion && !forceReinstall)
                 {
-                    UpdateLocalAppSettings(Path.Combine(
+                    var installedVersionDir = Path.Combine(
                         state.VersionsDir,
-                        state.CurrentVersion));
+                        state.CurrentVersion);
+                    UpdateLocalAppSettings(installedVersionDir);
+                    RegisterPlayerProtocol(Path.Combine(installedVersionDir, InstallerConfig.PlayerBinary));
                     result.Ok = true;
                     result.UpToDate = true;
                     result.Message = "LuckyBlox Player " + state.CurrentVersion + " is already installed and up to date.";
@@ -569,6 +571,7 @@ namespace LuckyBlox.Installer
                 state.CurrentVersion = versionFolder;
                 state.NewestVersion = versionFolder;
                 WritePointer(state);
+                RegisterPlayerProtocol(target);
 
                 result.Ok = true;
                 result.Updated = state.PlayerInstalled;
@@ -1004,6 +1007,35 @@ namespace LuckyBlox.Installer
             catch { }
         }
 
+        private static void RegisterPlayerProtocol(string playerPath)
+        {
+            if (!File.Exists(playerPath))
+                throw new FileNotFoundException("Cannot register the LuckyBlox launch protocol without the Player executable.", playerPath);
+
+            const string protocolKey = @"Software\Classes\luckyblox-player";
+            using (var key = Registry.CurrentUser.CreateSubKey(protocolKey))
+            {
+                if (key == null)
+                    throw new InvalidOperationException("Could not register the LuckyBlox player launch protocol.");
+                key.SetValue("", "URL:LuckyBlox Player Protocol");
+                key.SetValue("URL Protocol", "");
+            }
+
+            using (var icon = Registry.CurrentUser.CreateSubKey(protocolKey + @"\DefaultIcon"))
+            {
+                if (icon == null)
+                    throw new InvalidOperationException("Could not register the LuckyBlox player protocol icon.");
+                icon.SetValue("", "\"" + playerPath + "\",0");
+            }
+
+            using (var command = Registry.CurrentUser.CreateSubKey(protocolKey + @"\shell\open\command"))
+            {
+                if (command == null)
+                    throw new InvalidOperationException("Could not register the LuckyBlox player protocol command.");
+                command.SetValue("", "\"" + playerPath + "\" \"%1\"");
+            }
+        }
+
         /// <summary>
         /// Copy the running installer into the install folder so the uninstall
         /// entry has a stable target that lives as long as the install does.
@@ -1062,6 +1094,11 @@ namespace LuckyBlox.Installer
             try
             {
                 Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\LuckyBlox", false);
+            }
+            catch { }
+            try
+            {
+                Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\luckyblox-player", false);
             }
             catch { }
         }

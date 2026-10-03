@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node ../../tests/remoteStore.test.js && node ../../tests/storage.test.js && node ../../tests/avatar-rig.test.js && node ../../tests/avatar-rig-route.test.js && node ../../tests/avatar-client-api.test.js && node ../../tests/legacy-client-endpoints.test.js && node ../../tests/orchestrator-platform.test.js && node ../../tests/roblox-asset-delivery.test.js && node ../../tests/studio-asset-fallback.test.js && node ../../tests/user-search.test.js && node ../../tests/games-genre-filter.test.js"
+    "test": "node ../../tests/remoteStore.test.js && node ../../tests/storage.test.js && node ../../tests/avatar-rig.test.js && node ../../tests/avatar-rig-route.test.js && node ../../tests/avatar-client-api.test.js && node ../../tests/legacy-client-endpoints.test.js && node ../../tests/orchestrator-platform.test.js && node ../../tests/roblox-asset-delivery.test.js && node ../../tests/studio-asset-fallback.test.js && node ../../tests/user-search.test.js && node ../../tests/games-genre-filter.test.js && node ../../tests/game-launch-uri.test.js"
   },
   "dependencies": {
     "ejs": "^3.1.10",

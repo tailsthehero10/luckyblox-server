@@ -22,6 +22,7 @@ const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'ser
 const { installMarketplaceRoutes } = require(path.join(__dirname, '..', '..', 'server', 'marketplace.js'));
 const { installClientApi } = require('./clientApi.js');
 const { getClientBuildInfo, getClientUpdateManifest } = require('./clientBuildInfo.js');
+const { createClientLaunchUri } = require(path.join(__dirname, '..', '..', 'server', 'clientLaunchUri'));
 const datastore = require('./datastore.js');
 const assetFetcher = require(path.join(__dirname, '..', '..', 'server', 'assetFetcher.js'));
 const robloxAssetDelivery = require(path.join(__dirname, '..', '..', 'server', 'robloxAssetDelivery.js'));
@@ -3209,7 +3210,12 @@ function createAuthTicket(userId, placeId, serverContext = {}) {
     claim,
     port: Number(serverContext.port || gamePort),
     serverJobId: String(serverContext.serverJobId || 'local-job'),
-    launchURI: `luckyblox-player:1+launchmode:play+gameinfo:${ticket}+placeId:${placeId}+serverPort:${Number(serverContext.port || gamePort)}+jobId:${String(serverContext.serverJobId || 'local-job')}`,
+    launchURI: createClientLaunchUri({
+      ticket,
+      placeId,
+      port: serverContext.port || gamePort,
+      jobId: serverContext.serverJobId || 'local-job',
+    }),
   };
 }
 
@@ -3332,7 +3338,7 @@ function launchLocalRobloxClient({ userId, placeId, port, serverJobId, ticket })
       exePath: executablePath,
       authUrl,
       joinUrl,
-      launchURI: `luckyblox-player:1+launchmode:play+gameinfo:${ticket}+placeId:${placeId}+serverPort:${port}+jobId:${serverJobId}`,
+      launchURI: createClientLaunchUri({ ticket, placeId, port, jobId: serverJobId }),
     };
   } catch (error) {
     return {
@@ -6923,7 +6929,18 @@ app.post('/api/client/launch', (req, res) => {
   });
 
   const status = clientLauncher.getClientStatus();
-  return res.json({ ok: result.ok, ...result, client: status, placeId, jobId: job.jobId, port: job.port });
+  return res.json({
+    ok: result.ok,
+    ...result,
+    client: status,
+    placeId,
+    jobId: job.jobId,
+    port: job.port,
+    ticket: ticket.ticket,
+    authTicket: ticket.authTicket,
+    launchURI: ticket.launchURI,
+    playUrl: `/play?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket.ticket)}&serverPort=${job.port}&jobId=${encodeURIComponent(job.jobId)}`,
+  });
 });
 
 app.post('/api/launch-game', (req, res) => {
@@ -7005,7 +7022,7 @@ app.post('/api/launch-game', (req, res) => {
       ticket: ticket.ticket,
       authTicket: ticket.authTicket,
       expiresAt: new Date(ticket.expiresAt).toISOString(),
-      launchURI: playUrl,
+      launchURI: ticket.launchURI,
       playUrl,
       // Client install state, so the page can say "launching" or "download".
       client: clientStatus,

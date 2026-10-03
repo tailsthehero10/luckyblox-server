@@ -525,6 +525,23 @@
           return;
         }
 
+        // On a public web host the server cannot spawn a process on the visitor's
+        // PC. Keep the game page open and give the visitor a direct client handoff.
+        if (data.launchURI && /^luckyblox-player:/i.test(data.launchURI)) {
+          var launchActions = [{
+            label: 'Open LuckyBlox',
+            href: data.launchURI,
+            primary: true
+          }];
+          if (data.client && data.client.downloadUrl) {
+            launchActions.push({ label: 'Install or repair client', href: '/download' });
+          }
+          showJoinState('working', 'Continue in LuckyBlox',
+            'Choose Open LuckyBlox to send this place and your join ticket to the desktop client.',
+            launchActions);
+          return;
+        }
+
         // No client on this computer: say so and offer the ONE download page.
         // Not a redirect to a different download page, and not a dead link -
         // /download renders the real install state for this machine.
