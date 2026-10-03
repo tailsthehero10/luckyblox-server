@@ -63,7 +63,7 @@ const robloxApi = require('./robloxApi');
  *   getUser, getUsers, getAssets, getGames, getGameEntry, getPlaceSettings,
  *   serializeUser, getCurrencyForUser, getWearingForUser, getFriendsForUser,
  *   getPublicGamesForUser, normalizePlaceId, resolveSessionUser, publicOrigin,
- *   releaseRoot
+ *   releaseRoot, resolveRequestedClient
  */
 function installClientApi(app, ctx) {
   /* ------------------------------------------------------------------------
@@ -749,6 +749,61 @@ function installClientApi(app, ctx) {
     res.set('Cache-Control', 'no-store');
     return res.sendFile(file);
   });
+
+  const legacySettingsTypes = {
+    clientappsettings: 'ClientSettings/ClientAppSettings.json',
+    clientappsettings2017: '2017xdSettings/ClientAppSettings.json',
+    clientappsettings2015: '2015MiSettings/ClientAppSettings.json',
+    studioappsettings: 'ClientSettings/StudioAppSettings.json',
+  };
+
+  function legacySettingsFile(type, req) {
+    const relative = legacySettingsTypes[type];
+    if (!relative) return null;
+
+    const clientName = ctx.resolveRequestedClient
+      ? ctx.resolveRequestedClient(req)
+      : '2022M';
+    const clientDir = path.join(ctx.releaseRoot, 'Clients', clientName);
+    const roots = [
+      clientDir,
+      path.join(clientDir, 'Player'),
+      path.join(clientDir, 'shared'),
+      path.join(clientDir, 'RCCService'),
+      path.join(ctx.releaseRoot, 'Clients', '2022M'),
+      path.join(ctx.releaseRoot, 'Clients', '2021M'),
+      path.join(ctx.releaseRoot, 'Clients', '2020M'),
+    ];
+
+    for (const root of roots) {
+      const candidate = path.resolve(root, relative);
+      if (!candidate.startsWith(`${path.resolve(root)}${path.sep}`)) continue;
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+    }
+    return null;
+  }
+
+  function serveLegacySettings(req, res) {
+    const type = String(req.params.type || '').toLowerCase();
+    if (type === 'clientsharedsettings') {
+      res.set('Cache-Control', 'no-store');
+      return res.type('application/json').send('{}');
+    }
+
+    const file = legacySettingsFile(type, req);
+    if (!file) {
+      return res.status(404).json({
+        errors: [{ code: 0, message: `Client settings are unavailable for "${req.params.type}".` }],
+      });
+    }
+
+    res.set('Cache-Control', 'no-store');
+    res.type('application/json');
+    return res.sendFile(file);
+  }
+
+  app.get(['/Setting/QuietGet/:type', '/Setting/Get/:type'], serveLegacySettings);
+  app.post(['/Setting/QuietGet/:type', '/Setting/Get/:type'], serveLegacySettings);
 
   return { installed: true };
 }

@@ -11,12 +11,13 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 const PORT = 3991;
 const PLACE_ID = 987654321;
 
-function request(pathName) {
+function request(pathName, method = 'GET') {
   return new Promise((resolve, reject) => {
-    const req = http.get({
+    const req = http.request({
       hostname: '127.0.0.1',
       port: PORT,
       path: pathName,
+      method,
       headers: { host: `127.0.0.1:${PORT}` },
     }, (res) => {
       const chunks = [];
@@ -28,6 +29,7 @@ function request(pathName) {
       }));
     });
     req.on('error', reject);
+    req.end();
   });
 }
 
@@ -79,6 +81,23 @@ async function waitForReady(proc) {
     assert.equal(productInfo.Description, 'A place record stored by the test.');
     assert.equal(productInfo.Creator.Id, 17);
     assert.equal(productInfo.Creator.Name, 'TestCreator');
+
+    const legacySettings = await request('/home/Setting/QuietGet/ClientAppSettings?apiKey=test-key&client=CUSTOM-2021M');
+    assert.equal(legacySettings.status, 200);
+    assert.match(legacySettings.headers['content-type'], /^application\/json\b/);
+    const clientSettings = JSON.parse(legacySettings.body.toString('utf8'));
+    const expectedClientSettings = JSON.parse(fs.readFileSync(
+      path.join(PROJECT_ROOT, 'Clients', 'CUSTOM-2021M', 'shared', 'ClientSettings', 'ClientAppSettings.json'),
+      'utf8',
+    ));
+    assert.deepEqual(clientSettings, expectedClientSettings);
+
+    const sharedSettings = await request('/home/Setting/QuietGet/ClientSharedSettings?apiKey=test-key');
+    assert.equal(sharedSettings.status, 200);
+    assert.deepEqual(JSON.parse(sharedSettings.body.toString('utf8')), {});
+
+    const postedSettings = await request('/home/Setting/QuietGet/ClientAppSettings?apiKey=test-key', 'POST');
+    assert.equal(postedSettings.status, 200);
 
     const thumbnailInfo = await request(`/home/asset-thumbnail/json?assetId=${PLACE_ID}`);
     assert.equal(thumbnailInfo.status, 200);

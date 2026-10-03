@@ -3418,6 +3418,7 @@ installClientApi(app, {
   publicOrigin,
   dataDir,
   releaseRoot,
+  resolveRequestedClient,
 });
 
 app.get('/health', (req, res) => {
