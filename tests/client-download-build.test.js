@@ -142,6 +142,32 @@ check('buildId and version are populated for the installer', () => {
   assert.ok(info.version, 'version must be set so the download path is meaningful');
 });
 
+check('installer repairs the shared ContentFolder even when the client is up to date', () => {
+  const installerSource = fs.readFileSync(
+    path.join(PROJECT_ROOT, 'tools', 'installer', 'LuckybloxInstaller.cs'),
+    'utf8',
+  );
+  const runStart = installerSource.indexOf('public InstallResult Run(bool forceReinstall)');
+  const repairCall = installerSource.indexOf('EnsureSharedContentDirectory();', runStart);
+  const upToDateReturn = installerSource.indexOf('already installed and up to date.', runStart);
+  assert.ok(runStart >= 0, 'installer Run method should exist');
+  assert.ok(repairCall > runStart, 'installer should ensure the shared content directory');
+  assert.ok(
+    upToDateReturn < 0 || repairCall < upToDateReturn,
+    'the content directory repair must run before the up-to-date early return',
+  );
+  assert.match(
+    installerSource,
+    /Path\.Combine\(\s*InstallerConfig\.InstallDir\(_root\),\s*"shared",\s*"Content"\s*\)/,
+    'the repair should create the exact path referenced by AppSettings.xml',
+  );
+  assert.match(
+    installerSource,
+    /<ContentFolder>\.\.\/\.\.\/shared\/Content<\/ContentFolder>/,
+    'AppSettings.xml should point at the repaired directory',
+  );
+});
+
 check('installer fields are available at the top level of the update manifest', () => {
   assert.strictEqual(manifest.available, true);
   assert.strictEqual(manifest.binaryName, info.binaryName);

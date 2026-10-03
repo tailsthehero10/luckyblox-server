@@ -506,6 +506,8 @@ namespace LuckyBlox.Installer
                 string versionFolder = SafeFolderName(
                     string.IsNullOrEmpty(build.Version) ? build.BuildId : build.Version);
 
+                EnsureSharedContentDirectory();
+
                 // --- The update decision ---------------------------------------
                 // Up to date means: a player is installed AND the version we have
                 // matches the version the server publishes.
@@ -593,6 +595,16 @@ namespace LuckyBlox.Installer
             }
         }
 
+        private void EnsureSharedContentDirectory()
+        {
+            var contentDir = Path.Combine(
+                InstallerConfig.InstallDir(_root),
+                "shared",
+                "Content");
+            Directory.CreateDirectory(contentDir);
+            _log("Client content directory ready: " + contentDir);
+        }
+
         /// <summary>
         /// Pull the Studio build down too, when the server publishes one.
         ///
@@ -662,7 +674,7 @@ namespace LuckyBlox.Installer
             var xml = new StringBuilder();
             xml.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
             xml.AppendLine("<Settings>");
-            xml.AppendLine("  <ContentFolder>../../shared/content</ContentFolder>");
+            xml.AppendLine("  <ContentFolder>../../shared/Content</ContentFolder>");
             xml.AppendLine("  <BaseUrl>" + SecurityElement.Escape(_baseUrl + "/LuckBlox.site.tk/home/") + "</BaseUrl>");
             xml.AppendLine("</Settings>");
             WriteAtomicText(path, xml.ToString());
