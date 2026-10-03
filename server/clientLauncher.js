@@ -22,6 +22,8 @@
  *   3. %LOCALAPPDATA%\Luckyblox       - the per-user install the installer writes
  *   4. <release>/Luckyblox            - a portable install next to the server
  *   5. <release>/Clients/2021M        - the build bundled with this release
+ *   6. <release>/Clients/CUSTOM-2021M - the launcher's repackaged 2021M build,
+ *                                       whose binary lives under Player/
  *
  * When nothing is found the launcher reports `installed: false` and the download
  * url the site should send the user to. The server never fabricates a path.
@@ -58,9 +60,13 @@ function candidateRoots() {
     roots.push(path.join(os.homedir(), '.local', 'share', INSTALL_FOLDER_NAME));
   }
 
-  // A portable install sitting beside the server, then the bundled build.
+  // A portable install sitting beside the server, then the bundled builds.
   roots.push(path.join(releaseRoot, INSTALL_FOLDER_NAME));
   roots.push(path.join(releaseRoot, 'Clients', '2021M'));
+  // The launcher's custom 2021M repackage keeps its binary one level down in a
+  // Player/ sub-folder (RobloxPlayerBeta.exe next to LuckybloxPlayerBeta.exe).
+  roots.push(path.join(releaseRoot, 'Clients', 'CUSTOM-2021M'));
+  roots.push(path.join(releaseRoot, 'Clients', 'CUSTOM-2021M', 'Player'));
 
   return Array.from(new Set(roots));
 }
@@ -110,6 +116,14 @@ function findBinaryInRoot(root) {
   const direct = path.join(root, CLIENT_BINARY);
   if (fs.existsSync(direct) && fs.statSync(direct).isFile()) {
     return direct;
+  }
+
+  // Some repacked builds (CUSTOM-2021M) drop the binary into a Player/
+  // sub-folder rather than at the root. Check that before giving up, so the
+  // client is "installed" instead of the site offering a download it already has.
+  const playerDir = path.join(root, 'Player', CLIENT_BINARY);
+  if (fs.existsSync(playerDir) && fs.statSync(playerDir).isFile()) {
+    return playerDir;
   }
 
   const versionsDir = path.join(root, VERSIONS_DIR);

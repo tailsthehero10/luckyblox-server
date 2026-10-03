@@ -20,6 +20,7 @@ const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'ser
 const { installMarketplaceRoutes } = require(path.join(__dirname, '..', '..', 'server', 'marketplace.js'));
 const { installClientApi } = require('./clientApi.js');
 const { getClientBuildInfo, getClientUpdateManifest } = require('./clientBuildInfo.js');
+const datastore = require('./datastore.js');
 const assetFetcher = require(path.join(__dirname, '..', '..', 'server', 'assetFetcher.js'));
 const { installTeamCreateRoutes } = require(path.join(__dirname, '..', '..', 'server', 'teamCreate.js'));
 const {
@@ -206,10 +207,17 @@ app.get('/sign-background', (req, res) => {
 // fall back to the default when the folder is absent instead of 404ing.
 const DEFAULT_CLIENT_DIR = path.join(releaseRoot, 'Clients', '2022M');
 
-// Every client build we ship, in a stable order. Both 2021M and 2022M connect
-// to the same LuckyBlox site; they differ only in the path suffix their
-// AppSettings.xml points at, so each one is served its own copy.
-const KNOWN_CLIENTS = ['2021M', '2022M'];
+// Every client build we ship, in a stable order. All of them connect to the same
+// LuckyBlox site; they differ only in the path suffix their AppSettings.xml
+// points at, so each one is served its own copy.
+//
+// CUSTOM-2021M is the desktop launcher's repackaged 2021M build (its binary sits
+// in a Player/ sub-folder). It is a real, selectable client - Settings/
+// SelectedClient.txt names it - so it belongs here; omitting it made the bridge
+// fall back to DEFAULT_CLIENT_DIR (2022M) and hand the 2021M client 2022M's page
+// tree, which is the exact "local server does not match the public server"
+// symptom this list exists to prevent.
+const KNOWN_CLIENTS = ['2021M', 'CUSTOM-2021M', '2022M'];
 
 /**
  * The path suffix each client expects after the site origin.
@@ -221,6 +229,12 @@ const KNOWN_CLIENTS = ['2021M', '2022M'];
  */
 const CLIENT_BASE_SUFFIX = {
   '2021M': '/home/',
+  // The launcher's custom 2021M repackage is the same client tree as 2021M, so it
+  // needs the identical /home/ suffix. Without an entry here it would fall through
+  // to the committed file's own path - which is also /, because the app prefix
+  // (/LuckBlox.site.tk) is appended separately - and the client would route to the
+  // wrong page tree with no error.
+  'CUSTOM-2021M': '/home/',
   '2022M': '/',
 };
 
@@ -7133,6 +7147,73 @@ app.post('/api/publish-place', (req, res) => {
 
 app.get('/api/assets', (req, res) => {
   res.json({ ok: true, assets: Object.values(getAssets()) });
+});
+
+/* ---------------------------------------------------------------------------
+ * Local DataStore endpoints.
+ *
+ * The 2021M client's DataStoreService replacement reads/writes these files (see
+ * datastore.js). Apache serves the identical PHP on a desktop install; here the
+ * bridge answers the same paths natively so the PUBLIC deployment saves and
+ * loads game progress exactly like the local one. Without this every
+ * GetAsync/SetAsync 404'd on the public server and in-game saving silently
+ * failed.
+ *
+ * The value is plain text (the client sends its own JSON/table encoding), so it
+ * is returned with a text content type and an empty 200 body for a missing key.
+ * ------------------------------------------------------------------------- */
+
+function sendDatastoreText(res, status, text) {
+  res.status(status).type('text/plain; charset=utf-8');
+  res.set('Cache-Control', 'no-store');
+  return res.send(text);
+}
+
+function sendDatastoreError(res, error) {
+  const status = Number(error && error.status) || 500;
+  const message = (error && error.message) || 'Datastore error';
+  return sendDatastoreText(res, status, message);
+}
+
+app.get('/datastore/getds.php', (req, res) => {
+  try {
+    return sendDatastoreText(res, 200, datastore.getValue(req.query.key));
+  } catch (error) {
+    return sendDatastoreError(res, error);
+  }
+});
+
+app.post('/datastore/setds.php', (req, res) => {
+  try {
+    const body = req.body || {};
+    const key = body.key !== undefined ? body.key : req.query.key;
+    const value = body.data !== undefined ? body.data : req.query.data;
+    return sendDatastoreText(res, 200, datastore.setValue(key, value));
+  } catch (error) {
+    return sendDatastoreError(res, error);
+  }
+});
+
+app.get('/datastore/getorderedds.php', (req, res) => {
+  try {
+    const values = datastore.getOrderedValues(req.query.dsname);
+    return sendDatastoreText(res, 200, `[${values.join(',')}]`);
+  } catch (error) {
+    return sendDatastoreError(res, error);
+  }
+});
+
+app.post('/datastore/setorderedds.php', (req, res) => {
+  try {
+    const body = req.body || {};
+    const store = body.dsname !== undefined ? body.dsname : req.query.dsname;
+    const key = body.key !== undefined ? body.key : req.query.key;
+    const value = body.data !== undefined ? body.data : req.query.data;
+    const values = datastore.setOrderedValue(store, key, value);
+    return sendDatastoreText(res, 200, `[${values.join(',')}]`);
+  } catch (error) {
+    return sendDatastoreError(res, error);
+  }
 });
 
 app.post('/api/servers/register', (req, res) => {

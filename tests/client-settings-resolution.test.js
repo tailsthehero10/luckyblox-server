@@ -36,7 +36,9 @@ function resolveClientDir(selectedPath = selectedFile) {
 
 // Mirror of CLIENT_BASE_SUFFIX in the bridge. Kept in sync deliberately: if the
 // production table changes shape, this test should be updated with it.
-const CLIENT_BASE_SUFFIX = { '2021M': '/home/', '2022M': '/' };
+// CUSTOM-2021M is the launcher's repackaged 2021M build and needs the same /home/
+// suffix; it is a real selected client (Settings/SelectedClient.txt names it).
+const CLIENT_BASE_SUFFIX = { '2021M': '/home/', 'CUSTOM-2021M': '/home/', '2022M': '/' };
 
 /**
  * The suffix actually handed to a client, mirroring rewriteAppSettingsBaseUrl.
@@ -126,6 +128,12 @@ check('2021M is served the trailing /home/ suffix', () => {
 
 check('2022M is served the root suffix', () => {
   assert.equal(servedSuffix('2022M'), '/');
+});
+
+check('CUSTOM-2021M is served the same /home/ suffix as 2021M', () => {
+  // The launcher's repackage must not fall through to the committed file's path
+  // and be routed at the origin root like 2022M.
+  assert.equal(servedSuffix('CUSTOM-2021M'), '/home/');
 });
 
 // Every committed file must name the SAME origin path, so the rewrite has a

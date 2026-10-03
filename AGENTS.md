@@ -100,6 +100,29 @@ LuckyBlox is a local Roblox-style game platform served from a release folder. Ap
   real markup - it defeats naive structure checks and makes the nesting
   impossible to read by eye.
 
+## Local client selection + the CUSTOM-2021M repackage
+- `Settings/SelectedClient.txt` names the client the desktop launcher runs
+  (currently `CUSTOM-2021M`). A value that does not resolve to a folder with an
+  `AppSettings.xml` silently falls back to `2022M` - a different page tree - so
+  every client a user can select must have a top-level `AppSettings.xml` AND be
+  in `KNOWN_CLIENTS` / `CLIENT_BASE_SUFFIX` in the bridge.
+- `Clients/CUSTOM-2021M` is the launcher's repackaged 2021M build: its binary is
+  nested under `Player/` (not at the client root like the bundled builds), which
+  `findBinaryInRoot()` in `server/clientLauncher.js` now handles. It routes like
+  2021M (`/home/`), so it shares that base suffix.
+
+## Local saving (DataStore)
+- The 2021M client's `DataStoreService` replacement saves through
+  `/datastore/{getds,setds,getorderedds,setorderedds}.php`. Apache serves the PHP
+  in `Webserver/www/datastore/`; the bridge serves the SAME paths natively via
+  `Webserver/http-db-bridge/datastore.js`, writing the SAME files in the SAME
+  folders, so the local and public servers share one store. Without the bridge
+  routes those endpoints 404'd on any Node-fronted deployment and in-game saving
+  silently failed. A missing key must answer `200` with an empty body, never a
+  `404` - a non-2xx is what makes the client's `GetAsync` throw.
+- Keys are validated like `datastore_key()` in `common.php`: no `/`, `\`, `..`,
+  control characters, or over-long values. Guarded by `tests/datastore.test.js`.
+
 ## Client install model
 - The content client lives in a folder literally named `Luckyblox` (see `server/clientLauncher.js`).
   Resolution order: `LUCKYBLOX_CLIENT_PATH` -> `LUCKYBLOX_CLIENT_ROOT\Luckyblox` ->
