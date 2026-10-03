@@ -7,7 +7,7 @@ REM mangled text ("'M' is not recognized as an internal or external command").
 REM Use a plain hyphen or an ASCII arrow instead.
 REM
 REM It asks https://luckyblox-server.onrender.com for a real launch ticket,
-REM runs the game server locally, and opens the 2021M client against it.
+REM runs the game server locally, and opens the client selected in SelectedClient.txt.
 REM
 REM Usage:
 REM   Settings\DEV-PLAY.bat                  (default place)

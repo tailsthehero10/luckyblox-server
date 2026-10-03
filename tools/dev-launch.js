@@ -47,6 +47,7 @@ const RELEASE_ROOT = path.resolve(__dirname, '..');
 const DEFAULT_LIVE_URL = 'https://luckyblox-server.onrender.com';
 const DEFAULT_PLACE_ID = 1818;
 const DEFAULT_CLIENT = '2021M';
+const SERVER_START_TIMEOUT_MS = 20000;
 
 /**
  * The dedicated game-server binary.
@@ -78,11 +79,24 @@ function resolveClientDir(clientName) {
   return dir;
 }
 
+function readSelectedClient(selectedFile = path.join(RELEASE_ROOT, 'Settings', 'SelectedClient.txt')) {
+  try {
+    const selected = fs.readFileSync(selectedFile, 'utf8').replace(/^\uFEFF/, '').trim();
+    if (/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(selected)
+      && fs.existsSync(path.join(RELEASE_ROOT, 'Clients', selected, 'AppSettings.xml'))) {
+      return selected;
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  return DEFAULT_CLIENT;
+}
+
 function parseArgs(argv) {
   const args = {
     url: DEFAULT_LIVE_URL,
     place: DEFAULT_PLACE_ID,
-    client: process.env.LUCKYBLOX_DEV_CLIENT || DEFAULT_CLIENT,
+    client: process.env.LUCKYBLOX_DEV_CLIENT || readSelectedClient(),
     // Launch by default. --dry-run turns this off, NOT the other way round:
     // defaulting to true meant DEV-PLAY.bat never actually played anything.
     dryRun: false,
@@ -230,59 +244,85 @@ function findFreePort(start = 53640) {
 }
 
 /**
- * Start a minimal local game-server listener. The real RCCService binary, when
- * present, is spawned too; either way a socket is listening on the join port so
- * the client does not hang against a dead address.
+ * Start the local dedicated server and wait until its join port accepts
+ * connections. A plain TCP listener is not a game server and must not be used as
+ * a success-shaped fallback.
  */
 function startLocalGameServer(port, placeId, jobId) {
-  const listener = net.createServer((socket) => {
-    socket.on('error', () => { /* a client dropping mid-handshake is not fatal */ });
-  });
-  listener.on('error', (error) => log('game-server!', `listener error: ${error.message}`));
-
   const serverBinary = SERVER_CANDIDATES.find((candidate) => fs.existsSync(candidate));
-  let child = null;
-  if (serverBinary) {
-    try {
-      // The 2021 conference builds take a lower-case `-console` and the
-      // place/job/port each as its own `-key:value` token. The old call used
-      // `-Console` and passed the port as a separate `-port <n>` argument, which
-      // these binaries do not parse.
-      child = spawn(serverBinary, [
-        '-console', '-verbose',
-        `-placeid:${placeId}`,
-        `-jobid:${jobId}`,
-        `-port:${port}`,
-      ], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
-      child.stdout.on('data', (chunk) => {
-        const line = String(chunk).trim();
-        if (line) log('game-server', line.slice(0, 160));
-      });
-      child.stderr.on('data', (chunk) => {
-        const line = String(chunk).trim();
-        if (line) log('game-server!', line.slice(0, 160));
-      });
-      child.on('error', (error) => log('game-server!', `spawn failed: ${error.message}`));
-      child.on('exit', (code) => log('game-server', `binary exited (code=${code})`));
-      log('game-server', `started ${path.basename(serverBinary)} (pid ${child.pid})`);
-    } catch (error) {
-      log('game-server!', `could not spawn server binary: ${error.message}`);
-    }
-  } else {
-    log('game-server', 'no dedicated server binary found; using the TCP listener only');
+  if (!serverBinary) {
+    return Promise.reject(new Error(
+      'no dedicated game-server binary found; install the 2021E RCCService files before using DEV-PLAY',
+    ));
   }
 
+  // The 2021 conference builds take a lower-case `-console` and the
+  // place/job/port each as its own `-key:value` token.
+  const child = spawn(serverBinary, [
+    '-console', '-verbose',
+    `-placeid:${placeId}`,
+    `-jobid:${jobId}`,
+    `-port:${port}`,
+  ], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  child.stdout.on('data', (chunk) => {
+    const line = String(chunk).trim();
+    if (line) log('game-server', line.slice(0, 160));
+  });
+  child.stderr.on('data', (chunk) => {
+    const line = String(chunk).trim();
+    if (line) log('game-server!', line.slice(0, 160));
+  });
+  log('game-server', `started ${path.basename(serverBinary)} (pid ${child.pid})`);
+
   return new Promise((resolve, reject) => {
-    listener.once('error', reject);
-    listener.listen(port, '127.0.0.1', () => {
-      log('game-server', `listening on 127.0.0.1:${port}`);
+    let settled = false;
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      child.removeListener('error', onError);
+      child.removeListener('exit', onExit);
+      if (error) {
+        if (!child.killed) child.kill();
+        reject(error);
+        return;
+      }
+      child.on('error', (processError) => {
+        log('game-server!', `process error: ${processError.message}`);
+      });
+      child.on('exit', (code) => log('game-server', `binary exited (code=${code})`));
       resolve({
         close: () => {
-          try { listener.close(); } catch { /* already gone */ }
-          if (child && !child.killed) { try { child.kill(); } catch { /* gone */ } }
+          if (!child.killed) child.kill();
         },
       });
-    });
+    };
+    const onError = (error) => finish(new Error(`could not start game server: ${error.message}`));
+    const onExit = (code) => finish(new Error(`game server exited before opening port ${port} (code=${code})`));
+    const timeout = setTimeout(
+      () => finish(new Error(`game server did not open port ${port} within ${SERVER_START_TIMEOUT_MS / 1000} seconds`)),
+      SERVER_START_TIMEOUT_MS,
+    );
+
+    child.once('error', onError);
+    child.once('exit', onExit);
+
+    const checkPort = () => {
+      if (settled) return;
+      const socket = net.createConnection({ host: '127.0.0.1', port });
+      socket.setTimeout(500);
+      socket.once('connect', () => {
+        socket.destroy();
+        finish(null);
+        log('game-server', `listening on 127.0.0.1:${port}`);
+      });
+      socket.once('error', () => {
+        socket.destroy();
+        if (!settled) setTimeout(checkPort, 250);
+      });
+      socket.once('timeout', () => socket.destroy());
+    };
+    checkPort();
   });
 }
 
@@ -335,7 +375,7 @@ async function main() {
     console.log('');
     console.log('  --place <id>     place to play (default 1818)');
     console.log('  --url <origin>   live site (default ' + DEFAULT_LIVE_URL + ')');
-    console.log('  --client <name>  client folder to launch (default 2021M)');
+    console.log(`  --client <name>  client folder to launch (default SelectedClient.txt or ${DEFAULT_CLIENT})`);
     console.log('  --user <name>    account to sign in as (or LUCKYBLOX_DEV_USER)');
     console.log('  --pass <word>    its password (or LUCKYBLOX_DEV_PASS)');
     console.log('  --testblox [pw]  shorthand for --user testblox');
@@ -408,7 +448,11 @@ async function main() {
   process.on('SIGTERM', stop);
 }
 
-main().catch((error) => {
-  console.error(`[dev-launch] FAILED: ${error.message}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(`[dev-launch] FAILED: ${error.message}`);
+    process.exit(1);
+  });
+}
+
+module.exports = { parseArgs, readSelectedClient, resolveClientDir };

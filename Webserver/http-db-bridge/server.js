@@ -12,6 +12,7 @@ require(path.join(__dirname, '..', '..', 'server', 'envFile.js'))
 
 const { buildPlaceCatalogFromMaps, normalizePlaceId: normalizePlaceIdInput, resolveRequestedPlace } = require('./gameMapResolver');
 const { getRobloxProfileTemplateItems } = require('./robloxTemplateSource');
+const { searchUsers } = require(path.join(__dirname, '..', '..', 'server', 'userSearch.js'));
 const robloxApi = require('./robloxApi');
 const { getStudioBuildInfo, getStudioUpdateManifest, STUDIO_EXECUTABLE_PATH, DEFAULT_BASE_URL } = require('./studioBuildInfo');
 const clientLauncher = require(path.join(__dirname, '..', '..', 'server', 'clientLauncher.js'));
@@ -3817,18 +3818,25 @@ app.get('/search', (req, res) => {
   if (scope === 'groups') return res.redirect('/search/groups' + query);
   if (scope === 'catalog') return res.redirect('/catalog' + query);
   if (scope === 'people') {
-    // "People" search resolves a username to an account. An unmatched name goes
-    // back to the discover grid rather than to a page for a user that does not
-    // exist, so a typo never produces an invented profile.
-    const users = getUsers();
-    const match = Object.values(users).find(
-      (u) => String(u.username || '').toLowerCase() === q.toLowerCase(),
+    const keyword = q.slice(0, 80);
+    const found = searchUsers(getUsers(), keyword, 50);
+    const normalized = keyword.replace(/^@/, '').toLowerCase();
+    const exactUsername = found.users.find(
+      (person) => String(person.username || '').toLowerCase() === normalized,
     );
-    if (match) {
-      const id = Number(match.userId || match.id || 0);
-      if (id > 0) return res.redirect(`/users/${id}/profile`);
-    }
-    return res.redirect('/');
+    if (exactUsername) return res.redirect(`/users/${exactUsername.userId}/profile`);
+
+    const sessionUser = req.sessionUser || resolveSessionUser(req);
+    const viewerId = (sessionUser && (sessionUser.userId || sessionUser.id)) || 1;
+    const viewer = getUser(viewerId);
+    return res.render('people-search', {
+      title: keyword ? `People matching ${keyword} | LuckyBlox` : 'Search People | LuckyBlox',
+      user: viewer,
+      currency: getCurrencyForUser(viewer),
+      keyword,
+      people: found.users,
+      totalResults: found.total,
+    });
   }
 
   return res.redirect('/games' + query);
