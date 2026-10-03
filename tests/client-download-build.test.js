@@ -158,13 +158,18 @@ check('installer provisions real PlatformContent files before its up-to-date ret
   );
   assert.match(
     installerSource,
-    /Path\.Combine\(contentDir,\s*"PlatformContent"\)/,
-    'the installer should provision the path required by the client',
+    /Path\.Combine\(sharedDir,\s*"PlatformContent"\)/,
+    'the installer should keep PlatformContent beside the ContentFolder directory',
   );
   assert.match(
     installerSource,
     /<ContentFolder>\.\.\/\.\.\/shared\/Content<\/ContentFolder>/,
     'AppSettings.xml should use the directory containing PlatformContent',
+  );
+  assert.strictEqual(
+    path.resolve('Luckyblox', 'Versions', '2021M', '..', '..', 'shared', 'Content'),
+    path.resolve('Luckyblox', 'shared', 'Content'),
+    'the configured path must resolve from the versioned executable to the install-root shared directory',
   );
   assert.match(
     installerSource,

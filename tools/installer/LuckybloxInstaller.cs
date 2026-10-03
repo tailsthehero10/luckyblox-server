@@ -601,8 +601,9 @@ namespace LuckyBlox.Installer
         private void EnsurePlatformContent()
         {
             var installDir = InstallerConfig.InstallDir(_root);
-            var contentDir = Path.Combine(installDir, "shared", "Content");
-            var platformContentDir = Path.Combine(contentDir, "PlatformContent");
+            var sharedDir = Path.Combine(installDir, "shared");
+            var contentDir = Path.Combine(sharedDir, "Content");
+            var platformContentDir = Path.Combine(sharedDir, "PlatformContent");
             Directory.CreateDirectory(contentDir);
             Directory.CreateDirectory(platformContentDir);
 
