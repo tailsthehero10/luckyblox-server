@@ -10,6 +10,10 @@
   "dependencies": {
     "ejs": "^3.1.10",
     "express": "^4.19.2",
-    "pg": "^8.23.0"
+    "lz4": "file:../tools/rbxm-lz4-compat",
+    "lz4js": "0.2.0",
+    "pg": "^8.23.0",
+    "rbxm-parser": "1.1.4",
+    "three": "0.180.0"
   }
 }

@@ -1,0 +1,87 @@
+.lb-avatar-3d-panel {
+  min-width: 0;
+}
+
+.lb-avatar-3d {
+  --lb-avatar-3d-bg: #eef2f6;
+  --lb-avatar-3d-ink: #393b3d;
+}
+
+html.theme-dark .lb-avatar-3d {
+  --lb-avatar-3d-bg: #272b31;
+  --lb-avatar-3d-ink: #d7dce2;
+}
+
+.lb-avatar-3d-controls {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.lb-avatar-3d-controls [aria-pressed="true"] {
+  border-color: #00a2ff;
+  color: #0066b3;
+  box-shadow: inset 0 -2px #00a2ff;
+}
+
+.lb-avatar-3d-stage {
+  position: relative;
+  display: grid;
+  min-height: 300px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--lb-line-soft);
+  border-radius: var(--lb-radius);
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(255, 255, 255, 0.95), transparent 57%),
+    var(--lb-avatar-3d-bg);
+}
+
+.lb-avatar-3d-canvas,
+.lb-avatar-3d-fallback {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 300px;
+}
+
+.lb-avatar-3d-canvas {
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+
+.lb-avatar-3d-canvas:active {
+  cursor: grabbing;
+}
+
+.lb-avatar-3d-fallback {
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.lb-avatar-3d.is-ready .lb-avatar-3d-fallback {
+  display: none;
+}
+
+.lb-avatar-3d-status,
+.lb-avatar-3d-hint {
+  margin: 8px 0 0;
+  color: var(--lb-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.lb-avatar-3d-status:empty {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .lb-avatar-3d-stage,
+  .lb-avatar-3d-canvas,
+  .lb-avatar-3d-fallback {
+    min-height: 260px;
+    height: 260px;
+  }
+}

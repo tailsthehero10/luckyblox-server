@@ -13,6 +13,7 @@ require(path.join(__dirname, '..', '..', 'server', 'envFile.js'))
 const { buildPlaceCatalogFromMaps, normalizePlaceId: normalizePlaceIdInput, resolveRequestedPlace } = require('./gameMapResolver');
 const { getRobloxProfileTemplateItems } = require('./robloxTemplateSource');
 const { searchUsers } = require(path.join(__dirname, '..', '..', 'server', 'userSearch.js'));
+const avatarRig = require('./avatarRig');
 const robloxApi = require('./robloxApi');
 const { getStudioBuildInfo, getStudioUpdateManifest, STUDIO_EXECUTABLE_PATH, DEFAULT_BASE_URL } = require('./studioBuildInfo');
 const clientLauncher = require(path.join(__dirname, '..', '..', 'server', 'clientLauncher.js'));
@@ -149,6 +150,8 @@ app.use('/lb-select.js', express.static(path.join(__dirname, 'public', 'lb-selec
 // (page loads, API calls, the game page's live data) and takes it off when the
 // answer arrives. Loaded on every page, like legacy-nav.js.
 app.use('/loading.js', express.static(path.join(__dirname, 'public', 'loading.js')));
+app.use('/avatar-3d.js', express.static(path.join(__dirname, 'public', 'avatar-3d.js')));
+app.use('/vendor/three', express.static(path.join(__dirname, 'node_modules', 'three', 'build')));
 // Serve the site icon folder so /favicon.ico, /favicon.png and the originals in
 // Webserver/site icon/ are all reachable from every page.
 const siteIconDir = path.join(releaseRoot, 'Webserver', 'site icon');
@@ -822,6 +825,7 @@ app.use((req, res, next) => {
   res.locals.formatGameDate = formatGameDate;
   res.locals.formatJoinDate = formatJoinDate;
   res.locals.lbAvatarFigure = renderAvatarFigure;
+  res.locals.bodyColorRgb = bodyColorRgb;
   // The account switcher's list: the accounts this browser has signed in as.
   // Available to every template so the header does not have to be passed it by
   // each of the ~40 routes that render a page.
@@ -5287,6 +5291,23 @@ app.get('/my/avatar', async (req, res) => {
   // back to account 1 (which is the owner).
   if (!sessionUser) return res.redirect('/signin?redirect=' + encodeURIComponent('/my/avatar'));
   return renderAvatarPage2021(req, res, sessionUser.userId || sessionUser.id);
+});
+
+app.get('/api/avatar/rig/:rig', (req, res) => {
+  const rig = String(req.params.rig || '').toUpperCase();
+  if (rig !== 'R6' && rig !== 'R15') {
+    return res.status(404).json({ ok: false, error: 'unsupported-avatar-rig' });
+  }
+  try {
+    return res.json({ ok: true, ...avatarRig.getRigGeometry(rig) });
+  } catch (error) {
+    console.error(`[luckyblox] could not load the bundled ${rig} avatar rig: ${error.message}`);
+    return res.status(500).json({
+      ok: false,
+      error: 'avatar-rig-load-failed',
+      message: error.message,
+    });
+  }
 });
 
 /**

@@ -1,0 +1,38 @@
+<%
+  var viewerUser = (typeof user !== 'undefined' && user) ? user : {};
+  var viewerAvatar = viewerUser.avatar || {};
+  var viewerBodyColors = viewerAvatar.bodyColors || {};
+  var viewerColors = {
+    head: bodyColorRgb(viewerBodyColors.headColorId),
+    torso: bodyColorRgb(viewerBodyColors.torsoColorId),
+    leftArm: bodyColorRgb(viewerBodyColors.leftArmColorId),
+    rightArm: bodyColorRgb(viewerBodyColors.rightArmColorId),
+    leftLeg: bodyColorRgb(viewerBodyColors.leftLegColorId),
+    rightLeg: bodyColorRgb(viewerBodyColors.rightLegColorId)
+  };
+  var viewerRig = (typeof avatarType !== 'undefined' && avatarType)
+    ? avatarType : (viewerAvatar.playerAvatarType || viewerUser.avatarType || 'R15');
+%>
+<section class="lb-panel lb-avatar-3d-panel">
+  <div class="lb-panel-header">
+    <span>3D Avatar Preview</span>
+    <span class="lb-faint">Bundled classic Roblox rigs</span>
+  </div>
+  <div class="lb-panel-body">
+    <div class="lb-avatar-3d" data-avatar-3d data-rig="<%= viewerRig === 'R6' ? 'R6' : 'R15' %>"
+         data-colors="<%= JSON.stringify(viewerColors) %>">
+      <div class="lb-avatar-3d-controls" role="group" aria-label="Avatar rig">
+        <button type="button" class="lb-btn lb-btn-secondary" data-rig="R6"
+                aria-pressed="<%= viewerRig === 'R6' ? 'true' : 'false' %>">R6 Classic</button>
+        <button type="button" class="lb-btn lb-btn-secondary" data-rig="R15"
+                aria-pressed="<%= viewerRig === 'R15' ? 'true' : 'false' %>">R15</button>
+      </div>
+      <div class="lb-avatar-3d-stage">
+        <canvas class="lb-avatar-3d-canvas" aria-label="Interactive 3D avatar. Drag to rotate and scroll to zoom."></canvas>
+        <div class="lb-avatar-3d-fallback"><%- lbAvatarFigure(viewerUser, 200) %></div>
+      </div>
+      <p class="lb-avatar-3d-status" role="status" aria-live="polite">Loading bundled <%= viewerRig %> rig…</p>
+      <p class="lb-avatar-3d-hint">Drag to rotate &middot; Scroll to zoom</p>
+    </div>
+  </div>
+</section>
