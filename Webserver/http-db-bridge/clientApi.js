@@ -24,6 +24,7 @@
  *   GET  /v1/users/{id}/currently-wearing        equipped asset ids
  *   GET  /v1/inventory/{id}/assets/{type}        the player's inventory page
  *   GET  /v1/thumbnails/avatar                   avatar thumbnail batch
+ *   GET  /thumbs/avatar.ashx                     classic-client profile picture
  *   GET  /v1/thumbnails/assets                   asset thumbnail batch
  *   GET  /v2/avatar                               avatar /v2 model
  *   GET  /v1/game-pass/{id}                       pass metadata
@@ -54,6 +55,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const robloxApi = require('./robloxApi');
 
 /**
  * @param {object} app  the Express app
@@ -80,12 +82,57 @@ function installClientApi(app, ctx) {
 
   /** A numeric id from any of the spellings a client uses. */
   function readId(value) {
-    const n = Number(String(value == null ? '' : value).replace(/\D+/g, ''));
+    const text = String(value == null ? '' : value).trim();
+    if (!/^\d+$/.test(text)) return null;
+    const n = Number(text);
     return Number.isFinite(n) && n > 0 ? n : null;
   }
 
+  function storedUser(userId) {
+    const users = ctx.getUsers() || {};
+    return users[String(userId)] || null;
+  }
+
+  function existingUser(userId) {
+    const user = storedUser(userId);
+    return user && typeof user === 'object' ? user : null;
+  }
+
+  function storedAvatarThumbnail(userId, user) {
+    const file = readUserFile(userId);
+    const avatar = user && user.avatar && typeof user.avatar === 'object' ? user.avatar : {};
+    const fileAvatar = file && file.avatar && typeof file.avatar === 'object' ? file.avatar : {};
+    const candidate = (file && file.avatarThumbnail)
+      || (fileAvatar && fileAvatar.headshotUrl)
+      || (user && user.avatarThumbnail)
+      || avatar.headshotUrl;
+    if (!candidate) return null;
+
+    const value = String(candidate).trim();
+    try {
+      const url = new URL(value, ctx.publicOrigin);
+      const origin = new URL(ctx.publicOrigin);
+      const officialRobloxHost = /(^|\.)roblox\.com$/i.test(url.hostname)
+        || /(^|\.)rbxcdn\.com$/i.test(url.hostname);
+      if ((url.protocol !== 'https:' && url.protocol !== 'http:')
+        || (url.origin !== origin.origin && !officialRobloxHost)) return null;
+      return url.href;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function avatarThumbnailUrl(userId, user, size) {
+    const savedUrl = storedAvatarThumbnail(userId, user);
+    if (savedUrl) return savedUrl;
+
+    const linkedId = Number(user && user.robloxUserId);
+    if (!Number.isFinite(linkedId) || linkedId <= 0) return null;
+    return robloxApi.getAvatarHeadshotUrl(linkedId, size);
+  }
+
   function publicUser(userId) {
-    const user = ctx.getUser(userId);
+    const user = existingUser(userId);
     if (!user) return null;
     const id = Number(user.userId || userId);
     return {
@@ -185,7 +232,7 @@ function installClientApi(app, ctx) {
   // GET /v1/users/{userId}/username  -> the bare name (used by several clients)
   app.get('/v1/users/:userId/username', (req, res) => {
     const id = readId(req.params.userId);
-    const user = id ? ctx.getUser(id) : null;
+    const user = id ? existingUser(id) : null;
     if (!user) return res.status(404).json({ errors: [{ code: 3, message: 'The user does not exist.' }] });
     return res.json({ userId: Number(user.userId || id), username: user.username });
   });
@@ -195,7 +242,8 @@ function installClientApi(app, ctx) {
     const id = readId(req.params.userId);
     if (!id) return res.status(404).json({ errors: [{ code: 3, message: 'The user does not exist.' }] });
 
-    const user = ctx.getUser(id);
+    const user = existingUser(id);
+    if (!user) return res.status(404).json({ errors: [{ code: 3, message: 'The user does not exist.' }] });
     const file = readUserFile(id);
     const source = (user && Array.isArray(user.currentlyWearing) && user.currentlyWearing.length)
       ? user.currentlyWearing
@@ -212,7 +260,7 @@ function installClientApi(app, ctx) {
   app.get('/v1/inventory/:userId/assets/:assetTypeId', (req, res) => {
     const id = readId(req.params.userId);
     const typeId = Number(req.params.assetTypeId) || 0;
-    const user = id ? ctx.getUser(id) : null;
+    const user = id ? existingUser(id) : null;
     if (!user) return res.status(404).json({ errors: [{ code: 3, message: 'The user does not exist.' }] });
 
     const assets = ctx.getAssets() || {};
@@ -241,13 +289,16 @@ function installClientApi(app, ctx) {
 
   // GET /v2/avatar  and  GET /v1/avatar  - the model shape the client reads.
   function avatarModel(req, res) {
-    const id = readId(req.query.userId || req.params.userId) || 1;
-    const user = ctx.getUser(id);
+    const id = readId(req.query.userId || req.params.userId);
+    const user = id ? existingUser(id) : null;
     if (!user) return res.status(404).json({ errors: [{ code: 3, message: 'The user does not exist.' }] });
 
     const avatar = (user.avatar && typeof user.avatar === 'object') ? user.avatar : {};
     const colors = (avatar.bodyColors && typeof avatar.bodyColors === 'object') ? avatar.bodyColors : {};
-    const wearing = Array.isArray(user.currentlyWearing) ? user.currentlyWearing : [];
+    const userFile = readUserFile(id);
+    const wearing = Array.isArray(user.currentlyWearing) && user.currentlyWearing.length
+      ? user.currentlyWearing
+      : (userFile && Array.isArray(userFile.currentlyWearing) ? userFile.currentlyWearing : []);
 
     const assets = ctx.getAssets() || {};
     const assetRows = wearing
@@ -264,12 +315,12 @@ function installClientApi(app, ctx) {
       scales: Object.assign({ height: 1, width: 1, head: 1, depth: 1, proportion: 0, bodyType: 0 }, avatar.scales || {}),
       playerAvatarType: avatar.playerAvatarType || user.avatarType || 'R15',
       bodyColors: {
-        headColor: colors.headColorId || 1002,
-        torsoColor: colors.torsoColorId || 1002,
-        rightArmColor: colors.rightArmColorId || 1002,
-        leftArmColor: colors.leftArmColorId || 1002,
-        rightLegColor: colors.rightLegColorId || 1002,
-        leftLegColor: colors.leftLegColorId || 1002,
+        headColorId: colors.headColorId || 1002,
+        torsoColorId: colors.torsoColorId || 1002,
+        rightArmColorId: colors.rightArmColorId || 1002,
+        leftArmColorId: colors.leftArmColorId || 1002,
+        rightLegColorId: colors.rightLegColorId || 1002,
+        leftLegColorId: colors.leftLegColorId || 1002,
       },
       assetIds: wearing.map((a) => Number(a)).filter((n) => Number.isFinite(n)),
       assets: assetRows,
@@ -331,21 +382,36 @@ function installClientApi(app, ctx) {
     const raw = req.query.userIds || (req.body && req.body.userIds) || '';
     const ids = String(raw).split(',').map((s) => s.trim()).filter(Boolean);
 
-    return res.json({
-      data: thumbnailRows(ids, (id) => {
-        const file = readUserFile(id);
-        const user = ctx.getUser(id);
-        // Prefer a real stored render over the site placeholder.
-        return (file && file.avatarThumbnail)
-          || (user && user.avatarThumbnail)
-          || `${ctx.publicOrigin}/avatar-thumbs/${id}`
-          || null;
-      }),
-    });
+    return Promise.all(ids.map(async (rawId) => {
+      const id = readId(rawId);
+      const user = id ? existingUser(id) : null;
+      if (!id || !user) return null;
+      const imageUrl = await avatarThumbnailUrl(id, user, '150x150');
+      return imageUrl
+        ? { targetId: id, state: 'Completed', imageUrl, version: `v${stableHash(id) % 900 + 100}` }
+        : { targetId: id, state: 'Pending' };
+    })).then((data) => res.json({ data: data.filter(Boolean) }));
   }
 
   app.get('/v1/thumbnails/avatar', avatarThumbnails);
   app.post('/v1/thumbnails/avatar', avatarThumbnails);
+
+  // Classic clients request the profile picture as an image rather than through
+  // the batched thumbnail API.
+  app.get('/thumbs/avatar.ashx', async (req, res) => {
+    const id = readId(req.query.userId);
+    const user = id ? existingUser(id) : null;
+    if (!id || !user) return res.status(404).type('text/plain').send('User not found');
+
+    const width = Number(req.query.x);
+    const height = Number(req.query.y);
+    const allowedSizes = ['48x48', '50x50', '100x100', '150x150', '180x180', '352x352', '420x420'];
+    const requestedSize = `${width}x${height}`;
+    const size = allowedSizes.includes(requestedSize) ? requestedSize : '352x352';
+    const imageUrl = await avatarThumbnailUrl(id, user, size);
+    if (!imageUrl) return res.status(404).type('text/plain').send('Avatar thumbnail unavailable');
+    return res.redirect(302, imageUrl);
+  });
 
   // GET /v1/thumbnails/assets?assetIds=1001,1002
   function assetThumbnails(req, res) {
