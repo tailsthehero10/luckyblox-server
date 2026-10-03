@@ -1,0 +1,30 @@
+{
+   "Mode":"GameServer",
+   "GameId":3050,
+   "Settings":{
+      "Type":"Avatar",
+      "PlaceId":3060,
+        "CreatorId":1,
+      "GameId":"Test",
+        "MachineAddress":"http://127.0.0.1",
+        "GsmInterval":5,
+          "MaxPlayers":30,
+    "MaxGameInstances":51,
+     "ApiKey":"",
+	  "PreferredPlayerCapacity":30,
+      "DataCenterId":"69420",
+      "PlaceVisitAccessKey":"",
+      "UniverseId":13058,
+      "PlaceFetchUrl":"http://localhost/asset/?id=1818",
+      "MatchmakingContextId":1,
+      "CreatorId":1,
+      "CreatorType":"User",
+      "PlaceVersion":1,
+      "BaseUrl":"http://localhost",
+      "JobId":"Test",
+      "script":"print('Initializing NetworkServer.')",
+      "PreferredPort":53641
+
+   },
+   "Arguments":{}
+}

@@ -54,6 +54,20 @@ const app = express();
 
 app.set('trust proxy', true);
 
+// Classic 2021M clients append /home/ to BaseUrl, and both client generations
+// may include the site's mount prefix. These are URL base paths, not API route
+// prefixes, so remove them before static files and bridge endpoints are matched.
+app.use((req, res, next) => {
+  const queryIndex = req.url.indexOf('?');
+  let pathname = queryIndex === -1 ? req.url : req.url.slice(0, queryIndex);
+  const search = queryIndex === -1 ? '' : req.url.slice(queryIndex);
+  pathname = pathname.replace(/^\/LuckBlox\.site\.tk(?=\/|$)/i, '') || '/';
+  pathname = pathname.replace(/^\/home(?=\/|$)/i, '') || '/';
+  pathname = pathname.replace(/\/{2,}/g, '/');
+  req.url = `${pathname}${search}`;
+  next();
+});
+
 // Inside the container the bridge listens on its own internal port, but when it
 // is the only process (single-port cloud deployment) it takes process.env.PORT
 // directly. Either way nothing here is hardcoded.
@@ -466,6 +480,112 @@ const GAME_BIG_PLACEHOLDER = path.join(gamePlaceholderRoot, 'Big_', 'image (44).
 // tools/build-game-artwork.js. Stable filename so a URL never has to encode the
 // original's spaces and parentheses.
 const GAME_THUMB_PLACEHOLDER = path.join(gamePlaceholderRoot, 'game-thumb-1680x945.png');
+
+const thumbnailRoots = [
+  { prefix: '/gameplaceholder/', root: gamePlaceholderRoot },
+  { prefix: '/asset-cache/', root: assetCacheDir },
+  { prefix: '/avatar-thumbs/', root: classicThumbsDir },
+  { prefix: '/img/', root: path.join(__dirname, 'public', 'img') },
+  { prefix: '/site-icon/', root: siteIconDir },
+];
+const thumbnailAliases = {
+  '/gameplaceholder/card.png': GAME_CARD_PLACEHOLDER,
+  '/gameplaceholder/big.png': GAME_BIG_PLACEHOLDER,
+  '/gameplaceholder/game-thumb-1680x945.png': GAME_THUMB_PLACEHOLDER,
+};
+
+function parseThumbnailId(rawId) {
+  const value = Array.isArray(rawId) ? rawId[0] : rawId;
+  const text = String(value == null ? '' : value).trim();
+  if (!/^\d+$/.test(text)) return null;
+  const id = Number(text);
+  return Number.isSafeInteger(id) && id > 0 ? String(id) : null;
+}
+
+function resolveThumbnailTarget(icon, req) {
+  if (typeof icon !== 'string' || !icon.trim()) return null;
+
+  let url;
+  try {
+    url = new URL(icon.trim(), requestOrigin(req, publicOrigin));
+  } catch {
+    return null;
+  }
+
+  const origin = requestOrigin(req, publicOrigin);
+  if (url.origin !== origin) {
+    const hostname = url.hostname.toLowerCase();
+    const isRobloxImageHost = hostname === 'rbxcdn.com'
+      || hostname.endsWith('.rbxcdn.com')
+      || hostname === 'roblox.com'
+      || hostname.endsWith('.roblox.com');
+    return isRobloxImageHost && (url.protocol === 'https:' || url.protocol === 'http:')
+      ? { url: url.toString(), file: null }
+      : null;
+  }
+
+  let pathname;
+  try {
+    pathname = decodeURIComponent(url.pathname);
+  } catch {
+    return null;
+  }
+
+  const aliasFile = thumbnailAliases[pathname];
+  if (aliasFile && fs.existsSync(aliasFile) && fs.statSync(aliasFile).isFile()) {
+    return { url: url.toString(), file: aliasFile };
+  }
+
+  for (const entry of thumbnailRoots) {
+    if (!pathname.startsWith(entry.prefix)) continue;
+    const root = path.resolve(entry.root);
+    const file = path.resolve(root, pathname.slice(entry.prefix.length));
+    if (!file.startsWith(`${root}${path.sep}`) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+      return null;
+    }
+    return { url: url.toString(), file };
+  }
+  return null;
+}
+
+function findThumbnailTarget(rawId, req) {
+  const id = parseThumbnailId(rawId);
+  if (!id) return { id: null, target: null };
+
+  const game = getGames()[id];
+  const asset = getAssets()[id];
+  const icon = game
+    ? (typeof game.icon === 'string' && game.icon.trim() ? game.icon : DEFAULT_GAME_ICON)
+    : asset && (asset.thumbnailUrl || asset.thumbnail || asset.imageUrl || asset.icon);
+
+  return {
+    id,
+    target: resolveThumbnailTarget(icon, req),
+  };
+}
+
+app.get('/asset-thumbnail/json', (req, res) => {
+  const { id, target } = findThumbnailTarget(req.query.assetId || req.query.id || req.query.placeId, req);
+  if (!id) return res.status(400).json({ success: false, status: 'InvalidAssetId' });
+  if (!target) return res.status(404).json({ success: false, status: 'NotFound', assetId: Number(id) });
+  return res.json({
+    Url: target.url,
+    Final: true,
+    thumbnailFinal: true,
+    final: true,
+    state: 'Completed',
+    targetId: Number(id),
+  });
+});
+
+app.get('/asset-thumbnail/image', (req, res) => {
+  const { id, target } = findThumbnailTarget(req.query.assetId || req.query.id || req.query.placeId, req);
+  if (!id) return res.status(400).json({ success: false, status: 'InvalidAssetId' });
+  if (!target) return res.status(404).json({ success: false, status: 'NotFound', assetId: Number(id) });
+  res.set('Cache-Control', 'public, max-age=300');
+  if (target.file) return res.sendFile(target.file);
+  return res.redirect(target.url);
+});
 
 app.get('/gameplaceholder/card.png', (req, res) => {
   if (!fs.existsSync(GAME_CARD_PLACEHOLDER)) return res.status(404).end();
@@ -3266,6 +3386,7 @@ installMarketplaceRoutes(app, {
   dataDir,
   audit,
   resolveSessionUser,
+  getGames,
 });
 
 /**

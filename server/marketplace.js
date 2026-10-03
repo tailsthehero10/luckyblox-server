@@ -228,11 +228,39 @@ function installMarketplaceRoutes(app, deps) {
       };
     }
 
+    const games = typeof deps.getGames === 'function' ? deps.getGames() : {};
+    const game = games && typeof games === 'object' ? games[id] : null;
+    if (game) {
+      const creatorId = Number(game.authorId || game.creatorId);
+      const creatorName = String(game.author || game.developer || '').trim();
+      const name = String(game.title || game.name || '').trim();
+      if (!name) return null;
+      const creator = {
+        Id: Number.isSafeInteger(creatorId) && creatorId > 0 ? creatorId : 0,
+        Name: creatorName,
+        CreatorType: 'User',
+      };
+      if (creator.Id > 0) creator.CreatorTargetId = creator.Id;
+      const info = {
+        AssetId: Number(id),
+        Name: name,
+        Description: String(game.description || ''),
+        AssetTypeId: 9,
+        Creator: creator,
+        IsForSale: false,
+        PriceInRobux: null,
+        PriceInTickets: null,
+      };
+      if (game.createdAt) info.Created = game.createdAt;
+      if (game.updatedAt) info.Updated = game.updatedAt;
+      return info;
+    }
+
     return null;
   }
 
   app.get('/marketplace/productinfo', (req, res) => {
-    const id = req.query.productId || req.query.assetId;
+    const id = req.query.productId || req.query.assetId || req.query.placeId;
     const info = describeProduct(id);
     if (!info) {
       // A real 404, not a fabricated record: the client shows "not found" for an

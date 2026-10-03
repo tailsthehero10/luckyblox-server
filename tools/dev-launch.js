@@ -18,15 +18,14 @@
  * ----
  *   1. POST  <site>/api/login           -> session cookie
  *   2. POST  <site>/api/launch-game     -> ticket, placeId, jobId
- *   3. find a free local TCP port
- *   4. start the local game server (dedicated server binary if present, else a
- *      listener that never leaves the client hanging)
- *   5. launch the player client against that local port
+ *   3. resolve the currently selected local map to its actual catalog place id
+ *   4. start the matching local-test server with a per-session map/join endpoint
+ *   5. launch an isolated copy of the selected client with the LIVE BaseUrl
  *
  * Usage
  * -----
- *   node tools/dev-launch.js                     # sign in and PLAY (place 1818)
- *   node tools/dev-launch.js --place 2020        # pick a place
+ *   node tools/dev-launch.js                     # play the map in Settings/MapPath.txt
+ *   node tools/dev-launch.js --place 1813        # pick a local catalog place
  *   node tools/dev-launch.js --testblox --Testblox10
  *   node tools/dev-launch.js --dry-run           # resolve only, launch nothing
  *   node tools/dev-launch.js --url https://...   # a different site
@@ -39,31 +38,19 @@
  */
 
 const fs = require('fs');
+const http = require('http');
 const net = require('net');
 const path = require('path');
 const { spawn } = require('child_process');
+const { randomUUID } = require('crypto');
 
 const RELEASE_ROOT = path.resolve(__dirname, '..');
 const DEFAULT_LIVE_URL = 'https://luckyblox-server.onrender.com';
-const DEFAULT_PLACE_ID = 1818;
 const DEFAULT_CLIENT = '2021M';
-const SERVER_START_TIMEOUT_MS = 20000;
-
-/**
- * The dedicated game-server binary.
- *
- * The 2021E build does NOT ship an `RCCService.exe` - its server-side binary is
- * `RobloxPlayerBeta.exe` under `RCCService/`. The old list only looked for
- * `RCCService.exe`, so it never found a server binary and silently fell back to
- * the bare TCP listener. Walk the likely names AND locations instead.
- */
-const SERVER_CANDIDATES = [
-  path.join(RELEASE_ROOT, 'Clients', '2021E', 'RCCService', 'RCCService.exe'),
-  path.join(RELEASE_ROOT, 'Clients', '2021E', 'RCCService', 'RobloxPlayerBeta.exe'),
-  path.join(RELEASE_ROOT, 'Clients', '2021E', 'RobloxPlayerBeta.exe'),
-  path.join(RELEASE_ROOT, 'RCCService', 'RCCService.exe'),
-  path.join(RELEASE_ROOT, 'RCCService.exe'),
-];
+const SERVER_START_TIMEOUT_MS = 60000;
+const MAPS_DIR = path.join(RELEASE_ROOT, 'Maps');
+const GAMES_FILE = path.join(RELEASE_ROOT, 'Webserver', 'http-db-bridge', 'data', 'games.json');
+const SERVER_ROOT = path.join(RELEASE_ROOT, 'shared');
 
 /**
  * The client folder a --client name resolves to.
@@ -72,11 +59,107 @@ const SERVER_CANDIDATES = [
  * plain `Clients/<name>/RobloxPlayerBeta.exe` check would miss it.
  */
 function resolveClientDir(clientName) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(String(clientName || ''))) {
+    throw new Error(`invalid client name: ${clientName}`);
+  }
   const dir = path.join(RELEASE_ROOT, 'Clients', clientName);
   if (fs.existsSync(path.join(dir, 'Player', 'RobloxPlayerBeta.exe'))) {
     return path.join(dir, 'Player');
   }
-  return dir;
+  if (fs.existsSync(path.join(dir, 'RobloxPlayerBeta.exe'))) return dir;
+  throw new Error(`client ${clientName} has no RobloxPlayerBeta.exe`);
+}
+
+function normalizeTitle(value) {
+  return path.basename(String(value || '').trim())
+    .replace(/\.(?:rbxlx?|rbxmx?)$/i, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function readLocalGames(gamesFile = GAMES_FILE) {
+  try {
+    const contents = JSON.parse(fs.readFileSync(gamesFile, 'utf8'));
+    return Object.values(contents || {}).filter((game) => game && Number(game.placeId) > 0);
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw new Error(`could not read local game catalog ${gamesFile}: ${error.message}`);
+  }
+}
+
+function mapFileForGame(game, mapsDir = MAPS_DIR) {
+  if (!game) return null;
+  const explicitNames = [game.mapFile, game.fileName, game.filePath, game.mapPath].filter(Boolean);
+  for (const name of explicitNames) {
+    const candidate = path.isAbsolute(name) ? name : path.join(mapsDir, name);
+    if (/\.(rbxl|rbxlx)$/i.test(candidate) && fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+      return path.resolve(candidate);
+    }
+  }
+
+  const wantedTitle = normalizeTitle(game.title);
+  if (!wantedTitle || !fs.existsSync(mapsDir)) return null;
+  const matches = fs.readdirSync(mapsDir)
+    .filter((name) => /\.(rbxl|rbxlx)$/i.test(name)
+      && normalizeTitle(name) === wantedTitle)
+    .sort((a, b) => a.localeCompare(b));
+  return matches.length ? path.join(mapsDir, matches[0]) : null;
+}
+
+function resolvePlaceMap(placeId, games = readLocalGames()) {
+  const game = games.find((entry) => Number(entry.placeId) === Number(placeId));
+  const mapPath = mapFileForGame(game);
+  return game && mapPath
+    ? { placeId: Number(game.placeId), title: String(game.title || path.basename(mapPath)), mapPath }
+    : null;
+}
+
+function resolveDefaultPlace(settingsDir = path.join(RELEASE_ROOT, 'Settings'), games = readLocalGames()) {
+  const mapPathFile = path.join(settingsDir, 'MapPath.txt');
+  let selectedMap;
+  try {
+    selectedMap = fs.readFileSync(mapPathFile, 'utf8').replace(/^\uFEFF/, '').trim();
+  } catch (error) {
+    if (error.code === 'ENOENT') selectedMap = '';
+    else throw new Error(`could not read selected map ${mapPathFile}: ${error.message}`);
+  }
+
+  if (selectedMap) {
+    const resolvedPath = path.resolve(selectedMap);
+    if (!/\.(rbxl|rbxlx)$/i.test(resolvedPath) || !fs.existsSync(resolvedPath) || !fs.statSync(resolvedPath).isFile()) {
+      throw new Error(`the selected map does not exist or is not an RBXL file: ${selectedMap}`);
+    }
+    const selectedTitle = normalizeTitle(resolvedPath);
+    const game = games.find((entry) => normalizeTitle(entry.title) === selectedTitle
+      || [entry.mapFile, entry.fileName].some((name) => name && normalizeTitle(name) === selectedTitle));
+    if (!game) {
+      throw new Error(
+        `the selected map "${path.basename(resolvedPath)}" has no matching place in the local game catalog. `
+        + 'Pass --place <id> after publishing/linking that map to an experience.',
+      );
+    }
+    return { placeId: Number(game.placeId), title: String(game.title || path.basename(resolvedPath)), mapPath: resolvedPath };
+  }
+
+  const firstAvailable = games
+    .map((game) => ({ game, mapPath: mapFileForGame(game) }))
+    .find((entry) => entry.mapPath);
+  if (firstAvailable) {
+    return {
+      placeId: Number(firstAvailable.game.placeId),
+      title: String(firstAvailable.game.title || path.basename(firstAvailable.mapPath)),
+      mapPath: firstAvailable.mapPath,
+    };
+  }
+  return null;
+}
+
+function resolveServerBinary(clientName) {
+  const clientSpecific = path.join(SERVER_ROOT, `${clientName}.exe`);
+  if (fs.existsSync(clientSpecific)) return clientSpecific;
+  const fallback = path.join(SERVER_ROOT, '2021E.exe');
+  return fs.existsSync(fallback) ? fallback : null;
 }
 
 function readSelectedClient(selectedFile = path.join(RELEASE_ROOT, 'Settings', 'SelectedClient.txt')) {
@@ -95,7 +178,8 @@ function readSelectedClient(selectedFile = path.join(RELEASE_ROOT, 'Settings', '
 function parseArgs(argv) {
   const args = {
     url: DEFAULT_LIVE_URL,
-    place: DEFAULT_PLACE_ID,
+    place: null,
+    placeExplicit: false,
     client: process.env.LUCKYBLOX_DEV_CLIENT || readSelectedClient(),
     // Launch by default. --dry-run turns this off, NOT the other way round:
     // defaulting to true meant DEV-PLAY.bat never actually played anything.
@@ -109,7 +193,11 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === '--url') args.url = argv[++i];
-    else if (token === '--place' || token === '--placeid') args.place = Number(argv[++i]) || DEFAULT_PLACE_ID;
+    else if (token === '--place' || token === '--placeid') {
+      args.place = Number(argv[++i]);
+      args.placeExplicit = Number.isSafeInteger(args.place) && args.place > 0;
+      if (!args.placeExplicit) throw new Error(`${token} requires a positive integer place id.`);
+    }
     else if (token === '--client') args.client = argv[++i];
     else if (token === '--dry-run') args.dryRun = true;
     else if (token === '--no-keepalive') args.keepAlive = false;
@@ -130,6 +218,29 @@ function parseArgs(argv) {
     else if (token === '--help' || token === '-h') args.help = true;
   }
   args.url = String(args.url || DEFAULT_LIVE_URL).replace(/\/+$/, '');
+  const envPlaceValue = String(process.env.LUCKYBLOX_DEV_PLACE || '').trim();
+  if (!args.placeExplicit && envPlaceValue) {
+    const envPlace = Number(envPlaceValue);
+    if (!Number.isSafeInteger(envPlace) || envPlace <= 0) {
+      throw new Error('LUCKYBLOX_DEV_PLACE must be a positive integer place id.');
+    }
+    args.place = envPlace;
+    args.placeExplicit = true;
+  }
+  if (args.help) return args;
+  if (!args.placeExplicit) {
+    const selected = resolveDefaultPlace();
+    if (!selected) {
+      throw new Error('no local place is selected. Set Settings\\MapPath.txt or pass --place <id>.');
+    }
+    args.place = selected.placeId;
+    args.mapPath = selected.mapPath;
+    args.placeTitle = selected.title;
+  } else {
+    const selected = resolvePlaceMap(args.place);
+    args.mapPath = selected && selected.mapPath;
+    args.placeTitle = selected && selected.title;
+  }
   // An empty password would be sent as "" and rejected; keep the default when the
   // caller only supplied a username.
   if (!args.pass) args.pass = process.env.LUCKYBLOX_DEV_PASS || 'Testblox10';
@@ -138,6 +249,127 @@ function parseArgs(argv) {
 
 function log(step, message) {
   console.log(`[dev-launch] ${step.padEnd(12)} ${message}`);
+}
+
+function createDevHttpServer({ placeId, mapPath, userId, ticket, jobId, gamePort, baseUrl }) {
+  const server = http.createServer((req, res) => {
+    const requestUrl = new URL(req.url, 'http://127.0.0.1');
+    if (requestUrl.pathname === '/asset/' || requestUrl.pathname === '/asset') {
+      if (Number(requestUrl.searchParams.get('id')) !== Number(placeId)) {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('Local place asset not found.');
+        return;
+      }
+      const stat = fs.statSync(mapPath);
+      res.writeHead(200, {
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': stat.size,
+        'Cache-Control': 'no-store',
+      });
+      if (req.method === 'HEAD') res.end();
+      else fs.createReadStream(mapPath).pipe(res);
+      return;
+    }
+
+    if (requestUrl.pathname === '/game/join' || requestUrl.pathname === '/game/Join.ashx') {
+      const joinScriptUrl = `http://127.0.0.1:${server.address().port}/game/join?placeId=${placeId}`
+        + `&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${gamePort}&jobId=${encodeURIComponent(jobId)}`;
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({
+        ok: true,
+        status: 2,
+        jobId,
+        placeId: Number(placeId),
+        userId: Number(userId),
+        ip: '127.0.0.1',
+        port: Number(gamePort),
+        serverPort: Number(gamePort),
+        joinScriptUrl,
+        authenticationUrl: `${baseUrl}/Login/Negotiate.ashx`,
+        authenticationTicket: String(ticket),
+        clientTicket: String(ticket),
+        message: null,
+      }));
+      return;
+    }
+
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('DEV-PLAY local endpoint not found.');
+  });
+
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      server.removeListener('error', reject);
+      resolve({
+        server,
+        baseUrl: `http://127.0.0.1:${server.address().port}`,
+        close: () => new Promise((done, fail) => server.close((error) => (error ? fail(error) : done()))),
+      });
+    });
+  });
+}
+
+function createLocalServerConfig(templatePath, outputPath, { placeId, mapUrl, baseUrl, jobId, port }) {
+  const config = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
+  if (!config.Settings || typeof config.Settings !== 'object') {
+    throw new Error(`invalid local game-server settings template: ${templatePath}`);
+  }
+  config.Settings.PlaceId = Number(placeId);
+  config.Settings.PlaceFetchUrl = mapUrl;
+  config.Settings.BaseUrl = baseUrl;
+  config.Settings.JobId = String(jobId);
+  config.Settings.PreferredPort = Number(port);
+  config.Settings.MachineAddress = 'http://127.0.0.1';
+  fs.writeFileSync(outputPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  return outputPath;
+}
+
+function xmlEscape(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+function prepareDevClient(clientDir, clientName, baseUrl, runId) {
+  const sourceExe = path.join(clientDir, 'RobloxPlayerBeta.exe');
+  const runDir = path.join(scratchDir(), `dev-client-${runId}`);
+  fs.mkdirSync(runDir, { recursive: true });
+
+  const copyRuntimeTree = (source, destination) => {
+    fs.mkdirSync(destination, { recursive: true });
+    for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
+      if (entry.name.toLowerCase() === 'appsettings.xml') continue;
+      const sourcePath = path.join(source, entry.name);
+      const destinationPath = path.join(destination, entry.name);
+      if (entry.isDirectory()) {
+        copyRuntimeTree(sourcePath, destinationPath);
+      } else if (entry.isFile()) {
+        try {
+          fs.linkSync(sourcePath, destinationPath);
+        } catch (error) {
+          if (!['EXDEV', 'EPERM', 'EACCES', 'EMLINK'].includes(error.code)) throw error;
+          fs.copyFileSync(sourcePath, destinationPath);
+        }
+      }
+    }
+  };
+  copyRuntimeTree(clientDir, runDir);
+  const suffix = /^(2021|CUSTOM-2021)/i.test(clientName)
+    ? '/LuckBlox.site.tk/home/'
+    : '/LuckBlox.site.tk/';
+  const appSettings = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<Settings>',
+    `  <ContentFolder>${xmlEscape(path.join(RELEASE_ROOT, 'shared', 'content'))}</ContentFolder>`,
+    `  <BaseUrl>${xmlEscape(`${baseUrl}${suffix}`)}</BaseUrl>`,
+    '</Settings>',
+    '',
+  ].join('\r\n');
+  fs.writeFileSync(path.join(runDir, 'AppSettings.xml'), appSettings, 'utf8');
+  if (!fs.existsSync(path.join(runDir, path.basename(sourceExe)))) {
+    throw new Error(`could not prepare isolated client files for ${clientName}`);
+  }
+  return { runDir, exe: path.join(runDir, 'RobloxPlayerBeta.exe') };
 }
 
 /**
@@ -248,22 +480,53 @@ function findFreePort(start = 53640) {
  * connections. A plain TCP listener is not a game server and must not be used as
  * a success-shaped fallback.
  */
-function startLocalGameServer(port, placeId, jobId) {
-  const serverBinary = SERVER_CANDIDATES.find((candidate) => fs.existsSync(candidate));
+function startLocalGameServer({ port, placeId, jobId, clientName, localHttpUrl, baseUrl, runId }) {
+  const serverBinary = resolveServerBinary(clientName);
   if (!serverBinary) {
     return Promise.reject(new Error(
-      'no dedicated game-server binary found; install the 2021E RCCService files before using DEV-PLAY',
+      `no dedicated game-server binary found for ${clientName}; expected shared\\${clientName}.exe or shared\\2021E.exe`,
     ));
   }
 
-  // The 2021 conference builds take a lower-case `-console` and the
-  // place/job/port each as its own `-key:value` token.
+  const scratch = path.join(scratchDir(), `dev-server-${runId}`);
+  fs.mkdirSync(scratch, { recursive: true });
+  const templatePath = path.join(SERVER_ROOT, 'gameserver.json');
+  const settingsPath = path.join(SERVER_ROOT, 'DevSettingsFile.json');
+  if (!fs.existsSync(settingsPath)) {
+    return Promise.reject(new Error(`the game-server settings file is missing: ${settingsPath}`));
+  }
+  const configPath = createLocalServerConfig(
+    templatePath,
+    path.join(scratch, 'gameserver.json'),
+    {
+      placeId,
+      mapUrl: `${localHttpUrl}/asset/?id=${placeId}`,
+      baseUrl,
+      jobId,
+      port,
+    },
+  );
+
+  // Match the working shared/<client>.bat local-test setup. The RCCService
+  // player binary does not load a place by itself without -localtest and the
+  // matching settings file.
   const child = spawn(serverBinary, [
     '-console', '-verbose',
     `-placeid:${placeId}`,
-    `-jobid:${jobId}`,
-    `-port:${port}`,
-  ], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    '-localtest', configPath,
+    '-settingsfile', settingsPath,
+    '-port', String(port),
+  ], {
+    cwd: path.dirname(serverBinary),
+    env: {
+      ...process.env,
+      TEMP: scratch,
+      TMP: scratch,
+      TMPDIR: scratch,
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+    windowsHide: true,
+  });
   child.stdout.on('data', (chunk) => {
     const line = String(chunk).trim();
     if (line) log('game-server', line.slice(0, 160));
@@ -295,12 +558,16 @@ function startLocalGameServer(port, placeId, jobId) {
         close: () => {
           if (!child.killed) child.kill();
         },
+        pid: child.pid,
       });
     };
     const onError = (error) => finish(new Error(`could not start game server: ${error.message}`));
     const onExit = (code) => finish(new Error(`game server exited before opening port ${port} (code=${code})`));
     const timeout = setTimeout(
-      () => finish(new Error(`game server did not open port ${port} within ${SERVER_START_TIMEOUT_MS / 1000} seconds`)),
+      () => finish(new Error(
+        `game server did not open port ${port} within ${SERVER_START_TIMEOUT_MS / 1000} seconds. `
+        + `Check the ${path.basename(serverBinary)} output above and confirm Windows Firewall allows it.`,
+      )),
       SERVER_START_TIMEOUT_MS,
     );
 
@@ -373,7 +640,7 @@ async function main() {
   if (args.help) {
     console.log('Usage: node tools/dev-launch.js [options]');
     console.log('');
-    console.log('  --place <id>     place to play (default 1818)');
+    console.log('  --place <id>     local catalog place id (default: selected MapPath.txt map)');
     console.log('  --url <origin>   live site (default ' + DEFAULT_LIVE_URL + ')');
     console.log(`  --client <name>  client folder to launch (default SelectedClient.txt or ${DEFAULT_CLIENT})`);
     console.log('  --user <name>    account to sign in as (or LUCKYBLOX_DEV_USER)');
@@ -387,8 +654,15 @@ async function main() {
   }
 
   const clientDir = resolveClientDir(args.client);
+  if (!args.mapPath || !fs.existsSync(args.mapPath)) {
+    throw new Error(
+      `place ${args.place} has no local RBXL/RBXLX map. Select one in Settings\\MapPath.txt `
+      + 'or choose a place whose map is present under Maps\\.',
+    );
+  }
   log('target', `LIVE site ${args.url}`);
-  log('target', `place ${args.place}, client ${args.client}`);
+  log('target', `place ${args.place}${args.placeTitle ? ` (${args.placeTitle})` : ''}, client ${args.client}`);
+  log('map', args.mapPath);
   log('scratch', scratchDir());
 
   // 0. Sign in. A launch ticket belongs to an account, so this comes first.
@@ -407,45 +681,105 @@ async function main() {
   // 1. Ask the LIVE site for a real launch ticket, as that account.
   log('ticket', 'requesting launch ticket from LIVE...');
   const launch = await requestLaunchTicket(args.url, args.place, cookie);
+  if (Number(launch.placeId) !== Number(args.place)) {
+    throw new Error(`LIVE site returned place ${launch.placeId} for requested place ${args.place}. Refusing to launch the wrong place.`);
+  }
+  if (!launch.ticket || !launch.jobId) {
+    throw new Error('LIVE site returned an incomplete launch ticket (missing ticket or jobId).');
+  }
   log('ticket', `ok: jobId=${launch.jobId} place=${launch.placeId} livePort=${launch.port}`);
 
-  // 2. Run the game server locally (Render cannot host it).
+  // Render's game port is not reachable from the desktop. Allocate our own
+  // listener and keep the Live site only for account authentication.
   const localPort = await findFreePort(Number(launch.port) || 53640);
-  log('port', `local game port ${localPort} (live advertised ${launch.port}, ignored)`);
 
-  // The client's OWN endpoints point at the live site (it fetches its place and
-  // its ticket from there); only the game socket comes from this machine.
+  // The official join route on the LIVE site returns the cloud job's port. Keep
+  // join and map delivery local so the client cannot be sent back to Render.
   const userId = launch.userId || 1;
   const authUrl = `${args.url}/v1/authentication-tickets?userId=${userId}&placeId=${launch.placeId}`;
-  const joinUrl = `${args.url}/game/join?placeId=${launch.placeId}&userId=${userId}`
-    + `&ticket=${encodeURIComponent(launch.ticket)}&serverPort=${localPort}&jobId=${encodeURIComponent(launch.jobId)}`;
+  const runId = randomUUID();
 
   if (args.dryRun) {
-    log('dry-run', `would start game server on 127.0.0.1:${localPort}`);
-    log('dry-run', `would launch ${path.join(clientDir, 'RobloxPlayerBeta.exe')}`);
+    const serverBinary = resolveServerBinary(args.client);
+    if (!serverBinary) throw new Error(`no shared local-test server executable exists for ${args.client}`);
+    log('port', `would start local game server on 127.0.0.1:${localPort}`);
+    log('dry-run', `would start ${serverBinary} with shared local-test settings for place ${args.place}`);
+    log('dry-run', `would launch an isolated ${path.join(clientDir, 'RobloxPlayerBeta.exe')} copy`);
     log('dry-run', `auth: ${authUrl}`);
-    log('dry-run', `join: ${joinUrl}`);
+    log('dry-run', `join/map endpoints: local loopback only`);
     return;
   }
 
-  const server = await startLocalGameServer(localPort, launch.placeId, launch.jobId);
+  let devHttp;
+  let gameServer;
+  let clientRunDir;
+  let serverScratch;
+  let cleaning = false;
+  const cleanup = async () => {
+    if (cleaning) return;
+    cleaning = true;
+    if (gameServer) gameServer.close();
+    if (devHttp) await devHttp.close().catch((error) => log('cleanup!', error.message));
+    for (const dir of [clientRunDir, serverScratch]) {
+      if (dir) {
+        try { fs.rmSync(dir, { recursive: true, force: true }); } catch (error) {
+          log('cleanup!', `could not remove ${dir}: ${error.message}`);
+        }
+      }
+    }
+  };
+  try {
+    devHttp = await createDevHttpServer({
+      placeId: launch.placeId,
+      mapPath: args.mapPath,
+      userId,
+      ticket: launch.ticket,
+      jobId: launch.jobId,
+      gamePort: localPort,
+      baseUrl: args.url,
+    });
+    log('local-api', `${devHttp.baseUrl} serves the selected map and local join response`);
 
-  // 3. Point the client at the local game server.
-  const info = launchClient(clientDir, { authUrl, ticket: launch.ticket, joinUrl });
-  log('client', `launched ${path.basename(info.exe)} (pid ${info.pid})`);
+    serverScratch = path.join(scratchDir(), `dev-server-${runId}`);
+    gameServer = await startLocalGameServer({
+      port: localPort,
+      placeId: launch.placeId,
+      jobId: launch.jobId,
+      clientName: args.client,
+      localHttpUrl: devHttp.baseUrl,
+      baseUrl: args.url,
+      runId,
+    });
 
-  if (!args.keepAlive) {
-    // Let the client connect, then let the parent go.
-    setTimeout(() => { server.close(); process.exit(0); }, 1500);
-    return;
+    const client = prepareDevClient(clientDir, args.client, args.url, runId);
+    clientRunDir = client.runDir;
+    const joinUrl = `${devHttp.baseUrl}/game/join?placeId=${launch.placeId}&userId=${userId}`
+      + `&ticket=${encodeURIComponent(launch.ticket)}&serverPort=${localPort}&jobId=${encodeURIComponent(launch.jobId)}`;
+
+    // Launch in the isolated folder: the checked-in client AppSettings remains
+    // untouched while this copy points all site APIs at the LIVE deployment.
+    const info = launchClient(client.runDir, { authUrl, ticket: launch.ticket, joinUrl });
+    log('client', `launched ${path.basename(info.exe)} (pid ${info.pid})`);
+
+    if (!args.keepAlive) {
+      setTimeout(() => {
+        cleanup().finally(() => process.exit(0));
+      }, 5000);
+      return;
+    }
+
+    console.log('\n[dev-launch] Local game server running. Close this window (or Ctrl+C) to stop it.');
+    console.log(`[dev-launch] Playing ${launch.placeId} on 127.0.0.1:${localPort} as ${args.user}.`);
+
+    const stop = () => {
+      cleanup().finally(() => process.exit(0));
+    };
+    process.once('SIGINT', stop);
+    process.once('SIGTERM', stop);
+  } catch (error) {
+    await cleanup();
+    throw error;
   }
-
-  console.log('\n[dev-launch] Game server running. Close this window (or Ctrl+C) to stop it.');
-  console.log(`[dev-launch] Playing ${launch.placeId} on 127.0.0.1:${localPort} as ${args.user}.`);
-
-  const stop = () => { server.close(); process.exit(0); };
-  process.on('SIGINT', stop);
-  process.on('SIGTERM', stop);
 }
 
 if (require.main === module) {
@@ -455,4 +789,16 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArgs, readSelectedClient, resolveClientDir };
+module.exports = {
+  createDevHttpServer,
+  createLocalServerConfig,
+  parseArgs,
+  prepareDevClient,
+  readSelectedClient,
+  readLocalGames,
+  resolveDefaultPlace,
+  resolvePlaceMap,
+  resolveServerBinary,
+  startLocalGameServer,
+  resolveClientDir,
+};

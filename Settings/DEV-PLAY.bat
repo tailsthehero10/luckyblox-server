@@ -10,8 +10,8 @@ REM It asks https://luckyblox-server.onrender.com for a real launch ticket,
 REM runs the game server locally, and opens the client selected in SelectedClient.txt.
 REM
 REM Usage:
-REM   Settings\DEV-PLAY.bat                  (default place)
-REM   Settings\DEV-PLAY.bat --place 2020     (pick a place)
+REM   Settings\DEV-PLAY.bat                  (place selected in Settings\MapPath.txt)
+REM   Settings\DEV-PLAY.bat --place ID       (pick a local catalog place)
 REM   Settings\DEV-PLAY.bat --testblox --Testblox10
 REM   Settings\DEV-PLAY.bat --dry-run        (resolve only, launch nothing)
 REM
