@@ -20,5 +20,14 @@ for (const [rig, expectedCount, expectedNames] of [
   }
 }
 
+const r15 = getRigGeometry('R15');
+const meshPart = r15.parts.find((part) => part.name === 'LeftHand');
+assert.equal(meshPart.className, 'MeshPart');
+assert.equal(meshPart.meshId, 'http://www.roblox.com/asset/?id=532219986');
+assert.equal(meshPart.mesh, null, 'the RBXM references, but does not embed, the original mesh geometry');
+assert.equal(meshPart.meshGeometryIncluded, false);
+assert.equal(getRigGeometry('R6').parts.find((part) => part.name === 'Head').meshGeometryIncluded, false);
+assert.equal(getRigGeometry('R6').parts.find((part) => part.name === 'Torso').shape, 'Block');
+
 assert.throws(() => getRigGeometry('R7'), /Unsupported avatar rig/);
-console.log('ok: supplied R6 and R15 RBXM assets parse into renderable rig geometry');
+console.log('ok: supplied R6/R15 RBXM files parse into exact part and external-mesh references');

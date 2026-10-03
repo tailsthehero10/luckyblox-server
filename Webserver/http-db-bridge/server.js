@@ -150,8 +150,6 @@ app.use('/lb-select.js', express.static(path.join(__dirname, 'public', 'lb-selec
 // (page loads, API calls, the game page's live data) and takes it off when the
 // answer arrives. Loaded on every page, like legacy-nav.js.
 app.use('/loading.js', express.static(path.join(__dirname, 'public', 'loading.js')));
-app.use('/avatar-3d.js', express.static(path.join(__dirname, 'public', 'avatar-3d.js')));
-app.use('/vendor/three', express.static(path.join(__dirname, 'node_modules', 'three', 'build')));
 // Serve the site icon folder so /favicon.ico, /favicon.png and the originals in
 // Webserver/site icon/ are all reachable from every page.
 const siteIconDir = path.join(releaseRoot, 'Webserver', 'site icon');
@@ -825,7 +823,6 @@ app.use((req, res, next) => {
   res.locals.formatGameDate = formatGameDate;
   res.locals.formatJoinDate = formatJoinDate;
   res.locals.lbAvatarFigure = renderAvatarFigure;
-  res.locals.bodyColorRgb = bodyColorRgb;
   // The account switcher's list: the accounts this browser has signed in as.
   // Available to every template so the header does not have to be passed it by
   // each of the ~40 routes that render a page.
@@ -3728,7 +3725,7 @@ app.get('/games', (req, res) => {
       // label rather than printing a fabricated 0%.
       votePercentage: total > 0 ? Math.round((likes / total) * 100) : null,
       playing: Number(g.playerCount) || 0,
-      genre: g.genre || 'Adventure',
+      genre: String(g.genre || 'Adventure'),
       visits: Number(g.visits) || 0,
       favorites: Number(g.favorites) || 0,
       updatedAt: g.updatedAt || g.publishedAt || '',
@@ -3784,7 +3781,11 @@ app.get('/games', (req, res) => {
   const genresInData = new Set(cards.map((c) => String(c.genre || '')).filter(Boolean));
   const genres = [...ROBLOX_GENRES]
     .sort((a, b) => a.localeCompare(b))
-    .map((name) => ({ name, count: cards.filter((c) => c.genre === name).length, present: genresInData.has(name) }));
+    .map((name) => ({
+      name,
+      count: cards.filter((c) => c.genre.toLowerCase() === name.toLowerCase()).length,
+      present: genresInData.has(name),
+    }));
 
   res.render('games', {
     title: 'Discover - LuckyBlox',

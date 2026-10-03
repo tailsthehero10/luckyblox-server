@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node ../../tests/remoteStore.test.js && node ../../tests/storage.test.js"
+    "test": "node ../../tests/remoteStore.test.js && node ../../tests/storage.test.js && node ../../tests/avatar-rig.test.js && node ../../tests/avatar-rig-route.test.js && node ../../tests/user-search.test.js && node ../../tests/games-genre-filter.test.js"
   },
   "dependencies": {
     "ejs": "^3.1.10",
@@ -13,7 +13,6 @@
     "lz4": "file:../tools/rbxm-lz4-compat",
     "lz4js": "0.2.0",
     "pg": "^8.23.0",
-    "rbxm-parser": "1.1.4",
-    "three": "0.180.0"
+    "rbxm-parser": "1.1.4"
   }
 }

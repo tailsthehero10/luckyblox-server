@@ -13,7 +13,6 @@
   <link rel="stylesheet" href="/css/refresh-2021.css" />
   <link rel="stylesheet" href="/css/roblox-ui.css" />
   <link rel="stylesheet" href="/css/avatar.css" />
-  <link rel="stylesheet" href="/css/avatar-viewer.css" />
 </head>
 <%# Avatar page - rebuilt against the real 2021 avatar editor.
   https://web.archive.org/web/20210801000000/https://www.roblox.com/my/avatar
@@ -92,8 +91,6 @@
                   </div>
                     </div>
                   </div>
-
-                  <%- include('partials/avatar-3d-viewer', { user: user, avatarType: avatarType }) %>
 
                   <!-- Body / rig: R6 or R15. This is the ONLY place the rig is set. -->
                   <div class="roblox-panel">
@@ -588,7 +585,7 @@
       });
     }());
   </script>
-  <%- include('partials/scripts', { withAvatar3d: true }) %>
+  <%- include('partials/scripts') %>
   </body>
 
 </html>

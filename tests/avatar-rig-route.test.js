@@ -63,20 +63,21 @@ function get(port, pathname) {
       const payload = JSON.parse(response.body);
       assert.equal(payload.rig, rig);
       assert.equal(payload.parts.length, expectedParts);
+      if (rig === 'R15') {
+        const meshPart = payload.parts.find((part) => part.name === 'LeftHand');
+        assert.equal(meshPart.meshId, 'http://www.roblox.com/asset/?id=532219986');
+        assert.equal(meshPart.mesh, null);
+        assert.equal(meshPart.meshGeometryIncluded, false);
+      }
     }
 
     assert.equal((await get(port, '/api/avatar/rig/R7')).status, 404);
-    assert.equal((await get(port, '/avatar-3d.js')).status, 200);
-    const three = await get(port, '/vendor/three/three.module.js');
-    assert.equal(three.status, 200, 'the local Three.js module should be served');
-
     for (const page of ['/users/1/profile', '/avatar?userId=1']) {
       const response = await get(port, page);
       assert.equal(response.status, 200);
-      assert.match(response.body, /3D Avatar Preview/);
-      assert.match(response.body, /avatar-3d\.js/);
+      assert.doesNotMatch(response.body, /3D Avatar Preview/);
     }
-    console.log('ok: profile and avatar pages render the supplied R6/R15 RBXM viewer');
+    console.log('ok: avatar API exposes the supplied RBXM data without inventing mesh geometry');
   } finally {
     child.kill();
     await once(child, 'exit').catch(() => {});

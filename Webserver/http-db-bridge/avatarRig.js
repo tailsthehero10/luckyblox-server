@@ -48,6 +48,8 @@ function getRigGeometry(rig) {
       const size = part.Size;
       const mesh = part.Children.find((child) => child.ClassName === 'SpecialMesh');
       const rotation = part.CFrame.Orientation;
+      const specialMeshType = mesh && mesh.MeshType && mesh.MeshType.Name
+        ? mesh.MeshType.Name : null;
       if (!Array.isArray(rotation) || rotation.length !== 9 || !rotation.every(Number.isFinite)) {
         throw new Error(`RBXM part "${part.Name}" has an invalid transform`);
       }
@@ -57,6 +59,8 @@ function getRigGeometry(rig) {
       return {
         name: part.Name,
         className: part.ClassName,
+        shape: part.Shape && part.Shape.Name ? part.Shape.Name : null,
+        meshGeometryIncluded: part.ClassName !== 'MeshPart' && !specialMeshType,
         size: vector3(size, `size for ${part.Name}`),
         position: {
           x: position.X - origin.X,
@@ -69,6 +73,8 @@ function getRigGeometry(rig) {
           scale: vector3(mesh.Scale, `mesh scale for ${part.Name}`),
           offset: vector3(mesh.Offset, `mesh offset for ${part.Name}`),
         } : null,
+        meshId: part.ClassName === 'MeshPart' ? String(part.MeshId || '') : null,
+        textureId: part.ClassName === 'MeshPart' ? String(part.TextureID || '') : null,
       };
     });
 

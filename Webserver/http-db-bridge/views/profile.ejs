@@ -9,7 +9,6 @@
   <link rel="stylesheet" href="/css/roblox.css" />
   <link rel="stylesheet" href="/css/refresh-2021.css" />
   <link rel="stylesheet" href="/css/roblox-ui.css" />
-  <link rel="stylesheet" href="/css/avatar-viewer.css" />
   <%# The real 2021 site stylesheets, served from /css/2021. The avatar editor
       chrome included further down is captured markup and expects these rules. %>
   <link rel="stylesheet" href="/css/2021/Navigation.css" />
@@ -261,8 +260,6 @@
           </div>
         </section>
 
-        <%- include('partials/avatar-3d-viewer', { user: user, avatarType: user.avatarType || (user.avatar && user.avatar.playerAvatarType) || 'R15' }) %>
-
         <!--
           Avatar editing lives on the Avatar page and ONLY there.
 
@@ -369,6 +366,6 @@
       </main>
     </div>
   </div>
-  <%- include('partials/scripts', { withAvatar3d: true }) %>
+  <%- include('partials/scripts') %>
 </body>
 </html>

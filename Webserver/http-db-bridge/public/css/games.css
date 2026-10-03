@@ -334,6 +334,15 @@ a.game-name:hover {
 
 /* --- Filters / sort ------------------------------------------------------- */
 
+.games-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 16px;
+  min-width: 0;
+}
+
 .filters-and-sort {
   margin: 8px 0 12px;
   display: flex;
@@ -375,6 +384,13 @@ a.game-name:hover {
   color: #393b3d;
   font-size: 13px;
   text-decoration: none;
+  white-space: nowrap;
+}
+
+.games-filter-count {
+  margin-left: 6px;
+  color: #73777a;
+  font-size: 11px;
 }
 
 .games-filter-chip:hover {
@@ -388,6 +404,10 @@ a.game-name:hover {
 .games-filter-chip.is-active {
   background: #393b3d;
   border-color: #393b3d;
+  color: #ffffff;
+}
+
+.games-filter-chip.is-active .games-filter-count {
   color: #ffffff;
 }
 

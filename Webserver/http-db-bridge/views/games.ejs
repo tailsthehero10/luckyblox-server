@@ -31,15 +31,17 @@
 
               <!-- The genre chips the real page carried above the carousels. Each one
              filters the grid via the same `genre` query the route understands. -->
-              <div class="games-filter-bar">
-                <a class="games-filter-chip<%= !activeGenre ? ' is-active' : '' %>" href="/games">All</a>
+              <nav class="games-filter-bar" aria-label="Filter experiences by genre">
+                <a class="games-filter-chip<%= !activeGenre ? ' is-active' : '' %>"
+                   href="/games"<% if (!activeGenre) { %> aria-current="page"<% } %>>All</a>
                 <% genres.forEach(function (g) { %>
-                  <a class="games-filter-chip<%= activeGenre === g ? ' is-active' : '' %>"
-                    href="/games?genre=<%= encodeURIComponent(g) %>">
-                    <%= g %>
+                  <a class="games-filter-chip<%= activeGenre.toLowerCase() === g.name.toLowerCase() ? ' is-active' : '' %>"
+                    href="/games?genre=<%= encodeURIComponent(g.name) %>"
+                    <% if (activeGenre.toLowerCase() === g.name.toLowerCase()) { %>aria-current="page"<% } %>>
+                    <%= g.name %><span class="games-filter-count"><%= g.count %></span>
                   </a>
                   <% }); %>
-              </div>
+              </nav>
 
               <% if (!sections.length) { %>
                 <div class="lb-panel">
