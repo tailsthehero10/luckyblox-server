@@ -34,8 +34,9 @@ const SERVER_BINARY_CANDIDATES = [
   path.join(releaseRoot, 'RCCService', 'RCCService.exe'),
 ];
 
-/** First existing dedicated-server binary, or null. */
-function resolveServerBinary() {
+/** First compatible dedicated-server binary, or null. */
+function resolveServerBinary(platform = process.platform) {
+  if (platform !== 'win32') return null;
   return SERVER_BINARY_CANDIDATES.find((candidate) => fs.existsSync(candidate)) || null;
 }
 
@@ -149,10 +150,10 @@ function serverScratchDir(jobId) {
   return dir;
 }
 
-function buildLaunchCommand(placeId, port, jobId) {
+function buildLaunchCommand(placeId, port, jobId, platform = process.platform) {
   // The SERVER binary, not the player. See SERVER_BINARY_CANDIDATES above - the
   // old code launched the player client here, which exited code=1 instantly.
-  const serverBinary = resolveServerBinary();
+  const serverBinary = resolveServerBinary(platform);
 
   // These are Windows desktop binaries. On Linux (the container) they can never
   // exist, and the local fallback used to be `cmd /c echo` - a Windows shell
@@ -168,9 +169,9 @@ function buildLaunchCommand(placeId, port, jobId) {
       command: null,
       args: [],
       type: 'none',
-      reason: process.platform === 'win32'
+      reason: platform === 'win32'
         ? 'no dedicated server binary found (looked for Clients/2021E/RCCService)'
-        : 'desktop server launch is not available on this platform',
+        : 'bundled RCCService.exe is Windows-only; using the in-process listener',
     };
   }
 
@@ -239,7 +240,7 @@ function spawnDedicatedServer(placeId) {
 
       child.on('error', (error) => {
         // A missing desktop client must never take the game server down with it.
-        console.warn(`[LuckyBlox Server:${serverJobId}] client launch unavailable: ${error.message}`);
+        console.warn(`[LuckyBlox Server:${serverJobId}] dedicated server launch unavailable: ${error.message}`);
         serverRecord.pid = null;
       });
 
@@ -433,6 +434,7 @@ module.exports = {
   activeGameServers,
   serverRuntimeState,
   allocatePlayerToServer,
+  buildLaunchCommand,
   createJoinJob,
   getJobStatus,
   setJobTitle,
@@ -442,6 +444,7 @@ module.exports = {
   removeServerByJobId,
   registerServerRecord,
   spawnDedicatedServer,
+  resolveServerBinary,
   nextAvailablePort,
   getServerForPlace,
 };
