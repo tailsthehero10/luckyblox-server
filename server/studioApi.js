@@ -10,12 +10,20 @@ const publicOrigin = publicBaseUrl || `${publicProtocol}://${publicHostname}`;
 
 const releaseRoot = path.resolve(__dirname, '..');
 const workspaceRoot = path.resolve(releaseRoot, 'workspace');
-const savedPlacesRoot = path.join(workspaceRoot, 'saved_places');
+let savedPlacesRoot = path.join(workspaceRoot, 'saved_places');
 const uploadsRoot = path.join(releaseRoot, 'Uploads');
 const bridgeRoot = path.join(releaseRoot, 'Webserver', 'http-db-bridge');
-const dataRoot = path.join(bridgeRoot, 'data');
-const assetsDbPath = path.join(dataRoot, 'assets.json');
-const placesDbPath = path.join(dataRoot, 'places.json');
+let assetsDbPath = path.join(bridgeRoot, 'data', 'assets.json');
+let placesDbPath = path.join(bridgeRoot, 'data', 'places.json');
+let dataStore = null;
+
+function configureDataStore(store) {
+  if (!store || typeof store.dataPath !== 'function'
+    || typeof store.readJson !== 'function' || typeof store.writeJson !== 'function') return;
+  dataStore = store;
+  assetsDbPath = store.dataPath('assets.json');
+  placesDbPath = store.dataPath('places.json');
+}
 
 function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) {
@@ -24,6 +32,11 @@ function ensureDir(dirPath) {
 }
 
 function readJson(filePath, fallback) {
+  const resolved = path.resolve(filePath);
+  if (dataStore && (resolved === path.resolve(assetsDbPath) || resolved === path.resolve(placesDbPath))) {
+    return dataStore.readJson(path.basename(resolved), fallback);
+  }
+
   try {
     if (!fs.existsSync(filePath)) {
       return fallback;
@@ -38,8 +51,14 @@ function readJson(filePath, fallback) {
 }
 
 function writeJson(filePath, data) {
+  const resolved = path.resolve(filePath);
+  if (dataStore && (resolved === path.resolve(assetsDbPath) || resolved === path.resolve(placesDbPath))) {
+    return dataStore.writeJson(path.basename(resolved), data);
+  }
+
   ensureDir(path.dirname(filePath));
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  return true;
 }
 
 function normalizeFileName(name, fallbackExt = 'rbxl') {
@@ -53,56 +72,11 @@ function normalizeFileName(name, fallbackExt = 'rbxl') {
 }
 
 function seedAssetDatabase() {
-  const defaultAssets = {
-    '1001': {
-      id: 1001,
-      name: 'Classic Red Shirt',
-      assetType: 'Shirt',
-      fileName: 'classic-red-shirt.shirt',
-      filePath: path.join(uploadsRoot, 'classic-red-shirt.shirt'),
-      kind: 'shirt',
-      creatorId: 1,
-      creatorName: 'LuckyBlox Studio',
-      description: 'Classic red shirt asset for local avatar testing.',
-      version: 1,
-      size: 0,
-      updatedAt: new Date().toISOString(),
-    },
-    '1002': {
-      id: 1002,
-      name: 'Classic Blue Pants',
-      assetType: 'Pants',
-      fileName: 'classic-blue-pants.pants',
-      filePath: path.join(uploadsRoot, 'classic-blue-pants.pants'),
-      kind: 'pants',
-      creatorId: 1,
-      creatorName: 'LuckyBlox Studio',
-      description: 'Classic blue pants asset for local avatar testing.',
-      version: 1,
-      size: 0,
-      updatedAt: new Date().toISOString(),
-    },
-    '1003': {
-      id: 1003,
-      name: 'Robloxian Cap',
-      assetType: 'Hat',
-      fileName: 'robloxian-cap.hat',
-      filePath: path.join(uploadsRoot, 'robloxian-cap.hat'),
-      kind: 'hat',
-      creatorId: 1,
-      creatorName: 'LuckyBlox Studio',
-      description: 'Classic cap used in the local avatar system.',
-      version: 1,
-      size: 0,
-      updatedAt: new Date().toISOString(),
-    },
-  };
-
   if (!fs.existsSync(assetsDbPath)) {
-    writeJson(assetsDbPath, defaultAssets);
+    writeJson(assetsDbPath, {});
   }
 
-  return readJson(assetsDbPath, defaultAssets);
+  return readJson(assetsDbPath, {});
 }
 
 function seedPlaceDatabase() {
@@ -139,6 +113,13 @@ function getAssetsDb() {
 
 function getPlacesDb() {
   return readJson(placesDbPath, seedPlaceDatabase());
+}
+
+function listSavedPlaceFiles() {
+  ensureDir(savedPlacesRoot);
+  return fs.readdirSync(savedPlacesRoot, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => path.join(savedPlacesRoot, entry.name));
 }
 
 function updatePlaceRecord(placeId, updates) {
@@ -190,55 +171,6 @@ function updateAssetRecord(assetId, updates) {
   db[key] = next;
   writeJson(assetsDbPath, db);
   return next;
-}
-
-function listSavedPlaceFiles() {
-  ensureDir(savedPlacesRoot);
-  const directoryEntries = fs.existsSync(savedPlacesRoot)
-    ? fs.readdirSync(savedPlacesRoot, { withFileTypes: true })
-    : [];
-
-  return directoryEntries
-    .filter((entry) => entry.isFile())
-    .map((entry) => path.join(savedPlacesRoot, entry.name));
-}
-
-function findPlaceFileForId(placeId) {
-  const placesDb = getPlacesDb();
-  const placeKey = String(placeId);
-  const entry = placesDb[placeKey];
-  if (entry && entry.filePath && fs.existsSync(entry.filePath)) {
-    return entry.filePath;
-  }
-
-  const matches = listSavedPlaceFiles().filter((file) => {
-    const baseName = path.basename(file).toLowerCase();
-    return baseName.includes(String(placeId)) || baseName.includes('place');
-  });
-
-  return matches[0] || null;
-}
-
-function findAssetFileById(assetId) {
-  const assetsDb = getAssetsDb();
-  const entry = assetsDb[String(assetId)];
-  if (entry && entry.filePath && fs.existsSync(entry.filePath)) {
-    return entry.filePath;
-  }
-
-  if (entry && entry.fileName) {
-    const candidate = path.join(savedPlacesRoot, entry.fileName);
-    if (fs.existsSync(candidate)) {
-      return candidate;
-    }
-  }
-
-  const fileNameMatches = listSavedPlaceFiles().filter((file) => {
-    const baseName = path.basename(file).toLowerCase();
-    return baseName.includes(String(assetId)) || baseName.includes('asset');
-  });
-
-  return fileNameMatches[0] || null;
 }
 
 function createAssetRecordFromFile(fileName, filePath, kind = 'rbxl') {
@@ -411,6 +343,26 @@ function installStudioApiRoutes(app, options = {}) {
   // endpoints report the real signed-in account instead of a hardcoded
   // "LocalPlayer". Falls back to a minimal record when not provided.
   const resolveUser = typeof options.resolveUser === 'function' ? options.resolveUser : null;
+  const serveAssetById = typeof options.serveAssetById === 'function' ? options.serveAssetById : null;
+  configureDataStore(options.storage);
+  if (options.savedPlacesRoot) savedPlacesRoot = path.resolve(options.savedPlacesRoot);
+  const pushContentToRemote = options.storage && typeof options.storage.pushContentToRemote === 'function'
+    ? options.storage.pushContentToRemote.bind(options.storage)
+    : null;
+
+  async function syncSavedContent() {
+    if (!pushContentToRemote) return { ok: true, skipped: true };
+    try {
+      const result = await pushContentToRemote();
+      if (result && result.ok === false) {
+        console.error('[studioApi] uploaded content was saved locally but remote sync failed.');
+      }
+      return result || { ok: true };
+    } catch (error) {
+      console.error(`[studioApi] uploaded content was saved locally but remote sync failed: ${error.message}`);
+      return { ok: false, error: 'content-sync-failed' };
+    }
+  }
   const fallbackUser = (userId) => ({
     userId: Number(userId) || 1,
     username: 'LocalPlayer',
@@ -436,7 +388,7 @@ function installStudioApiRoutes(app, options = {}) {
 
   ensureDir(savedPlacesRoot);
   ensureDir(uploadsRoot);
-  ensureDir(dataRoot);
+  ensureDir(path.dirname(assetsDbPath));
   seedAssetDatabase();
   seedPlaceDatabase();
 
@@ -472,22 +424,8 @@ function installStudioApiRoutes(app, options = {}) {
       }
     }
 
-    // Do NOT fall back to "whatever file is first" here. Doing so meant every
-    // unresolvable asset request - including the legacy client's
-    // /asset/?id=<worn item> fetch - received an unrelated stray place file, so
-    // the client could never load a player's avatar. An asset we cannot resolve
-    // is a 404: the client then falls back to the user's saved body colours
-    // instead of trying to parse a .rbxlx as a shirt.
-    return res.status(404).json({
-      ok: false,
-      error: 'asset-not-found',
-      assetId: requestedId ? String(requestedId) : null,
-      message: 'No file found for Studio asset request.',
-    });
-  });
-
-  app.get('/asset/', (req, res) => {
-    return app._router.handle(req, res);
+    if (serveAssetById) return serveAssetById(req, res);
+    return next();
   });
 
   app.get('/asset/:name', (req, res) => {
@@ -510,7 +448,7 @@ function installStudioApiRoutes(app, options = {}) {
       return;
     }
 
-    res.status(404).json({ ok: false, message: 'Studio asset missing from saved_places.' });
+    return next();
   });
 
   app.get('/v1/assets/:id', (req, res) => {
@@ -518,33 +456,14 @@ function installStudioApiRoutes(app, options = {}) {
     const assetRecord = getAssetsDb()[String(id)] || Object.values(getAssetsDb()).find((entry) => entry.fileName === id || Number(entry.id) === Number(id));
     const placeRecord = getPlacesDb()[String(id)] || Object.values(getPlacesDb()).find((entry) => Number(entry.placeId) === Number(id));
 
-    const filePath = assetRecord ? assetRecord.filePath : placeRecord ? placeRecord.filePath : findAssetFileById(id) || findPlaceFileForId(id);
+    const filePath = assetRecord ? assetRecord.filePath : placeRecord ? placeRecord.filePath : null;
     if (filePath && fs.existsSync(filePath)) {
       sendBinaryFile(res, filePath, path.basename(filePath));
       return;
     }
 
-    // No file on disk. If we still know about the asset, return its metadata so
-    // the client can display/queue it instead of treating it as missing. Only
-    // 404 when the id is genuinely unknown.
-    if (assetRecord) {
-      res.json({
-        ok: true,
-        assetId: Number(assetRecord.id) || null,
-        name: assetRecord.name || 'Asset',
-        assetType: assetRecord.assetType || assetRecord.kind || 'Model',
-        currentVersionId: Number(assetRecord.currentVersionId || assetRecord.id) || null,
-        description: assetRecord.description || '',
-        creatorId: Number(assetRecord.creatorId || 1),
-        creatorName: assetRecord.creatorName || 'LuckyBlox Studio',
-        version: Number(assetRecord.version || 1),
-        hasFile: false,
-        updatedAt: assetRecord.updatedAt || new Date().toISOString(),
-      });
-      return;
-    }
-
-    res.status(404).json({ ok: false, message: `Asset ${id} not found.` });
+    if (serveAssetById) return serveAssetById(req, res);
+    return next();
   });
 
   app.post('/ide/publish/v1.0', express.raw({ type: '*/*', limit: '250mb' }), async (req, res) => {
@@ -559,7 +478,7 @@ function installStudioApiRoutes(app, options = {}) {
       out.write(incomingBuffer);
       out.end();
 
-      out.on('finish', () => {
+      out.on('finish', async () => {
         const stat = fs.statSync(filePath);
         const placeId = Number(req.query.placeId || req.body?.placeId || 1818 + Math.floor(Math.random() * 1000));
         const placeRecord = updatePlaceRecord(placeId, {
@@ -574,6 +493,7 @@ function installStudioApiRoutes(app, options = {}) {
           size: stat.size,
           source: `workspace/saved_places/${safeName}`,
         });
+        const contentSync = await syncSavedContent();
 
         res.status(201).json({
           ok: true,
@@ -584,6 +504,7 @@ function installStudioApiRoutes(app, options = {}) {
           size: stat.size,
           version: Number(placeRecord.version),
           author: placeRecord.author,
+          contentSync,
         });
       });
 
@@ -607,9 +528,8 @@ function installStudioApiRoutes(app, options = {}) {
       stream.write(incomingBuffer);
       stream.end();
 
-      stream.on('finish', () => {
+      stream.on('finish', async () => {
         const stat = fs.statSync(filePath);
-        const assetId = Number(`${Date.now()}${Math.floor(Math.random() * 100)}`);
         const asset = createAssetRecordFromFile(safeName, filePath, 'rbxm');
         updateAssetRecord(asset.id, {
           id: asset.id,
@@ -619,6 +539,7 @@ function installStudioApiRoutes(app, options = {}) {
           kind: 'rbxm',
           size: stat.size,
         });
+        const contentSync = await syncSavedContent();
 
         res.status(201).json({
           ok: true,
@@ -627,6 +548,7 @@ function installStudioApiRoutes(app, options = {}) {
           filePath,
           size: stat.size,
           contentType: 'application/octet-stream',
+          contentSync,
         });
       });
 
@@ -802,7 +724,7 @@ function installStudioApiRoutes(app, options = {}) {
       stream.write(rawBuffer.length ? rawBuffer : Buffer.from(JSON.stringify(body, null, 2)));
       stream.end();
 
-      stream.on('finish', () => {
+      stream.on('finish', async () => {
         const placeId = Number(body.placeId || req.query.placeId || 1818 + Math.floor(Math.random() * 5000));
         const record = updatePlaceRecord(placeId, {
           placeId,
@@ -819,6 +741,7 @@ function installStudioApiRoutes(app, options = {}) {
           source: `workspace/saved_places/${safeFileName}`,
           size: fs.statSync(filePath).size,
         });
+        const contentSync = await syncSavedContent();
 
         res.status(201).json({
           ok: true,
@@ -829,6 +752,7 @@ function installStudioApiRoutes(app, options = {}) {
           filePath,
           version: Number(record.version || 1),
           savedAt: record.updatedAt,
+          contentSync,
         });
       });
 
@@ -850,7 +774,7 @@ function installStudioApiRoutes(app, options = {}) {
       stream.write(rawBuffer.length ? rawBuffer : Buffer.from(JSON.stringify({ placeId }, null, 2)));
       stream.end();
 
-      stream.on('finish', () => {
+      stream.on('finish', async () => {
         const updated = updatePlaceRecord(placeId, {
           placeId,
           universeId: placeId,
@@ -866,6 +790,7 @@ function installStudioApiRoutes(app, options = {}) {
           size: fs.statSync(filePath).size,
           publishedAt: new Date().toISOString(),
         });
+        const contentSync = await syncSavedContent();
 
         res.status(201).json({
           ok: true,
@@ -876,6 +801,7 @@ function installStudioApiRoutes(app, options = {}) {
           filePath,
           size: fs.statSync(filePath).size,
           publishedAt: updated.publishedAt || new Date().toISOString(),
+          contentSync,
         });
       });
 

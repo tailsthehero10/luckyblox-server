@@ -24,6 +24,7 @@ const { installClientApi } = require('./clientApi.js');
 const { getClientBuildInfo, getClientUpdateManifest } = require('./clientBuildInfo.js');
 const datastore = require('./datastore.js');
 const assetFetcher = require(path.join(__dirname, '..', '..', 'server', 'assetFetcher.js'));
+const robloxAssetDelivery = require(path.join(__dirname, '..', '..', 'server', 'robloxAssetDelivery.js'));
 const { installTeamCreateRoutes } = require(path.join(__dirname, '..', '..', 'server', 'teamCreate.js'));
 const {
   allocatePlayerToServer,
@@ -3237,7 +3238,11 @@ function writeUploadedPackage(fileName, buffer, assetKind = 'rbxl') {
 }
 
 ensureSeedData();
-installStudioApiRoutes(app, { resolveUser: (userId) => getUser(userId) });
+installStudioApiRoutes(app, {
+  resolveUser: (userId) => getUser(userId),
+  serveAssetById,
+  storage,
+});
 installTeamCreateRoutes(app);
 
 /**
@@ -7345,7 +7350,7 @@ app.post('/Data/Upload.ashx', express.raw({ type: '*/*', limit: '100mb' }), (req
  * but unreachable, because this function only ever looked in assets.json - so
  * every CoreScript request 404'd.
  */
-function resolveAssetById(assetId) {
+function resolveAssetById(assetId, wantedVersion) {
   const assets = getAssets();
   const wanted = String(assetId || '').trim();
   if (!wanted) {
@@ -7366,7 +7371,7 @@ function resolveAssetById(assetId) {
 
   // Not a catalog asset - maybe it is a CoreScript. Return a record pointing at
   // the real .lua on disk so serveAssetById() streams it instead of 404ing.
-  const coreScript = resolveCoreScript(wanted);
+  const coreScript = resolveCoreScript(wanted, wantedVersion);
   if (coreScript) return coreScript;
 
   return null;
@@ -7480,29 +7485,21 @@ function getStudioHandshakes() {
 }
 
 /**
- * Roblox-style asset fetch. Legacy clients request assets from several paths
- * and expect the bytes plus a sensible content type, or a clean 404 when the
- * asset is unknown (so the client can fall back gracefully instead of hanging).
+ * Roblox-style asset fetch. Legacy clients request assets from several paths.
+ * Serve local files first, then fetch public Roblox content into the local cache;
+ * never answer a binary asset request with a metadata-only JSON success.
  *
  * Paths handled: /Asset, /asset/, /v1/asset, /v1/assets/:id
  */
-function serveAssetById(req, res) {
+async function serveAssetById(req, res) {
   const rawId = req.params.id || req.query.id || req.query.assetId || req.query.assetid;
   // CoreScripts are versioned; a client asks for ?version=N and expects that
   // exact version, or the newest one when it does not say.
   const wantedVersion = req.query.version || req.query.v;
   const asset = resolveAssetById(rawId, wantedVersion);
 
-  if (!asset) {
-    return res.status(404).json({
-      ok: false,
-      error: 'asset-not-found',
-      assetId: rawId ? String(rawId) : null,
-    });
-  }
-
   // If we know where the file lives on disk, stream it.
-  const candidatePaths = [asset.path, asset.filePath, asset.file]
+  const candidatePaths = [asset && asset.path, asset && asset.filePath, asset && asset.file]
     .filter(Boolean)
     .map((p) => (path.isAbsolute(p) ? p : path.join(releaseRoot, p)));
 
@@ -7547,28 +7544,47 @@ function serveAssetById(req, res) {
     return fs.createReadStream(found).pipe(res);
   }
 
-  // No file on disk: return the asset metadata so the client at least knows the
-  // asset exists and what type it is.
-  return res.json({
-    ok: true,
-    assetId: Number(asset.id || asset.assetId) || null,
-    name: asset.name || 'Asset',
-    assetType: asset.assetType || asset.className || 'Model',
-    currentVersionId: Number(asset.currentVersionId || asset.id) || null,
-    description: asset.description || '',
-    creatorId: Number(asset.creatorId || 1),
-    creatorName: asset.creatorName || 'LuckyBlox Studio',
-    version: Number(asset.version || 1),
-    contentUrl: `${publicOrigin}/asset/?id=${Number(asset.id || asset.assetId) || 0}`,
-    hasFile: false,
-    updatedAt: asset.updatedAt || new Date().toISOString(),
-  });
+  try {
+    const delivered = await robloxAssetDelivery.fetchAssetContent(rawId, wantedVersion, {
+      cacheDir: path.join(releaseRoot, 'Webserver', 'www', 'asset-content'),
+    });
+    if (!delivered.ok) {
+      const statusCode = delivered.statusCode === 403 || delivered.statusCode === 404
+        ? 404
+        : delivered.statusCode || 502;
+      return res.status(statusCode).json({
+        ok: false,
+        error: 'asset-not-available',
+        assetId: rawId ? String(rawId) : null,
+        message: delivered.reason,
+      });
+    }
+
+    if (delivered.cacheError) {
+      console.warn(`[luckyblox:asset] could not cache asset ${String(rawId)}: ${delivered.cacheError}`);
+    }
+    res.setHeader('Content-Type', delivered.contentType);
+    res.setHeader('Content-Length', delivered.buffer.length);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('X-LuckyBlox-Asset-Source', delivered.cached ? 'cache' : 'roblox-asset-delivery');
+    return res.send(delivered.buffer);
+  } catch (error) {
+    console.error(`[luckyblox:asset] delivery failed for ${String(rawId || 'unknown')}: ${error.message}`);
+    return res.status(502).json({
+      ok: false,
+      error: 'asset-delivery-failed',
+      assetId: rawId ? String(rawId) : null,
+      message: 'Roblox asset delivery failed.',
+    });
+  }
 }
 
 app.get('/v1/assets/:id', serveAssetById);
 app.get('/v1/asset/:id', serveAssetById);
+app.get('/v1/asset', serveAssetById);
 app.get('/asset/', serveAssetById);
 app.get('/Asset/', serveAssetById);
+app.get('/assetdelivery/v1/asset', serveAssetById);
 
 /**
  * Asset metadata lookup by id, used by the client before downloading so it can

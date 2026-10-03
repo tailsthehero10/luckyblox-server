@@ -39,7 +39,7 @@
  *   GET  /v1/beacon/...                           analytics (accepted, ignored)
  *   GET  /v1/device/...                           device info
  *   GET  /v1/avatar-rules                          avatar rule config
- *   GET  /assets/{id} , /assetdelivery/{id}       asset bytes / metadata
+ *   GET  /asset/?id={id}, /v1/asset/{id}          local or public asset bytes
  *
  * DESIGN RULES (same as the rest of this codebase)
  *   - Everything is derived from the real data files (users/games/places/assets).
