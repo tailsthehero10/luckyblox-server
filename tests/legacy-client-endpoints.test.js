@@ -92,6 +92,21 @@ async function waitForReady(proc) {
     ));
     assert.deepEqual(clientSettings, expectedClientSettings);
 
+    const v2ApplicationSettings = await request('/home/v2/settings/application/PCDesktopClient?client=CUSTOM-2021M');
+    assert.equal(v2ApplicationSettings.status, 200);
+    const v2SettingsBody = JSON.parse(v2ApplicationSettings.body.toString('utf8'));
+    assert.deepEqual(v2SettingsBody.applicationSettings, expectedClientSettings);
+
+    const v1ApplicationSettings = await request('/home/v1/settings/application?applicationName=PCDesktopClient&client=CUSTOM-2021M');
+    assert.equal(v1ApplicationSettings.status, 200);
+    assert.deepEqual(
+      JSON.parse(v1ApplicationSettings.body.toString('utf8')).applicationSettings,
+      expectedClientSettings,
+    );
+
+    const unsupportedApplication = await request('/home/v2/settings/application/UnknownClient');
+    assert.equal(unsupportedApplication.status, 400);
+
     const sharedSettings = await request('/home/Setting/QuietGet/ClientSharedSettings?apiKey=test-key');
     assert.equal(sharedSettings.status, 200);
     assert.deepEqual(JSON.parse(sharedSettings.body.toString('utf8')), {});

@@ -805,6 +805,37 @@ function installClientApi(app, ctx) {
   app.get(['/Setting/QuietGet/:type', '/Setting/Get/:type'], serveLegacySettings);
   app.post(['/Setting/QuietGet/:type', '/Setting/Get/:type'], serveLegacySettings);
 
+  function serveApplicationSettings(req, res) {
+    const applicationName = String(req.params.applicationName || req.query.applicationName || '').trim();
+    if (applicationName !== 'PCDesktopClient') {
+      return res.status(400).json({
+        errors: [{ code: 0, message: 'Unsupported client settings application.' }],
+      });
+    }
+
+    const file = legacySettingsFile('clientappsettings', req);
+    if (!file) {
+      return res.status(404).json({
+        errors: [{ code: 0, message: 'Client application settings are unavailable.' }],
+      });
+    }
+
+    let applicationSettings;
+    try {
+      applicationSettings = JSON.parse(fs.readFileSync(file, 'utf8'));
+    } catch (error) {
+      console.error(`[luckyblox] invalid client application settings JSON at ${file}: ${error.message}`);
+      return res.status(500).json({
+        errors: [{ code: 0, message: 'Client application settings are invalid.' }],
+      });
+    }
+
+    res.set('Cache-Control', 'no-store');
+    return res.json({ applicationSettings });
+  }
+
+  app.get(['/v1/settings/application', '/v2/settings/application', '/v2/settings/application/:applicationName'], serveApplicationSettings);
+
   return { installed: true };
 }
 
