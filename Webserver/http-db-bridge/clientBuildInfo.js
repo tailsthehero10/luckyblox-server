@@ -94,11 +94,38 @@ function resolveSourceDir() {
   if (localAppData) roots.push(path.join(localAppData, INSTALL_FOLDER_NAME));
   else roots.push(path.join(os.homedir(), '.local', 'share', INSTALL_FOLDER_NAME));
   roots.push(path.join(releaseRoot, INSTALL_FOLDER_NAME));
-  roots.push(path.join(releaseRoot, 'Clients', '2021M'));
+
+  // The bundled PLAYER build, in preference order. ONLY these two folder names
+  // are considered, and 2021M is the one that ships here.
+  //
+  // This is deliberately an allowlist, NOT a scan of Clients/. Scanning that
+  // folder and taking the first entry that contained a RobloxPlayerBeta.exe
+  // picked `2013L` - an 11 MB build - purely because it sorts alphabetically
+  // before `2021M`, and served it from /download/client/binary to every user.
+  // The release ships many folders (2013L, 2014M, ... 2021M, CUSTOM-2021M) and
+  // most of them are not the client this site is for.
+  //
+  // Note `2022M` is intentionally absent: that folder holds RobloxStudioBeta.exe
+  // plus the Qt/DLL runtime - it is the STUDIO editor, not a player - and it is
+  // served by studioBuildInfo.js instead. Including it here would let a Studio
+  // install masquerade as a downloadable player.
+  const clientsRoot = path.join(releaseRoot, 'Clients');
+  const bundledPlayerClients = ['2021M'];
+  for (const name of bundledPlayerClients) {
+    const dir = path.join(clientsRoot, name);
+    roots.push(dir);
+  }
 
   for (const root of roots) {
     if (!root || !fs.existsSync(root)) continue;
     if (fs.existsSync(path.join(root, CLIENT_BINARY))) return root;
+
+    // Client folder layouts this must handle:
+    //   <root>/RobloxPlayerBeta.exe                  (bundled build)
+    //   <root>/Player/RobloxPlayerBeta.exe           (CUSTOM-2021M repackage)
+    //   <root>/Versions/<version>/RobloxPlayerBeta.exe (installer layout)
+    const playerDir = path.join(root, 'Player');
+    if (fs.existsSync(path.join(playerDir, CLIENT_BINARY))) return playerDir;
 
     const versionsDir = path.join(root, VERSIONS_DIR);
     if (!fs.existsSync(versionsDir)) continue;
@@ -128,7 +155,11 @@ function buildIdFor(dir) {
   if (/^\d/.test(base) || /^version-/i.test(base)) return base;
 
   try {
-    const binary = path.join(dir, CLIENT_BINARY);
+    // Use the SAME resolution the size helper uses, so a Player/-nested build
+    // (where <dir>/RobloxPlayerBeta.exe does not exist) still gets a real id
+    // instead of falling through to just the folder name.
+    const binary = resolveBinaryIn(dir);
+    if (!binary) return base || null;
     const stat = fs.statSync(binary);
     // Size + mtime is a cheap, stable fingerprint of a build with no manifest.
     return `local-${stat.size}-${Math.floor(stat.mtimeMs)}`;
@@ -137,11 +168,36 @@ function buildIdFor(dir) {
   }
 }
 
+/**
+ * Resolve the client binary inside a build directory, or null.
+ *
+ * A build directory can hold the binary directly, or nested in a Player/
+ * sub-folder (the CUSTOM-2021M repackage). Reading `<dir>/RobloxPlayerBeta.exe`
+ * unconditionally reported size 0 for the nested layout, so the download page
+ * showed a 0 MB build even though the binary was there.
+ */
+function resolveBinaryIn(dir) {
+  if (!dir) return null;
+  const candidates = [
+    path.join(dir, CLIENT_BINARY),
+    path.join(dir, 'Player', CLIENT_BINARY),
+  ];
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+    } catch (error) {
+      /* try the next layout */
+    }
+  }
+  return null;
+}
+
 /** Size of the client binary, for a progress/verification hint. */
 function binarySize(dir) {
-  if (!dir) return 0;
+  const binary = resolveBinaryIn(dir);
+  if (!binary) return 0;
   try {
-    return fs.statSync(path.join(dir, CLIENT_BINARY)).size;
+    return fs.statSync(binary).size;
   } catch (error) {
     return 0;
   }
@@ -175,7 +231,8 @@ function getClientBuildInfo() {
     buildType: 'Release',
     // Where the client lives on this host, so the installer can copy it.
     sourceDir: dir,
-    sourceBinary: dir ? path.join(dir, CLIENT_BINARY) : null,
+    // Resolved, not assumed: the binary may sit in a Player/ sub-folder.
+    sourceBinary: resolveBinaryIn(dir),
     binaryName: CLIENT_BINARY,
     binarySize: binarySize(dir),
     // The layout the installer must reproduce: <root>/Luckyblox/Versions/<v>/.
@@ -242,4 +299,5 @@ module.exports = {
   getClientBuildInfo,
   getClientUpdateManifest,
   resolveSourceDir,
+  resolveBinaryIn,
 };

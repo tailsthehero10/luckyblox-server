@@ -13,10 +13,14 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Continue'
 
+. (Join-Path $PSScriptRoot 'luckyblox-paths.ps1')
+
 $releaseRoot = Split-Path -Parent $PSScriptRoot
 $cacheDir    = Join-Path $releaseRoot 'Webserver\www\asset-cache'
-$outJson     = Join-Path $env:TEMP 'asset-records.json'
-$itemsCsv    = Join-Path $env:TEMP 'catalog-items.csv'
+# Scratch files live on the RELEASE drive, not in %TEMP% (C:). See
+# luckyblox-paths.ps1 for why.
+$outJson     = Get-LuckyBloxScratchPath 'asset-records.json' -ReleaseRoot $releaseRoot
+$itemsCsv    = Get-LuckyBloxScratchPath 'catalog-items.csv'  -ReleaseRoot $releaseRoot
 
 $UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) LuckyBlox/1.0'
 
@@ -110,15 +114,20 @@ foreach ($it in $wearable) {
   if ($n % 20 -eq 0) {
     # Checkpoint every 20 items so an interrupted run keeps its progress instead of
     # losing everything to a killed shell.
+    #
+    # Write-LuckyBloxJsonNoBom writes a sibling temp then renames, so a second
+    # instance running at the same time cannot trigger "user-mapped section open"
+    # - which is exactly the error this checkpoint used to produce.
     $chk = $records | ConvertTo-Json -Depth 6
-    [System.IO.File]::WriteAllText($outJson, $chk, (New-Object System.Text.UTF8Encoding($false)))
+    Write-LuckyBloxJsonNoBom -Path $outJson -Json $chk
     Write-Output ("[fetch-catalog] $n/" + $wearable.Count + "  saved=$saved  skipped=$skipped")
   }
 }
 
 Write-Output ("[fetch-catalog] metadata ok=$($records.Count)  images saved=$saved  no image=$noImage  metadata failed=$metaFail  already had=$skipped")
 
-# Write with NO BOM - a BOM breaks JSON.parse.
+# Write with NO BOM - a BOM breaks JSON.parse. Atomic, so a concurrent reader or
+# a second instance never sees a half-written file.
 $json = $records | ConvertTo-Json -Depth 6
-[System.IO.File]::WriteAllText($outJson, $json, (New-Object System.Text.UTF8Encoding($false)))
+Write-LuckyBloxJsonNoBom -Path $outJson -Json $json
 Write-Output ("[fetch-catalog] wrote $outJson")

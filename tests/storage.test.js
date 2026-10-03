@@ -7,11 +7,13 @@
 
 const assert = require('assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 
+const { makeTestDir } = require('./test-paths');
+
 // Point storage at a temp dir BEFORE requiring it, so we test the persistent path.
-const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckyblox-store-'));
+// The dir is on the RELEASE drive (E:), never on C: - see tests/test-paths.js.
+const tmpDir = makeTestDir('luckyblox-store');
 process.env.LUCKYBLOX_DATA_DIR = tmpDir;
 
 const storage = require('../server/storage');

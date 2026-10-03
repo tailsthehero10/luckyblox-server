@@ -8,10 +8,12 @@
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 
-// Isolate storage so the test never touches real data.
-const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckyblox-jobs-'));
+const { makeTestDir } = require('./test-paths');
+
+// Isolate storage so the test never touches real data. The scratch dir lives on
+// the RELEASE drive (E:), never on C: - see tests/test-paths.js.
+const tmpDir = makeTestDir('luckyblox-jobs');
 process.env.LUCKYBLOX_DATA_DIR = tmpDir;
 
 const orch = require('../server/orchestrator');

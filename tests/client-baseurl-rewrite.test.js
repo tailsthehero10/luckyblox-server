@@ -19,7 +19,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const http = require('http');
-const os = require('os');
+const { makeTestDir } = require('./test-paths');
 const path = require('path');
 const { spawn } = require('child_process');
 
@@ -70,7 +70,7 @@ function check(name, fn) {
 }
 
 (async () => {
-  const tempDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckblox-baseurl-'));
+  const tempDataDir = makeTestDir('luckblox-baseurl');
 
   const server = spawn(process.execPath, ['Webserver/http-db-bridge/server.js'], {
     cwd: PROJECT_ROOT,

@@ -17,7 +17,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const http = require('http');
-const os = require('os');
+const { makeTestDir } = require('./test-paths');
 const path = require('path');
 const { spawn } = require('child_process');
 
@@ -61,7 +61,7 @@ function check(name, fn) {
 }
 
 (async () => {
-  const tempDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckblox-friends-'));
+  const tempDataDir = makeTestDir('luckblox-friends');
 
   // Two accounts that are friends of each other, one online and one offline, so
   // both branches of the presence dot are exercised.

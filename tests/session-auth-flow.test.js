@@ -1,6 +1,6 @@
 const assert = require('assert');
 const http = require('http');
-const os = require('os');
+const { makeTestDir } = require('./test-paths');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const path = require('path');
@@ -52,7 +52,7 @@ async function waitForReady(serverProcess) {
   // the developer's tracked data/users.json. Preview mode defaults to off, but
   // the login and launch routes are allowlisted either way and must stay
   // reachable no matter how the site itself is gated - that is what this checks.
-  const tempDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckblox-session-test-'));
+  const tempDataDir = makeTestDir('luckblox-session-test');
 
   const server = spawn(process.execPath, ['Webserver/http-db-bridge/server.js'], {
     cwd: PROJECT_ROOT,

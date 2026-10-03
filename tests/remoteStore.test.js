@@ -21,6 +21,8 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 
+const { makeTestDir } = require('./test-paths');
+
 // The store the fake server holds. Starts with a user whose data a "redeploy"
 // would otherwise wipe.
 let store = {
@@ -76,7 +78,7 @@ function test(name, fn) {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
 
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckyblox-sync-'));
+  const tmpDir = makeTestDir('luckyblox-sync');
 
   // Configure the http backend BEFORE requiring the module (it reads env once).
   process.env.LUCKYBLOX_SYNC = 'http';

@@ -20,6 +20,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+const { makeTestDir } = require('../tests/test-paths');
+
 // The port the sweep's own server binds. 3099 is NOT a safe default: Visual
 // Studio Code's language server listens there on Windows, so a sweep that missed
 // its own server fell through to VS Code and reported the editor's HTML error
@@ -104,7 +106,7 @@ const MOJIBAKE = ['\u00c3\u00a2\u20ac', '\u00d8\u00a2', '\u00c3\u00a2\u00c2\u00b
   let tempDataDir = null;
 
   if (ownServer) {
-    tempDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckblox-sweep-'));
+    tempDataDir = makeTestDir('luckblox-sweep');
     child = spawn(process.execPath, ['Webserver/http-db-bridge/server.js'], {
       cwd: PROJECT_ROOT,
       env: { ...process.env, PORT: String(port), LUCKYBLOX_DATA_DIR: tempDataDir },

@@ -21,6 +21,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const { makeTestDir } = require('./test-paths');
+
 const releaseRoot = path.resolve(__dirname, '..');
 const clientLauncher = require(path.join(releaseRoot, 'server', 'clientLauncher.js'));
 
@@ -40,7 +42,7 @@ function test(name, fn) {
 
 // A real install root with several versions, deliberately including the pair a
 // string sort orders incorrectly (2021.9 vs 2021.10).
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'luckyblox-clientver-'));
+const root = makeTestDir('luckyblox-clientver');
 const versionsDir = path.join(root, 'Luckyblox', 'Versions');
 
 const versions = ['2021.2', '2021.9', '2021.10', '2021.11'];

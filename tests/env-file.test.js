@@ -11,6 +11,8 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
+const { makeTestDir } = require('./test-paths');
+
 const { loadEnvFile, parseEnv } = require('../server/envFile');
 
 let failures = 0;
@@ -71,7 +73,7 @@ check('keeps an empty value', () => {
 // --- Loading (real process.env) ---------------------------------------------
 
 check('a real environment variable beats the .env file', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckyblox-env-'));
+  const dir = makeTestDir('luckyblox-env');
   fs.writeFileSync(path.join(dir, '.env'), 'LUCKYBLOX_SYNC=github\nFRESH_KEY=from-file\n');
 
   process.env.LUCKYBLOX_SYNC = 'http';
@@ -90,7 +92,7 @@ check('a real environment variable beats the .env file', () => {
 });
 
 check('a missing .env is not an error', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckyblox-env-none-'));
+  const dir = makeTestDir('luckyblox-env-none');
   const result = loadEnvFile(dir);
   assert.strictEqual(result.loaded, false);
   assert.deepStrictEqual(result.applied, []);

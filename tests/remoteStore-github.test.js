@@ -21,6 +21,8 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 
+const { makeTestDir } = require('./test-paths');
+
 let passed = 0;
 function test(name, fn) {
   return Promise.resolve()
@@ -150,7 +152,7 @@ const server = http.createServer((req, res) => {
   // Point the GitHub API at the fake server.
   remoteStore.__setApiBaseForTests(`http://127.0.0.1:${port}`);
 
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckyblox-gh-'));
+  const tmpDir = makeTestDir('luckyblox-gh');
 
   console.log('remoteStore.js (github backend)');
 

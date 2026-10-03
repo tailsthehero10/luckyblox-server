@@ -39,6 +39,40 @@ const path = require('path');
 const os = require('os');
 const { execFileSync } = require('child_process');
 
+/**
+ * Where this module writes its scratch data.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * Staging a client copy and building a ZIP writes a LOT of bytes - a full
+ * duplicate of the Clients/ tree plus the archive. This used to go to
+ * `os.tmpdir()`, which on Windows is C:\Users\<user>\AppData\Local\Temp, and
+ * that filled up the C: drive.
+ *
+ * Everything now lands under <release>\.tmp, i.e. on the SAME drive as the
+ * release (E: here). Set LUCKYBLOX_TMP to move it somewhere else.
+ */
+function scratchRoot(releaseRoot) {
+  const explicit = process.env.LUCKYBLOX_TMP;
+  const dir = explicit && explicit.trim()
+    ? explicit.trim()
+    : path.join(releaseRoot, '.tmp');
+  try { fs.mkdirSync(dir, { recursive: true }); } catch (error) { /* surfaced by the write */ }
+  return dir;
+}
+
+/** A unique scratch directory on the release drive. */
+function makeScratchDir(releaseRoot, prefix) {
+  const base = scratchRoot(releaseRoot);
+  // mkdtemp needs a trailing separator-free prefix; keep it on the same drive.
+  return fs.mkdtempSync(path.join(base, `${prefix}-`));
+}
+
+/** A scratch FILE path on the release drive (not yet created). */
+function scratchFilePath(releaseRoot, name) {
+  return path.join(scratchRoot(releaseRoot), name);
+}
+
 // Where 7-Zip normally lives on Windows.
 const SEVEN_ZIP_CANDIDATES = [
   'C:\\Program Files\\7-Zip\\7z.exe',
@@ -139,7 +173,8 @@ function describeBundle(releaseRoot) {
  */
 function stageInstallation(releaseRoot, origin) {
   const top = 'Luckyblox-installation';
-  const stageRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'lb-bundle-'));
+  // Staged on the RELEASE drive, not %TEMP% (C:) - see scratchRoot().
+  const stageRoot = makeScratchDir(releaseRoot, 'lb-bundle');
   const stageTop = path.join(stageRoot, top);
   fs.mkdirSync(stageTop, { recursive: true });
 
@@ -234,7 +269,7 @@ function buildBundle(releaseRoot, opts = {}) {
   if (!staged) return { ok: false, reason: 'no-client-folders' };
 
   const outZip = opts.outZipPath
-    || path.join(os.tmpdir(), `luckyblox-client-${Date.now()}.zip`);
+    || scratchFilePath(releaseRoot, `luckyblox-client-${Date.now()}.zip`);
 
   try {
     fs.mkdirSync(path.dirname(outZip), { recursive: true });
@@ -284,7 +319,7 @@ function buildSingleClient(releaseRoot, clientName, opts = {}) {
   if (!staged) return { ok: false, reason: 'no-client-folders' };
 
   const outZip = opts.outZipPath
-    || path.join(os.tmpdir(), `luckyblox-${clientName.toLowerCase()}-${Date.now()}.zip`);
+    || scratchFilePath(releaseRoot, `luckyblox-${clientName.toLowerCase()}-${Date.now()}.zip`);
 
   try {
     execFileSync(sevenZip, ['a', '-tzip', outZip, `${path.join('Luckyblox-installation', clientName)}`, '-mx=5', '-bso0', '-bsp0'], {

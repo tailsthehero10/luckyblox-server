@@ -13,9 +13,13 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'luckyblox-paths.ps1')
+
 $releaseRoot = Split-Path -Parent $PSScriptRoot
 $assetsPath  = Join-Path $releaseRoot 'Webserver\http-db-bridge\data\assets.json'
-$recordsPath = Join-Path $env:TEMP 'asset-records.json'
+# Read the SAME scratch file fetch-catalog.ps1 writes - on the release drive, not
+# in %TEMP% (C:).
+$recordsPath = Get-LuckyBloxScratchPath 'asset-records.json' -ReleaseRoot $releaseRoot
 
 if (-not (Test-Path $recordsPath)) { Write-Error "no fetched records at $recordsPath"; exit 1 }
 
@@ -47,9 +51,13 @@ foreach ($p in $fetched.PSObject.Properties) {
 Write-Output ("[merge] records: " + $out.Count)
 
 # Backup, then write with NO BOM (a BOM breaks JSON.parse).
+#
+# The write is atomic (temp + rename): the running server reads assets.json on
+# requests, and writing in place could collide with it - the same "user-mapped
+# section open" failure the fetch script hit.
 if (Test-Path $assetsPath) { Copy-Item $assetsPath "$assetsPath.bak" -Force }
 $json = $out | ConvertTo-Json -Depth 6
-[System.IO.File]::WriteAllText($assetsPath, $json, (New-Object System.Text.UTF8Encoding($false)))
+Write-LuckyBloxJsonNoBom -Path $assetsPath -Json $json
 
 # Verify it parses and report the spread.
 $check = Get-Content $assetsPath -Raw | ConvertFrom-Json

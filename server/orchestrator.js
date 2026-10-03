@@ -18,6 +18,27 @@ const releaseRoot = path.resolve(__dirname, '..');
 const clientRoot = path.join(releaseRoot, 'Clients', '2021M');
 const studioRoot = path.join(releaseRoot, 'Clients', '2022M');
 
+/**
+ * The DEDICATED SERVER binary, which is NOT the player client.
+ *
+ * This used to launch `Clients/2021M/RobloxPlayerBeta.exe` with
+ * `--app roblox-player` - i.e. it started a second PLAYER window, not a game
+ * server. That window cannot parse those arguments, so it exited immediately
+ * with `code=1` and the job was dead before anyone could join. The 2021E build
+ * ships the server-side binary under `RCCService/`.
+ */
+const SERVER_BINARY_CANDIDATES = [
+  path.join(releaseRoot, 'Clients', '2021E', 'RCCService', 'RCCService.exe'),
+  path.join(releaseRoot, 'Clients', '2021E', 'RCCService', 'RobloxPlayerBeta.exe'),
+  path.join(releaseRoot, 'Clients', '2021E', 'RobloxPlayerBeta.exe'),
+  path.join(releaseRoot, 'RCCService', 'RCCService.exe'),
+];
+
+/** First existing dedicated-server binary, or null. */
+function resolveServerBinary() {
+  return SERVER_BINARY_CANDIDATES.find((candidate) => fs.existsSync(candidate)) || null;
+}
+
 function ensurePortCandidate(port) {
   const taken = activeGameServers.some((server) => Number(server.port) === Number(port));
   if (!taken) {
@@ -111,16 +132,27 @@ function getServerForPlace(placeId) {
   return activeGameServers.find((server) => Number(server.placeId) === Number(placeId) && Array.isArray(server.currentPlayers) && server.currentPlayers.length < server.maxPlayers);
 }
 
+/**
+ * A scratch directory on the RELEASE drive.
+ *
+ * The spawned server inherits this process's environment, including TEMP, which
+ * on Windows is C:\Users\<user>\AppData\Local\Temp. This project lives on E:
+ * and C: is nearly full, so the child gets its own temp/tmp/cache pointing at
+ * <release>\.tmp\server-<jobId> instead. LUCKYBLOX_TMP overrides.
+ */
+function serverScratchDir(jobId) {
+  const base = process.env.LUCKYBLOX_TMP && process.env.LUCKYBLOX_TMP.trim()
+    ? process.env.LUCKYBLOX_TMP.trim()
+    : path.join(releaseRoot, '.tmp');
+  const dir = path.join(base, `server-${jobId}`);
+  try { fs.mkdirSync(dir, { recursive: true }); } catch { /* best effort */ }
+  return dir;
+}
+
 function buildLaunchCommand(placeId, port, jobId) {
-  const robloxPlayer = path.join(clientRoot, 'RobloxPlayerBeta.exe');
-  const studioPlayer = path.join(studioRoot, 'RobloxStudioBeta.exe');
-  const launcherOptions = [
-    '--app',
-    'roblox-player',
-    '--placeId', String(placeId),
-    '--serverPort', String(port),
-    '--jobId', String(jobId),
-  ];
+  // The SERVER binary, not the player. See SERVER_BINARY_CANDIDATES above - the
+  // old code launched the player client here, which exited code=1 instantly.
+  const serverBinary = resolveServerBinary();
 
   // These are Windows desktop binaries. On Linux (the container) they can never
   // exist, and the local fallback used to be `cmd /c echo` - a Windows shell
@@ -128,29 +160,33 @@ function buildLaunchCommand(placeId, port, jobId) {
   // bridge process down, which surfaced to players as
   // "legacy-server-proxy-failed" on the join URL.
   //
-  // A game server with no desktop client to launch is not an error: the
-  // in-process listener still accepts the connection, which is what a local
-  // play session actually uses. So report "no desktop client" and let the
-  // caller skip the spawn instead of trying to run an executable that cannot
-  // exist here.
-  const candidates = [robloxPlayer, studioPlayer];
-  const availableCandidate = candidates.find((candidate) => fs.existsSync(candidate));
-
-  if (!availableCandidate) {
+  // A game server with no dedicated binary is not an error: the in-process
+  // listener still accepts the connection, which is what a local play session
+  // actually uses. So report it and let the caller skip the spawn.
+  if (!serverBinary) {
     return {
       command: null,
       args: [],
       type: 'none',
       reason: process.platform === 'win32'
-        ? 'no local Roblox client is installed'
-        : 'desktop client launch is not available on this platform',
+        ? 'no dedicated server binary found (looked for Clients/2021E/RCCService)'
+        : 'desktop server launch is not available on this platform',
     };
   }
 
+  // The 2021 conference builds take a lower-case `-console` and each value as
+  // its own `-key:value` token. `-Console` and a separate `-port <n>` argument
+  // (the previous form) are not parsed, which is another way the server died
+  // straight away.
   return {
-    command: availableCandidate,
-    args: launcherOptions,
-    type: 'native-roblox',
+    command: serverBinary,
+    args: [
+      '-console', '-verbose',
+      `-placeid:${placeId}`,
+      `-jobid:${jobId}`,
+      `-port:${port}`,
+    ],
+    type: 'dedicated-server',
   };
 }
 
@@ -178,10 +214,25 @@ function spawnDedicatedServer(placeId) {
   // a game returned "legacy-server-proxy-failed".
   if (launch.command) {
     try {
+      // Keep every child temp/cache path on the release drive (E:) rather than
+      // inheriting C:\Users\...\AppData, which is what filled C: up.
+      const scratch = serverScratchDir(serverJobId);
+
       const child = spawn(launch.command, launch.args, {
         detached: false,
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
+        cwd: path.dirname(launch.command),
+        env: {
+          ...process.env,
+          TEMP: scratch,
+          TMP: scratch,
+          TMPDIR: scratch,
+          LOCALAPPDATA: scratch,
+          APPDATA: scratch,
+          USERPROFILE: scratch,
+          HOME: scratch,
+        },
       });
 
       serverRecord.pid = child.pid;

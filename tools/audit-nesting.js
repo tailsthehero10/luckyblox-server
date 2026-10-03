@@ -19,6 +19,8 @@ const fs = require('fs');
 const http = require('http');
 const { spawn } = require('child_process');
 
+const { makeTestDir } = require('../tests/test-paths');
+
 const PORT = 39831;
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 
@@ -97,7 +99,7 @@ function unclosed(html) {
 }
 
 (async () => {
-  const tempDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckblox-nest-'));
+  const tempDataDir = makeTestDir('luckblox-nest');
   const child = spawn(process.execPath, ['Webserver/http-db-bridge/server.js'], {
     cwd: PROJECT_ROOT,
     env: { ...process.env, PORT: String(PORT), LUCKYBLOX_DATA_DIR: tempDataDir },

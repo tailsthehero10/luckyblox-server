@@ -19,7 +19,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const http = require('http');
-const os = require('os');
+const { makeTestDir } = require('./test-paths');
 const path = require('path');
 const { spawn } = require('child_process');
 
@@ -72,7 +72,7 @@ function check(name, fn) {
 }
 
 async function main() {
-  const tempDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckblox-ds-'));
+  const tempDataDir = makeTestDir('luckblox-ds');
   const probeKey = `__lb_test_${Date.now()}`;
   const probeStore = `__lb_ods_${Date.now()}`;
   const probeItemPath = path.join(ITEMS_DIR, probeKey);

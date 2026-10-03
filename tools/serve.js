@@ -13,12 +13,17 @@
  */
 
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const pidFile = path.join(os.tmpdir(), 'luckyblox-serve.pid');
+
+// The PID file lives on the RELEASE drive, not %TEMP% (C:) - this machine's C: is
+// nearly full. LUCKYBLOX_TMP overrides.
+const scratchDir = (process.env.LUCKYBLOX_TMP && process.env.LUCKYBLOX_TMP.trim())
+  || path.join(ROOT, '.tmp');
+try { fs.mkdirSync(scratchDir, { recursive: true }); } catch (error) { /* best effort */ }
+const pidFile = path.join(scratchDir, 'luckyblox-serve.pid');
 
 if (process.argv[2] === '--stop') {
   try {

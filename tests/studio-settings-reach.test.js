@@ -19,7 +19,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const http = require('http');
-const os = require('os');
+const { makeTestDir } = require('./test-paths');
 const path = require('path');
 const { spawn } = require('child_process');
 const security = require('../server/security');
@@ -81,7 +81,7 @@ function check(name, fn) {
 }
 
 (async () => {
-  const tempDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckblox-studio-'));
+  const tempDataDir = makeTestDir('luckblox-studio');
 
   // One game with an authorId of 1 (the owner), which is how the built-ins are
   // described in the project notes.

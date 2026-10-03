@@ -17,6 +17,8 @@ const os = require('os');
 const fs = require('fs');
 const { spawn } = require('child_process');
 
+const { makeTestDir } = require('../tests/test-paths');
+
 const pagePath = process.argv[2] || '/settings';
 const username = process.argv[3] || 'tailsthehero10';
 const password = process.argv[4] || '@pass@.lovely10';
@@ -52,7 +54,7 @@ function req(pathName, { method = 'GET', body, headers = {} } = {}) {
 }
 
 (async () => {
-  const tempDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckblox-trace-'));
+  const tempDataDir = makeTestDir('luckblox-trace');
   const child = spawn(process.execPath, ['Webserver/http-db-bridge/server.js'], {
     cwd: PROJECT_ROOT,
     env: { ...process.env, PORT: String(PORT), LUCKYBLOX_DATA_DIR: tempDataDir, LUCKYBLOX_PREVIEW_MODE: 'off' },

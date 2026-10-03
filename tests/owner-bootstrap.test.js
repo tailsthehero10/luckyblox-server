@@ -30,6 +30,8 @@ const path = require('path');
 const http = require('http');
 const { spawn } = require('child_process');
 
+const { makeTestDir } = require('./test-paths');
+
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const PORT = 38531;
 const OWNER_USER = 'tailsthehero10';
@@ -93,7 +95,7 @@ function check(name, fn) {
   let wrongPassStatus = null;
 
   // --- 1. A completely EMPTY database --------------------------------------
-  const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckblox-owner-empty-'));
+  const emptyDir = makeTestDir('luckblox-owner-empty');
   fs.writeFileSync(path.join(emptyDir, 'users.json'), '{}');
 
   const empty = await boot(emptyDir);
@@ -158,7 +160,7 @@ function check(name, fn) {
 
   // --- 2. A database that already has the owner ----------------------------
   // The env password must still apply, and must NOT wipe the rest of the account.
-  const seededDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckblox-owner-seeded-'));
+  const seededDir = makeTestDir('luckblox-owner-seeded');
   fs.writeFileSync(path.join(seededDir, 'users.json'), JSON.stringify({
     1: {
       userId: '1',

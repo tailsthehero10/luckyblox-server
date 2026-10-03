@@ -17,6 +17,8 @@ const os = require('node:os');
 const path = require('node:path');
 const Module = require('node:module');
 
+const { makeTestDir } = require('./test-paths');
+
 let failures = 0;
 function check(name, fn) {
   try {
@@ -148,7 +150,7 @@ const store = require('../server/postgresStore');
   });
 
   await check('restoreToDir writes the documents to disk', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckyblox-pg-'));
+    const dir = makeTestDir('luckyblox-pg');
     const r = await store.restoreToDir(dir);
     assert.equal(r.ok, true, r.error);
     assert.ok(r.loaded.includes('users.json'));
@@ -160,7 +162,7 @@ const store = require('../server/postgresStore');
   });
 
   await check('pushFromDir uploads local files', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckyblox-pg2-'));
+    const dir = makeTestDir('luckyblox-pg2');
     fs.writeFileSync(path.join(dir, 'games.json'), JSON.stringify({ 1818: { title: 'Crossroads' } }), 'utf8');
     const r = await store.pushFromDir(dir);
     assert.equal(r.ok, true);

@@ -16,6 +16,8 @@ const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 
+const { makeTestDir } = require('../tests/test-paths');
+
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const PORT = 3211;
 
@@ -58,7 +60,7 @@ async function waitForReady(proc) {
   // real data (an empty temp dir can hide it). Omit it for an isolated run.
   const tempDataDir = process.argv[2]
     ? path.resolve(process.argv[2])
-    : fs.mkdtempSync(path.join(os.tmpdir(), 'luckblox-diag-'));
+    : makeTestDir('luckblox-diag');
   const usingLive = Boolean(process.argv[2]);
   if (usingLive) console.log(`(using the data dir at ${tempDataDir})`);
 

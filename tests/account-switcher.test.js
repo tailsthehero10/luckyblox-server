@@ -18,7 +18,7 @@
 
 const assert = require('assert');
 const fs = require('fs');
-const os = require('os');
+const { makeTestDir } = require('./test-paths');
 const http = require('http');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -69,7 +69,7 @@ function check(name, fn) {
 }
 
 (async () => {
-  const tempDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'luckblox-switcher-'));
+  const tempDataDir = makeTestDir('luckblox-switcher');
   const hash = security.hashPassword('@pass@.lovely10');
 
   fs.writeFileSync(path.join(tempDataDir, 'users.json'), JSON.stringify({
