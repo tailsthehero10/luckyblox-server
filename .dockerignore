@@ -6,6 +6,10 @@ node_modules
 *.zip
 *.rar
 *.exe
+# The Windows Player is a required runtime download, not an expendable build artifact.
+!Clients/2021M/RobloxPlayerBeta.exe
+# The client installer is also served directly from this path by the bridge.
+!tools/installer/LuckybloxInstaller.exe
 *.7z
 build/
 dist/

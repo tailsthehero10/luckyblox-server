@@ -6699,6 +6699,17 @@ app.get('/download/client/binary', (req, res) => {
     });
   }
 
+  const requestedVersion = String(req.query.version || '').trim();
+  if (requestedVersion && requestedVersion !== String(info.version || '')) {
+    return res.status(409).json({
+      ok: false,
+      error: 'client-build-version-mismatch',
+      requestedVersion,
+      availableVersion: info.version,
+      message: 'The published client build changed after the installer read its manifest. Retry the install.',
+    });
+  }
+
   // Always advertise which build this is, so an updater can verify it got the
   // version it asked for rather than trusting the bytes.
   res.set('X-LuckyBlox-Build', String(info.buildId || ''));

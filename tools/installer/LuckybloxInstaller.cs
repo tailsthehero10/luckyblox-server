@@ -59,6 +59,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -109,7 +110,24 @@ namespace LuckyBlox.Installer
             string fromLauncher = ReadLauncherBaseUrl();
             if (!string.IsNullOrWhiteSpace(fromLauncher)) return fromLauncher;
 
-            return "http://127.0.0.1:3001";
+            // A public download is normally run outside the release folder; a
+            // loopback default would point that user's client at their own PC.
+            return "https://luckyblox-server.onrender.com";
+        }
+
+        public static string NormalizeBaseUrl(string value)
+        {
+            Uri uri;
+            if (!Uri.TryCreate(value, UriKind.Absolute, out uri)
+                || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+                || !string.IsNullOrEmpty(uri.UserInfo)
+                || !string.IsNullOrEmpty(uri.Query)
+                || !string.IsNullOrEmpty(uri.Fragment))
+            {
+                throw new ArgumentException("Server URL must be an http(s) URL without credentials, query, or fragment.");
+            }
+
+            return uri.GetLeftPart(UriPartial.Path).TrimEnd('/');
         }
 
         /// <summary>installer.config.txt next to the exe, if present.</summary>
@@ -368,20 +386,30 @@ namespace LuckyBlox.Installer
                         .Select(Path.GetFileName)
                         .Where(n => !string.IsNullOrWhiteSpace(n) && !n.StartsWith("."))
                         .ToList();
-                    if (versions.Count > 0)
-                    {
-                        versions.Sort(CompareVersions);
-                        state.NewestVersion = versions[versions.Count - 1];
-                    }
-
-                    // A binary anywhere under Versions counts as installed, so a
-                    // build that was copied in manually is still detected.
+                    var playerVersions = new List<string>();
                     foreach (var version in versions)
                     {
                         var dir = Path.Combine(state.VersionsDir, version);
-                        if (File.Exists(Path.Combine(dir, InstallerConfig.PlayerBinary))) state.PlayerInstalled = true;
+                        if (File.Exists(Path.Combine(dir, InstallerConfig.PlayerBinary)))
+                        {
+                            playerVersions.Add(version);
+                            state.PlayerInstalled = true;
+                        }
                         if (File.Exists(Path.Combine(dir, InstallerConfig.StudioBinary))) state.StudioInstalled = true;
                     }
+
+                    if (playerVersions.Count > 0)
+                    {
+                        playerVersions.Sort(CompareVersions);
+                        state.NewestVersion = playerVersions[playerVersions.Count - 1];
+                    }
+
+                    string selectedPlayer = Path.Combine(
+                        state.VersionsDir,
+                        state.CurrentVersion ?? "",
+                        InstallerConfig.PlayerBinary);
+                    if (string.IsNullOrEmpty(state.CurrentVersion) || !File.Exists(selectedPlayer))
+                        state.CurrentVersion = state.NewestVersion;
                 }
 
                 // The bundled (unversioned) layout also counts.
@@ -390,7 +418,6 @@ namespace LuckyBlox.Installer
             }
             catch { }
 
-            if (string.IsNullOrEmpty(state.CurrentVersion)) state.CurrentVersion = state.NewestVersion;
             return state;
         }
 
@@ -476,12 +503,14 @@ namespace LuckyBlox.Installer
 
                 var state = InstallState.Read(_root);
                 result.Version = build.Version;
+                string versionFolder = SafeFolderName(
+                    string.IsNullOrEmpty(build.Version) ? build.BuildId : build.Version);
 
                 // --- The update decision ---------------------------------------
                 // Up to date means: a player is installed AND the version we have
                 // matches the version the server publishes.
                 bool sameVersion = !string.IsNullOrEmpty(build.Version)
-                    && string.Equals(state.CurrentVersion, build.Version, StringComparison.OrdinalIgnoreCase);
+                    && string.Equals(state.CurrentVersion, versionFolder, StringComparison.OrdinalIgnoreCase);
 
                 if (state.PlayerInstalled && sameVersion && !forceReinstall)
                 {
@@ -489,7 +518,6 @@ namespace LuckyBlox.Installer
                     result.UpToDate = true;
                     result.Message = "LuckyBlox Player " + state.CurrentVersion + " is already installed and up to date.";
                     _log(result.Message);
-                    WritePointer(state);
                     return result;
                 }
 
@@ -507,7 +535,7 @@ namespace LuckyBlox.Installer
                 var versionDir = Path.Combine(
                     InstallerConfig.InstallDir(_root),
                     InstallerConfig.VersionsDir,
-                    SafeFolderName(string.IsNullOrEmpty(build.Version) ? build.BuildId : build.Version));
+                    versionFolder);
 
                 Directory.CreateDirectory(versionDir);
 
@@ -522,42 +550,10 @@ namespace LuckyBlox.Installer
                 _progress(100, build.Size, build.Size);
 
                 // --- Verify ----------------------------------------------------
-                // A zero-byte or truncated file must never be promoted, because
-                // once it sits at the expected path it looks like a real install.
-                var info = new FileInfo(temp);
-                if (!info.Exists || info.Length == 0)
-                {
-                    SafeDelete(temp);
-                    result.Message = "The download was empty. Nothing was installed.";
-                    _log(result.Message);
-                    return result;
-                }
-
-                if (build.Size > 0 && info.Length != build.Size)
-                {
-                    _log("Warning: expected " + build.Size + " bytes, received " + info.Length + ". The server may have served a different build.");
-                }
-
-                // Windows refuses to replace a running executable, so if the user
-                // has the client open the promote step fails loudly rather than
-                // leaving a half-updated install.
-                if (File.Exists(target))
-                {
-                    try
-                    {
-                        File.Delete(target);
-                    }
-                    catch (IOException)
-                    {
-                        SafeDelete(temp);
-                        result.Message = "LuckyBlox Player appears to be running. Close it and try again.";
-                        _log(result.Message);
-                        return result;
-                    }
-                }
+                VerifyWindowsExecutable(temp, build.Size, "Player");
 
                 // --- Promote ---------------------------------------------------
-                File.Move(temp, target);
+                PromoteFile(temp, target);
 
                 // Publish the studio binary if the server has one, so a single
                 // install covers both surfaces.
@@ -565,16 +561,16 @@ namespace LuckyBlox.Installer
 
                 UpdateLocalAppSettings(versionDir);
 
+                state.CurrentVersion = versionFolder;
+                state.NewestVersion = versionFolder;
+                WritePointer(state);
+
                 result.Ok = true;
                 result.Updated = state.PlayerInstalled;
                 result.Message = result.Updated
                     ? "Updated LuckyBlox to " + build.Version + "."
                     : "Installed LuckyBlox " + build.Version + ".";
                 _log(result.Message);
-
-                state.CurrentVersion = build.Version;
-                state.NewestVersion = SafeFolderName(string.IsNullOrEmpty(build.Version) ? build.BuildId : build.Version);
-                WritePointer(state);
 
                 CreateShortcuts(target);
                 RegisterUninstall(_root);
@@ -640,38 +636,14 @@ namespace LuckyBlox.Installer
                 // fetch is a second, smaller transfer in the same operation.
                 Download(downloadUrl, temp, studioSize);
 
-                // Same verification rule as the player: never promote an empty or
-                // truncated binary into a position that looks like a real install.
-                var info = new FileInfo(temp);
-                if (!info.Exists || info.Length == 0)
-                {
-                    SafeDelete(temp);
-                    _log("The Studio download was empty; skipping it.");
-                    return;
-                }
-                if (studioSize > 0 && info.Length != studioSize)
-                {
-                    _log("Warning: expected " + studioSize + " Studio bytes, received " + info.Length + ".");
-                }
-
-                if (File.Exists(dest))
-                {
-                    try { File.Delete(dest); }
-                    catch (IOException)
-                    {
-                        SafeDelete(temp);
-                        _log("LuckyBlox Studio appears to be running; it was not updated.");
-                        return;
-                    }
-                }
-
-                File.Move(temp, dest);
+                VerifyWindowsExecutable(temp, studioSize, "Studio");
+                PromoteFile(temp, dest);
                 _log("Studio installed alongside the Player.");
             }
             catch (Exception ex)
             {
-                // No studio on this server, or it is unreachable - expected for a
-                // player-only deployment, so this is not a failed install.
+                // Studio is optional. A missing Studio build does not invalidate
+                // a successful Player install.
                 _log("Studio was not installed: " + ex.Message);
             }
         }
@@ -686,37 +658,116 @@ namespace LuckyBlox.Installer
         /// </summary>
         private void UpdateLocalAppSettings(string versionDir)
         {
-            try
-            {
-                var path = Path.Combine(versionDir, "AppSettings.xml");
-                var xml = new StringBuilder();
-                xml.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-                xml.AppendLine("<Settings>");
-                xml.AppendLine("  <ContentFolder>content</ContentFolder>");
-                xml.AppendLine("  <BaseUrl>" + _baseUrl + "/</BaseUrl>");
-                xml.AppendLine("</Settings>");
-                File.WriteAllText(path, xml.ToString(), new UTF8Encoding(false));
-                _log("Wrote AppSettings.xml -> " + _baseUrl);
-            }
-            catch (Exception ex)
-            {
-                _log("Could not write AppSettings.xml: " + ex.Message);
-            }
+            var path = Path.Combine(versionDir, "AppSettings.xml");
+            var xml = new StringBuilder();
+            xml.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+            xml.AppendLine("<Settings>");
+            xml.AppendLine("  <ContentFolder>../../shared/content</ContentFolder>");
+            xml.AppendLine("  <BaseUrl>" + SecurityElement.Escape(_baseUrl + "/LuckBlox.site.tk/home/") + "</BaseUrl>");
+            xml.AppendLine("</Settings>");
+            WriteAtomicText(path, xml.ToString());
+            _log("Wrote AppSettings.xml -> " + _baseUrl + "/LuckBlox.site.tk/home/");
         }
 
         /// <summary>Point version.txt at the build that is now current.</summary>
         private void WritePointer(InstallState state)
         {
+            Directory.CreateDirectory(state.InstallDir);
+            var folder = string.IsNullOrEmpty(state.NewestVersion) ? state.CurrentVersion : state.NewestVersion;
+            if (string.IsNullOrWhiteSpace(folder))
+                throw new InvalidOperationException("The installed client version could not be determined.");
+            WriteAtomicText(
+                Path.Combine(state.InstallDir, InstallerConfig.VersionPointerFile),
+                folder);
+        }
+
+        private static void VerifyWindowsExecutable(string path, long expectedSize, string product)
+        {
+            var info = new FileInfo(path);
+            if (!info.Exists || info.Length < 64)
+                throw new InvalidDataException("The " + product + " download is empty or incomplete.");
+            if (expectedSize > 0 && info.Length != expectedSize)
+                throw new InvalidDataException("The " + product + " download size did not match the published build (expected "
+                    + expectedSize + " bytes, received " + info.Length + ").");
+
+            using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var reader = new BinaryReader(stream))
+            {
+                if (reader.ReadUInt16() != 0x5A4D)
+                    throw new InvalidDataException("The " + product + " download is not a Windows executable.");
+                stream.Position = 0x3C;
+                int peOffset = reader.ReadInt32();
+                if (peOffset < 64 || peOffset > stream.Length - 4)
+                    throw new InvalidDataException("The " + product + " executable header is invalid.");
+                stream.Position = peOffset;
+                if (reader.ReadUInt32() != 0x00004550)
+                    throw new InvalidDataException("The " + product + " executable header is invalid.");
+            }
+        }
+
+        private static void PromoteFile(string temporary, string target)
+        {
+            string backup = target + ".previous";
+            if (!File.Exists(target) && File.Exists(backup))
+            {
+                File.Move(backup, target);
+            }
+            else
+            {
+                SafeDelete(backup);
+            }
+
+            if (!File.Exists(target))
+            {
+                File.Move(temporary, target);
+                return;
+            }
+
             try
             {
-                Directory.CreateDirectory(state.InstallDir);
-                var folder = string.IsNullOrEmpty(state.NewestVersion) ? state.CurrentVersion : state.NewestVersion;
-                File.WriteAllText(
-                    Path.Combine(state.InstallDir, InstallerConfig.VersionPointerFile),
-                    folder ?? "",
-                    new UTF8Encoding(false));
+                File.Replace(temporary, target, backup);
+                SafeDelete(backup);
             }
-            catch { }
+            catch (IOException replaceError)
+            {
+                try
+                {
+                    File.Move(target, backup);
+                }
+                catch (IOException lockedError)
+                {
+                    throw new IOException("The existing client appears to be running. Close it and try again.", lockedError);
+                }
+
+                try
+                {
+                    File.Move(temporary, target);
+                    SafeDelete(backup);
+                }
+                catch
+                {
+                    if (!File.Exists(target) && File.Exists(backup)) File.Move(backup, target);
+                    throw new IOException("Could not safely replace the existing client: " + replaceError.Message);
+                }
+            }
+        }
+
+        private static void WriteAtomicText(string path, string contents)
+        {
+            string temporary = path + ".tmp";
+            string backup = path + ".previous";
+            SafeDelete(temporary);
+            SafeDelete(backup);
+            File.WriteAllText(temporary, contents, new UTF8Encoding(false));
+
+            if (!File.Exists(path))
+            {
+                File.Move(temporary, path);
+                return;
+            }
+
+            File.Replace(temporary, path, backup);
+            SafeDelete(backup);
         }
 
         /// <summary>Stream a URL to a file, reporting progress.</summary>
@@ -770,7 +821,8 @@ namespace LuckyBlox.Installer
             if (string.IsNullOrWhiteSpace(value)) return "unknown";
             var invalid = Path.GetInvalidFileNameChars();
             var chars = value.Trim().Select(c => invalid.Contains(c) ? '_' : c).ToArray();
-            return new string(chars);
+            var safe = new string(chars).Trim().TrimEnd('.');
+            return safe.Length == 0 || safe == "." || safe == ".." ? "unknown" : safe;
         }
 
         private static void SafeDelete(string path)
@@ -1165,7 +1217,7 @@ namespace LuckyBlox.Installer
             bool installed = _state != null && _state.PlayerInstalled;
             bool sameVersion = installed
                 && !string.IsNullOrEmpty(_build.Version)
-                && string.Equals(_state.CurrentVersion, _build.Version, StringComparison.OrdinalIgnoreCase);
+                && string.Equals(_state.CurrentVersion, Installer.SafeFolderName(_build.Version), StringComparison.OrdinalIgnoreCase);
 
             _versionLabel.Text = "Install folder: " + InstallerConfig.InstallDir(_root)
                 + (installed
@@ -1269,7 +1321,7 @@ namespace LuckyBlox.Installer
                 var dir = Path.Combine(
                     InstallerConfig.InstallDir(_root),
                     InstallerConfig.VersionsDir,
-                    state.NewestVersion ?? "");
+                    state.CurrentVersion ?? "");
 
                 var exe = Path.Combine(dir, InstallerConfig.PlayerBinary);
                 if (!File.Exists(exe))
@@ -1344,10 +1396,28 @@ namespace LuckyBlox.Installer
             // dependency, and must exit with a code a script can branch on.
             var options = CommandLine.Parse(args);
 
-            if (!string.IsNullOrWhiteSpace(options.BaseUrl))
+            try
             {
-                InstallerConfig.BaseUrl = options.BaseUrl.TrimEnd('/');
+                InstallerConfig.BaseUrl = InstallerConfig.NormalizeBaseUrl(
+                    string.IsNullOrWhiteSpace(options.BaseUrl) ? InstallerConfig.BaseUrl : options.BaseUrl);
             }
+            catch (Exception ex)
+            {
+                if (options.Silent)
+                {
+                    AttachParentConsole();
+                    Console.Error.WriteLine("Invalid LuckyBlox server URL: " + ex.Message);
+                }
+                else
+                {
+                    MessageBox.Show(ex.Message, "LuckyBlox Installer", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                return 1;
+            }
+
+            // Older .NET Framework installations otherwise negotiate a TLS
+            // version rejected by current public hosts.
+            ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072;
 
             string root = options.Root ?? InstallerConfig.DefaultRoot();
 
@@ -1376,7 +1446,7 @@ namespace LuckyBlox.Installer
                     if (!state.PlayerInstalled) return 1;
 
                     bool same = !string.IsNullOrEmpty(build.Version)
-                        && string.Equals(state.CurrentVersion, build.Version, StringComparison.OrdinalIgnoreCase);
+                        && string.Equals(state.CurrentVersion, Installer.SafeFolderName(build.Version), StringComparison.OrdinalIgnoreCase);
                     return same ? 0 : 2;
                 }
                 catch (Exception ex)

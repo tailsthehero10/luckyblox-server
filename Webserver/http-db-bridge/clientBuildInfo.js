@@ -42,7 +42,10 @@ const { publicBaseUrl, publicHostname, publicProtocol } = require(path.join(__di
 
 const INSTALL_FOLDER_NAME = 'Luckyblox';
 const VERSIONS_DIR = 'Versions';
-const CLIENT_BINARY = process.platform === 'win32' ? 'RobloxPlayerBeta.exe' : 'RobloxPlayerBeta';
+// The bridge runs on Linux in public deployments but distributes the Windows
+// Player to desktop users. Resolve the published artifact by its target platform,
+// not the host platform running this Node process.
+const CLIENT_BINARY = 'RobloxPlayerBeta.exe';
 const CHANNEL = String(process.env.LUCKYBLOX_CLIENT_CHANNEL || 'production').trim() || 'production';
 
 /**
@@ -275,6 +278,9 @@ function getClientUpdateManifest() {
     channel: info.channel,
     buildId: info.buildId,
     version: info.version,
+    binaryName: info.binaryName,
+    binarySize: info.binarySize,
+    downloadUrl: build.length ? build[0].downloadUrl : null,
     baseUrl: info.baseUrl,
     installFolderName: INSTALL_FOLDER_NAME,
     versionsDir: VERSIONS_DIR,

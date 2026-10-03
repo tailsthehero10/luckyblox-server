@@ -6,8 +6,8 @@ REM Uses the .NET Framework compiler that ships with Windows, so no SDK, no
 REM NuGet, and no Visual Studio are required. The result is a single .exe with
 REM no external dependencies.
 REM
-REM Optionally bake the server URL into the build so a release ships an installer
-REM that already points at the right deployment:
+REM Optionally bake a non-default server URL into the build. Without this,
+REM the installer defaults to the public LuckyBlox deployment:
 REM
 REM     set LUCKYBLOX_INSTALLER_BASE=https://luckyblox-server.onrender.com
 REM     build-installer.bat
@@ -57,7 +57,7 @@ echo   Compiler : %CSC%
 if defined LUCKYBLOX_INSTALLER_BASE (
   echo   Server   : %LUCKYBLOX_INSTALLER_BASE%   (baked into the build)
 ) else (
-  echo   Server   : (not baked in - read at runtime from installer.config.txt)
+  echo   Server   : https://luckyblox-server.onrender.com (public default; config can override)
 )
 echo.
 

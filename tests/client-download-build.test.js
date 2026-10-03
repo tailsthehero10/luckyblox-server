@@ -25,6 +25,7 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 // the shell and redirect the resolver at a folder the test is not asserting on.
 delete process.env.LUCKYBLOX_CLIENT_PATH;
 delete process.env.LUCKYBLOX_CLIENT_ROOT;
+delete process.env.LUCKYBLOX_INSTALLER_PATH;
 
 const clientBuildInfo = require(path.join(PROJECT_ROOT, 'Webserver', 'http-db-bridge', 'clientBuildInfo.js'));
 const clientLauncher = require(path.join(PROJECT_ROOT, 'server', 'clientLauncher.js'));
@@ -45,6 +46,7 @@ function check(name, fn) {
 console.log('client download build');
 
 const info = clientBuildInfo.getClientBuildInfo();
+const manifest = clientBuildInfo.getClientUpdateManifest();
 
 check('the bundled player folder exists', () => {
   assert.ok(
@@ -80,6 +82,35 @@ check('the served binary is the 2021M RobloxPlayerBeta.exe', () => {
   assert.ok(fs.existsSync(info.sourceBinary), 'the advertised binary must exist on disk');
 });
 
+check('the Render image keeps the Windows Player despite the general executable exclusion', () => {
+  const dockerIgnore = fs.readFileSync(path.join(PROJECT_ROOT, '.dockerignore'), 'utf8');
+  const broadExclude = dockerIgnore.indexOf('*.exe');
+  const playerException = dockerIgnore.indexOf('!Clients/2021M/RobloxPlayerBeta.exe');
+  assert.ok(broadExclude >= 0, 'the general executable exclusion should remain');
+  assert.ok(
+    playerException > broadExclude,
+    'the exact player binary must be re-included after the executable exclusion',
+  );
+});
+
+check('the Render image ships the installer download used by /download/client', () => {
+  const dockerIgnore = fs.readFileSync(path.join(PROJECT_ROOT, '.dockerignore'), 'utf8');
+  const broadExclude = dockerIgnore.indexOf('*.exe');
+  const installerException = dockerIgnore.indexOf('!tools/installer/LuckybloxInstaller.exe');
+  assert.ok(
+    installerException > broadExclude,
+    'the installer executable must be re-included after the executable exclusion',
+  );
+  assert.ok(
+    fs.existsSync(path.join(PROJECT_ROOT, 'tools', 'installer', 'LuckybloxInstaller.exe')),
+    'the installer route requires a built installer artifact',
+  );
+  assert.strictEqual(
+    path.resolve(clientLauncher.installerPath()),
+    path.resolve(PROJECT_ROOT, 'tools', 'installer', 'LuckybloxInstaller.exe'),
+  );
+});
+
 check('the advertised size is the real, non-zero size of that binary', () => {
   const realSize = fs.statSync(info.sourceBinary).size;
   assert.strictEqual(info.binarySize, realSize, 'binarySize must match the file on disk');
@@ -109,6 +140,17 @@ check('the resolved binary is named RobloxPlayerBeta, not a Studio binary', () =
 check('buildId and version are populated for the installer', () => {
   assert.ok(info.buildId, 'buildId must be set so an installer can compare builds');
   assert.ok(info.version, 'version must be set so the download path is meaningful');
+});
+
+check('installer fields are available at the top level of the update manifest', () => {
+  assert.strictEqual(manifest.available, true);
+  assert.strictEqual(manifest.binaryName, info.binaryName);
+  assert.strictEqual(manifest.binarySize, info.binarySize);
+  assert.strictEqual(manifest.downloadUrl, manifest.builds[0].downloadUrl);
+  assert.ok(
+    manifest.downloadUrl.includes(`version=${encodeURIComponent(info.version)}`),
+    'the download URL must pin the version read from this manifest',
+  );
 });
 
 /**
