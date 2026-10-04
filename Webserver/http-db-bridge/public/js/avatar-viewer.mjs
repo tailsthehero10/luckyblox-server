@@ -1,5 +1,6 @@
 import * as THREE from '/vendor/three/three.module.js';
 import { parseRobloxMesh } from './roblox-mesh.mjs';
+import { alignAvatarLayers } from './avatar-accessory-placement.mjs';
 
 const CHARACTER_FIT_SCALE = 2;
 const viewers = document.querySelectorAll('[data-avatar-viewer]');
@@ -50,8 +51,7 @@ async function initializeViewer(viewer) {
   const modelRoot = new THREE.Group();
   const accessoryRoot = new THREE.Group();
   rotationPivot.add(scaleRoot);
-  scaleRoot.add(characterScaleRoot, accessoryRoot);
-  characterScaleRoot.add(modelRoot);
+  scaleRoot.add(characterScaleRoot);
   scene.add(rotationPivot);
 
   const response = await fetch(`/api/avatar/rig/${rig}`, {
@@ -109,7 +109,7 @@ async function initializeViewer(viewer) {
   characterScaleRoot.scale.setScalar(1);
   const bodyBounds = new THREE.Box3().setFromObject(modelRoot);
   const bodyCenter = bodyBounds.getCenter(new THREE.Vector3());
-  modelRoot.position.set(-bodyCenter.x, -bodyCenter.y, -bodyCenter.z);
+  alignAvatarLayers(characterScaleRoot, modelRoot, accessoryRoot, bodyCenter);
   characterScaleRoot.scale.setScalar(CHARACTER_FIT_SCALE);
   const scales = config.scales || {};
   scaleRoot.scale.set(clampScale(scales.width), clampScale(scales.height), clampScale(scales.depth));

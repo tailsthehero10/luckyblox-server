@@ -502,7 +502,7 @@ function createDevHttpServer({
         port: Number(gamePort),
         serverPort: Number(gamePort),
         joinScriptUrl,
-        authenticationUrl: `${baseUrl}/Login/Negotiate.ashx`,
+        authenticationUrl: `${baseUrl}/v1/authentication-ticket/redeem`,
         authenticationTicket: String(ticket),
         clientTicket: String(ticket),
         message: null,

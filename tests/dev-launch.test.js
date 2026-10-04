@@ -205,6 +205,11 @@ console.log('ok: DEV-PLAY resolves the selected map/place, prepares local-test s
     assert.equal(payload.userId, 42);
     assert.equal(payload.port, 53644, 'the client is directed to the local server port');
     assert.equal(payload.jobId, 'test-job');
+    assert.equal(
+      payload.authenticationUrl,
+      'https://example.test/v1/authentication-ticket/redeem',
+      'the join response must advertise the endpoint that redeems the player ticket and sets its cookie',
+    );
     assert.equal(payload.game.title, 'A Real Test Map');
     assert.equal(payload.game.creatorName, 'LuckyBlox Test Owner');
     assert.equal(payload.game.thumbnailUrl, 'https://example.test/art/test-map.png');
