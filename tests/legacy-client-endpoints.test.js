@@ -11,14 +11,22 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 const PORT = 3991;
 const PLACE_ID = 987654321;
 
-function request(pathName, method = 'GET') {
+function request(pathName, method = 'GET', body, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
+    const headers = { host: `127.0.0.1:${PORT}`, ...extraHeaders };
+    let requestBody;
+    if (body !== undefined) {
+      requestBody = JSON.stringify(body);
+      headers['content-type'] = 'application/json';
+      headers['content-length'] = Buffer.byteLength(requestBody);
+      headers.rbxauthenticationnegotiation = '1';
+    }
     const req = http.request({
       hostname: '127.0.0.1',
       port: PORT,
       path: pathName,
       method,
-      headers: { host: `127.0.0.1:${PORT}` },
+      headers,
     }, (res) => {
       const chunks = [];
       res.on('data', (chunk) => chunks.push(chunk));
@@ -29,7 +37,7 @@ function request(pathName, method = 'GET') {
       }));
     });
     req.on('error', reject);
-    req.end();
+    req.end(requestBody);
   });
 }
 
@@ -48,6 +56,17 @@ async function waitForReady(proc) {
 
 (async () => {
   const dataDir = makeTestDir('luckyblox-legacy-client');
+  const sessionId = 'legacy-client-test-session';
+  fs.writeFileSync(path.join(dataDir, 'sessions.json'), JSON.stringify({
+    [sessionId]: {
+      sessionId,
+      userId: '1',
+      username: 'LegacyClientTest',
+      csrfToken: 'legacy-client-test-csrf',
+      expiresAt: Date.now() + 60 * 60 * 1000,
+      createdAt: Date.now(),
+    },
+  }));
   fs.writeFileSync(path.join(dataDir, 'games.json'), JSON.stringify({
     [PLACE_ID]: {
       placeId: PLACE_ID,
@@ -82,14 +101,53 @@ async function waitForReady(proc) {
     assert.equal(productInfo.Creator.Id, 17);
     assert.equal(productInfo.Creator.Name, 'TestCreator');
 
-    const issuedTicketResponse = await request(`/v1/authentication-tickets?userId=17&placeId=${PLACE_ID}`);
-    assert.equal(issuedTicketResponse.status, 200);
+    const anonymousTicketResponse = await request(`/v1/authentication-tickets?userId=1&placeId=${PLACE_ID}`);
+    assert.equal(anonymousTicketResponse.status, 401, 'ticket issuance requires a signed-in LuckyBlox account');
+    const issuedTicketResponse = await request('/v1/authentication-tickets', 'POST', {
+      userId: 987,
+      placeId: PLACE_ID,
+    }, { cookie: `luckblox_session=${sessionId}` });
+    assert.equal(issuedTicketResponse.status, 201);
     const issuedTicket = JSON.parse(issuedTicketResponse.body.toString('utf8')).ticket;
+    const redeemedTicket = await request('/v1/authentication-ticket/redeem', 'POST', {
+      authenticationTicket: issuedTicket,
+    });
+    assert.equal(redeemedTicket.status, 200, 'the 2021 player ticket redemption endpoint accepts a real issued ticket');
+    assert.deepEqual(JSON.parse(redeemedTicket.body.toString('utf8')), {});
+    assert.ok(
+      (redeemedTicket.headers['set-cookie'] || []).some((cookie) => cookie.startsWith('.ROBLOSECURITY=')),
+      'redemption returns the player authentication cookie',
+    );
+    assert.ok(
+      (redeemedTicket.headers['set-cookie'] || []).some((cookie) => cookie.startsWith('luckblox_session=')),
+      'redemption maps the player to the LuckyBlox session',
+    );
+    const robloxCookie = (redeemedTicket.headers['set-cookie'] || [])
+      .find((cookie) => cookie.startsWith('.ROBLOSECURITY='));
+    const accountPage = await request('/account', 'GET', undefined, {
+      cookie: robloxCookie.split(';', 1)[0],
+    });
+    assert.equal(accountPage.status, 200, 'the player cookie resolves to its LuckyBlox account session');
+    assert.ok(
+      !(accountPage.headers['set-cookie'] || []).some((cookie) => cookie.startsWith('luckblox_session=')),
+      'a valid player cookie is not overwritten by an anonymous session cookie',
+    );
+    const invalidRedeem = await request('/v1/authentication-ticket/redeem', 'POST', {
+      authenticationTicket: 'invalid-ticket',
+    });
+    assert.equal(invalidRedeem.status, 401, 'unknown launch tickets cannot be redeemed');
+    const legacyJoinTicketResponse = await request(`/game/placelauncher.ashx?placeId=${PLACE_ID}&userId=1`);
+    assert.equal(legacyJoinTicketResponse.status, 200);
+    const legacyJoinTicket = JSON.parse(legacyJoinTicketResponse.body.toString('utf8')).authenticationTicket;
+    const anonymousRedeem = await request('/v1/authentication-ticket/redeem', 'POST', {
+      authenticationTicket: legacyJoinTicket,
+    });
+    assert.equal(anonymousRedeem.status, 401, 'tickets from anonymous legacy requests cannot create account sessions');
     const joinFromProtocol = await request(`/game/join?placeId=${PLACE_ID}&ticket=${encodeURIComponent(issuedTicket)}`);
     assert.equal(joinFromProtocol.status, 200);
     assert.equal(
       JSON.parse(joinFromProtocol.body.toString('utf8')).userId,
-      17,
+      1,
       'protocol joins without userId must resolve the user from the signed launch ticket',
     );
 

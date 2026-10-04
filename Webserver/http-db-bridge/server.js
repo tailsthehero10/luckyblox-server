@@ -636,6 +636,14 @@ function parseCookieHeader(cookieHeader = '') {
   return cookieMap;
 }
 
+function activeSessionIdFromCookies(cookieMap) {
+  return [cookieMap.luckblox_session, cookieMap['.ROBLOSECURITY']]
+    .find((sessionId) => {
+      const session = sessionId && activeSessions.get(sessionId);
+      return session && Number(session.expiresAt) > Date.now();
+    }) || null;
+}
+
 function createSessionForUser(userId, req) {
   const user = getUser(userId);
   const sessionId = security.generateSessionId();
@@ -702,7 +710,9 @@ function destroySession(sessionId) {
 
 function resolveSessionUser(req) {
   const cookieMap = parseCookieHeader(req.headers.cookie || '');
-  const sessionId = cookieMap.luckblox_session;
+  const sessionId = activeSessionIdFromCookies(cookieMap)
+    || cookieMap.luckblox_session
+    || cookieMap['.ROBLOSECURITY'];
   if (!sessionId) {
     return null;
   }
@@ -873,7 +883,7 @@ app.use((req, res, next) => {
   // rejected with 403 csrf-token-invalid - which is what happened: /signin handed
   // out a token but set no cookie, so every first-time sign-in failed.
   const cookieMap = parseCookieHeader(req.headers.cookie || '');
-  let sessionId = cookieMap.luckblox_session;
+  let sessionId = activeSessionIdFromCookies(cookieMap) || cookieMap.luckblox_session;
   const session = sessionId ? activeSessions.get(sessionId) : null;
 
   if (!session) {
@@ -3225,6 +3235,8 @@ function createAuthTicket(userId, placeId, serverContext = {}) {
     placeId: Number(placeId),
     port: Number(serverContext.port || gamePort),
     serverJobId: String(serverContext.serverJobId || 'local-job'),
+    // Redemption creates a session, so only authenticated issue paths opt in.
+    redeemable: serverContext.redeemable === true,
     issuedAt,
     expiresAt,
     createdAt: new Date(issuedAt).toISOString(),
@@ -5849,6 +5861,7 @@ app.get('/v1/studio/authenticate', (req, res) => {
   const ticket = createAuthTicket(user.userId, placeId, {
     port: gamePort,
     serverJobId: `studio-${crypto.randomUUID()}`,
+    redeemable: true,
   });
 
   audit('studio_authenticated', {
@@ -6119,7 +6132,11 @@ app.post('/api/login', (req, res) => {
 
   const userId = Number(match.userId || match.id || 1);
   const user = serializeUser(userId);
-  const ticket = createAuthTicket(userId, 1818, { port: gamePort, serverJobId: `session-${Date.now()}` });
+  const ticket = createAuthTicket(userId, 1818, {
+    port: gamePort,
+    serverJobId: `session-${Date.now()}`,
+    redeemable: true,
+  });
   const sessionId = applySessionCookie(res, userId);
 
   // Remember the account for the switcher, on THIS browser only.
@@ -6287,7 +6304,10 @@ app.get('/v1/games/:placeId/servers/Public', (req, res) => {
  */
 app.get('/v1/join-script', (req, res) => {
   const sessionUser = req.sessionUser || resolveSessionUser(req);
-  const userId = Number(req.query.userId || req.query.userid || (sessionUser ? sessionUser.userId : 1)) || 1;
+  if (!sessionUser) {
+    return res.status(401).json({ ok: false, error: 'sign-in-required' });
+  }
+  const userId = Number(sessionUser.userId || sessionUser.id);
   const placeId = Number(req.query.placeId || req.query.placeid || 1818);
 
   try {
@@ -6297,6 +6317,7 @@ app.get('/v1/join-script', (req, res) => {
     const ticket = createAuthTicket(userId, placeId, {
       port: job.port,
       serverJobId: job.jobId,
+      redeemable: true,
     });
 
     const joinScriptUrl = `${publicOrigin}/game/Join.ashx?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket.ticket)}&serverPort=${job.port}&jobId=${encodeURIComponent(job.jobId)}`;
@@ -6678,7 +6699,11 @@ app.get('/v1/CharacterFetch.ashx', (req, res) => {
 });
 
 app.post('/v1/authentication-tickets', (req, res) => {
-  const userId = req.body.userId || req.body.userid || req.query.userId || 1;
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  if (!sessionUser) {
+    return res.status(401).json({ ok: false, error: 'sign-in-required' });
+  }
+  const userId = Number(sessionUser.userId || sessionUser.id);
   const placeId = req.body.placeId || req.body.placeid || req.query.placeId || 1818;
 
   let allocation = null;
@@ -6692,6 +6717,7 @@ app.post('/v1/authentication-tickets', (req, res) => {
   const ticket = createAuthTicket(userId, placeId, {
     port: allocation.port,
     serverJobId: allocation.serverJobId,
+    redeemable: true,
   });
 
   const clientExe = resolveRobloxPlayerBinary();
@@ -6717,9 +6743,13 @@ app.post('/v1/authentication-tickets/', (req, res) => {
 });
 
 app.get('/v1/authentication-tickets', (req, res) => {
-  const userId = req.query.userId || req.query.userid || 1;
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  if (!sessionUser) {
+    return res.status(401).json({ ok: false, error: 'sign-in-required' });
+  }
+  const userId = Number(sessionUser.userId || sessionUser.id);
   const placeId = req.query.placeId || req.query.placeid || 1818;
-  const ticket = createAuthTicket(userId, placeId);
+  const ticket = createAuthTicket(userId, placeId, { redeemable: true });
 
   res.json({
     ok: true,
@@ -6733,9 +6763,13 @@ app.get('/v1/authentication-tickets', (req, res) => {
 });
 
 app.get('/v1/authentication-tickets/', (req, res) => {
-  const userId = req.query.userId || req.query.userid || 1;
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  if (!sessionUser) {
+    return res.status(401).json({ ok: false, error: 'sign-in-required' });
+  }
+  const userId = Number(sessionUser.userId || sessionUser.id);
   const placeId = req.query.placeId || req.query.placeid || 1818;
-  const ticket = createAuthTicket(userId, placeId);
+  const ticket = createAuthTicket(userId, placeId, { redeemable: true });
 
   res.json({
     ok: true,
@@ -6746,6 +6780,34 @@ app.get('/v1/authentication-tickets/', (req, res) => {
     expiresAt: new Date(ticket.expiresAt).toISOString(),
     launchURI: ticket.launchURI,
   });
+});
+
+// The 2021 Player redeems -t here before it follows -j to the selected place.
+app.post('/v1/authentication-ticket/redeem', (req, res) => {
+  const presentedTicket = String(
+    (req.body && (req.body.authenticationTicket || req.body.ticket)) || '',
+  );
+  const ticket = getTicketStatus(presentedTicket);
+  if (!ticket || ticket.redeemable !== true || Number(ticket.expiresAt) <= Date.now()) {
+    return res.status(401).json({ errors: [{ code: 0, message: 'Invalid authentication ticket.' }] });
+  }
+
+  const user = getUser(ticket.userId);
+  if (!user || !Number(user.userId || user.id)) {
+    return res.status(401).json({ errors: [{ code: 0, message: 'Invalid authentication ticket.' }] });
+  }
+
+  const session = createSessionForUser(user.userId || user.id, req);
+  const cookieOptions = {
+    httpOnly: true,
+    path: '/',
+    sameSite: 'lax',
+    secure: Boolean(req.secure),
+    maxAge: 1000 * 60 * 60 * 12,
+  };
+  res.cookie('.ROBLOSECURITY', session.sessionId, cookieOptions);
+  res.cookie('luckblox_session', session.sessionId, cookieOptions);
+  return res.json({});
 });
 
 app.get('/api/tickets/:ticket', (req, res) => {
@@ -7028,7 +7090,11 @@ app.post('/api/client/launch', (req, res) => {
   const userId = Number(sessionUser.userId || sessionUser.id) || 1;
   const placeId = Number(req.body.placeId || req.query.placeId || 1818);
   const job = createNamedJoinJob(userId, placeId);
-  const ticket = createAuthTicket(userId, placeId, { port: job.port, serverJobId: job.jobId });
+  const ticket = createAuthTicket(userId, placeId, {
+    port: job.port,
+    serverJobId: job.jobId,
+    redeemable: true,
+  });
   const result = launchLocalRobloxClient({
     userId,
     placeId,
@@ -7081,6 +7147,7 @@ app.post('/api/launch-game', (req, res) => {
     const ticket = createAuthTicket(userId, placeId, {
       port: job.port,
       serverJobId: job.jobId,
+      redeemable: true,
     });
 
     const playUrl = `/play?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket.ticket)}&serverPort=${job.port}&jobId=${encodeURIComponent(job.jobId)}`;
@@ -8317,9 +8384,13 @@ app.get('/api/badges', (req, res) => {
 });
 
 app.get('/api/v1/authentication-tickets', (req, res) => {
-  const userId = Number(req.query.userId || req.query.userid || req.headers['x-user-id'] || 1);
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  if (!sessionUser) {
+    return res.status(401).json({ ok: false, error: 'sign-in-required' });
+  }
+  const userId = Number(sessionUser.userId || sessionUser.id);
   const placeId = Number(req.query.placeId || req.query.placeid || 1818);
-  const ticket = createAuthTicket(userId, placeId);
+  const ticket = createAuthTicket(userId, placeId, { redeemable: true });
   res.json({
     ok: true, userId: String(userId), placeId, ticket: ticket.ticket,
     authTicket: ticket.authTicket, expiresAt: new Date(ticket.expiresAt).toISOString(),
@@ -8327,9 +8398,13 @@ app.get('/api/v1/authentication-tickets', (req, res) => {
 });
 
 app.post('/api/v1/authentication-tickets', (req, res) => {
-  const userId = Number(req.body?.userId || req.query.userId || 1);
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  if (!sessionUser) {
+    return res.status(401).json({ ok: false, error: 'sign-in-required' });
+  }
+  const userId = Number(sessionUser.userId || sessionUser.id);
   const placeId = Number(req.body?.placeId || req.query.placeId || 1818);
-  const ticket = createAuthTicket(userId, placeId);
+  const ticket = createAuthTicket(userId, placeId, { redeemable: true });
   res.status(201).json({
     ok: true, userId: String(userId), placeId, ticket: ticket.ticket,
     authTicket: ticket.authTicket, expiresAt: new Date(ticket.expiresAt).toISOString(),

@@ -251,7 +251,9 @@ function log(step, message) {
   console.log(`[dev-launch] ${step.padEnd(12)} ${message}`);
 }
 
-function createDevHttpServer({ placeId, mapPath, userId, ticket, jobId, gamePort, baseUrl }) {
+function createDevHttpServer({
+  placeId, mapPath, userId, ticket, jobId, gamePort, baseUrl,
+}) {
   const server = http.createServer((req, res) => {
     const requestUrl = new URL(req.url, 'http://127.0.0.1');
     if (requestUrl.pathname === '/asset/' || requestUrl.pathname === '/asset') {
@@ -272,6 +274,16 @@ function createDevHttpServer({ placeId, mapPath, userId, ticket, jobId, gamePort
     }
 
     if (requestUrl.pathname === '/game/join' || requestUrl.pathname === '/game/Join.ashx') {
+      const requestedPlaceId = Number(requestUrl.searchParams.get('placeId') || requestUrl.searchParams.get('placeid'));
+      const requestedUserId = Number(requestUrl.searchParams.get('userId') || requestUrl.searchParams.get('userid'));
+      const requestedTicket = requestUrl.searchParams.get('ticket');
+      if (requestedPlaceId !== Number(placeId)
+        || requestedUserId !== Number(userId)
+        || requestedTicket !== String(ticket)) {
+        res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify({ ok: false, error: 'local-launch-target-mismatch' }));
+        return;
+      }
       const joinScriptUrl = `http://127.0.0.1:${server.address().port}/game/join?placeId=${placeId}`
         + `&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${gamePort}&jobId=${encodeURIComponent(jobId)}`;
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -608,15 +620,30 @@ function launchClient(clientDir, { authUrl, ticket, joinUrl }) {
   }
 
   const args = ['-a', String(authUrl), '-t', String(ticket), '-j', String(joinUrl)];
-
-  const child = spawn(exe, args, {
-    cwd: clientDir,
-    detached: true,
-    stdio: 'ignore',
-    windowsHide: false,
+  return new Promise((resolve, reject) => {
+    const child = spawn(exe, args, {
+      cwd: clientDir,
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false,
+    });
+    let didSpawn = false;
+    child.once('error', (error) => {
+      if (!didSpawn) {
+        reject(new Error(`could not start the player client: ${error.message}`));
+      } else {
+        log('client!', `process error (pid ${child.pid}): ${error.message}`);
+      }
+    });
+    child.once('spawn', () => {
+      didSpawn = true;
+      child.once('exit', (code, signal) => {
+        log('client', `process exited (pid ${child.pid}, code=${code}, signal=${signal || 'none'})`);
+      });
+      child.unref();
+      resolve({ exe, args, pid: child.pid });
+    });
   });
-  child.unref();
-  return { exe, args, pid: child.pid };
 }
 
 /**
@@ -696,6 +723,8 @@ async function main() {
   // The official join route on the LIVE site returns the cloud job's port. Keep
   // join and map delivery local so the client cannot be sent back to Render.
   const userId = launch.userId || 1;
+  // Keep auth on the ticket issuer's origin so its redemption cookie is scoped
+  // to the same site APIs; only the join and map endpoints use loopback.
   const authUrl = `${args.url}/v1/authentication-tickets?userId=${userId}&placeId=${launch.placeId}`;
   const runId = randomUUID();
 
@@ -705,7 +734,7 @@ async function main() {
     log('port', `would start local game server on 127.0.0.1:${localPort}`);
     log('dry-run', `would start ${serverBinary} with shared local-test settings for place ${args.place}`);
     log('dry-run', `would launch an isolated ${path.join(clientDir, 'RobloxPlayerBeta.exe')} copy`);
-    log('dry-run', `auth: ${authUrl}`);
+    log('dry-run', `auth: local loopback endpoint for place ${launch.placeId}, user ${userId}, port ${localPort}`);
     log('dry-run', `join/map endpoints: local loopback only`);
     return;
   }
@@ -758,8 +787,8 @@ async function main() {
 
     // Launch in the isolated folder: the checked-in client AppSettings remains
     // untouched while this copy points all site APIs at the LIVE deployment.
-    const info = launchClient(client.runDir, { authUrl, ticket: launch.ticket, joinUrl });
-    log('client', `launched ${path.basename(info.exe)} (pid ${info.pid})`);
+    const info = await launchClient(client.runDir, { authUrl, ticket: launch.ticket, joinUrl });
+    log('client', `launched ${path.basename(info.exe)} (pid ${info.pid}) for place ${launch.placeId}, job ${launch.jobId}`);
 
     if (!args.keepAlive) {
       setTimeout(() => {

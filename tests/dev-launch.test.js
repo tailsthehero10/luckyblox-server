@@ -131,12 +131,18 @@ console.log('ok: DEV-PLAY resolves the selected map/place, prepares local-test s
     assert.equal(await asset.text(), 'actual map fixture');
     const missing = await fetch(`${local.baseUrl}/asset/?id=1818`);
     assert.equal(missing.status, 404, 'the local asset endpoint must not return a different map');
-    const join = await fetch(`${local.baseUrl}/game/join?placeId=27013`);
+    const join = await fetch(
+      `${local.baseUrl}/game/join?placeId=27013&userId=42&ticket=test-ticket`,
+    );
     const payload = await join.json();
     assert.equal(payload.placeId, 27013);
     assert.equal(payload.userId, 42);
     assert.equal(payload.port, 53644, 'the client is directed to the local server port');
     assert.equal(payload.jobId, 'test-job');
+    const wrongJoinPlace = await fetch(
+      `${local.baseUrl}/game/join?placeId=1811&userId=42&ticket=test-ticket`,
+    );
+    assert.equal(wrongJoinPlace.status, 404, 'join must not silently return the selected map for another place');
   } finally {
     await local.close();
     fs.rmSync(mapPath, { force: true });
