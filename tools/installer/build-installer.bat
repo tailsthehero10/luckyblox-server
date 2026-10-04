@@ -65,6 +65,7 @@ REM --- Compile --------------------------------------------------------------
 REM Microsoft.CSharp is deliberately NOT referenced: the source avoids the
 REM `dynamic` keyword (see CreateShortcut) precisely so this command is enough.
 "%CSC%" /nologo /target:winexe /platform:anycpu ^
+  /win32icon:"..\..\Webserver\www\site-icon\luckyblox.ico" ^
   /out:LuckybloxInstaller.exe ^
   /r:System.Windows.Forms.dll ^
   /r:System.Drawing.dll ^

@@ -10,6 +10,7 @@ const path = require('path');
 const fs = require('fs');
 
 const { makeTestDir } = require('./test-paths');
+const { gameServerHost } = require('../server/runtimeConfig');
 
 // Isolate storage so the test never touches real data. The scratch dir lives on
 // the RELEASE drive (E:), never on C: - see tests/test-paths.js.
@@ -35,6 +36,7 @@ console.log('orchestrator job pipeline');
 test('createJoinJob returns a UUID-shaped job id', () => {
   const job = orch.createJoinJob('1', 1818);
   assert.ok(job.ok, 'job ok');
+  assert.strictEqual(job.serverHost, gameServerHost, 'job returns the advertised host, not the wildcard listen address');
   assert.match(job.jobId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 });
 

@@ -17,6 +17,7 @@
  *   LUCKYBLOX_LEGACY_PORT- internal port of the outer compatibility/proxy server
  *   PUBLIC_HOST / RENDER_EXTERNAL_HOSTNAME - the public hostname clients use
  *   PUBLIC_URL / RENDER_EXTERNAL_URL       - the full public base URL
+ *   LUCKYBLOX_GAME_HOST - address advertised to players for game-server TCP
  *   LUCKYBLOX_GAME_PORT  - base port for spawned game servers
  *   PHP_BIN / LUCKYBLOX_PHP - php executable used for raw PHP endpoints
  */
@@ -118,6 +119,11 @@ const publicBaseUrl = stripTrailingSlash(
   `${publicProtocol}://${publicHostname}`,
 );
 
+const isCloud = Boolean(process.env.PORT || process.env.RENDER || process.env.RENDER_EXTERNAL_HOSTNAME);
+const gameListenHost = bindHost;
+const gameServerHost = process.env.LUCKYBLOX_GAME_HOST
+  || (isCloud ? publicHostname : '127.0.0.1');
+
 const gamePort = toPort(
   process.env.LUCKYBLOX_GAME_PORT || process.env.GAME_PORT,
   toPort(readHostFile('HostPort.txt', ''), 53640),
@@ -136,9 +142,10 @@ module.exports = {
   publicProtocol,
   publicBaseUrl,
   gamePort,
-  gameServerHost: process.env.LUCKYBLOX_GAME_HOST || bindHost,
+  gameListenHost,
+  gameServerHost,
   phpBin: process.env.PHP_BIN || process.env.LUCKYBLOX_PHP || 'php',
-  isCloud: Boolean(process.env.PORT || process.env.RENDER || process.env.RENDER_EXTERNAL_HOSTNAME),
+  isCloud,
   toPort,
   stripTrailingSlash,
   readHostFile,

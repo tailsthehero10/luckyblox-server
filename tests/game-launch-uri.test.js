@@ -41,6 +41,7 @@ assert.match(gameAbout, /data\.launchURI[\s\S]{0,500}Open LuckyBlox/);
 assert.doesNotMatch(gameAbout, /window\.location\.href\s*=\s*data\.playUrl/);
 
 const installer = fs.readFileSync(path.join(root, 'tools', 'installer', 'LuckybloxInstaller.cs'), 'utf8');
+const installerBuild = fs.readFileSync(path.join(root, 'tools', 'installer', 'build-installer.bat'), 'utf8');
 assert.match(installer, /Software\\Classes\\luckyblox-player/);
 assert.match(installer, /command\.SetValue\("",.*\/Launch/);
 assert.match(installer, /LaunchClientFromProtocolUri/);
@@ -50,5 +51,8 @@ assert.ok(installer.includes('+ " -j " + QuoteArgument(joinUrl)'));
 assert.doesNotMatch(installer, /command\.SetValue\("",\s*"\"" \+ playerPath/);
 assert.match(installer, /RegisterPlayerProtocol\(\s*Path\.Combine\(installedVersionDir/);
 assert.match(installer, /TryGetValue\("baseUrl", out requestedBaseUrl\)/);
+assert.match(installerBuild, /\/win32icon:"\.\.\\\.\.\\Webserver\\www\\site-icon\\luckyblox\.ico"/);
+assert.match(installer, /Icon = System\.Drawing\.Icon\.ExtractAssociatedIcon\(Assembly\.GetExecutingAssembly\(\)\.Location\)/);
+assert.match(installer, /icon\.SetValue\("", "\\\"" \+ handlerPath \+ "\\\",0"\)/);
 
 console.log('Website join handoff keeps the game page and sends launch tickets to the LuckyBlox player protocol.');

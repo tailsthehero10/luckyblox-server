@@ -1035,7 +1035,7 @@ namespace LuckyBlox.Installer
             {
                 if (icon == null)
                     throw new InvalidOperationException("Could not register the LuckyBlox player protocol icon.");
-                icon.SetValue("", "\"" + playerPath + "\",0");
+                icon.SetValue("", "\"" + handlerPath + "\",0");
             }
 
             using (var command = Registry.CurrentUser.CreateSubKey(protocolKey + @"\shell\open\command"))
@@ -1145,6 +1145,7 @@ namespace LuckyBlox.Installer
             _baseUrl = baseUrl;
 
             Text = "LuckyBlox Installer";
+            Icon = System.Drawing.Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location);
             ClientSize = new Size(680, 500);
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedDialog;
