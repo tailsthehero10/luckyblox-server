@@ -141,7 +141,7 @@ function cookieFrom(response) {
     assert.equal((await get(port, '/api/avatar/rig/R7')).status, 404);
     const publicProfile = await get(port, '/users/1/profile', viewerSession);
     assert.equal(publicProfile.status, 200);
-    assert.match(publicProfile.body, /class="theme-dark"/);
+    assert.match(publicProfile.body, /class="theme-dark dark-theme"/);
     assert.match(publicProfile.body, /LuckyBlox Owner/);
     assert.match(publicProfile.body, /class="lb-account-name">ViewerAccount<\/span>/);
     assert.match(publicProfile.body, /data-avatar-viewer/);
@@ -166,7 +166,7 @@ function cookieFrom(response) {
     const viewerAccount = await get(port, '/account?userId=1', viewerSession);
     assert.equal(viewerAccount.status, 200);
     assert.match(viewerAccount.body, /<title>ViewerAccount Account<\/title>/);
-    assert.match(viewerAccount.body, /<html lang="en" class="theme-dark">/);
+    assert.match(viewerAccount.body, /<html lang="en" class="theme-dark dark-theme">/);
     assert.doesNotMatch(viewerAccount.body, /LuckyBlox Owner Account/);
     const ownerAccount = await get(port, '/account?userId=2', ownerSession);
     assert.equal(ownerAccount.status, 200);

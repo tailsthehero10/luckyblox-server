@@ -62,7 +62,11 @@ var hDark = (typeof themeOn !== 'undefined') ? !!themeOn : false;
       var root = document.documentElement;
       var initialDark = header.classList.contains('dark-theme');
       root.classList.toggle('theme-dark', initialDark);
-      if (document.body) document.body.classList.toggle('theme-dark', initialDark);
+      root.classList.toggle('dark-theme', initialDark);
+      if (document.body) {
+        document.body.classList.toggle('theme-dark', initialDark);
+        document.body.classList.toggle('dark-theme', initialDark);
+      }
       function sync() {
         var dark = root.classList.contains('dark-theme')
           || root.classList.contains('theme-dark')
@@ -70,6 +74,12 @@ var hDark = (typeof themeOn !== 'undefined') ? !!themeOn : false;
             || document.body.classList.contains('theme-dark')));
         header.classList.toggle('dark-theme', dark);
         header.classList.toggle('light-theme', !dark);
+        root.classList.toggle('theme-dark', dark);
+        root.classList.toggle('dark-theme', dark);
+        if (document.body) {
+          document.body.classList.toggle('theme-dark', dark);
+          document.body.classList.toggle('dark-theme', dark);
+        }
       }
       sync();
       // The toggle writes the class onto <html>/<body>; observe those directly so

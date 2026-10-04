@@ -167,6 +167,23 @@ test('shared header allows the selected light or dark theme to control its backg
   assert.match(themeCss, /\.lb-header\.dark-theme,[\s\S]*?\{\s*background-color:\s*var\(--rbx-header-bg-dark\)/);
 });
 
+test('dark theme state is consistent across server-rendered pages and live settings changes', () => {
+  const server = fs.readFileSync(
+    path.join(releaseRoot, 'Webserver', 'http-db-bridge', 'server.js'),
+    'utf8',
+  );
+  assert.match(server, /themeClass\s*=\s*dark\s*\?\s*'theme-dark dark-theme'/);
+
+  const header = fs.readFileSync(path.join(viewsDir, 'partials', 'header.ejs'), 'utf8');
+  assert.match(header, /root\.classList\.toggle\('theme-dark',\s*dark\)/);
+  assert.match(header, /root\.classList\.toggle\('dark-theme',\s*dark\)/);
+  assert.match(header, /document\.body\.classList\.toggle\('dark-theme',\s*dark\)/);
+
+  const settings = fs.readFileSync(path.join(viewsDir, 'settings.ejs'), 'utf8');
+  assert.match(settings, /root\.classList\.toggle\('dark-theme',\s*theme === 'dark'\)/);
+  assert.match(settings, /document\.body\.classList\.toggle\('dark-theme',\s*theme === 'dark'\)/);
+});
+
 test('shared page styling keeps the classic neutral canvas and flat surfaces', () => {
   const themeCss = fs.readFileSync(path.join(cssDir, 'refresh-2021.css'), 'utf8');
   assert.match(themeCss, /--rf-page:\s*#f2f4f5\s*;/);
@@ -174,6 +191,16 @@ test('shared page styling keeps the classic neutral canvas and flat surfaces', (
   assert.match(themeCss, /--rf-line:\s*#dbdee6\s*;/);
   assert.match(themeCss, /--rf-radius(?:-sm|-lg)?:\s*2px\s*;/);
   assert.match(themeCss, /--rf-shadow-[123]:\s*none\s*;/);
+});
+
+test('dark theme styles Discover, shop, and avatar controls left white by page sheets', () => {
+  const baseCss = fs.readFileSync(path.join(cssDir, 'roblox.css'), 'utf8');
+  assert.match(baseCss, /html\.theme-dark body :where\([\s\S]*?\.games-list-container/);
+  assert.match(baseCss, /html\.theme-dark body :where\([\s\S]*?\.games-filter-chip/);
+  assert.match(baseCss, /html\.theme-dark body :where\([\s\S]*?\.ci-image/);
+  assert.match(baseCss, /html\.theme-dark body :where\([\s\S]*?\.av-card/);
+  assert.match(baseCss, /html\.theme-dark body :where\([\s\S]*?background-color:\s*var\(--lb-surface\)\s*!important/);
+  assert.match(baseCss, /html\.theme-dark body\s*\{\s*color-scheme:\s*dark/s);
 });
 
 test('Apache homepage uses local square game art and the shared 2021-style header', () => {

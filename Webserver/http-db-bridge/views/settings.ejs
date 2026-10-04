@@ -259,7 +259,9 @@
       var savedTheme = <%- JSON.stringify(user.theme || 'light') %>;
       function applyTheme(theme) {
         root.classList.toggle('theme-dark', theme === 'dark');
+        root.classList.toggle('dark-theme', theme === 'dark');
         document.body.classList.toggle('theme-dark', theme === 'dark');
+        document.body.classList.toggle('dark-theme', theme === 'dark');
       }
       applyTheme(savedTheme);
 

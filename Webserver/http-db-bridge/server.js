@@ -122,7 +122,7 @@ function themeLocals(req, res, next) {
 
   const dark = Boolean(themeUser && String(themeUser.theme || '').toLowerCase() === 'dark');
   res.locals.themeOn = dark;
-  res.locals.themeClass = dark ? 'theme-dark' : '';
+  res.locals.themeClass = dark ? 'theme-dark dark-theme' : '';
   next();
 }
 

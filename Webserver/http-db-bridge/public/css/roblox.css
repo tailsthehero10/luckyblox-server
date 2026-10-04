@@ -6963,3 +6963,125 @@ html.theme-dark .roblox-topbar img[src^="/icons/"] {
   filter: brightness(0) invert(1) !important;
   opacity: 0.92;
 }
+
+/* ---------------------------------------------------------------------------
+   Dark theme completion
+   ---------------------------------------------------------------------------
+   Page-specific sheets load after roblox.css and contain their own light-theme
+   defaults. These scoped overrides cover the common controls and surfaces those
+   sheets share, so dark mode does not leave white Discover rows, filters,
+   catalog controls, or avatar-editor cards behind.
+   --------------------------------------------------------------------------- */
+html.theme-dark body {
+  color-scheme: dark;
+}
+
+html.theme-dark body :where(
+  .games-list-container,
+  .games-list,
+  .games-list-row,
+  .games-filter-chip,
+  .filter select,
+  .sort-select,
+  .ci-image,
+  .inv-filter-btn,
+  .av-card,
+  .av-panel,
+  .av-scale-control,
+  .av-scale-input,
+  .ch-action,
+  .ch-action-ico,
+  .ch-stat-ico,
+  .ch-list-item,
+  .group-search-form,
+  .search-result-card
+) {
+  background-color: var(--lb-surface) !important;
+  border-color: var(--lb-line) !important;
+  color: var(--lb-ink) !important;
+}
+
+html.theme-dark body :where(
+  .games-list-container,
+  .games-list-top,
+  .games-list-header,
+  .games-list-header h2,
+  .game-item,
+  .game-name,
+  .game-thumbs-up-down,
+  .games-filter-count,
+  .filter,
+  .sort-label,
+  .count,
+  .lb-catalog-name,
+  .lb-catalog-price,
+  .ci-title,
+  .ci-byline,
+  .ci-price,
+  .ci-price-owned,
+  .inv-filter-count,
+  .av-section-title,
+  .av-scale-label,
+  .ch-action-title,
+  .ch-action-desc,
+  .ch-stat-label,
+  .ch-list-title,
+  .ch-list-meta
+) {
+  color: var(--lb-ink-2) !important;
+}
+
+html.theme-dark body :where(
+  .games-filter-chip:hover,
+  .inv-filter-btn:hover,
+  .inv-filter-btn.is-active,
+  .games-filter-chip.is-active
+) {
+  background-color: #29323d !important;
+  border-color: #455363 !important;
+  color: var(--lb-ink) !important;
+}
+
+html.theme-dark body :where(
+  .game-item-image,
+  .lb-game-card-thumb,
+  .lb-game-thumb,
+  .ci-image,
+  .lb-catalog-thumb,
+  .lb-wearing-thumb,
+  .lb-avatar-stage,
+  .lb-avatar-stage-showcase,
+  .av-preview,
+  .av-viewport
+) {
+  background-color: #20262f !important;
+  border-color: var(--lb-line) !important;
+}
+
+html.theme-dark body :where(
+  .lb-form-error,
+  .lb-form-hint,
+  .auth-error,
+  .auth-success,
+  .settings-status
+) {
+  color: var(--lb-ink) !important;
+}
+
+html.theme-dark body :where(
+  .lb-game-card-sub,
+  .lb-game-card-meta,
+  .lb-catalog-was,
+  .lb-muted,
+  .lb-faint,
+  .text-muted,
+  .muted
+) {
+  color: var(--lb-muted) !important;
+}
+
+html.theme-dark body table,
+html.theme-dark body th,
+html.theme-dark body td {
+  border-color: var(--lb-line) !important;
+}
