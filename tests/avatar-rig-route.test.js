@@ -233,7 +233,8 @@ function cookieFrom(response) {
     const publicProfile = await get(port, '/users/1/profile', viewerSession);
     assert.equal(publicProfile.status, 200);
     assert.match(publicProfile.body, /class="theme-dark dark-theme"/);
-    assert.match(publicProfile.body, /LuckyBlox Owner/);
+    assert.match(publicProfile.body, /class="lb-profile-name">\s*<span>tailsthehero10<\/span>/);
+    assert.doesNotMatch(publicProfile.body, /LocalPlayer/);
     assert.match(publicProfile.body, /class="lb-account-name">ViewerAccount<\/span>/);
     assert.match(publicProfile.body, /data-avatar-viewer/);
     assert.match(publicProfile.body, /data-avatar-mode="portrait"/,
@@ -255,7 +256,7 @@ function cookieFrom(response) {
 
     const ownerAvatar = await get(port, '/avatar?userId=2', ownerSession);
     assert.equal(ownerAvatar.status, 200);
-    assert.match(ownerAvatar.body, /LuckyBlox Owner/);
+    assert.match(ownerAvatar.body, /tailsthehero10/);
     assert.match(ownerAvatar.body, /<button class="roblox-asset-card selected"[^>]*data-select-asset="607702162"/);
     assert.match(ownerAvatar.body, /aria-pressed="true"[\s\S]*?Test Avatar Item[\s\S]*?Wearing/);
     assert.doesNotMatch(ownerAvatar.body, /<button class="roblox-secondary-button"[^>]*data-select-asset/);
@@ -285,6 +286,13 @@ function cookieFrom(response) {
     const faceTexture = await get(port, '/Content/textures/face.png');
     assert.equal(faceTexture.status, 200);
     assert.match(faceTexture.headers['content-type'], /^image\/png\b/i);
+
+    fs.writeFileSync(path.join(dataDir, 'users.json'), JSON.stringify({}));
+    const ownerFallbackProfile = await get(port, '/users/1/profile');
+    assert.equal(ownerFallbackProfile.status, 200);
+    assert.match(ownerFallbackProfile.body, /<title>tailsthehero10 - Profile \| LuckyBlox<\/title>/);
+    assert.match(ownerFallbackProfile.body, /class="lb-profile-name">\s*<span>tailsthehero10<\/span>/);
+    assert.doesNotMatch(ownerFallbackProfile.body, /LocalPlayer/);
     console.log('ok: avatar API exposes the supplied RBXM data without inventing mesh geometry');
   } finally {
     child.kill();

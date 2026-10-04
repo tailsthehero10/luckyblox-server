@@ -741,6 +741,11 @@ function resolveSessionUser(req) {
     return null;
   }
 
+  if (!getUsers()[String(userId)]) {
+    activeSessions.delete(sessionId);
+    return null;
+  }
+
   const user = getUser(userId);
   // Never let a session resolve to an account that does not exist.
   if (!user || !(user.userId || user.id)) return null;
@@ -2386,12 +2391,14 @@ function getAssets() {
 
 function getUser(userId = 1) {
   const users = getUsers();
-  const keyedUser = users[String(userId)] || users['1'];
+  const requestedUserId = String(userId);
+  const keyedUser = users[requestedUserId];
 
   if (!keyedUser) {
     return {
-      userId: String(userId),
-      username: 'LocalPlayer',
+      userId: requestedUserId,
+      username: requestedUserId === String(GAME_OWNER_ID) ? GAME_OWNER_USERNAME : 'LocalPlayer',
+      displayName: requestedUserId === String(GAME_OWNER_ID) ? GAME_OWNER_USERNAME : 'LocalPlayer',
       password: 'local',
       bio: 'Welcome to LuckyBlox.',
       joinDate: new Date().toISOString(),
@@ -4626,7 +4633,10 @@ app.get('/profile', async (req, res) => {
  * three paths (query, path segment, plural) and all three showed the same page.
  */
 async function renderProfilePage2021(req, res, userId) {
-  const user = getUser(userId);
+  const profileRecord = getUser(userId);
+  const user = String(profileRecord.userId || profileRecord.id) === String(GAME_OWNER_ID)
+    ? { ...profileRecord, username: GAME_OWNER_USERNAME, displayName: GAME_OWNER_USERNAME }
+    : profileRecord;
   const viewerUser = req.sessionUser || resolveSessionUser(req);
   const isOwnProfile = Boolean(viewerUser
     && String(viewerUser.userId || viewerUser.id) === String(user.userId || user.id));
