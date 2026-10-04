@@ -403,7 +403,7 @@ function normalizeGameMetadata(metadata, placeId, fallbackTitle) {
   };
   const creatorId = Number(source.creatorId || source.authorId || source.ownerId || source.developerId);
   const universeId = Number(source.universeId);
-  const creatorName = [source.creatorName, source.author, source.developer]
+  const creatorName = [source.creatorName, source.author]
     .map((value) => text(value, 120))
     .find(Boolean) || null;
 
@@ -425,7 +425,7 @@ function normalizeGameMetadata(metadata, placeId, fallbackTitle) {
 function resolveGameMetadata(metadata, placeId, fallbackTitle, games = readLocalGames()) {
   const localGame = games.find((game) => Number(game.placeId) === Number(placeId)) || {};
   const handoffMetadata = metadata && typeof metadata === 'object' ? metadata : {};
-  const creatorName = (source) => [source.creatorName, source.author, source.developer]
+  const creatorName = (source) => [source.creatorName, source.author]
     .map((value) => String(value || '').trim())
     .find(Boolean);
   const creatorId = (source) => [source.creatorId, source.authorId, source.ownerId, source.developerId]
@@ -435,10 +435,12 @@ function resolveGameMetadata(metadata, placeId, fallbackTitle, games = readLocal
   return normalizeGameMetadata({
     ...localGame,
     ...handoffMetadata,
-    creatorName: creatorName(handoffMetadata) || creatorName(localGame),
-    creatorId: creatorId(handoffMetadata) || creatorId(localGame),
-    creatorType: handoffMetadata.creatorType || handoffMetadata.authorType
-      || localGame.creatorType || localGame.authorType,
+    creatorName: creatorName(localGame) || creatorName(handoffMetadata)
+      || String(process.env.LUCKYBLOX_OWNER_USERNAME || 'tailsthehero10'),
+    creatorId: creatorId(localGame) || creatorId(handoffMetadata)
+      || Number(process.env.LUCKYBLOX_OWNER_ID || 1),
+    creatorType: localGame.creatorType || localGame.authorType
+      || handoffMetadata.creatorType || handoffMetadata.authorType || 'User',
   }, placeId, fallbackTitle);
 }
 

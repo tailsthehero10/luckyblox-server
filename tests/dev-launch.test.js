@@ -48,22 +48,27 @@ assert.ok(
 const localSelectedPlace = resolveDefaultPlace();
 assert.ok(localSelectedPlace, 'the selected MapPath should resolve to a local published place');
 const recoveredMetadata = resolveGameMetadata(
-  { title: '2008 - ROBLOX World Headquarters', creatorName: null },
+  { title: '2008 - ROBLOX World Headquarters', creatorName: 'LuckyBlox Studio', creatorId: 999 },
   1806,
   'selected map',
   [{
     placeId: 1806,
     title: '2008 - ROBLOX World Headquarters',
     developer: 'LuckyBlox Studio',
+    author: 'tailsthehero10',
     authorId: 1,
+    creatorName: 'tailsthehero10',
+    creatorId: 1,
+    creatorType: 'User',
   }],
 );
 assert.equal(
   recoveredMetadata.creatorName,
-  'LuckyBlox Studio',
-  'DEV-PLAY should recover a missing creator from the matching local games.json record',
+  'tailsthehero10',
+  'the games.json account owner should override the studio developer label in a handoff',
 );
-assert.equal(recoveredMetadata.creatorId, 1, 'the local game owner ID should fill a missing handoff ID');
+assert.equal(recoveredMetadata.creatorId, 1, 'the games.json owner ID should override a stale handoff ID');
+assert.equal(recoveredMetadata.creatorType, 'User');
 const savedPlaceForDefault = process.env.LUCKYBLOX_DEV_PLACE;
 delete process.env.LUCKYBLOX_DEV_PLACE;
 try {

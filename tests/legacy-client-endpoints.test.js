@@ -75,7 +75,13 @@ async function waitForReady(proc) {
       authorId: 17,
       author: 'TestCreator',
       creatorType: 'Group',
+      developer: 'Test Studio',
       icon: '/gameplaceholder/card.png',
+    },
+    [PLACE_ID + 1]: {
+      placeId: PLACE_ID + 1,
+      title: 'Developer Label Is Not Owner',
+      developer: 'LuckyBlox Studio',
     },
   }));
 
@@ -171,6 +177,13 @@ async function waitForReady(proc) {
     assert.equal(serializedGame.creatorName, 'TestCreator', 'the game API uses the creator saved in games.json');
     assert.equal(serializedGame.creatorId, 17, 'the game API uses the creator ID saved in games.json');
 
+    const ownerFallbackResponse = await request(`/api/v1/games/${PLACE_ID + 1}`);
+    assert.equal(ownerFallbackResponse.status, 200);
+    const ownerFallbackGame = JSON.parse(ownerFallbackResponse.body.toString('utf8')).game;
+    assert.equal(ownerFallbackGame.developer, 'LuckyBlox Studio', 'developer label remains separate');
+    assert.equal(ownerFallbackGame.creatorName, 'tailsthehero10', 'developer label must not become game owner');
+    assert.equal(ownerFallbackGame.creatorId, 1, 'games without explicit owner use the deployment owner ID');
+
     const legacySettings = await request('/home/Setting/QuietGet/ClientAppSettings?apiKey=test-key&client=CUSTOM-2021M');
     assert.equal(legacySettings.status, 200);
     assert.match(legacySettings.headers['content-type'], /^application\/json\b/);
@@ -228,10 +241,10 @@ async function waitForReady(proc) {
     assert.match(image.headers['content-type'], /^image\/png\b/);
     assert.deepEqual(image.body.subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
 
-    assert.equal((await request('/home/asset-thumbnail/json?assetId=987654322')).status, 404);
-    assert.equal((await request('/home/asset-thumbnail/image?assetId=987654322')).status, 404);
+    assert.equal((await request('/home/asset-thumbnail/json?assetId=987654323')).status, 404);
+    assert.equal((await request('/home/asset-thumbnail/image?assetId=987654323')).status, 404);
     assert.equal((await request('/home/asset-thumbnail/json?assetId=not-a-number')).status, 400);
-    assert.equal((await request('/home/marketplace/productinfo?placeId=987654322')).status, 404);
+    assert.equal((await request('/home/marketplace/productinfo?placeId=987654323')).status, 404);
   } finally {
     bridge.kill('SIGTERM');
     try {

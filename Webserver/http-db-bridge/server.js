@@ -2091,7 +2091,6 @@ function normalizeGameOwnership(games) {
     if (!game || typeof game !== 'object' || Array.isArray(game)) continue;
     const creator = gameCreatorMetadata(game);
     const ownerFields = {
-      developer: creator.creatorName,
       author: creator.creatorName,
       authorId: creator.creatorId,
       creatorName: creator.creatorName,
@@ -3456,7 +3455,7 @@ function gameClientMetadata(placeId, game = getGameEntry(placeId)) {
 
 function gameCreatorMetadata(game) {
   const source = game && typeof game === 'object' ? game : {};
-  const creatorName = [source.creatorName, source.author, source.developer]
+  const creatorName = [source.creatorName, source.author]
     .map((value) => String(value || '').trim())
     .find(Boolean) || GAME_OWNER_USERNAME;
   const creatorId = [source.creatorId, source.authorId, source.ownerId, source.developerId]
