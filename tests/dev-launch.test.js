@@ -8,6 +8,7 @@ const path = require('node:path');
 const {
   createDevHttpServer,
   createLocalServerConfig,
+  prepareServerRuntime,
   parseArgs,
   prepareDevClient,
   readSelectedClient,
@@ -129,6 +130,43 @@ try {
   assert.equal(generated.Settings.CreatorType, 'Group');
   assert.equal(generated.Settings.PlaceFetchUrl, 'http://127.0.0.1:40000/asset/?id=27013');
   assert.equal(generated.Settings.PreferredPort, 53644);
+
+  const rccSource = path.join(tempDir, 'rcc-source');
+  const rccRuntime = path.join(tempDir, 'rcc-runtime');
+  fs.mkdirSync(path.join(rccSource, 'content', 'avatar'), { recursive: true });
+  fs.mkdirSync(path.join(rccSource, 'ssl'), { recursive: true });
+  fs.writeFileSync(path.join(rccSource, 'content', 'avatar', 'fixture.txt'), 'fixture content');
+  fs.writeFileSync(path.join(rccSource, 'AppSettings.xml'),
+    '<Settings><BaseUrl>http://localhost/LuckBlox.site.tk/</BaseUrl><ContentFolder>content</ContentFolder></Settings>');
+  fs.writeFileSync(path.join(rccSource, '21ESettings.xml'),
+    '<Settings><BaseUrl>http://localhost/LuckBlox.site.tk/</BaseUrl></Settings>');
+  fs.writeFileSync(path.join(rccSource, 'DevSettingsFile.json'), '{"applicationSettings":{}}');
+  fs.writeFileSync(path.join(rccSource, 'CUSTOM-2021M.exe'), 'RCC binary fixture');
+  fs.writeFileSync(path.join(rccSource, 'ssl', 'certificate.pem'), 'certificate fixture');
+  const runtime = prepareServerRuntime(
+    rccSource,
+    rccRuntime,
+    path.join(rccSource, 'CUSTOM-2021M.exe'),
+    'CUSTOM-2021M',
+    'https://example.test',
+  );
+  const stagedAppSettings = fs.readFileSync(path.join(rccRuntime, 'AppSettings.xml'), 'utf8');
+  assert.match(stagedAppSettings, /https:\/\/example\.test\/LuckBlox\.site\.tk\/home\//);
+  assert.ok(stagedAppSettings.includes(path.join(rccSource, 'content')));
+  const stagedServerSettings = fs.readFileSync(path.join(rccRuntime, '21ESettings.xml'), 'utf8');
+  assert.match(stagedServerSettings, /https:\/\/example\.test\/LuckBlox\.site\.tk\/home\//);
+  assert.ok(stagedServerSettings.includes(path.join(rccSource, 'content')));
+  assert.doesNotMatch(stagedServerSettings, /http:\/\/localhost/);
+  assert.equal(runtime.settingsPath, path.join(rccRuntime, 'DevSettingsFile.json'));
+  assert.ok(fs.existsSync(runtime.binary), 'RCC must run from the isolated per-launch runtime');
+  assert.ok(fs.existsSync(path.join(rccRuntime, 'ssl', 'certificate.pem')));
+  assert.equal(fs.readFileSync(path.join(rccRuntime, 'Content', 'avatar', 'fixture.txt'), 'utf8'), 'fixture content');
+  assert.equal(fs.lstatSync(path.join(rccRuntime, 'Content')).isSymbolicLink(), false);
+  assert.match(
+    fs.readFileSync(path.join(rccSource, 'AppSettings.xml'), 'utf8'),
+    /http:\/\/localhost\/LuckBlox\.site\.tk\//,
+    'staging must not rewrite the shared RCC template',
+  );
 
   const isolatedClient = path.join(tempDir, 'client');
   fs.mkdirSync(path.join(isolatedClient, 'ssl'), { recursive: true });

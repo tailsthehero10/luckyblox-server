@@ -588,6 +588,106 @@ function xmlEscape(value) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
+function clientBaseUrl(clientName, baseUrl) {
+  const parsed = new URL(String(baseUrl));
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+    throw new Error('a valid LuckyBlox server URL is required for the local client runtime');
+  }
+  const suffix = /^(2021|CUSTOM-2021)/i.test(clientName)
+    ? '/LuckBlox.site.tk/home/'
+    : '/LuckBlox.site.tk/';
+  return `${parsed.origin}${suffix}`;
+}
+
+function writeAppSettings(templatePath, outputPath, clientName, baseUrl, contentDir) {
+  let xml = fs.readFileSync(templatePath, 'utf8').replace(/^\uFEFF/, '');
+  const baseUrlPattern = /<BaseUrl\b[^>]*>[\s\S]*?<\/BaseUrl>/i;
+  if (!baseUrlPattern.test(xml)) {
+    throw new Error(`the RCC settings template is missing its BaseUrl element: ${templatePath}`);
+  }
+  xml = xml.replace(baseUrlPattern, `<BaseUrl>${xmlEscape(clientBaseUrl(clientName, baseUrl))}</BaseUrl>`);
+
+  const contentFolderPattern = /<ContentFolder\b[^>]*>[\s\S]*?<\/ContentFolder>/i;
+  if (contentFolderPattern.test(xml)) {
+    xml = xml.replace(contentFolderPattern, `<ContentFolder>${xmlEscape(contentDir)}</ContentFolder>`);
+  } else if (/<\/Settings>/i.test(xml)) {
+    xml = xml.replace(/<\/Settings>/i, `  <ContentFolder>${xmlEscape(contentDir)}</ContentFolder>\r\n</Settings>`);
+  } else {
+    throw new Error(`the RCC settings template is missing its Settings element: ${templatePath}`);
+  }
+
+  fs.writeFileSync(outputPath, xml, 'utf8');
+  return outputPath;
+}
+
+function linkOrCopy(sourcePath, destinationPath) {
+  try {
+    fs.linkSync(sourcePath, destinationPath);
+  } catch (error) {
+    if (!['EXDEV', 'EPERM', 'EACCES', 'EMLINK'].includes(error.code)) throw error;
+    fs.copyFileSync(sourcePath, destinationPath);
+  }
+}
+
+function copyLinkedDirectory(sourceDir, destinationDir) {
+  fs.mkdirSync(destinationDir, { recursive: true });
+  for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+    const sourcePath = path.join(sourceDir, entry.name);
+    const destinationPath = path.join(destinationDir, entry.name);
+    if (entry.isDirectory()) copyLinkedDirectory(sourcePath, destinationPath);
+    else if (entry.isFile()) linkOrCopy(sourcePath, destinationPath);
+  }
+}
+
+function prepareServerRuntime(sourceDir, runtimeDir, serverBinary, clientName, baseUrl) {
+  fs.mkdirSync(runtimeDir, { recursive: true });
+  let hasAppSettings = false;
+  let hasServerSettings = false;
+
+  for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+    if (entry.name === 'Roblox' || entry.name === 'sounds' || /^ContentProvider_/i.test(entry.name)) continue;
+    const sourcePath = path.join(sourceDir, entry.name);
+    const destinationName = entry.name.toLowerCase() === 'content' ? 'Content' : entry.name;
+    const destinationPath = path.join(runtimeDir, destinationName);
+
+    if (entry.isDirectory()) {
+      if (entry.name.toLowerCase() === 'content') {
+        copyLinkedDirectory(sourcePath, destinationPath);
+      } else {
+        fs.symlinkSync(sourcePath, destinationPath, process.platform === 'win32' ? 'junction' : 'dir');
+      }
+    } else if (entry.isFile() && /settings\.xml$/i.test(entry.name)) {
+      writeAppSettings(
+        sourcePath,
+        destinationPath,
+        clientName,
+        baseUrl,
+        path.join(sourceDir, 'content'),
+      );
+      if (entry.name.toLowerCase() === 'appsettings.xml') hasAppSettings = true;
+      if (entry.name.toLowerCase() === '21esettings.xml') hasServerSettings = true;
+    } else if (entry.isFile() && entry.name.toLowerCase() === 'devsettingsfile.json') {
+      fs.copyFileSync(sourcePath, destinationPath);
+    } else if (entry.isFile()) {
+      linkOrCopy(sourcePath, destinationPath);
+    }
+  }
+
+  if (!hasAppSettings) {
+    throw new Error(`the RCC runtime is missing AppSettings.xml: ${sourceDir}`);
+  }
+  if (!hasServerSettings) {
+    throw new Error(`the RCC runtime is missing 21ESettings.xml: ${sourceDir}`);
+  }
+
+  const runtimeBinary = path.join(runtimeDir, path.basename(serverBinary));
+  if (!fs.existsSync(runtimeBinary)) linkOrCopy(serverBinary, runtimeBinary);
+  return {
+    binary: runtimeBinary,
+    settingsPath: path.join(runtimeDir, 'DevSettingsFile.json'),
+  };
+}
+
 function prepareDevClient(clientDir, clientName, baseUrl, runId) {
   const sourceExe = path.join(clientDir, 'RobloxPlayerBeta.exe');
   const runDir = path.join(scratchDir(), `dev-client-${runId}`);
@@ -612,14 +712,11 @@ function prepareDevClient(clientDir, clientName, baseUrl, runId) {
     }
   };
   copyRuntimeTree(clientDir, runDir);
-  const suffix = /^(2021|CUSTOM-2021)/i.test(clientName)
-    ? '/LuckBlox.site.tk/home/'
-    : '/LuckBlox.site.tk/';
   const appSettings = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<Settings>',
     `  <ContentFolder>${xmlEscape(path.join(RELEASE_ROOT, 'shared', 'content'))}</ContentFolder>`,
-    `  <BaseUrl>${xmlEscape(`${baseUrl}${suffix}`)}</BaseUrl>`,
+    `  <BaseUrl>${xmlEscape(clientBaseUrl(clientName, baseUrl))}</BaseUrl>`,
     '</Settings>',
     '',
   ].join('\r\n');
@@ -766,10 +863,21 @@ function startLocalGameServer({
   const scratch = path.join(scratchDir(), `dev-server-${runId}`);
   fs.mkdirSync(scratch, { recursive: true });
   const templatePath = path.join(SERVER_ROOT, 'gameserver.json');
-  const settingsPath = path.join(SERVER_ROOT, 'DevSettingsFile.json');
-  if (!fs.existsSync(settingsPath)) {
-    return Promise.reject(new Error(`the game-server settings file is missing: ${settingsPath}`));
+  const settingsTemplatePath = path.join(SERVER_ROOT, 'DevSettingsFile.json');
+  const appSettingsTemplatePath = path.join(SERVER_ROOT, 'AppSettings.xml');
+  if (!fs.existsSync(settingsTemplatePath)) {
+    return Promise.reject(new Error(`the game-server settings file is missing: ${settingsTemplatePath}`));
   }
+  if (!fs.existsSync(appSettingsTemplatePath)) {
+    return Promise.reject(new Error(`the RCC AppSettings.xml file is missing: ${appSettingsTemplatePath}`));
+  }
+  const runtime = prepareServerRuntime(
+    SERVER_ROOT,
+    path.join(scratch, 'runtime'),
+    serverBinary,
+    clientName,
+    baseUrl,
+  );
   const configPath = createLocalServerConfig(
     templatePath,
     path.join(scratch, 'gameserver.json'),
@@ -786,16 +894,17 @@ function startLocalGameServer({
   // Match the working shared/<client>.bat local-test setup. The RCCService
   // player binary does not load a place by itself without -localtest and the
   // matching settings file.
-  const child = spawn(serverBinary, [
+  const child = spawn(runtime.binary, [
     '-console', '-verbose',
     `-placeid:${placeId}`,
     '-localtest', configPath,
-    '-settingsfile', settingsPath,
+    '-settingsfile', runtime.settingsPath,
     '-port', String(port),
   ], {
-    cwd: path.dirname(serverBinary),
+    cwd: path.dirname(runtime.binary),
     env: {
       ...process.env,
+      PATH: [SERVER_ROOT, process.env.PATH || ''].join(path.delimiter),
       TEMP: scratch,
       TMP: scratch,
       TMPDIR: scratch,
@@ -811,6 +920,7 @@ function startLocalGameServer({
     const line = String(chunk).trim();
     if (line) log('game-server!', line.slice(0, 160));
   });
+  log('game-server', `RCC base URL ${clientBaseUrl(clientName, baseUrl)}`);
   log('game-server', `started ${path.basename(serverBinary)} (pid ${child.pid})`);
 
   return new Promise((resolve, reject) => {
@@ -831,9 +941,23 @@ function startLocalGameServer({
       });
       child.on('exit', (code) => log('game-server', `binary exited (code=${code})`));
       resolve({
-        close: () => {
+        close: () => new Promise((done) => {
+          if (child.exitCode !== null || child.signalCode !== null) {
+            done();
+            return;
+          }
+          const onClose = () => {
+            clearTimeout(timeout);
+            done();
+          };
+          const timeout = setTimeout(() => {
+            child.removeListener('exit', onClose);
+            done();
+          }, 5000);
+          timeout.unref();
+          child.once('exit', onClose);
           if (!child.killed) child.kill();
-        },
+        }),
         pid: child.pid,
       });
     };
@@ -1042,7 +1166,7 @@ async function main() {
   const cleanup = async () => {
     if (cleaning) return;
     cleaning = true;
-    if (gameServer) gameServer.close();
+    if (gameServer) await gameServer.close();
     if (devHttp) await devHttp.close().catch((error) => log('cleanup!', error.message));
     for (const dir of [clientRunDir, serverScratch]) {
       if (dir) {
@@ -1118,6 +1242,7 @@ if (require.main === module) {
 module.exports = {
   createDevHttpServer,
   createLocalServerConfig,
+  prepareServerRuntime,
   parseArgs,
   prepareDevClient,
   readSelectedClient,
