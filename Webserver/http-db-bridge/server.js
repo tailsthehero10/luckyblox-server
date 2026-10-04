@@ -1910,11 +1910,16 @@ function getWearingForUser(user) {
 function serializeGame(placeId) {
   const normalized = normalizePlaceId(placeId);
   const game = getGameEntry(normalized);
+  const owner = getUser(OWNER_USER_ID);
+  const ownerName = String((owner && owner.username) || OWNER_USERNAME);
   return {
     placeId: Number(game.placeId || normalized || 1818),
     title: game.title || 'LuckyBlox Arena',
     description: game.description || 'Local LuckyBlox demo game',
-    developer: game.developer || 'LuckyBlox Studio',
+    developer: ownerName,
+    creatorName: ownerName,
+    creatorId: Number(OWNER_USER_ID) || 1,
+    authorId: Number(OWNER_USER_ID) || 1,
     genre: game.genre || 'Adventure',
     icon: game.icon || DEFAULT_GAME_ICON,
     playerCount: Number(game.playerCount || 0),
@@ -3341,17 +3346,41 @@ function gameClientMetadata(placeId, game = getGameEntry(placeId)) {
     }
     return new URL(fallback, publicOrigin).href;
   };
-  const creatorId = Number(game.developerId || game.authorId || game.ownerId || game.creatorId);
+  const owner = getUser(OWNER_USER_ID);
+  const creatorId = Number(OWNER_USER_ID) || 1;
+  const creatorName = String((owner && owner.username) || OWNER_USERNAME);
+  const storedIcon = [
+    game.icon,
+    game.iconUrl,
+    game.thumbnail,
+    game.thumbnailUrl,
+    game.thumbnailSource,
+  ].find((value) => (
+    typeof value === 'string'
+    && value.trim()
+    && !/\/gameplaceholder\/(?:card|game-thumb)\.png(?:$|[?#])/i.test(value)
+  ));
+  const storedThumbnail = [
+    game.thumbnail,
+    game.thumbnailUrl,
+    game.thumbnailSource,
+    game.icon,
+    game.iconUrl,
+  ].find((value) => (
+    typeof value === 'string'
+    && value.trim()
+    && !/\/gameplaceholder\/(?:card|game-thumb)\.png(?:$|[?#])/i.test(value)
+  ));
 
   return {
     placeId: Number(placeId) || 0,
     universeId: Number(game.universeId || game.gameId || game.universeID) || Number(placeId) || 0,
-    title: String(game.title || 'LuckyBlox Arena'),
-    creatorName: String(game.developer || game.creatorName || 'LuckyBlox Studio'),
-    creatorId: Number.isSafeInteger(creatorId) && creatorId > 0 ? creatorId : null,
-    creatorType: ['User', 'Group'].includes(game.creatorType) ? game.creatorType : null,
-    thumbnailUrl: absoluteAssetUrl(game.thumbnail || game.icon, '/gameplaceholder/game-thumb.png'),
-    iconUrl: absoluteAssetUrl(game.icon, '/gameplaceholder/card.png'),
+    title: String(game.title || game.name || 'LuckyBlox Arena'),
+    creatorName,
+    creatorId,
+    creatorType: 'User',
+    thumbnailUrl: absoluteAssetUrl(storedThumbnail, '/gameplaceholder/game-thumb.png'),
+    iconUrl: absoluteAssetUrl(storedIcon, '/gameplaceholder/card.png'),
     description: String(game.description || ''),
     genre: String(game.genre || 'Adventure'),
   };
@@ -5762,11 +5791,13 @@ function renderGamePage2021(req, res, placeId) {
     // The thumbnail used to be the SQUARE card as well, which is why the big slot
     // on the game page showed a square icon inside a wide frame. When a game has
     // its own wide artwork it is used; otherwise the 16:9 placeholder stands in.
-    gameIcon: game.icon && /^\/|^https?:\/\//.test(game.icon) ? game.icon : '/gameplaceholder/card.png',
-    gameThumb: (game.thumbnail && /^\/|^https?:\/\//.test(game.thumbnail))
-      ? game.thumbnail
+    gameIcon: gameClientMetadata(placeId, game).iconUrl,
+    gameThumb: (game.thumbnail || game.thumbnailUrl || game.thumbnailSource)
+      && /^\/|^https?:\/\//.test(game.thumbnail || game.thumbnailUrl || game.thumbnailSource)
+      && !/\/gameplaceholder\/(?:card|game-thumb)\.png(?:$|[?#])/i.test(game.thumbnail || game.thumbnailUrl || game.thumbnailSource)
+      ? (game.thumbnail || game.thumbnailUrl || game.thumbnailSource)
       : '/gameplaceholder/game-thumb.png',
-    creatorName: game.developer || 'LuckyBlox Studio',
+    creatorName: gameClientMetadata(placeId, game).creatorName,
     playing,
     visits: Number(game.visits) || 0,
     likes,
@@ -6156,6 +6187,7 @@ app.get('/play', (req, res) => {
   const server = activeGameServers.find((s) => s.serverJobId === jobId) || activeGameServers.find((s) => Number(s.placeId) === placeId) || null;
 
   const game = getGameEntry(placeId);
+  const gameMetadata = gameClientMetadata(placeId, game);
 
   res.render('play', {
     title: 'LuckyBlox Play',
@@ -6169,7 +6201,9 @@ app.get('/play', (req, res) => {
     // artwork. It used to receive only the NAME and hardcoded a hotlinked stock
     // photo for the icon, so every place showed the same unrelated picture.
     game,
-    gameName: game.title || 'LuckyBlox Arena',
+    gameIcon: gameMetadata.iconUrl,
+    gameName: game.title || game.name || 'LuckyBlox Arena',
+    creatorName: gameMetadata.creatorName,
     server,
   });
 });
@@ -7481,7 +7515,9 @@ app.get('/api/games', (req, res) => {
         placeId: Number(game.placeId),
         title: game.name,
         description: game.description,
-        developer: game.author,
+        developer: String((getUser(OWNER_USER_ID) || {}).username || OWNER_USERNAME),
+        creatorName: String((getUser(OWNER_USER_ID) || {}).username || OWNER_USERNAME),
+        creatorId: Number(OWNER_USER_ID) || 1,
         genre: 'Adventure',
         playerCount: 0,
         likes: 0,

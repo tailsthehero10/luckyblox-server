@@ -115,6 +115,19 @@
               change.
             -->
             <div class="lb-join-panel" id="joinStatus" role="status" aria-live="polite" hidden>
+              <div class="lb-join-game">
+                <div class="lb-join-game-icon">
+                  <img src="/gameplaceholder/card.png" alt="" aria-hidden="true" />
+                  <% if (iconUrl && iconUrl !== '/gameplaceholder/card.png') { %>
+                    <img class="lb-join-game-icon-top" src="<%= iconUrl %>" alt="" aria-hidden="true"
+                         onerror="this.style.display='none';" />
+                  <% } %>
+                </div>
+                <div class="lb-join-game-details">
+                  <strong class="lb-join-game-title"><%= g.title || 'LuckyBlox experience' %></strong>
+                  <span class="lb-join-game-creator">By <%= creatorName || 'LuckyBlox Studio' %></span>
+                </div>
+              </div>
               <div class="lb-join-panel-head">
                 <span class="lb-join-spinner" id="joinSpinner" aria-hidden="true"></span>
                 <strong class="lb-join-panel-title" id="joinTitle">Starting&hellip;</strong>
@@ -331,6 +344,9 @@
   %>
   <%- include('partials/scripts') %>
   <script>
+    var gameTitle = <%- JSON.stringify(g.title || 'LuckyBlox experience') %>;
+    var gameCreator = <%- JSON.stringify(creatorName || 'tailsthehero10') %>;
+
     (function () {
       var loading = window.LBLoading;
 
@@ -467,7 +483,7 @@
       bodyEl.textContent = body || '';
 
       // The spinner belongs to the waiting states only.
-      if (spinner) spinner.hidden = !(state === 'working' || state === 'playing');
+      if (spinner) spinner.hidden = state !== 'working';
 
       actionsEl.textContent = '';
       if (Array.isArray(actions) && actions.length) {
@@ -500,6 +516,8 @@
 
       const loading = window.LBLoading;
       const placeId = Number(trigger.getAttribute('data-launch-place-id')) || 1818;
+      var requestTimer = null;
+      var controller = new AbortController();
 
       // The panel is used for the whole flow, so the page itself never has to be
       // covered by a full-screen veil - the visitor keeps seeing the experience.
@@ -508,10 +526,12 @@
         'Checking this computer for an installed client.');
 
       try {
+        requestTimer = window.setTimeout(function () { controller.abort(); }, 20000);
         const response = await fetch('/api/launch-game', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ placeId })
+          body: JSON.stringify({ placeId }),
+          signal: controller.signal
         });
 
         const data = await response.json().catch(function () { return {}; });
@@ -532,7 +552,8 @@
         // The client was found and launched.
         if (data.nativeLaunch && data.nativeLaunch.status === 'launched') {
           showJoinState('playing', 'LuckyBlox is opening',
-            'Your client is connecting to this experience. It may take a few seconds to appear.');
+            'The LuckyBlox client was started for ' + (data.game && data.game.title || gameTitle)
+              + '. The website cannot confirm the client finished connecting. If it stays on “Joining server”, close it and try Play again.');
           return;
         }
 
@@ -586,8 +607,10 @@
           if (data.client && data.client.downloadUrl) {
             launchActions.push({ label: 'Install or repair client', href: '/download' });
           }
-          showJoinState('working', 'Continue in LuckyBlox',
-            'Choose Open LuckyBlox to send this place and your join ticket to the desktop client.',
+          showJoinState('manual', 'Continue in LuckyBlox',
+            'Open ' + (data.game && data.game.title || gameTitle) + ' by '
+              + (data.game && data.game.creatorName || gameCreator)
+              + ' in the desktop client using the game-specific join ticket.',
             launchActions);
           return;
         }
@@ -611,9 +634,15 @@
           (data && data.message)
             || 'The LuckyBlox client was found but the server could not launch it for this experience.');
       } catch (error) {
-        showJoinState('error', 'Could not reach the server',
-          'The launch request failed. Check your connection and try again.');
+        if (error && error.name === 'AbortError') {
+          showJoinState('error', 'The join request timed out',
+            'The server did not prepare ' + gameTitle + ' within 20 seconds. Try Play again.');
+        } else {
+          showJoinState('error', 'Could not reach the server',
+            'The launch request failed. Check your connection and try again.');
+        }
       } finally {
+        if (requestTimer !== null) window.clearTimeout(requestTimer);
         if (loading) loading.button(trigger, false);
       }
     });

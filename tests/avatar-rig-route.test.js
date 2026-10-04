@@ -165,6 +165,19 @@ function cookieFrom(response) {
       name: 'Test Classic Pants',
       assetType: 'Pants',
     });
+    const gamePage = await get(port, '/games/1803/2007-Crossroads', viewerSession);
+    assert.equal(gamePage.status, 200);
+    assert.match(gamePage.body, /2007 - Crossroads/);
+    assert.match(gamePage.body, /By <strong>tailsthehero10<\/strong>/,
+      'all published game pages identify the configured owner account');
+    assert.match(gamePage.body, /class="lb-join-game-title">2007 - Crossroads<\/strong>/);
+    assert.match(gamePage.body, /class="lb-join-game-creator">By tailsthehero10<\/span>/);
+    const playPage = await get(port, '/play?placeId=1803&ticket=test-ticket&jobId=test-job', viewerSession);
+    assert.equal(playPage.status, 200);
+    assert.match(playPage.body, /<h1>2007 - Crossroads<\/h1>/);
+    assert.match(playPage.body, /By <strong>tailsthehero10<\/strong>/);
+    assert.match(playPage.body, /src="https?:\/\/[^"]+\/gameplaceholder\/card\.png"/,
+      'the launch page keeps the selected experience icon visible when no game art is recorded');
     const publicProfile = await get(port, '/users/1/profile', viewerSession);
     assert.equal(publicProfile.status, 200);
     assert.match(publicProfile.body, /class="theme-dark dark-theme"/);

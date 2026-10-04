@@ -100,6 +100,15 @@ assert.match(gameAbout, /data\.launchURI[\s\S]{0,500}Open LuckyBlox/);
 assert.match(gameAbout, /data\.client && data\.client\.supported === false/);
 assert.match(gameAbout, /data\.devPlayURI[\s\S]{0,100}luckyblox-devplay:/);
 assert.match(gameAbout, /Open this game in DEV-PLAY/);
+assert.match(gameAbout, /lb-join-game-icon/);
+assert.match(gameAbout, /lb-join-game-title/);
+assert.match(gameAbout, /By <%= creatorName/);
+assert.match(gameAbout, /new AbortController\(\)/);
+assert.match(gameAbout, /controller\.abort\(\);\s*\}, 20000/);
+assert.match(gameAbout, /spinner\.hidden = state !== 'working'/);
+assert.match(gameAbout, /showJoinState\('manual', 'Continue in LuckyBlox'/);
+assert.match(server, /const owner = getUser\(OWNER_USER_ID\);[\s\S]*?creatorName = String\(\(owner && owner\.username\) \|\| OWNER_USERNAME\)/);
+assert.match(server, /creatorId: Number\(OWNER_USER_ID\) \|\| 1/);
 assert.ok(
   gameAbout.indexOf('data.client && data.client.supported === false')
     < gameAbout.indexOf("if (data.launchURI && /^luckyblox-player:/i.test(data.launchURI))"),
@@ -110,6 +119,10 @@ assert.ok(
   'the public game page must show the clicked place ID in its local DEV-PLAY command',
 );
 assert.doesNotMatch(gameAbout, /window\.location\.href\s*=\s*data\.playUrl/);
+const playMarkup = fs.readFileSync(path.join(root, 'Webserver', 'http-db-bridge', 'views', 'play.ejs'), 'utf8');
+assert.match(playMarkup, /roblox-eyebrow">Experience/);
+assert.match(playMarkup, /By <strong><%= creatorName/);
+assert.match(playMarkup, /controller\.abort\(\);\s*\}, 20000/);
 
 const installer = fs.readFileSync(path.join(root, 'tools', 'installer', 'LuckybloxInstaller.cs'), 'utf8');
 const installerBuild = fs.readFileSync(path.join(root, 'tools', 'installer', 'build-installer.bat'), 'utf8');
