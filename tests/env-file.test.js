@@ -91,6 +91,39 @@ check('a real environment variable beats the .env file', () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+check('local-server mode ignores Render-only values in .env', () => {
+  const dir = makeTestDir('luckyblox-env-local');
+  fs.writeFileSync(
+    path.join(dir, '.env'),
+    'RENDER=true\nRENDER_EXTERNAL_URL=https://production.example\nRENDER_DISK_PATH=/var/data\n',
+  );
+
+  const prior = Object.fromEntries(
+    ['LUCKYBLOX_LOCAL_SERVER', 'RENDER', 'RENDER_EXTERNAL_URL', 'RENDER_DISK_PATH']
+      .map((key) => [key, process.env[key]]),
+  );
+  process.env.LUCKYBLOX_LOCAL_SERVER = '1';
+  process.env.RENDER = '';
+  process.env.RENDER_EXTERNAL_URL = '';
+  process.env.RENDER_DISK_PATH = '';
+
+  try {
+    const result = loadEnvFile(dir);
+    assert.strictEqual(process.env.RENDER, '');
+    assert.strictEqual(process.env.RENDER_EXTERNAL_URL, '');
+    assert.strictEqual(process.env.RENDER_DISK_PATH, '');
+    assert.ok(result.skipped.includes('RENDER'));
+    assert.ok(result.skipped.includes('RENDER_EXTERNAL_URL'));
+    assert.ok(result.skipped.includes('RENDER_DISK_PATH'));
+  } finally {
+    for (const [key, value] of Object.entries(prior)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 check('a missing .env is not an error', () => {
   const dir = makeTestDir('luckyblox-env-none');
   const result = loadEnvFile(dir);

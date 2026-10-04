@@ -6,6 +6,7 @@
   "main": "start.js",
   "scripts": {
     "start": "node start.js",
+    "start:local": "node tools/start-local.js",
     "start:bridge": "node Webserver/http-db-bridge/server.js",
     "start:legacy": "node server.js",
     "dev:play": "node tools/dev-launch.js",

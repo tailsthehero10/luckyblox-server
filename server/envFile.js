@@ -88,7 +88,19 @@ function loadEnvFile(rootDir) {
   }
 
   const parsed = parseEnv(text);
+  const renderOnlyKeys = new Set([
+    'RENDER',
+    'RENDER_EXTERNAL_URL',
+    'RENDER_EXTERNAL_HOSTNAME',
+    'RENDER_SERVICE_ID',
+    'RENDER_DISK_PATH',
+  ]);
   for (const [key, value] of Object.entries(parsed)) {
+    if (process.env.LUCKYBLOX_LOCAL_SERVER === '1' && renderOnlyKeys.has(key)) {
+      result.skipped.push(key);
+      continue;
+    }
+
     // A real environment variable outranks the file.
     if (process.env[key] !== undefined && process.env[key] !== '') {
       result.skipped.push(key);
