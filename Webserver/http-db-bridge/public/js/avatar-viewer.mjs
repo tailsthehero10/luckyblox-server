@@ -243,7 +243,14 @@ async function initializeViewer(viewer) {
   viewer.classList.add('is-rendered');
   clearLoading(viewer);
   if (missing.length) {
-    showStatus(viewer, `Rendered ${renderedParts} ${rig}.rbxm parts and ${renderedAccessories}/${(config.wearing || []).length} equipped accessories. Could not load: ${missing.join('; ')}`, true);
+    const totalAccessories = (config.wearing || []).length;
+    showStatus(
+      viewer,
+      `Rendered ${renderedParts} ${rig}.rbxm parts; ${renderedAccessories} of ${totalAccessories} accessories could be previewed. Your saved outfit is unchanged.`,
+      true,
+      missing.join('; '),
+    );
+    console.warn('[LuckyBlox avatar viewer] Some equipped accessories could not be previewed:', missing);
   } else {
     showStatus(viewer, portrait
       ? `Rendered ${renderedParts} ${rig}.rbxm parts and ${renderedAccessories} equipped accessories.`
@@ -415,9 +422,10 @@ function clampScale(value) {
   return Number.isFinite(number) ? THREE.MathUtils.clamp(number, 0.5, 1.5) : 1;
 }
 
-function showStatus(viewer, message, isError) {
+function showStatus(viewer, message, isError, details = '') {
   const status = viewer.querySelector('[data-avatar-viewer-status]');
   status.textContent = message;
+  status.title = details;
   status.classList.toggle('is-error', isError);
 }
 

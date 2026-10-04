@@ -5701,7 +5701,10 @@ html.theme-dark .ch-panel-head {
 
 html.theme-dark .lb-panel-body,
 html.theme-dark .roblox-panel-body,
-html.theme-dark .ch-panel-body { color: var(--lb-ink-2) !important; }
+html.theme-dark .ch-panel-body {
+  background: var(--lb-surface) !important;
+  color: var(--lb-ink-2) !important;
+}
 
 /* --- Page + shell ---------------------------------------------------------- */
 html.theme-dark .lb-page,

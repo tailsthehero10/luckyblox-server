@@ -90,9 +90,20 @@ try {
     baseUrl: 'https://luckyblox-server.onrender.com',
     jobId: 'test-job',
     port: 53644,
+    gameMetadata: {
+      title: 'A Real Test Map',
+      universeId: 27014,
+      creatorId: 42,
+      creatorType: 'Group',
+    },
   });
   const generated = JSON.parse(fs.readFileSync(output, 'utf8'));
+  assert.equal(generated.GameId, 27014, 'the RCC config must not keep the template universe id');
   assert.equal(generated.Settings.PlaceId, 27013);
+  assert.equal(generated.Settings.UniverseId, 27014);
+  assert.equal(generated.Settings.GameId, 'A Real Test Map');
+  assert.equal(generated.Settings.CreatorId, 42);
+  assert.equal(generated.Settings.CreatorType, 'Group');
   assert.equal(generated.Settings.PlaceFetchUrl, 'http://127.0.0.1:40000/asset/?id=27013');
   assert.equal(generated.Settings.PreferredPort, 53644);
 
@@ -152,6 +163,16 @@ console.log('ok: DEV-PLAY resolves the selected map/place, prepares local-test s
     jobId: 'test-job',
     gamePort: 53644,
     baseUrl: 'https://example.test',
+    gameMetadata: {
+      placeId: 27013,
+      title: 'A Real Test Map',
+      creatorName: 'LuckyBlox Test Owner',
+      creatorId: 42,
+      thumbnailUrl: 'https://example.test/art/test-map.png',
+      iconUrl: 'https://example.test/art/test-icon.png',
+      description: 'Test experience metadata',
+      genre: 'Adventure',
+    },
   });
   try {
     const health = await fetch(local.baseUrl);
@@ -159,7 +180,17 @@ console.log('ok: DEV-PLAY resolves the selected map/place, prepares local-test s
     const healthPayload = await health.json();
     assert.equal(healthPayload.ok, true);
     assert.equal(healthPayload.placeId, 27013);
+    assert.equal(healthPayload.game.title, 'A Real Test Map');
+    assert.equal(healthPayload.game.creatorName, 'LuckyBlox Test Owner');
     assert.match(healthPayload.endpoints.map, /id=27013/);
+    assert.equal(healthPayload.endpoints.game, '/api/game');
+
+    const gameInfoResponse = await fetch(`${local.baseUrl}/api/game`);
+    assert.equal(gameInfoResponse.status, 200);
+    const gameInfo = await gameInfoResponse.json();
+    assert.equal(gameInfo.jobId, 'test-job');
+    assert.equal(gameInfo.game.thumbnailUrl, 'https://example.test/art/test-map.png');
+    assert.equal(gameInfo.game.iconUrl, 'https://example.test/art/test-icon.png');
 
     const asset = await fetch(`${local.baseUrl}/asset/?id=27013`);
     assert.equal(asset.status, 200);
@@ -174,6 +205,9 @@ console.log('ok: DEV-PLAY resolves the selected map/place, prepares local-test s
     assert.equal(payload.userId, 42);
     assert.equal(payload.port, 53644, 'the client is directed to the local server port');
     assert.equal(payload.jobId, 'test-job');
+    assert.equal(payload.game.title, 'A Real Test Map');
+    assert.equal(payload.game.creatorName, 'LuckyBlox Test Owner');
+    assert.equal(payload.game.thumbnailUrl, 'https://example.test/art/test-map.png');
     const wrongJoinPlace = await fetch(
       `${local.baseUrl}/game/join?placeId=1811&userId=42&ticket=test-ticket`,
     );

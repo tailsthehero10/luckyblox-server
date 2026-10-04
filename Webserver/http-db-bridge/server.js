@@ -3312,6 +3312,38 @@ function getGameEntry(placeId) {
   return games[key] || fallback;
 }
 
+function gameClientMetadata(placeId, game = getGameEntry(placeId)) {
+  const absoluteAssetUrl = (value, fallback) => {
+    const candidate = String(value || '');
+    if (!candidate || !(candidate.startsWith('/') || /^https?:\/\//i.test(candidate))) {
+      return new URL(fallback, publicOrigin).href;
+    }
+    try {
+      const parsed = new URL(candidate, publicOrigin);
+      if (['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password) {
+        return parsed.href;
+      }
+    } catch (error) {
+      audit('invalid_game_artwork_url', { placeId: Number(placeId), message: error.message });
+    }
+    return new URL(fallback, publicOrigin).href;
+  };
+  const creatorId = Number(game.developerId || game.ownerId || game.creatorId);
+
+  return {
+    placeId: Number(placeId) || 0,
+    universeId: Number(game.universeId || game.gameId || game.universeID) || Number(placeId) || 0,
+    title: String(game.title || 'LuckyBlox Arena'),
+    creatorName: String(game.developer || game.creatorName || 'LuckyBlox Studio'),
+    creatorId: Number.isSafeInteger(creatorId) && creatorId > 0 ? creatorId : null,
+    creatorType: ['User', 'Group'].includes(game.creatorType) ? game.creatorType : null,
+    thumbnailUrl: absoluteAssetUrl(game.thumbnail, '/gameplaceholder/game-thumb.png'),
+    iconUrl: absoluteAssetUrl(game.icon, '/gameplaceholder/card.png'),
+    description: String(game.description || ''),
+    genre: String(game.genre || 'Adventure'),
+  };
+}
+
 function normalizePlaceId(rawPlaceId) {
   return normalizePlaceIdInput(rawPlaceId);
 }
@@ -5776,6 +5808,7 @@ function legacyJoinResponse(req, res) {
     jobId: finalJobId,
     placeId: Number(server.placeId || placeId),
     userId: Number(userId),
+    game: gameClientMetadata(placeId),
     ip: gameServerHost,
     port: selectedPort,
     serverPort: selectedPort,
@@ -7092,6 +7125,7 @@ app.post('/api/client/launch', (req, res) => {
 
   const userId = Number(sessionUser.userId || sessionUser.id) || 1;
   const placeId = Number(req.body.placeId || req.query.placeId || 1818);
+  const gameMetadata = gameClientMetadata(placeId);
   const job = createNamedJoinJob(userId, placeId);
   const ticket = createAuthTicket(userId, placeId, {
     port: job.port,
@@ -7116,6 +7150,7 @@ app.post('/api/client/launch', (req, res) => {
     port: job.port,
     ticket: ticket.ticket,
     authTicket: ticket.authTicket,
+    game: gameMetadata,
     launchURI: ticket.launchURI,
     devPlayURI: createDevPlayLaunchUri({
       ticket: ticket.ticket,
@@ -7123,6 +7158,7 @@ app.post('/api/client/launch', (req, res) => {
       userId,
       jobId: job.jobId,
       baseUrl: publicOrigin,
+      gameMetadata,
     }),
     playUrl: `/play?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket.ticket)}&serverPort=${job.port}&jobId=${encodeURIComponent(job.jobId)}`,
   });
@@ -7150,6 +7186,7 @@ app.post('/api/launch-game', (req, res) => {
   const placeId = Number(req.body.placeId || req.body.placeid || req.query.placeId || 1818);
 
   try {
+    const gameMetadata = gameClientMetadata(placeId);
     // One call creates (or reuses) the job AND binds the player to it, so the
     // ticket, the jobId and the port can never disagree with each other. It also
     // names the job, so the Discord companion and status UIs can show the game.
@@ -7208,6 +7245,7 @@ app.post('/api/launch-game', (req, res) => {
       ticket: ticket.ticket,
       authTicket: ticket.authTicket,
       expiresAt: new Date(ticket.expiresAt).toISOString(),
+      game: gameMetadata,
       launchURI: ticket.launchURI,
       devPlayURI: createDevPlayLaunchUri({
         ticket: ticket.ticket,
@@ -7215,6 +7253,7 @@ app.post('/api/launch-game', (req, res) => {
         userId,
         jobId: job.jobId,
         baseUrl: publicOrigin,
+        gameMetadata,
       }),
       playUrl,
       // Client install state, so the page can say "launching" or "download".

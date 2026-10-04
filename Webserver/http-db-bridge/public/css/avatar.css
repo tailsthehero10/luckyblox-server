@@ -5,25 +5,63 @@
    (R6 / R15), gender, the body-colour palette, the body-scale sliders and the
    outfit. Settings does not duplicate any of it.
 
-   2021 reference: https://web.archive.org/web/2021*/
-https: //www.roblox.com/my/avatar
-The 2013 layout in Assets/CoreScripts-adjacent source (CharacterCustomization.css,
-  Item.css) is the same idea: the character on the left with its controls,
-the currently-wearing outfit on the right. Panel chrome (.roblox-panel / header / body) comes from roblox.css - this sheet only owns the avatar-specific pieces below. --------------------------------------------------------------------------- */
+   2021 reference: https://web.archive.org/web/20210801000000/https://www.roblox.com/my/avatar
+
+   The editor keeps the character on the left with its controls and the outfit
+   inventory on the right. Panel chrome comes from roblox.css; this sheet owns
+   the avatar-specific layout and controls.
+   --------------------------------------------------------------------------- */
 
 /* --- Two-column body: controls left, outfit + inventory right -------------- */
 .av-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.85fr);
-  gap: 16px;
+  grid-template-columns: minmax(300px, 0.95fr) minmax(320px, 1.05fr);
+  gap: 18px;
   align-items: start;
+}
+
+.av-page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 16px;
+}
+
+.av-page-heading-copy { min-width: 0; }
+
+.av-page-heading h1 {
+  margin: 0;
+  color: var(--lb-ink);
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+.av-page-heading p {
+  margin: 5px 0 0;
+  color: var(--lb-muted);
+  font-size: 13px;
+}
+
+.av-page-heading .lb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 0 0 auto;
 }
 
 .av-col-left,
 .av-col-right {
   display: flex;
   flex-direction: column;
+  gap: 16px;
   min-width: 0;
+}
+
+.av-col-left > .roblox-panel,
+.av-col-right > .roblox-panel {
+  margin-bottom: 0;
 }
 
 /* --- The character stage --------------------------------------------------- */
@@ -31,10 +69,44 @@ the currently-wearing outfit on the right. Panel chrome (.roblox-panel / header 
   margin-left: auto;
 }
 
+.av-preview-panel { overflow: hidden; }
+
+.av-preview-panel-header {
+  min-height: 48px;
+}
+
+.av-preview-hint {
+  margin-left: auto;
+  color: var(--lb-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.av-preview-panel .av-preview-panel-body {
+  padding: 0;
+}
+
 .roblox-avatar-stage {
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 8px 0 0;
+}
+
+.av-preview-panel .av-preview-stage {
+  position: relative;
+  width: 100%;
+  height: auto;
+  min-height: 420px;
+  padding: 18px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(ellipse at 50% 35%, #ffffff 0%, #f3f6f8 62%, #e9eef2 100%);
+}
+
+.av-preview-panel .av-preview-stage::before {
+  content: none;
 }
 
 .roblox-avatar-render {
@@ -146,6 +218,8 @@ the currently-wearing outfit on the right. Panel chrome (.roblox-panel / header 
 }
 
 .roblox-avatar-render .lb-avatar-viewer {
+  width: 277px;
+  max-width: 100%;
   height: 352px;
   flex: 0 0 auto;
 }
@@ -287,9 +361,22 @@ button:focus-visible {
 }
 
 .av-render-actions {
+  display: flex;
+  align-items: center;
   justify-content: center;
   gap: 10px;
-  margin-top: 16px;
+  margin: 0;
+  padding: 12px 16px;
+  border-top: 1px solid var(--lb-line);
+}
+
+html.theme-dark .av-preview-panel .av-preview-stage {
+  background:
+    radial-gradient(ellipse at 50% 35%, #303945 0%, #222a34 62%, #1a2028 100%);
+}
+
+html.theme-dark .av-render-actions {
+  border-top-color: var(--lb-line);
 }
 
 /* --- Field blocks (rig, gender) -------------------------------------------- */
@@ -646,6 +733,17 @@ button:focus-visible {
 }
 
 @media (max-width: 520px) {
+  .av-page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .av-page-heading .lb-btn { align-self: flex-start; }
+
+  .av-preview-panel .av-preview-stage {
+    min-height: 390px;
+    padding: 12px;
+  }
 
   .av-rig-picker,
   .av-rig-picker--three {

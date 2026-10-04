@@ -145,11 +145,16 @@ async function waitForReady(proc) {
     assert.equal(anonymousRedeem.status, 401, 'tickets from anonymous legacy requests cannot create account sessions');
     const joinFromProtocol = await request(`/game/join?placeId=${PLACE_ID}&ticket=${encodeURIComponent(issuedTicket)}`);
     assert.equal(joinFromProtocol.status, 200);
+    const protocolJoinPayload = JSON.parse(joinFromProtocol.body.toString('utf8'));
     assert.equal(
-      JSON.parse(joinFromProtocol.body.toString('utf8')).userId,
+      protocolJoinPayload.userId,
       1,
       'protocol joins without userId must resolve the user from the signed launch ticket',
     );
+    assert.equal(protocolJoinPayload.game.placeId, PLACE_ID);
+    assert.ok(protocolJoinPayload.game.title, 'the client join response carries the experience title');
+    assert.ok(protocolJoinPayload.game.creatorName, 'the client join response carries the experience owner');
+    assert.match(protocolJoinPayload.game.thumbnailUrl, /^https?:\/\//);
 
     const legacySettings = await request('/home/Setting/QuietGet/ClientAppSettings?apiKey=test-key&client=CUSTOM-2021M');
     assert.equal(legacySettings.status, 200);

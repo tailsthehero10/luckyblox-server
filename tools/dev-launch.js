@@ -210,12 +210,32 @@ function parseLaunchUri(launchUri) {
     throw new Error('DEV-PLAY launch link contains an invalid site URL.');
   }
 
+  const gameMetadata = {};
+  const metadataFields = {
+    gameTitle: ['title', 160],
+    gameOwner: ['creatorName', 120],
+    gameOwnerId: ['creatorId', 24],
+    gameUniverseId: ['universeId', 24],
+    gameCreatorType: ['creatorType', 16],
+    gameThumbnail: ['thumbnailUrl', 2048],
+    gameIcon: ['iconUrl', 2048],
+    gameDescription: ['description', 1200],
+    gameGenre: ['genre', 100],
+  };
+  for (const [field, [key, maxLength]] of Object.entries(metadataFields)) {
+    if (fields[field]) {
+      gameMetadata[key] = fields[field].replace(/[\u0000-\u001f\u007f]/g, '').slice(0, maxLength);
+    }
+  }
+  if (Object.keys(gameMetadata).length) gameMetadata.placeId = placeId;
+
   return {
     placeId,
     userId,
     ticket: fields.gameinfo,
     jobId: fields.jobId,
     url: baseUrl,
+    ...(Object.keys(gameMetadata).length ? { gameMetadata } : {}),
   };
 }
 
@@ -311,6 +331,10 @@ function parseArgs(argv) {
       args.ticket = launch.ticket;
       args.jobId = launch.jobId;
       args.url = launch.url;
+      args.gameMetadata = launch.gameMetadata;
+      if (launch.gameMetadata && launch.gameMetadata.title) {
+        args.placeTitle = launch.gameMetadata.title;
+      }
     }
     // `--testblox [password]` is the shorthand the DEV-PLAY.bat header documents.
     // It used to be swallowed as an unknown flag, so the documented one-liner did
@@ -360,9 +384,45 @@ function log(step, message) {
   console.log(`[dev-launch] ${step.padEnd(12)} ${message}`);
 }
 
+function normalizeGameMetadata(metadata, placeId, fallbackTitle) {
+  const source = metadata && typeof metadata === 'object' ? metadata : {};
+  const text = (value, maxLength) => String(value || '')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .slice(0, maxLength);
+  const safeUrl = (value) => {
+    if (!value) return null;
+    try {
+      const parsed = new URL(String(value));
+      if (['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password) {
+        return parsed.href;
+      }
+    } catch (error) {
+      return null;
+    }
+    return null;
+  };
+  const creatorId = Number(source.creatorId);
+  const universeId = Number(source.universeId);
+
+  return {
+    placeId: Number(placeId),
+    universeId: Number.isSafeInteger(universeId) && universeId > 0
+      ? universeId : Number(placeId),
+    title: text(source.title || fallbackTitle || '', 160),
+    creatorName: text(source.creatorName, 120) || null,
+    creatorId: Number.isSafeInteger(creatorId) && creatorId > 0 ? creatorId : null,
+    creatorType: ['User', 'Group'].includes(source.creatorType) ? source.creatorType : null,
+    thumbnailUrl: safeUrl(source.thumbnailUrl),
+    iconUrl: safeUrl(source.iconUrl),
+    description: text(source.description, 1200),
+    genre: text(source.genre, 100) || null,
+  };
+}
+
 function createDevHttpServer({
-  placeId, mapPath, userId, ticket, jobId, gamePort, baseUrl,
+  placeId, mapPath, userId, ticket, jobId, gamePort, baseUrl, gameMetadata,
 }) {
+  const game = normalizeGameMetadata(gameMetadata, placeId, path.basename(mapPath, path.extname(mapPath)));
   const server = http.createServer((req, res) => {
     const requestUrl = new URL(req.url, 'http://127.0.0.1');
     if (requestUrl.pathname === '/' && (req.method === 'GET' || req.method === 'HEAD')) {
@@ -370,11 +430,24 @@ function createDevHttpServer({
         ok: true,
         service: 'LuckyBlox DEV-PLAY local API',
         placeId: Number(placeId),
+        game,
         endpoints: {
           map: `/asset/?id=${Number(placeId)}`,
           join: `/game/join?placeId=${Number(placeId)}&userId=${Number(userId)}&ticket=...`,
+          game: '/api/game',
         },
       });
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Length': Buffer.byteLength(payload),
+        'Cache-Control': 'no-store',
+      });
+      res.end(req.method === 'HEAD' ? undefined : payload);
+      return;
+    }
+
+    if (requestUrl.pathname === '/api/game' && (req.method === 'GET' || req.method === 'HEAD')) {
+      const payload = JSON.stringify({ ok: true, jobId: String(jobId), game });
       res.writeHead(200, {
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Length': Buffer.byteLength(payload),
@@ -424,6 +497,7 @@ function createDevHttpServer({
         jobId,
         placeId: Number(placeId),
         userId: Number(userId),
+        game,
         ip: '127.0.0.1',
         port: Number(gamePort),
         serverPort: Number(gamePort),
@@ -453,17 +527,29 @@ function createDevHttpServer({
   });
 }
 
-function createLocalServerConfig(templatePath, outputPath, { placeId, mapUrl, baseUrl, jobId, port }) {
+function createLocalServerConfig(templatePath, outputPath, {
+  placeId, mapUrl, baseUrl, jobId, port, gameMetadata,
+}) {
   const config = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
   if (!config.Settings || typeof config.Settings !== 'object') {
     throw new Error(`invalid local game-server settings template: ${templatePath}`);
   }
+  const universeId = Number(gameMetadata && gameMetadata.universeId) || Number(placeId);
+  config.GameId = universeId;
   config.Settings.PlaceId = Number(placeId);
+  config.Settings.UniverseId = universeId;
   config.Settings.PlaceFetchUrl = mapUrl;
   config.Settings.BaseUrl = baseUrl;
   config.Settings.JobId = String(jobId);
   config.Settings.PreferredPort = Number(port);
   config.Settings.MachineAddress = 'http://127.0.0.1';
+  if (gameMetadata && gameMetadata.title) config.Settings.GameId = String(gameMetadata.title);
+  if (gameMetadata && Number.isSafeInteger(Number(gameMetadata.creatorId)) && Number(gameMetadata.creatorId) > 0) {
+    config.Settings.CreatorId = Number(gameMetadata.creatorId);
+  }
+  if (gameMetadata && gameMetadata.creatorType) {
+    config.Settings.CreatorType = String(gameMetadata.creatorType);
+  }
   fs.writeFileSync(outputPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
   return outputPath;
 }
@@ -638,7 +724,9 @@ function findFreePort(start = 53640) {
  * connections. A plain TCP listener is not a game server and must not be used as
  * a success-shaped fallback.
  */
-function startLocalGameServer({ port, placeId, jobId, clientName, localHttpUrl, baseUrl, runId }) {
+function startLocalGameServer({
+  port, placeId, jobId, clientName, localHttpUrl, baseUrl, runId, gameMetadata,
+}) {
   const serverBinary = resolveServerBinary(clientName);
   if (!serverBinary) {
     return Promise.reject(new Error(
@@ -662,6 +750,7 @@ function startLocalGameServer({ port, placeId, jobId, clientName, localHttpUrl, 
       baseUrl,
       jobId,
       port,
+      gameMetadata,
     },
   );
 
@@ -877,7 +966,13 @@ async function main() {
   if (!launch.ticket || !launch.jobId) {
     throw new Error('LIVE site returned an incomplete launch ticket (missing ticket or jobId).');
   }
+  launch.gameMetadata = normalizeGameMetadata(
+    launch.gameMetadata || launch.game,
+    launch.placeId,
+    args.placeTitle,
+  );
   log('ticket', `ok: jobId=${launch.jobId} place=${launch.placeId}`);
+  log('game', `${launch.gameMetadata.title || `place ${launch.placeId}`} by ${launch.gameMetadata.creatorName || 'unknown creator'}`);
   await verifyTicketRedemptionRoute(args.url);
   log('auth', 'LIVE ticket-redemption endpoint is available');
 
@@ -937,6 +1032,7 @@ async function main() {
       jobId: launch.jobId,
       gamePort: localPort,
       baseUrl: args.url,
+      gameMetadata: launch.gameMetadata,
     });
     log('local-api', `${devHttp.baseUrl} serves the selected map and local join response`);
 
@@ -949,6 +1045,7 @@ async function main() {
       localHttpUrl: devHttp.baseUrl,
       baseUrl: args.url,
       runId,
+      gameMetadata: launch.gameMetadata,
     });
 
     const client = prepareDevClient(clientDir, args.client, args.url, runId);

@@ -119,6 +119,47 @@ test('the avatar figure is sized by font-size, not transform: scale', () => {
   assert.ok(/height:\s*10em/.test(body), 'expected a 10em height so font-size controls the size');
 });
 
+test('avatar editor stylesheet keeps its grid and Roblox portrait proportions', () => {
+  const css = fs.readFileSync(path.join(cssDir, 'avatar.css'), 'utf8');
+  const reference = css.indexOf('web.archive.org/web/20210801000000/');
+  const commentEnd = css.indexOf('*/');
+  const layoutStart = css.indexOf('.av-layout {');
+  assert.ok(reference >= 0, 'avatar editor stylesheet should identify its 2021 reference');
+  assert.ok(commentEnd > reference, 'the stylesheet header comment must not end inside its reference URL');
+  assert.ok(layoutStart > commentEnd, 'avatar layout rules must be outside the header comment');
+
+  const layoutEnd = css.indexOf('}', layoutStart);
+  const layoutRule = css.slice(layoutStart, layoutEnd);
+  assert.match(layoutRule, /display:\s*grid/);
+  assert.match(layoutRule, /grid-template-columns:\s*minmax\(300px,\s*0\.95fr\)\s+minmax\(320px,\s*1\.05fr\)/);
+
+  const previewStageStart = css.indexOf('.av-preview-panel .av-preview-stage {');
+  assert.ok(previewStageStart >= 0, 'avatar preview should have its own stage styling');
+  const previewStageRule = css.slice(previewStageStart, css.indexOf('}', previewStageStart));
+  assert.match(previewStageRule, /width:\s*100%/);
+  assert.match(previewStageRule, /min-height:\s*420px/);
+
+  const viewerStart = css.indexOf('.roblox-avatar-render .lb-avatar-viewer {');
+  assert.ok(viewerStart >= 0, 'avatar editor preview rule should exist');
+  const viewerRule = css.slice(viewerStart, css.indexOf('}', viewerStart));
+  assert.match(viewerRule, /width:\s*277px/);
+  assert.match(viewerRule, /height:\s*352px/);
+
+  const avatarView = fs.readFileSync(path.join(viewsDir, 'avatar.ejs'), 'utf8');
+  assert.match(avatarView, /class="av-page-heading"/);
+  assert.match(avatarView, /class="roblox-avatar-stage av-preview-stage"/);
+});
+
+test('avatar viewer reports accessory preview failures without covering the render in raw IDs', () => {
+  const viewer = fs.readFileSync(
+    path.join(releaseRoot, 'Webserver', 'http-db-bridge', 'public', 'js', 'avatar-viewer.mjs'),
+    'utf8',
+  );
+  assert.match(viewer, /accessories could be previewed[\s\S]{0,160}Your saved outfit is unchanged/);
+  assert.match(viewer, /showStatus\([\s\S]{0,240}missing\.join\('; '\)/);
+  assert.match(viewer, /console\.warn\('\[LuckyBlox avatar viewer\]/);
+});
+
 test('profile renders the bundled rigs and identity chips never generate stand-in models', () => {
   const profile = fs.readFileSync(path.join(viewsDir, 'profile.ejs'), 'utf8');
   assert.match(profile, /lbAvatarViewer\(user,\s*128,\s*\{\s*portrait:\s*true/);
@@ -200,6 +241,7 @@ test('dark theme styles Discover, shop, and avatar controls left white by page s
   assert.match(baseCss, /html\.theme-dark body :where\([\s\S]*?\.ci-image/);
   assert.match(baseCss, /html\.theme-dark body :where\([\s\S]*?\.av-card/);
   assert.match(baseCss, /html\.theme-dark body :where\([\s\S]*?background-color:\s*var\(--lb-surface\)\s*!important/);
+  assert.match(baseCss, /html\.theme-dark \.lb-panel-body,[\s\S]*?html\.theme-dark \.roblox-panel-body,[\s\S]*?background:\s*var\(--lb-surface\)\s*!important/);
   assert.match(baseCss, /html\.theme-dark body\s*\{\s*color-scheme:\s*dark/s);
 });
 

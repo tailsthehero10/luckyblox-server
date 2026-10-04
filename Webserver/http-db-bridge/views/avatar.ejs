@@ -38,21 +38,28 @@
 
             <main class="lb-main">
 
-              <!-- Avatar editor header: the 2021 editor opened with this bar. -->
-              <div class="roblox-panel">
-                <div class="roblox-panel-header">
-                  <img class="ch-ico ch-ico-sm" src="/icons/avatar.svg" alt="" /> Avatar Editor
-                  <a class="lb-btn lb-btn-secondary av-editor-getmore" href="/catalog">Get More</a>
+              <div class="av-page-heading">
+                <div class="av-page-heading-copy">
+                  <h1>Avatar Editor</h1>
+                  <p>Customize your character and choose what to wear.</p>
                 </div>
+                <a class="lb-btn lb-btn-secondary av-editor-getmore" href="/catalog">
+                  <img class="ch-ico ch-ico-sm" src="/icons/store.svg" alt="" /> Avatar Shop
+                </a>
               </div>
 
               <div class="av-layout">
                 <!-- LEFT: the character, the rig, the colours, the scales. -->
                 <div class="av-col-left">
 
-                  <div class="roblox-panel">
-                    <div class="roblox-panel-body">
-                      <div class="roblox-avatar-stage">
+                  <div class="roblox-panel av-preview-panel">
+                    <div class="roblox-panel-header av-preview-panel-header">
+                      <img class="ch-ico ch-ico-sm" src="/icons/avatar.svg" alt="" />
+                      <span>Preview</span>
+                      <span class="av-preview-hint">Drag to rotate</span>
+                    </div>
+                    <div class="roblox-panel-body av-preview-panel-body">
+                      <div class="roblox-avatar-stage av-preview-stage">
                         <div class="roblox-avatar-render lb-loading-block is-loading"
                              style="--lb-loader-size:64px;">
                           <%#
@@ -74,7 +81,7 @@
 
                   <div class="roblox-button-row av-render-actions">
                     <button class="roblox-primary-button" id="save-avatar" type="button">Save avatar</button>
-                    <button class="roblox-secondary-button" id="randomize-wear" type="button">Randomize</button>
+                    <button class="roblox-secondary-button" id="randomize-wear" type="button">Randomize items</button>
                   </div>
                     </div>
                   </div>

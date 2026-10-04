@@ -35,15 +35,41 @@ const devPlayUri = createDevPlayLaunchUri({
   userId: 4,
   jobId: 'selected-job',
   baseUrl: 'https://games.example.test/path',
+  gameMetadata: {
+    placeId: 1811,
+    title: 'Classic Crossroads',
+    creatorName: 'Roblox Creator',
+    creatorId: 42,
+    universeId: 1811,
+    creatorType: 'Group',
+    thumbnailUrl: 'https://games.example.test/art/crossroads.png',
+    iconUrl: 'https://games.example.test/art/crossroads-icon.png',
+    description: 'A classic + fun place',
+    genre: 'Adventure',
+  },
 });
 assert.match(devPlayUri, /^luckyblox-devplay:1\+placeId:1811\+userId:4/);
 assert.match(devPlayUri, /\+gameinfo:LB_ticket\.signature%2Bpart\+jobId:selected-job/);
+assert.match(devPlayUri, /\+gameTitle:Classic%20Crossroads\+gameOwner:Roblox%20Creator/);
+assert.match(devPlayUri, /\+gameThumbnail:https%3A%2F%2Fgames\.example\.test%2Fart%2Fcrossroads\.png/);
 assert.deepEqual(parseLaunchUri(devPlayUri), {
   placeId: 1811,
   userId: 4,
   ticket: 'LB_ticket.signature+part',
   jobId: 'selected-job',
   url: 'https://games.example.test',
+  gameMetadata: {
+    title: 'Classic Crossroads',
+    creatorName: 'Roblox Creator',
+    creatorId: '42',
+    universeId: '1811',
+    creatorType: 'Group',
+    thumbnailUrl: 'https://games.example.test/art/crossroads.png',
+    iconUrl: 'https://games.example.test/art/crossroads-icon.png',
+    description: 'A classic + fun place',
+    genre: 'Adventure',
+    placeId: 1811,
+  },
 });
 const devPlayArgs = parseArgs(['--launch-uri', devPlayUri]);
 assert.equal(devPlayArgs.place, 1811, 'the game page place ID must override MapPath.txt');
@@ -51,10 +77,13 @@ assert.equal(devPlayArgs.userId, 4);
 assert.equal(devPlayArgs.ticket, 'LB_ticket.signature+part');
 assert.equal(devPlayArgs.jobId, 'selected-job');
 assert.equal(devPlayArgs.url, 'https://games.example.test');
+assert.deepEqual(devPlayArgs.gameMetadata, parseLaunchUri(devPlayUri).gameMetadata);
 
 const server = fs.readFileSync(path.join(root, 'Webserver', 'http-db-bridge', 'server.js'), 'utf8');
 assert.match(server, /launchURI:\s*ticket\.launchURI/);
 assert.match(server, /devPlayURI:\s*createDevPlayLaunchUri/);
+assert.match(server, /game:\s*gameMetadata/);
+assert.match(server, /gameMetadata,\s*\}\)/);
 assert.doesNotMatch(server, /launchURI:\s*playUrl/);
 assert.match(server, /createDevPlayLaunchUri\(\{[\s\S]{0,180}ticket:\s*ticket\.ticket,[\s\S]{0,180}placeId,[\s\S]{0,180}userId,[\s\S]{0,180}jobId:\s*job\.jobId/);
 
