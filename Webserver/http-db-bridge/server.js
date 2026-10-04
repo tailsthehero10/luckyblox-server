@@ -3213,6 +3213,8 @@ function createAuthTicket(userId, placeId, serverContext = {}) {
     launchURI: createClientLaunchUri({
       ticket,
       placeId,
+      userId,
+      baseUrl: publicOrigin,
       port: serverContext.port || gamePort,
       jobId: serverContext.serverJobId || 'local-job',
     }),
@@ -3338,7 +3340,14 @@ function launchLocalRobloxClient({ userId, placeId, port, serverJobId, ticket })
       exePath: executablePath,
       authUrl,
       joinUrl,
-      launchURI: createClientLaunchUri({ ticket, placeId, port, jobId: serverJobId }),
+      launchURI: createClientLaunchUri({
+        ticket,
+        placeId,
+        userId,
+        port,
+        jobId: serverJobId,
+        baseUrl: publicOrigin,
+      }),
     };
   } catch (error) {
     return {
@@ -5662,9 +5671,10 @@ app.get('/create', (req, res) => {
 
 
 function legacyJoinResponse(req, res) {
-  const userId = Number(req.query.userId || req.query.userid || req.query.id || 1);
-  const placeId = normalizePlaceId(req.query.placeId || req.query.placeid || req.query.id || 1818);
   const ticket = req.query.ticket || `LB_${Date.now()}`;
+  const ticketState = getTicketStatus(ticket);
+  const userId = Number(req.query.userId || req.query.userid || req.query.id || (ticketState && ticketState.userId) || 1);
+  const placeId = normalizePlaceId(req.query.placeId || req.query.placeid || (ticketState && ticketState.placeId) || req.query.id || 1818);
   const requestPort = Number(req.query.serverPort || req.query.port || gamePort);
   const serverJobId = req.query.jobId || req.query.serverJobId || `game-${Date.now()}`;
 

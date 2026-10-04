@@ -82,6 +82,17 @@ async function waitForReady(proc) {
     assert.equal(productInfo.Creator.Id, 17);
     assert.equal(productInfo.Creator.Name, 'TestCreator');
 
+    const issuedTicketResponse = await request(`/v1/authentication-tickets?userId=17&placeId=${PLACE_ID}`);
+    assert.equal(issuedTicketResponse.status, 200);
+    const issuedTicket = JSON.parse(issuedTicketResponse.body.toString('utf8')).ticket;
+    const joinFromProtocol = await request(`/game/join?placeId=${PLACE_ID}&ticket=${encodeURIComponent(issuedTicket)}`);
+    assert.equal(joinFromProtocol.status, 200);
+    assert.equal(
+      JSON.parse(joinFromProtocol.body.toString('utf8')).userId,
+      17,
+      'protocol joins without userId must resolve the user from the signed launch ticket',
+    );
+
     const legacySettings = await request('/home/Setting/QuietGet/ClientAppSettings?apiKey=test-key&client=CUSTOM-2021M');
     assert.equal(legacySettings.status, 200);
     assert.match(legacySettings.headers['content-type'], /^application\/json\b/);

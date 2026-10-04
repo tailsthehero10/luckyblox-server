@@ -520,7 +520,9 @@ namespace LuckyBlox.Installer
                         state.VersionsDir,
                         state.CurrentVersion);
                     UpdateLocalAppSettings(installedVersionDir);
-                    RegisterPlayerProtocol(Path.Combine(installedVersionDir, InstallerConfig.PlayerBinary));
+                    RegisterPlayerProtocol(
+                        Path.Combine(installedVersionDir, InstallerConfig.PlayerBinary),
+                        InstallerConfig.InstallDir(_root));
                     result.Ok = true;
                     result.UpToDate = true;
                     result.Message = "LuckyBlox Player " + state.CurrentVersion + " is already installed and up to date.";
@@ -571,7 +573,7 @@ namespace LuckyBlox.Installer
                 state.CurrentVersion = versionFolder;
                 state.NewestVersion = versionFolder;
                 WritePointer(state);
-                RegisterPlayerProtocol(target);
+                RegisterPlayerProtocol(target, InstallerConfig.InstallDir(_root));
 
                 result.Ok = true;
                 result.Updated = state.PlayerInstalled;
@@ -1007,10 +1009,18 @@ namespace LuckyBlox.Installer
             catch { }
         }
 
-        private static void RegisterPlayerProtocol(string playerPath)
+        private static void RegisterPlayerProtocol(string playerPath, string installDir)
         {
             if (!File.Exists(playerPath))
                 throw new FileNotFoundException("Cannot register the LuckyBlox launch protocol without the Player executable.", playerPath);
+
+            string handlerPath = Path.Combine(installDir, "LuckybloxInstaller.exe");
+            string runningInstaller = Assembly.GetExecutingAssembly().Location;
+            Directory.CreateDirectory(installDir);
+            if (!string.Equals(Path.GetFullPath(runningInstaller), Path.GetFullPath(handlerPath), StringComparison.OrdinalIgnoreCase))
+                File.Copy(runningInstaller, handlerPath, true);
+            if (!File.Exists(handlerPath))
+                throw new FileNotFoundException("Could not prepare the LuckyBlox protocol handler.", handlerPath);
 
             const string protocolKey = @"Software\Classes\luckyblox-player";
             using (var key = Registry.CurrentUser.CreateSubKey(protocolKey))
@@ -1032,7 +1042,7 @@ namespace LuckyBlox.Installer
             {
                 if (command == null)
                     throw new InvalidOperationException("Could not register the LuckyBlox player protocol command.");
-                command.SetValue("", "\"" + playerPath + "\" \"%1\"");
+                command.SetValue("", "\"" + handlerPath + "\" /Launch \"%1\"");
             }
         }
 
@@ -1533,6 +1543,11 @@ namespace LuckyBlox.Installer
 
             string root = options.Root ?? InstallerConfig.DefaultRoot();
 
+            if (!string.IsNullOrWhiteSpace(options.LaunchUri))
+            {
+                return LaunchClientFromProtocolUri(options.LaunchUri, root);
+            }
+
             // --- State check ---------------------------------------------------
             // Reports what is installed and what the server publishes, changing
             // nothing. This is what the launcher calls to decide whether to show
@@ -1634,6 +1649,94 @@ namespace LuckyBlox.Installer
             return 0;
         }
 
+        private static int LaunchClientFromProtocolUri(string launchUri, string root)
+        {
+            try
+            {
+                var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (Match match in Regex.Matches(launchUri, @"(?:^|\+)([A-Za-z][A-Za-z0-9_-]*):([^+]*)"))
+                {
+                    values[match.Groups[1].Value] = Uri.UnescapeDataString(match.Groups[2].Value);
+                }
+
+                string ticket;
+                string placeText;
+                string userText;
+                string portText;
+                string jobId;
+                string requestedBaseUrl;
+                if (!values.TryGetValue("gameinfo", out ticket)
+                    || !values.TryGetValue("placeId", out placeText)
+                    || !values.TryGetValue("serverPort", out portText)
+                    || !values.TryGetValue("jobId", out jobId))
+                    throw new FormatException("The LuckyBlox game link is missing launch information.");
+                values.TryGetValue("userId", out userText);
+                values.TryGetValue("baseUrl", out requestedBaseUrl);
+
+                long placeId;
+                long userId = 0;
+                int port;
+                if (string.IsNullOrWhiteSpace(ticket)
+                    || !long.TryParse(placeText, NumberStyles.None, CultureInfo.InvariantCulture, out placeId)
+                    || placeId <= 0
+                    || (!string.IsNullOrWhiteSpace(userText)
+                        && (!long.TryParse(userText, NumberStyles.None, CultureInfo.InvariantCulture, out userId)
+                            || userId <= 0))
+                    || !int.TryParse(portText, NumberStyles.None, CultureInfo.InvariantCulture, out port)
+                    || port <= 0
+                    || port > 65535
+                    || string.IsNullOrWhiteSpace(jobId))
+                    throw new FormatException("The LuckyBlox game link contains invalid launch information.");
+
+                var state = InstallState.Read(root);
+                string versionDir = Path.Combine(state.VersionsDir, state.CurrentVersion ?? "");
+                string playerPath = Path.Combine(versionDir, InstallerConfig.PlayerBinary);
+                if (!File.Exists(playerPath))
+                    playerPath = Path.Combine(InstallerConfig.InstallDir(root), InstallerConfig.PlayerBinary);
+                if (!File.Exists(playerPath))
+                    throw new FileNotFoundException("The LuckyBlox Player is not installed. Run the installer and try again.", playerPath);
+
+                string baseUrl = InstallerConfig.NormalizeBaseUrl(
+                    string.IsNullOrWhiteSpace(requestedBaseUrl) ? InstallerConfig.BaseUrl : requestedBaseUrl).TrimEnd('/');
+                string authUrl = baseUrl + "/v1/authentication-tickets?";
+                if (userId > 0) authUrl += "userId=" + userId.ToString(CultureInfo.InvariantCulture) + "&";
+                authUrl += "placeId=" + placeId.ToString(CultureInfo.InvariantCulture);
+                string joinUrl = baseUrl + "/game/join?placeId="
+                    + placeId.ToString(CultureInfo.InvariantCulture)
+                    + (userId > 0 ? "&userId=" + userId.ToString(CultureInfo.InvariantCulture) : "")
+                    + "&ticket=" + Uri.EscapeDataString(ticket)
+                    + "&serverPort=" + port.ToString(CultureInfo.InvariantCulture)
+                    + "&jobId=" + Uri.EscapeDataString(jobId);
+
+                var child = Process.Start(new ProcessStartInfo
+                {
+                    FileName = playerPath,
+                    WorkingDirectory = Path.GetDirectoryName(playerPath),
+                    Arguments = "-a " + QuoteArgument(authUrl)
+                        + " -t " + QuoteArgument(ticket)
+                        + " -j " + QuoteArgument(joinUrl),
+                    UseShellExecute = true,
+                });
+                if (child == null)
+                    throw new InvalidOperationException("Windows did not start the LuckyBlox Player.");
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "LuckyBlox could not start this game.\n\n" + ex.Message,
+                    "LuckyBlox Player",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return 1;
+            }
+        }
+
+        private static string QuoteArgument(string value)
+        {
+            return "\"" + (value ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+        }
+
         [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool AttachConsole(int processId);
 
@@ -1683,6 +1786,7 @@ namespace LuckyBlox.Installer
         public bool Check;
         public string Root;
         public string BaseUrl;
+        public string LaunchUri;
 
         public static CommandLine Parse(string[] args)
         {
@@ -1727,6 +1831,10 @@ namespace LuckyBlox.Installer
                     case "--base":
                     case "/url":
                         if (i + 1 < args.Length) options.BaseUrl = args[++i];
+                        break;
+                    case "/launch":
+                    case "--launch":
+                        if (i + 1 < args.Length) options.LaunchUri = args[++i];
                         break;
                 }
             }
