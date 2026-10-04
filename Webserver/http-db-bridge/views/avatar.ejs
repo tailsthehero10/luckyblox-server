@@ -285,8 +285,9 @@
                 <div class="roblox-asset-grid">
                   <% assets.forEach(function (asset) { %>
                     <% var isSelected = wearingList.indexOf(String(asset.id)) !== -1; %>
-                    <div class="roblox-asset-card <%= isSelected ? 'selected' : '' %>"
-                      data-asset-id="<%= asset.id %>">
+                    <button class="roblox-asset-card <%= isSelected ? 'selected' : '' %>"
+                      type="button" data-asset-id="<%= asset.id %>" data-select-asset="<%= asset.id %>"
+                      aria-pressed="<%= isSelected ? 'true' : 'false' %>">
                       <div class="roblox-asset-preview">
                         <% if (asset.thumbnail || asset.image) { %>
                           <img src="<%= asset.thumbnail || asset.image %>" alt="<%= asset.name %>"
@@ -299,11 +300,10 @@
                       <div class="roblox-asset-type">
                         <%= asset.assetType || asset.className %>
                       </div>
-                      <button class="roblox-secondary-button" type="button"
-                        data-select-asset="<%= asset.id %>">
+                      <span class="av-asset-action-label" data-asset-action-label>
                         <%= isSelected ? 'Wearing' : 'Wear' %>
-                      </button>
-                    </div>
+                      </span>
+                    </button>
                   <% }); %>
                 </div>
               <% } else { %>
@@ -524,9 +524,11 @@
         if (assetButton) {
           var assetId = String(assetButton.getAttribute('data-select-asset'));
           if (selected.has(assetId)) selected.delete(assetId); else selected.add(assetId);
-          assetButton.textContent = selected.has(assetId) ? 'Selected' : 'Select';
-          var card = assetButton.closest('.roblox-asset-card');
-          if (card) card.classList.toggle('selected', selected.has(assetId));
+          var isSelected = selected.has(assetId);
+          assetButton.classList.toggle('selected', isSelected);
+          assetButton.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+          var actionLabel = assetButton.querySelector('[data-asset-action-label]');
+          if (actionLabel) actionLabel.textContent = isSelected ? 'Wearing' : 'Wear';
           markDirty();
           return;
         }

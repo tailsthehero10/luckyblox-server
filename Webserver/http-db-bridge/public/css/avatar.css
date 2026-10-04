@@ -626,13 +626,14 @@ html.theme-dark .av-render-actions {
 /* --- Inventory ------------------------------------------------------------- */
 .roblox-asset-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 12px;
 }
 
 .roblox-asset-card {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 5px;
   min-width: 0;
   padding: 8px;
@@ -640,6 +641,22 @@ html.theme-dark .av-render-actions {
   border: 1px solid var(--lb-line);
   border-radius: 2px;
   text-align: center;
+}
+
+button.roblox-asset-card[data-select-asset] {
+  width: 100%;
+  color: var(--lb-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+button.roblox-asset-card[data-select-asset]:hover {
+  border-color: #00a2ff;
+}
+
+button.roblox-asset-card[data-select-asset]:focus-visible {
+  outline: 2px solid #00a2ff !important;
+  outline-offset: 2px !important;
 }
 
 .roblox-asset-card.selected {
@@ -650,6 +667,8 @@ html.theme-dark .av-render-actions {
 
 .roblox-asset-preview {
   width: 100%;
+  height: auto;
+  flex: 0 0 auto;
   aspect-ratio: 1 / 1;
   display: grid;
   place-items: center;
@@ -685,28 +704,50 @@ html.theme-dark .av-render-actions {
   white-space: nowrap;
 }
 
-/* The Select button inside an inventory card.
-
-   roblox.css sets .roblox-secondary-button { min-height: 36px !important }, which
-   beats a plain `min-height: 30px` here - so the button rendered 36px tall inside
-   a ~110px-wide card and pushed the card taller than its neighbours, which is
-   what made the inventory grid look ragged. `!important` alone would still lose;
-   the extra specificity (card + button) plus !important is what actually wins. */
-.roblox-asset-card .roblox-secondary-button,
-.roblox-asset-card button.roblox-secondary-button {
+.av-asset-action-label {
+  display: block;
   width: 100%;
-  min-height: 30px !important;
-  height: auto;
-  padding: 0 8px !important;
-  font-size: 13px !important;
-  font-weight: 500;
-  /* A long item name must not push the button wider than its card. */
-  max-width: 100%;
-  box-sizing: border-box;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  justify-content: center;
+  margin-top: 2px;
+  padding: 5px 8px;
+  border: 1px solid var(--lb-line);
+  color: var(--lb-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.roblox-asset-card.selected .av-asset-action-label {
+  border-color: #00a2ff;
+  background: #00a2ff;
+  color: #ffffff;
+}
+
+html.theme-dark button.roblox-asset-card[data-select-asset] {
+  color: var(--lb-ink) !important;
+}
+
+html.theme-dark .roblox-asset-card.selected {
+  background: #152433 !important;
+  border-color: #00a2ff !important;
+}
+
+html.theme-dark .roblox-asset-name {
+  color: var(--lb-ink) !important;
+}
+
+html.theme-dark .roblox-asset-type,
+html.theme-dark .roblox-asset-preview {
+  color: var(--lb-muted) !important;
+}
+
+html.theme-dark .av-asset-action-label {
+  color: var(--lb-ink) !important;
+}
+
+html.theme-dark .roblox-asset-card.selected .av-asset-action-label {
+  background: #0074cc !important;
+  border-color: #0074cc !important;
+  color: #ffffff !important;
 }
 
 /* --- Responsive ------------------------------------------------------------ */

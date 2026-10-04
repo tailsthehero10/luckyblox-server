@@ -262,81 +262,94 @@
   cursor: not-allowed;
 }
 
-/* ---------- Dark theme ---------- */
-html.theme-dark,
-body.theme-dark {
-  --bg-main: #101318 !important;
-  --bg-container: #1a1e25 !important;
-  --border-line: #2c333d !important;
-  --text-main: #e6e9ee !important;
-  --text-muted: #9aa4b2 !important;
-  --rbx-text: #e6e9ee !important;
-  --rbx-muted: #9aa4b2 !important;
-  --rbx-header: #1b2330 !important;
-  --rbx-header-dark: #151b25 !important;
-  background: #101318 !important;
-  color: #e6e9ee !important;
+/* ---------- Dark theme ----------------------------------------------------- */
+html.theme-dark .settings-window {
+  background: var(--lb-surface) !important;
+  border-color: var(--lb-line) !important;
+  color: var(--lb-ink) !important;
 }
 
-body.theme-dark .settings-window {
-  background: #1a1e25;
-  border-color: #2c333d;
+html.theme-dark .settings-sidebar,
+html.theme-dark .settings-actions {
+  border-color: var(--lb-line) !important;
 }
 
-body.theme-dark .settings-sidebar {
-  border-right-color: #2c333d;
+html.theme-dark .settings-sidebar-title,
+html.theme-dark .settings-help,
+html.theme-dark .settings-sub,
+html.theme-dark .settings-summary-item span {
+  color: var(--lb-muted) !important;
 }
 
-body.theme-dark .settings-nav-link:hover {
-  background: #222833;
+html.theme-dark .settings-nav-link {
+  color: var(--lb-ink-2) !important;
 }
 
-body.theme-dark .settings-nav-link.is-active {
-  background: #132b3d;
-  color: #6cc4ff;
-  border-left-color: #00a2ff;
+html.theme-dark .settings-nav-link:hover {
+  background: var(--lb-surface-alt) !important;
+  color: var(--lb-ink) !important;
 }
 
-body.theme-dark .settings-field input,
-body.theme-dark .settings-field textarea,
-body.theme-dark .settings-summary-item {
-  background: #12161c;
-  border-color: #2c333d;
-  color: #e6e9ee;
+html.theme-dark .settings-nav-link.is-active {
+  background: #132b3d !important;
+  border-left-color: #00a2ff !important;
+  color: #6cc4ff !important;
 }
 
-body.theme-dark .settings-field input:disabled {
-  background: #191d24;
-  color: #7d8794;
+html.theme-dark .settings-head h1,
+html.theme-dark .settings-label,
+html.theme-dark .settings-summary-item strong,
+html.theme-dark .settings-pointer,
+html.theme-dark .settings-panel {
+  color: var(--lb-ink) !important;
 }
 
-body.theme-dark .settings-row {
-  border-bottom-color: #242a33;
+html.theme-dark .settings-row {
+  border-bottom-color: var(--lb-line-soft) !important;
 }
 
-body.theme-dark .settings-pointer {
-  background: #12161c;
-  border-color: #2c333d;
+html.theme-dark .settings-field input,
+html.theme-dark .settings-field textarea,
+html.theme-dark .settings-summary-item,
+html.theme-dark .settings-pointer {
+  background: #12161c !important;
+  border-color: var(--lb-line) !important;
 }
 
-body.theme-dark .settings-btn.secondary {
-  background: #222833;
-  color: #e6e9ee;
-  border-color: #39414d;
+html.theme-dark .settings-field input,
+html.theme-dark .settings-field textarea {
+  color: var(--lb-ink) !important;
 }
 
-body.theme-dark .settings-btn.secondary .ch-ico { filter: none !important; }
-
-body.theme-dark .settings-status.is-ok {
-  color: #4be08e;
-  background: #12301f;
-  border-color: #1f5a38;
+html.theme-dark .settings-field input:disabled {
+  background: #191d24 !important;
+  color: var(--lb-faint) !important;
 }
 
-body.theme-dark .settings-status.is-error {
-  color: #ff8a84;
-  background: #341a1a;
-  border-color: #6a2b2b;
+html.theme-dark .settings-btn.secondary {
+  background: var(--lb-surface-alt) !important;
+  color: var(--lb-ink) !important;
+  border-color: var(--lb-line) !important;
+}
+
+html.theme-dark .settings-btn.secondary:hover {
+  background: #232a34 !important;
+}
+
+html.theme-dark .settings-btn.secondary .ch-ico {
+  filter: brightness(0) invert(1) !important;
+}
+
+html.theme-dark .settings-status.is-ok {
+  color: #4be08e !important;
+  background: #12301f !important;
+  border-color: #1f5a38 !important;
+}
+
+html.theme-dark .settings-status.is-error {
+  color: #ff8a84 !important;
+  background: #341a1a !important;
+  border-color: #6a2b2b !important;
 }
 
 @media (max-width: 800px) {

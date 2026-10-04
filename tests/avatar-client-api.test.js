@@ -34,6 +34,20 @@ const assets = {
   501: { id: 501, name: 'Real local shirt', assetTypeId: 11, assetType: 'Shirt', version: 3 },
   502: { id: 502, name: 'Saved pants', assetTypeId: 12, assetType: 'Pants', version: 2 },
 };
+const games = {
+  27013: {
+    placeId: 27013,
+    universeId: 27014,
+    title: 'A Real Test Experience',
+    description: 'Experience metadata from the published game record.',
+    developer: 'Real Creator',
+    developerId: 42,
+    creatorType: 'Group',
+    thumbnail: '/game-art/test-cover.png',
+    icon: '/game-art/test-icon.png',
+    genre: 'Adventure',
+  },
+};
 let activeSession = null;
 
 fs.writeFileSync(path.join(dataDir, '2.json'), JSON.stringify({ currentlyWearing: ['502'] }));
@@ -44,8 +58,8 @@ installClientApi(app, {
   getUser: (id) => users[String(id)] || null,
   getUsers: () => users,
   getAssets: () => assets,
-  getGames: () => ({}),
-  getGameEntry: () => null,
+  getGames: () => games,
+  getGameEntry: (id) => games[String(id)] || null,
   getPlaceSettings: () => ({}),
   serializeUser: (id) => users[String(id)] || null,
   getCurrencyForUser: () => ({ robux: 0 }),
@@ -123,6 +137,26 @@ function request(server, pathname, method = 'GET', payload = null) {
       },
       { targetId: 2, state: 'Pending' },
     ]);
+
+    const gameDetails = JSON.parse((await request(server, '/v1/games?universeIds=27014,999')).body);
+    assert.deepEqual(gameDetails, {
+      data: [{
+        id: 27014,
+        rootPlaceId: 27013,
+        name: 'A Real Test Experience',
+        description: 'Experience metadata from the published game record.',
+        creator: { id: 42, name: 'Real Creator', type: 'Group' },
+        thumbnailUrl: 'http://127.0.0.1:3000/game-art/test-cover.png',
+        genre: 'Adventure',
+        created: null,
+        updated: null,
+      }],
+    });
+    const gameThumbnails = JSON.parse(
+      (await request(server, '/v1/thumbnails/games?universeIds=27014')).body,
+    );
+    assert.equal(gameThumbnails.data[0].targetId, 27014);
+    assert.equal(gameThumbnails.data[0].imageUrl, 'http://127.0.0.1:3000/game-art/test-cover.png');
 
     const classicThumbnail = await request(server, '/thumbs/avatar.ashx?userId=1&x=48&y=48');
     assert.equal(classicThumbnail.status, 302);

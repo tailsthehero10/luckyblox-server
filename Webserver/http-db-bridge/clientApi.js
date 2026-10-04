@@ -94,6 +94,35 @@ function installClientApi(app, ctx) {
     return users[String(userId)] || null;
   }
 
+  function gameImageUrl(value, fallback) {
+    const fallbackUrl = new URL(fallback, ctx.publicOrigin).href;
+    try {
+      const url = new URL(String(value || fallback), ctx.publicOrigin);
+      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return fallbackUrl;
+      return url.href;
+    } catch (error) {
+      return fallbackUrl;
+    }
+  }
+
+  function findGameRecord(rawId) {
+    const id = readId(rawId);
+    if (!id) return null;
+    const games = Object.values(ctx.getGames() || {});
+    let game = games.find((entry) => entry && (
+      Number(entry.placeId) === id
+      || Number(entry.universeId || entry.gameId) === id
+    ));
+    if (game) return { placeId: Number(game.placeId || id), game };
+
+    game = ctx.getGameEntry(ctx.normalizePlaceId(id));
+    if (!game || (
+      Number(game.placeId || game.universeId || game.gameId) !== id
+      && Number(game.universeId || game.gameId) !== id
+    )) return null;
+    return { placeId: Number(game.placeId || id), game };
+  }
+
   function existingUser(userId) {
     const user = storedUser(userId);
     return user && typeof user === 'object' ? user : null;
@@ -492,14 +521,18 @@ function installClientApi(app, ctx) {
     return res.json({
       data: ids
         .map((raw) => {
-          const placeId = ctx.normalizePlaceId(raw);
-          const game = ctx.getGameEntry(placeId);
-          if (!game) return null;
+          const record = findGameRecord(raw);
+          if (!record) return null;
+          const { placeId, game } = record;
+          const imageUrl = gameImageUrl(
+            game.thumbnail || game.icon,
+            '/gameplaceholder/big.png',
+          );
           return {
-            targetId: Number(placeId),
+            targetId: Number(game.universeId || game.gameId || placeId),
             state: 'Completed',
-            imageUrl: `${ctx.publicOrigin}/gameplaceholder/big.png`,
-            version: `v${stableHash(placeId) % 900 + 100}`,
+            imageUrl,
+            version: `v${stableHash(`${placeId}:${imageUrl}`) % 900 + 100}`,
           };
         })
         .filter(Boolean),
@@ -508,6 +541,36 @@ function installClientApi(app, ctx) {
 
   app.get('/v1/thumbnails/games', gameThumbnails);
   app.get('/v1/thumbnails/universes', gameThumbnails);
+
+  // GET /v1/games?universeIds=... is the public game-details API queried by
+  // legacy clients. Keep it backed by the same experience record used by /game.
+  app.get('/v1/games', (req, res) => {
+    const rawIds = req.query.universeIds || req.query.placeIds || '';
+    const ids = String(rawIds).split(',').map((value) => value.trim()).filter(Boolean);
+    const data = ids.map((raw) => {
+      const record = findGameRecord(raw);
+      if (!record) return null;
+      const { placeId, game } = record;
+      const creatorId = Number(game.developerId || game.authorId || game.ownerId || game.creatorId);
+      const creatorName = String(game.developer || game.creatorName || '').trim();
+      return {
+        id: Number(game.universeId || game.gameId || placeId),
+        rootPlaceId: Number(game.placeId || placeId),
+        name: String(game.title || ''),
+        description: String(game.description || ''),
+        creator: creatorName ? {
+          id: Number.isSafeInteger(creatorId) && creatorId > 0 ? creatorId : null,
+          name: creatorName,
+          type: ['User', 'Group'].includes(game.creatorType) ? game.creatorType : null,
+        } : null,
+        thumbnailUrl: gameImageUrl(game.thumbnail || game.icon, '/gameplaceholder/big.png'),
+        genre: String(game.genre || ''),
+        created: game.createdAt || null,
+        updated: game.updatedAt || null,
+      };
+    }).filter((game) => game && game.name);
+    return res.json({ data });
+  });
 
   /* ------------------------------------------------------------------------
    * Game passes + developer products

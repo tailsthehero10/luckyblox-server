@@ -3328,7 +3328,7 @@ function gameClientMetadata(placeId, game = getGameEntry(placeId)) {
     }
     return new URL(fallback, publicOrigin).href;
   };
-  const creatorId = Number(game.developerId || game.ownerId || game.creatorId);
+  const creatorId = Number(game.developerId || game.authorId || game.ownerId || game.creatorId);
 
   return {
     placeId: Number(placeId) || 0,
@@ -3337,7 +3337,7 @@ function gameClientMetadata(placeId, game = getGameEntry(placeId)) {
     creatorName: String(game.developer || game.creatorName || 'LuckyBlox Studio'),
     creatorId: Number.isSafeInteger(creatorId) && creatorId > 0 ? creatorId : null,
     creatorType: ['User', 'Group'].includes(game.creatorType) ? game.creatorType : null,
-    thumbnailUrl: absoluteAssetUrl(game.thumbnail, '/gameplaceholder/game-thumb.png'),
+    thumbnailUrl: absoluteAssetUrl(game.thumbnail || game.icon, '/gameplaceholder/game-thumb.png'),
     iconUrl: absoluteAssetUrl(game.icon, '/gameplaceholder/card.png'),
     description: String(game.description || ''),
     genre: String(game.genre || 'Adventure'),

@@ -145,9 +145,23 @@ test('avatar editor stylesheet keeps its grid and Roblox portrait proportions', 
   assert.match(viewerRule, /width:\s*277px/);
   assert.match(viewerRule, /height:\s*352px/);
 
+  const assetGridStart = css.indexOf('.roblox-asset-grid {');
+  const assetGridRule = css.slice(assetGridStart, css.indexOf('}', assetGridStart));
+  assert.match(assetGridRule, /minmax\(150px,\s*1fr\)/);
+  const assetPreviewStart = css.indexOf('.roblox-asset-preview {');
+  const assetPreviewRule = css.slice(assetPreviewStart, css.indexOf('}', assetPreviewStart));
+  assert.match(assetPreviewRule, /height:\s*auto/);
+  assert.match(assetPreviewRule, /flex:\s*0\s+0\s+auto/);
+  assert.match(assetPreviewRule, /aspect-ratio:\s*1\s*\/\s*1/);
+
   const avatarView = fs.readFileSync(path.join(viewsDir, 'avatar.ejs'), 'utf8');
   assert.match(avatarView, /class="av-page-heading"/);
   assert.match(avatarView, /class="roblox-avatar-stage av-preview-stage"/);
+  assert.match(avatarView, /<button class="roblox-asset-card[\s\S]*?data-select-asset="<%= asset\.id %>"/);
+  assert.match(avatarView, /aria-pressed="<%= isSelected \? 'true' : 'false' %>"/);
+  assert.match(avatarView, /<span class="av-asset-action-label" data-asset-action-label>/);
+  assert.match(avatarView, /assetButton\.querySelector\('\[data-asset-action-label\]'\)/);
+  assert.doesNotMatch(avatarView, /<button class="roblox-secondary-button"[^>]+data-select-asset/);
 });
 
 test('avatar viewer reports accessory preview failures without covering the render in raw IDs', () => {
@@ -243,6 +257,16 @@ test('dark theme styles Discover, shop, and avatar controls left white by page s
   assert.match(baseCss, /html\.theme-dark body :where\([\s\S]*?background-color:\s*var\(--lb-surface\)\s*!important/);
   assert.match(baseCss, /html\.theme-dark \.lb-panel-body,[\s\S]*?html\.theme-dark \.roblox-panel-body,[\s\S]*?background:\s*var\(--lb-surface\)\s*!important/);
   assert.match(baseCss, /html\.theme-dark body\s*\{\s*color-scheme:\s*dark/s);
+
+  const avatarCss = fs.readFileSync(path.join(cssDir, 'avatar.css'), 'utf8');
+  assert.match(avatarCss, /html\.theme-dark \.roblox-asset-name\s*\{[^}]*color:\s*var\(--lb-ink\)\s*!important/s);
+  assert.match(avatarCss, /html\.theme-dark \.roblox-asset-type,[\s\S]*?html\.theme-dark \.roblox-asset-preview\s*\{[^}]*color:\s*var\(--lb-muted\)\s*!important/s);
+
+  const settingsCss = fs.readFileSync(path.join(cssDir, 'settings.css'), 'utf8');
+  assert.match(settingsCss, /html\.theme-dark \.settings-window\s*\{[^}]*background:\s*var\(--lb-surface\)\s*!important/s);
+  assert.match(settingsCss, /html\.theme-dark \.settings-head h1,[\s\S]*?html\.theme-dark \.settings-pointer,[\s\S]*?color:\s*var\(--lb-ink\)\s*!important/s);
+  assert.match(settingsCss, /html\.theme-dark \.settings-nav-link\.is-active\s*\{[^}]*background:[^;]+!important[^}]*color:[^;]+!important/s);
+  assert.doesNotMatch(settingsCss, /body\.theme-dark\s+\.settings-/);
 });
 
 test('Apache homepage uses local square game art and the shared 2021-style header', () => {

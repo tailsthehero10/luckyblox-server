@@ -89,6 +89,14 @@ function cookieFrom(response) {
       friends: [],
     },
   }));
+  fs.writeFileSync(path.join(dataDir, 'assets.json'), JSON.stringify({
+    607702162: {
+      id: 607702162,
+      name: 'Test Avatar Item',
+      assetType: 'Hat',
+      thumbnail: '/gameplaceholder/card.png',
+    },
+  }));
   const child = spawn(process.execPath, ['Webserver/http-db-bridge/server.js'], {
     cwd: path.resolve(__dirname, '..'),
     env: { ...process.env, PORT: String(port), LUCKYBLOX_DATA_DIR: dataDir },
@@ -165,6 +173,9 @@ function cookieFrom(response) {
     const ownerAvatar = await get(port, '/avatar?userId=2', ownerSession);
     assert.equal(ownerAvatar.status, 200);
     assert.match(ownerAvatar.body, /LuckyBlox Owner/);
+    assert.match(ownerAvatar.body, /<button class="roblox-asset-card selected"[^>]*data-select-asset="607702162"/);
+    assert.match(ownerAvatar.body, /aria-pressed="true"[\s\S]*?Test Avatar Item[\s\S]*?Wearing/);
+    assert.doesNotMatch(ownerAvatar.body, /<button class="roblox-secondary-button"[^>]*data-select-asset/);
     assert.doesNotMatch(ownerAvatar.body, /Viewer Account/);
 
     const viewerAccount = await get(port, '/account?userId=1', viewerSession);

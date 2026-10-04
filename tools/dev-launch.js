@@ -546,9 +546,13 @@ function createLocalServerConfig(templatePath, outputPath, {
   if (gameMetadata && gameMetadata.title) config.Settings.GameId = String(gameMetadata.title);
   if (gameMetadata && Number.isSafeInteger(Number(gameMetadata.creatorId)) && Number(gameMetadata.creatorId) > 0) {
     config.Settings.CreatorId = Number(gameMetadata.creatorId);
+  } else {
+    delete config.Settings.CreatorId;
   }
   if (gameMetadata && gameMetadata.creatorType) {
     config.Settings.CreatorType = String(gameMetadata.creatorType);
+  } else {
+    delete config.Settings.CreatorType;
   }
   fs.writeFileSync(outputPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
   return outputPath;
