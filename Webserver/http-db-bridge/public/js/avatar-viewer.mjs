@@ -1,6 +1,7 @@
 import * as THREE from '/vendor/three/three.module.js';
 import { parseRobloxMesh } from './roblox-mesh.mjs';
 
+const CHARACTER_FIT_SCALE = 2;
 const viewers = document.querySelectorAll('[data-avatar-viewer]');
 if (viewers.length) {
   viewers.forEach((viewer) => {
@@ -45,9 +46,12 @@ async function initializeViewer(viewer) {
 
   const rotationPivot = new THREE.Group();
   const scaleRoot = new THREE.Group();
+  const characterScaleRoot = new THREE.Group();
   const modelRoot = new THREE.Group();
+  const accessoryRoot = new THREE.Group();
   rotationPivot.add(scaleRoot);
-  scaleRoot.add(modelRoot);
+  scaleRoot.add(characterScaleRoot, accessoryRoot);
+  characterScaleRoot.add(modelRoot);
   scene.add(rotationPivot);
 
   const response = await fetch(`/api/avatar/rig/${rig}`, {
@@ -60,6 +64,7 @@ async function initializeViewer(viewer) {
   }
 
   const missing = [];
+  const bodyMeshes = new Map();
   const results = await Promise.all(payload.parts.map(async (part) => {
     try {
       const geometry = await geometryForPart(part);
@@ -74,6 +79,7 @@ async function initializeViewer(viewer) {
       mesh.position.set(part.position.x, part.position.y, part.position.z);
       mesh.quaternion.setFromRotationMatrix(rotationMatrix(part.rotation));
       modelRoot.add(mesh);
+      bodyMeshes.set(part.name, mesh);
       if (part.faceTexture) {
         const texture = await loadTexture(part.faceTexture);
         const faceMaterial = new THREE.MeshBasicMaterial({
@@ -100,30 +106,62 @@ async function initializeViewer(viewer) {
   const renderedParts = results.filter(Boolean).length;
   if (!renderedParts) throw new Error(`No parts from ${rig}.rbxm could be rendered.`);
 
-  const bounds = new THREE.Box3().setFromObject(modelRoot);
-  const center = bounds.getCenter(new THREE.Vector3());
-  const height = Math.max(0.1, bounds.max.y - bounds.min.y);
-  modelRoot.position.set(-center.x, -center.y, -center.z);
+  characterScaleRoot.scale.setScalar(1);
+  const bodyBounds = new THREE.Box3().setFromObject(modelRoot);
+  const bodyCenter = bodyBounds.getCenter(new THREE.Vector3());
+  modelRoot.position.set(-bodyCenter.x, -bodyCenter.y, -bodyCenter.z);
+  characterScaleRoot.scale.setScalar(CHARACTER_FIT_SCALE);
   const scales = config.scales || {};
   scaleRoot.scale.set(clampScale(scales.width), clampScale(scales.height), clampScale(scales.depth));
+  rotationPivot.updateMatrixWorld(true);
 
+  const accessoryResults = await Promise.all((Array.isArray(config.wearing) ? config.wearing : []).map(async (id) => {
+    try {
+      const response = await fetch(`/api/avatar/accessories/${encodeURIComponent(id)}`, {
+        headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) {
+        throw new Error(`Accessory request returned HTTP ${response.status}.`);
+      }
+      const accessory = await response.json();
+      if (!accessory.ok) throw new Error(accessory.message || 'Accessory data is unavailable.');
+      await addAccessory(accessoryRoot, bodyMeshes, payload.parts, accessory, rotationPivot);
+      return true;
+    } catch (error) {
+      missing.push(`item ${id}: ${error.message}`);
+      return false;
+    }
+  }));
+  const renderedAccessories = accessoryResults.filter(Boolean).length;
+
+  rotationPivot.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(rotationPivot);
+  const height = Math.max(0.1, bounds.max.y - bounds.min.y);
   const headPart = payload.parts.find((part) => part.name === 'Head');
-  const torsoPart = payload.parts.find((part) => part.name === 'UpperTorso')
-    || payload.parts.find((part) => part.name === 'Torso');
-  const portraitFrameHeight = headPart
-    ? headPart.size.y * 1.19 + (torsoPart ? torsoPart.size.y * 0.9 : 0)
-    : height * 0.5;
+  const headMesh = bodyMeshes.get('Head');
+  // Portraits show the head and its real accessories, not a crop of the full rig.
+  const frontAzimuth = rig === 'R15' ? 0.8 : 0;
+  const portraitBounds = headMesh
+    ? new THREE.Box3().setFromObject(headMesh)
+    : bounds.clone();
+  if (accessoryRoot.children.length) {
+    portraitBounds.union(new THREE.Box3().setFromObject(accessoryRoot));
+  }
+  const portraitSize = portraitBounds.getSize(new THREE.Vector3());
+  const portraitWidth = Math.abs(Math.cos(frontAzimuth)) * portraitSize.x
+    + Math.abs(Math.sin(frontAzimuth)) * portraitSize.z;
+  const portraitFrameHeight = Math.max(portraitSize.y, portraitWidth) * 1.15;
+  const portraitTargetY = portraitBounds.getCenter(new THREE.Vector3()).y;
   const frameHeight = portrait ? portraitFrameHeight : height;
   const distance = (frameHeight / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))))
     * (portrait ? 1.08 : 1.3);
   // View the supplied R15 face UV from its authored front without rotating its rig.
-  const frontAzimuth = rig === 'R15' ? 0.8 : 0;
   const target = portrait && headPart
-    ? new THREE.Vector3(0, headPart.position.y - center.y - headPart.size.y * 0.3, 0)
+    ? new THREE.Vector3(0, portraitTargetY, 0)
     : new THREE.Vector3(0, 0, 0);
   camera.position.set(
     target.x - distance * Math.sin(frontAzimuth),
-    target.y + height * 0.08,
+    target.y + frameHeight * 0.08,
     target.z - distance * Math.cos(frontAzimuth),
   );
   camera.lookAt(target);
@@ -205,12 +243,72 @@ async function initializeViewer(viewer) {
   viewer.classList.add('is-rendered');
   clearLoading(viewer);
   if (missing.length) {
-    showStatus(viewer, `Rendered ${renderedParts}/${payload.parts.length} real ${rig}.rbxm parts. Missing mesh data: ${missing.join('; ')}`, true);
+    showStatus(viewer, `Rendered ${renderedParts} ${rig}.rbxm parts and ${renderedAccessories}/${(config.wearing || []).length} equipped accessories. Could not load: ${missing.join('; ')}`, true);
   } else {
     showStatus(viewer, portrait
-      ? `Rendered ${renderedParts} real ${rig}.rbxm parts.`
-      : `Rendered ${renderedParts} real ${rig}.rbxm parts. Drag to rotate; scroll to zoom.`, false);
+      ? `Rendered ${renderedParts} ${rig}.rbxm parts and ${renderedAccessories} equipped accessories.`
+      : `Rendered ${renderedParts} ${rig}.rbxm parts and ${renderedAccessories} equipped accessories. Drag to rotate; scroll to zoom.`, false);
   }
+}
+
+async function addAccessory(accessoryRoot, bodyMeshes, bodyParts, accessory, rotationPivot) {
+  const bodyPart = bodyParts.find((part) => (
+    Array.isArray(part.attachments)
+    && part.attachments.some((attachment) => attachment.name === accessory.attachmentName)
+  ));
+  const bodyMesh = bodyPart && bodyMeshes.get(bodyPart.name);
+  const bodyAttachment = bodyPart && bodyPart.attachments.find(
+    (attachment) => attachment.name === accessory.attachmentName,
+  );
+  if (!bodyPart || !bodyMesh || !bodyAttachment) {
+    throw new Error(`Rig has no ${accessory.attachmentName} attachment.`);
+  }
+
+  const meshData = await fetchMesh(`/v1/assets/${encodeURIComponent(accessory.meshId)}`);
+  const geometry = geometryFromData(meshData);
+  if (accessory.meshType === 'SpecialMesh') {
+    geometry.scale(accessory.meshScale.x, accessory.meshScale.y, accessory.meshScale.z);
+    geometry.translate(accessory.meshOffset.x, accessory.meshOffset.y, accessory.meshOffset.z);
+  } else {
+    fitGeometryToPart(geometry, accessory.size);
+  }
+  geometry.computeVertexNormals();
+
+  const materialOptions = {
+    color: 0xffffff,
+    roughness: 0.85,
+    metalness: 0,
+    side: THREE.DoubleSide,
+  };
+  if (accessory.textureId) {
+    materialOptions.map = await loadTexture(`/v1/assets/${encodeURIComponent(accessory.textureId)}`);
+  }
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial(materialOptions));
+  mesh.name = `Equipped accessory ${accessory.name}`;
+
+  const bodyAttachmentMatrix = rotationMatrix(bodyAttachment.rotation);
+  bodyAttachmentMatrix.setPosition(
+    bodyAttachment.position.x,
+    bodyAttachment.position.y,
+    bodyAttachment.position.z,
+  );
+  const handleAttachmentMatrix = rotationMatrix(accessory.handleAttachment.rotation);
+  handleAttachmentMatrix.setPosition(
+    accessory.handleAttachment.position.x,
+    accessory.handleAttachment.position.y,
+    accessory.handleAttachment.position.z,
+  );
+
+  rotationPivot.updateMatrixWorld(true);
+  const handleWorldMatrix = bodyMesh.matrixWorld.clone()
+    .multiply(bodyAttachmentMatrix)
+    .multiply(handleAttachmentMatrix.invert());
+  const handleLocalMatrix = accessoryRoot.matrixWorld.clone()
+    .invert()
+    .multiply(handleWorldMatrix);
+  mesh.matrixAutoUpdate = false;
+  mesh.matrix.copy(handleLocalMatrix);
+  accessoryRoot.add(mesh);
 }
 
 async function geometryForPart(part) {

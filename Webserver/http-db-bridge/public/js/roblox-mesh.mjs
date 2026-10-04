@@ -6,10 +6,11 @@ function parseRobloxMesh(source) {
     ? new Uint8Array(source)
     : new Uint8Array(source.buffer, source.byteOffset, source.byteLength);
   const header = new TextDecoder().decode(bytes.subarray(0, 12)).trim();
-  const versionMatch = /^version ([23])\.00$/.exec(header);
+  const versionMatch = /^version ([123])\.00$/.exec(header);
   if (!versionMatch) {
     throw new Error(`Unsupported Roblox mesh format: ${header || 'empty file'}`);
   }
+  if (Number(versionMatch[1]) === 1) return parseVersionOneMesh(bytes);
   if (bytes.byteLength < 25) throw new Error('Roblox mesh header is truncated.');
 
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -86,6 +87,49 @@ function parseRobloxMesh(source) {
     uvs,
     indices,
   };
+}
+
+function parseVersionOneMesh(bytes) {
+  const source = new TextDecoder().decode(bytes);
+  const header = /^version 1\.00\r?\n(\d+)\r?\n([\s\S]*)$/.exec(source);
+  if (!header) throw new Error('Roblox mesh v1 header is invalid.');
+
+  const faceCount = Number(header[1]);
+  if (!Number.isSafeInteger(faceCount) || faceCount < 1 || faceCount > MAX_FACES) {
+    throw new Error('Roblox mesh v1 has an invalid face count.');
+  }
+
+  const body = header[2];
+  const vectors = Array.from(body.matchAll(/\[([^\]]*)\]/g));
+  if (vectors.length !== faceCount * 9 || body.replace(/\[[^\]]*\]/g, '').trim() !== '') {
+    throw new Error('Roblox mesh v1 has an invalid vertex or face table.');
+  }
+
+  const vertexCount = faceCount * 3;
+  const positions = new Float32Array(vertexCount * 3);
+  const normals = new Float32Array(vertexCount * 3);
+  const uvs = new Float32Array(vertexCount * 2);
+  const indices = new Uint32Array(vertexCount);
+
+  for (let vertex = 0; vertex < vertexCount; vertex += 1) {
+    const position = parseVector(vectors[vertex * 3][1], 'position');
+    const normal = parseVector(vectors[vertex * 3 + 1][1], 'normal');
+    const uv = parseVector(vectors[vertex * 3 + 2][1], 'UV');
+    positions.set(position, vertex * 3);
+    normals.set(normal, vertex * 3);
+    uvs.set(uv.slice(0, 2), vertex * 2);
+    indices[vertex] = vertex;
+  }
+
+  return { version: 1, positions, normals, uvs, indices };
+}
+
+function parseVector(value, label) {
+  const components = value.split(',').map((component) => Number(component.trim()));
+  if (components.length !== 3 || !components.every(Number.isFinite)) {
+    throw new Error(`Roblox mesh v1 contains an invalid ${label} vector.`);
+  }
+  return components;
 }
 
 export { parseRobloxMesh };

@@ -89,6 +89,13 @@ function getRigGeometry(rig) {
         && child.Name.toLowerCase() === 'face'
         && child.Texture === 'rbxasset://textures/face.png'
       ));
+      const attachments = part.Children
+        .filter((child) => child.ClassName === 'Attachment')
+        .map((attachment) => ({
+          name: attachment.Name,
+          position: vector3(attachment.CFrame.Position, `attachment position for ${part.Name}`),
+          rotation: attachment.CFrame.Orientation,
+        }));
       const rotation = part.CFrame.Orientation;
       const specialMeshType = mesh && mesh.MeshType && mesh.MeshType.Name
         ? mesh.MeshType.Name : null;
@@ -119,6 +126,7 @@ function getRigGeometry(rig) {
         faceTexture: faceDecal ? '/Content/textures/face.png' : null,
         meshId: part.ClassName === 'MeshPart' ? String(part.MeshId || '') : null,
         textureId: part.ClassName === 'MeshPart' ? String(part.TextureID || '') : null,
+        attachments,
       };
     });
 

@@ -14,6 +14,7 @@ const { buildPlaceCatalogFromMaps, normalizePlaceId: normalizePlaceIdInput, reso
 const { getRobloxProfileTemplateItems } = require('./robloxTemplateSource');
 const { searchUsers } = require(path.join(__dirname, '..', '..', 'server', 'userSearch.js'));
 const avatarRig = require('./avatarRig');
+const { parseAccessoryAsset } = require('./avatarAccessories');
 const robloxApi = require('./robloxApi');
 const { getStudioBuildInfo, getStudioUpdateManifest, STUDIO_EXECUTABLE_PATH, DEFAULT_BASE_URL } = require('./studioBuildInfo');
 const clientLauncher = require(path.join(__dirname, '..', '..', 'server', 'clientLauncher.js'));
@@ -1794,6 +1795,9 @@ function renderAvatarViewer(user, size, options = {}) {
       width: Number(scales.width) || 1,
       depth: Number(scales.depth) || 1,
     },
+    wearing: Array.isArray(user && user.currentlyWearing)
+      ? user.currentlyWearing.map(String).filter((id) => /^\d+$/.test(id) && Number(id) > 0)
+      : [],
   };
   const label = `${String(user && (user.displayName || user.username) || 'Avatar')} 3D avatar`;
   const compactClass = wanted <= 160 ? ' lb-avatar-viewer--compact' : '';
@@ -5491,6 +5495,35 @@ app.get('/api/avatar/rig/:rig', (req, res) => {
     return res.status(500).json({
       ok: false,
       error: 'avatar-rig-load-failed',
+      message: error.message,
+    });
+  }
+});
+
+app.get('/api/avatar/accessories/:id', async (req, res) => {
+  const id = String(req.params.id || '');
+  if (!/^\d+$/.test(id) || Number(id) <= 0) {
+    return res.status(400).json({ ok: false, error: 'invalid-avatar-accessory-id' });
+  }
+  try {
+    const delivered = await robloxAssetDelivery.fetchAssetContent(id, null, {
+      cacheDir: path.join(releaseRoot, 'Webserver', 'www', 'asset-content'),
+    });
+    if (!delivered.ok) {
+      const status = delivered.statusCode === 403 || delivered.statusCode === 404
+        ? 404 : delivered.statusCode || 502;
+      return res.status(status).json({
+        ok: false,
+        error: 'avatar-accessory-unavailable',
+        message: delivered.reason,
+      });
+    }
+    return res.json({ ok: true, ...parseAccessoryAsset(delivered.buffer, id) });
+  } catch (error) {
+    console.error(`[luckyblox] could not load avatar accessory ${id}: ${error.message}`);
+    return res.status(422).json({
+      ok: false,
+      error: 'avatar-accessory-load-failed',
       message: error.message,
     });
   }

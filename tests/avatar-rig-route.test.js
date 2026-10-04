@@ -74,6 +74,7 @@ function cookieFrom(response) {
       passwordVersion: credentials.version,
       theme: 'light',
       avatar: { playerAvatarType: 'R6', bodyColors: {} },
+      currentlyWearing: ['607702162'],
       friends: [],
     },
     2: {
@@ -130,6 +131,7 @@ function cookieFrom(response) {
       assert.equal(payload.parts.length, expectedParts);
       const head = payload.parts.find((part) => part.name === 'Head');
       assert.equal(head.faceTexture, '/Content/textures/face.png');
+      assert.ok(head.attachments.some((attachment) => attachment.name === 'HatAttachment'));
       if (rig === 'R15') {
         const meshPart = payload.parts.find((part) => part.name === 'LeftHand');
         assert.equal(meshPart.meshId, 'http://www.roblox.com/asset/?id=532219986');
@@ -151,6 +153,8 @@ function cookieFrom(response) {
       'the profile picture starts as an image, not an interactive canvas');
     assert.match(publicProfile.body, /data-avatar-mode="viewer"/,
       'the full-size avatar remains a separate interactive viewer');
+    assert.match(publicProfile.body, /&quot;wearing&quot;:\[&quot;607702162&quot;\]/,
+      'the profile 3D viewer receives the saved equipped asset ids');
     assert.match(publicProfile.body, /lb-user-avatar-placeholder/);
     assert.doesNotMatch(publicProfile.body, /lb-avatar-svg/,
       'the profile and account chips must not substitute a generated avatar drawing');
