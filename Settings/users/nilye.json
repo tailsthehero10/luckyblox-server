@@ -1,0 +1,57 @@
+{
+  "userId": "4",
+  "username": "nilye",
+  "displayName": "nilye",
+  "membership": "None",
+  "membershipStatus": "None",
+  "role": "player",
+  "isAdmin": false,
+  "studioAccess": true,
+  "authenticated": true,
+  "robloxUserId": null,
+  "robux": 0,
+  "currencies": {
+    "robux": 0,
+    "coins": 0,
+    "tickets": 0
+  },
+  "inventory": [
+    "607702162",
+    "1029025",
+    "25330901",
+    "451220849"
+  ],
+  "currentlyWearing": [
+    "1029025",
+    "25330901",
+    "451220849"
+  ],
+  "avatar": {
+    "gender": "Female",
+    "playerAvatarType": "R6",
+    "scales": {
+      "height": 1,
+      "width": 1,
+      "head": 1,
+      "depth": 1,
+      "proportion": 0,
+      "bodyType": 0
+    },
+    "bodyColors": {
+      "headColorId": 5,
+      "torsoColorId": 194,
+      "rightArmColorId": 5,
+      "leftArmColorId": 5,
+      "rightLegColorId": 194,
+      "leftLegColorId": 194
+    },
+    "currentlyWearing": [
+      "1029025",
+      "25330901",
+      "451220849"
+    ]
+  },
+  "gender": "Female",
+  "joinDate": "2026-10-04T19:49:58.915Z",
+  "updatedAt": "2026-10-04T19:52:44.722Z"
+}

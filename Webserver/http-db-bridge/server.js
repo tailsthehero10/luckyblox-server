@@ -2777,11 +2777,13 @@ function syncLocalJob({ jobId, placeId, placeName, port, maxPlayers }) {
     };
     fs.writeFileSync(path.join(settingsRoot, 'gameserverraw.json'), JSON.stringify(serverRaw, null, 2));
 
-    // The bridge's own HTTP port, so the Discord companion asks the RIGHT API.
-    // Its configured apiBaseUrl is a static default and the bridge is not on a
-    // fixed port (3001/3002 locally, whatever the platform injects in the cloud),
-    // so a stale value meant the card silently lost the live player count.
-    fs.writeFileSync(path.join(settingsRoot, 'apibaseurl.txt'), `http://127.0.0.1:${publicPort}`);
+    // Local desktop tools must use the same public-facing URL as the site; in
+    // local mode that is the launcher's configured localhost port, not the
+    // bridge's private internal port.
+    const localApiBaseUrl = process.env.LUCKYBLOX_LOCAL_SERVER === '1'
+      ? publicBaseUrl
+      : `http://127.0.0.1:${publicPort}`;
+    fs.writeFileSync(path.join(settingsRoot, 'apibaseurl.txt'), localApiBaseUrl);
 
     return true;
   } catch (error) {

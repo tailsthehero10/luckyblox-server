@@ -82,15 +82,21 @@ docker compose up --build
 # Needs Node.js. PHP CLI is optional for raw PHP compatibility endpoints.
 # Start the same site + API stack as production, using localhost-only settings.
 npm run start:local
-# Open http://localhost:3002
+# Uses Settings\ip.txt and Settings\serverport.txt (currently http://localhost:2005)
 ```
 
-To use another free port, set `$env:LUCKYBLOX_LOCAL_PORT` before starting.
-Local mode binds only to this computer, generates localhost links, and disables
+You do not need to set `LUCKYBLOX_LOCAL_PORT`: by default it reads
+`Settings\serverport.txt` (currently `2005`). The listening address comes from
+`Settings\ip.txt` (must be `127.0.0.1` or `localhost`), and the local game
+server's port comes from `Settings\HostPort.txt`. To override them for one
+PowerShell session, set `$env:LUCKYBLOX_LOCAL_PORT` or
+`$env:LUCKYBLOX_LOCAL_GAME_PORT` before starting.
+
+Local mode binds only to this computer, generates localhost URLs, and disables
 Postgres/remote sync so test writes cannot change the public site's data. It
-uses the checked-in local data files; it does not automatically copy live user
-or game data from Render. `npm start` remains available for running the regular
-environment-configured process manager.
+uses an isolated `.tmp\local-site-data` folder seeded from checked-in defaults;
+it does not automatically copy live user or game data from Render. `npm start`
+remains available for running the regular environment-configured process manager.
 
 ## Verifying a deployment
 

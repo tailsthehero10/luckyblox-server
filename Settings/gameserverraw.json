@@ -1,30 +1,9 @@
 {
-   "Mode":"GameServer",
-   "GameId":13058,
-   "Settings":{
-      "Type":"Avatar",
-      "PlaceId":1818,
-        "CreatorId":1818,
-      "GameId":"Test",
-        "MachineAddress":"http://127.0.0.1",
-        "GsmInterval":5,
-          "MaxPlayers":30,
-    "MaxGameInstances":51,
-     "ApiKey":"",
-	  "PreferredPlayerCapacity":30,
-      "DataCenterId":"69420",
-      "PlaceVisitAccessKey":"",
-      "UniverseId":13058,
-      "PlaceFetchUrl":"http://localhost/asset/?id=1818",
-      "MatchmakingContextId":1,
-      "CreatorId":1,
-      "CreatorType":"User",
-      "PlaceVersion":1,
-      "BaseUrl":"http://localhost",
-      "JobId":"Test",
-      "script":"print('Initializing NetworkServer.')",
-      "PreferredPort":%port%
-
-   },
-   "Arguments":{}
+  "PlaceId": 1803,
+  "MaxPlayers": 20,
+  "PreferredPlayerCapacity": 20,
+  "MachineAddress": "127.0.0.1",
+  "Port": 53645,
+  "JobId": "7a43aa5c-0a31-4256-a2b8-08247e3624df",
+  "Name": "2007 - Crossroads"
 }
