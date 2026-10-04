@@ -1,0 +1,31 @@
+var _____WB$wombat$assign$function_____=function(name){return (globalThis._wb_wombat && globalThis._wb_wombat.local_init && globalThis._wb_wombat.local_init(name))||globalThis[name];};if(!globalThis.__WB_pmw){globalThis.__WB_pmw=function(obj){this.__WB_source=obj;return this;}}{
+let window = _____WB$wombat$assign$function_____("window");
+let self = _____WB$wombat$assign$function_____("self");
+let document = _____WB$wombat$assign$function_____("document");
+let location = _____WB$wombat$assign$function_____("location");
+let top = _____WB$wombat$assign$function_____("top");
+let parent = _____WB$wombat$assign$function_____("parent");
+let frames = _____WB$wombat$assign$function_____("frames");
+let opener = _____WB$wombat$assign$function_____("opener");
+!function(){"use strict";var o=Roblox,r=function(){try{return window.self!==window.top}catch(e){return!0}},s=function(e){for(var n="".concat(e,"="),o=decodeURIComponent(document.cookie).split(";"),t=0;t<o.length;t++){for(var c=o[t];" "===c.charAt(0);)c=c.substring(1);if(0===c.indexOf(n))return c.substring(n.length,c.length)}return!1},d=function(e,n,o){var t=new Date;t.setTime(t.getTime()+24*o*60*60*1e3);t="expires=".concat(t.toUTCString());document.cookie="".concat(e,"=").concat(n,";").concat(t)},l="_evidon_consent_cookie",u="_rbx_consent_cookie";function g(){var e,n;o.browserDoNotTrack||((e=document.createElement("script")).type="text/javascript",e.async=!0,e.src="".concat("https:"===document.location.protocol?"https://web.archive.org/web/20210624235030/https://ssl":"https://web.archive.org/web/20210624235030/http://www",".google-analytics.com/ga.js"),(n=document.getElementsByTagName("script")[0]).parentNode.insertBefore(e,n))}!function(){var e,n,o,t,c,i=["uk","fr","ie","be","nl","fi","no","ai","bm","ky","tc","bg","cz","dk","cy","lv","lt","lu","es","hr","it","pl","pt","ro","si","hu","mt","nl","at","is","li","sk","se","de","ee","el","hu","ie","it","gf","gp","mq","yt","re","mf","gi","io","vg","fk","gb"];e="evidon-location",n="".concat("//web.archive.org/web/20210624235030/https://c.evidon.com/","geo/country.js"),o=!1,t=document,c=(c=t.getElementsByTagName("script")[0])||t.head,(t=t.createElement("script")).async=o,t.id=e,t.src=n,t.charset="utf-8",c.parentNode.insertBefore(t,c);var a=setInterval(function(){var e;Object.prototype.hasOwnProperty.call(window,"evidon")&&(clearInterval(a),-1!==i.indexOf(window.evidon.location.code)?function(e){function n(e,n,o){var t=document,c="script",i=t.getElementsByTagName(c)[0];r()||(i=i||t.head,(c=t.createElement(c)).async=o,c.id=e,c.src=n,c.charset="utf-8",i.parentNode.insertBefore(c,i))}window.evidon={},window.evidon.id=e,window.evidon.test=!1;var o,t,c="//web.archive.org/web/20210624235030/https://c.evidon.com/",i=(2===(t=window.location.hostname.split(".")).length?a=t[0]:2<t.length&&(i=t[t.length-2],a=-1!==["co","com","info","web","info","gov","edu","biz","net","org"].indexOf(o=i)||-1!==["uk","us","fr","es","de","at","au","ae","be","br","ca","ch","cn","co","cz","dk","eg","eu","fi","gb","gr","hk","hr","hu","ie","in","jp","mx","nl","no","nz","pl","ro","ru","se"].indexOf(o)?t[t.length-3]:i),a),a="".concat(c,"sitenotice/");n("evidon-notice","".concat(a,"evidon-sitenotice-tag.js"),!1),n("evidon-location","".concat(c,"geo/country.js"),!0),n("evidon-themes","".concat(a+e,"/snthemes.js"),!0),i&&n("evidon-settings","".concat(a+e,"/").concat(i).concat(window.evidon.test?"/test":"","/settings.js"),!0),window.evidon.priorConsentCallback=function(e,n){var o,t,c,i={},a={"amazon-web-services":"handleAmazonWebServices","google-analytics":"handleGoogleAnalytics"};for(t in e)Object.prototype.hasOwnProperty.call(e,t)&&"function"==typeof(o=window.evidon[i[t]])&&o();for(c in n)Object.prototype.hasOwnProperty.call(n,c)&&"function"==typeof(o=window.evidon[a[c]])&&o();!n["google-analytics"]&&!0!==n.all||g(),s(l)||d(u,"non-GDPR",365)},window.evidon.closeCallback=function(){},window.evidon.consentWithdrawnCallback=function(){},window.evidon.consentDeclinedCallback=function(){},"non-GDPR"===s(l)&&d(l,"",-366)}(3822):(s(l)?d(l,"",-366):d(u,"non-GDPR",365),(e=document.getElementsByClassName("evidon-notice-link")[0])&&(e.style.display="none"),g()))},100)}()}();
+//# sourceMappingURL=https://js.rbxcdn.com/6f25217b2b6768998f85-crownPeakCookieBanner.js.map
+
+/* Bundle detector */
+window.Roblox && window.Roblox.BundleDetector && window.Roblox.BundleDetector.bundleDetected("CrownPeakCookieBanner");
+}
+
+/*
+     FILE ARCHIVED ON 23:50:30 Jun 24, 2021 AND RETRIEVED FROM THE
+     INTERNET ARCHIVE ON 09:41:07 Sep 26, 2026.
+     JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+
+     ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+     SECTION 108(a)(3)).
+*/
+/*
+playback timings (ms):
+  capture_cache.get: 0.334
+  load_resource: 447.671 (2)
+  PetaboxLoader3.datanode: 196.196 (2)
+  PetaboxLoader3.resolve: 225.106
+*/

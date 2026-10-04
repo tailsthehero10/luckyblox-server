@@ -608,7 +608,7 @@ namespace LuckyBlox.Installer
             var installDir = InstallerConfig.InstallDir(_root);
             var sharedDir = Path.Combine(installDir, "shared");
             var contentDir = Path.Combine(sharedDir, "Content");
-            var platformContentDir = Path.Combine(sharedDir, "PlatformContent");
+            var platformContentDir = Path.Combine(contentDir, "PlatformContent");
             Directory.CreateDirectory(contentDir);
             Directory.CreateDirectory(platformContentDir);
 
@@ -1145,13 +1145,13 @@ namespace LuckyBlox.Installer
             _baseUrl = baseUrl;
 
             Text = "LuckyBlox Installer";
-            ClientSize = new Size(560, 400);
+            ClientSize = new Size(680, 500);
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
             Font = new Font("Segoe UI", 9f);
-            BackColor = Color.FromArgb(242, 244, 245);
+            BackColor = Color.FromArgb(242, 244, 247);
 
             BuildUi();
             Shown += (s, e) => RefreshState();
@@ -1171,7 +1171,7 @@ namespace LuckyBlox.Installer
 
             var subtitle = new Label
             {
-                Text = "Play and create on LuckyBlox.",
+                Text = "Install, update, and launch the classic client.",
                 Font = new Font("Segoe UI", 9.5f),
                 ForeColor = Color.FromArgb(109, 114, 120),
                 AutoSize = true,
@@ -1185,8 +1185,8 @@ namespace LuckyBlox.Installer
                 Font = new Font("Segoe UI", 10f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(25, 27, 31),
                 AutoSize = false,
-                Size = new Size(516, 22),
-                Location = new Point(20, 92),
+                Size = new Size(636, 26),
+                Location = new Point(22, 92),
             };
             Controls.Add(_statusLabel);
 
@@ -1195,15 +1195,15 @@ namespace LuckyBlox.Installer
                 Text = "",
                 ForeColor = Color.FromArgb(109, 114, 120),
                 AutoSize = false,
-                Size = new Size(516, 20),
-                Location = new Point(20, 116),
+                Size = new Size(636, 28),
+                Location = new Point(22, 122),
             };
             Controls.Add(_versionLabel);
 
             _progress = new ProgressBar
             {
-                Location = new Point(20, 144),
-                Size = new Size(516, 6),
+                Location = new Point(22, 158),
+                Size = new Size(636, 8),
                 Style = ProgressBarStyle.Continuous,
                 MarqueeAnimationSpeed = 30,
             };
@@ -1214,8 +1214,8 @@ namespace LuckyBlox.Installer
                 Text = "",
                 ForeColor = Color.FromArgb(109, 114, 120),
                 AutoSize = false,
-                Size = new Size(516, 20),
-                Location = new Point(20, 156),
+                Size = new Size(636, 28),
+                Location = new Point(22, 174),
                 TextAlign = ContentAlignment.MiddleLeft,
             };
             Controls.Add(_detailLabel);
@@ -1223,37 +1223,49 @@ namespace LuckyBlox.Installer
             _actionButton = new Button
             {
                 Text = "Install",
-                Size = new Size(180, 38),
-                Location = new Point(356, 186),
-                BackColor = Color.FromArgb(0, 176, 111),
+                Size = new Size(176, 42),
+                Location = new Point(482, 222),
+                BackColor = Color.FromArgb(0, 162, 255),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                Font = new Font("Segoe UI", 10f, FontStyle.Bold),
                 UseVisualStyleBackColor = false,
             };
             _actionButton.FlatAppearance.BorderSize = 0;
+            _actionButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(0, 140, 224);
+            _actionButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(0, 118, 195);
             _actionButton.Click += (s, e) => RunAction();
             Controls.Add(_actionButton);
 
             _launchButton = new Button
             {
-                Text = "Launch",
-                Size = new Size(110, 38),
-                Location = new Point(236, 186),
-                FlatStyle = FlatStyle.System,
+                Text = "Open LuckyBlox",
+                Size = new Size(156, 42),
+                Location = new Point(314, 222),
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(25, 27, 31),
+                FlatStyle = FlatStyle.Flat,
+                UseVisualStyleBackColor = false,
                 Enabled = false,
                 Visible = false,
             };
+            _launchButton.FlatAppearance.BorderColor = Color.FromArgb(210, 216, 222);
+            _launchButton.FlatAppearance.BorderSize = 1;
             _launchButton.Click += (s, e) => LaunchClient();
             Controls.Add(_launchButton);
 
             var changeFolder = new Button
             {
                 Text = "Change install folder\u2026",
-                Size = new Size(170, 24),
-                Location = new Point(20, 192),
-                FlatStyle = FlatStyle.System,
+                Size = new Size(220, 42),
+                Location = new Point(22, 222),
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(25, 27, 31),
+                FlatStyle = FlatStyle.Flat,
+                UseVisualStyleBackColor = false,
             };
+            changeFolder.FlatAppearance.BorderColor = Color.FromArgb(210, 216, 222);
+            changeFolder.FlatAppearance.BorderSize = 1;
             changeFolder.Click += (s, e) => ChooseFolder();
             Controls.Add(changeFolder);
 
@@ -1262,9 +1274,10 @@ namespace LuckyBlox.Installer
                 Multiline = true,
                 ReadOnly = true,
                 ScrollBars = ScrollBars.Vertical,
-                Location = new Point(20, 226),
-                Size = new Size(516, 154),
-                BackColor = Color.White,
+                Location = new Point(22, 282),
+                Size = new Size(636, 192),
+                BackColor = Color.FromArgb(25, 27, 31),
+                ForeColor = Color.FromArgb(229, 231, 235),
                 BorderStyle = BorderStyle.FixedSingle,
                 Font = new Font("Consolas", 8.25f),
             };
@@ -1439,33 +1452,16 @@ namespace LuckyBlox.Installer
         {
             try
             {
-                var state = InstallState.Read(_root);
-                var dir = Path.Combine(
-                    InstallerConfig.InstallDir(_root),
-                    InstallerConfig.VersionsDir,
-                    state.CurrentVersion ?? "");
-
-                var exe = Path.Combine(dir, InstallerConfig.PlayerBinary);
-                if (!File.Exists(exe))
-                {
-                    exe = Path.Combine(InstallerConfig.InstallDir(_root), InstallerConfig.PlayerBinary);
-                }
-                if (!File.Exists(exe))
-                {
-                    Log("Could not find the installed client to launch.");
-                    return;
-                }
-
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = exe,
-                    WorkingDirectory = Path.GetDirectoryName(exe),
+                    FileName = _baseUrl,
                     UseShellExecute = true,
                 });
+                Log("Opened LuckyBlox in your browser. Choose a game on the site to join.");
             }
             catch (Exception ex)
             {
-                Log("Launch failed: " + ex.Message);
+                Log("Could not open LuckyBlox: " + ex.Message);
             }
         }
 
@@ -1708,6 +1704,7 @@ namespace LuckyBlox.Installer
                     + "&serverPort=" + port.ToString(CultureInfo.InvariantCulture)
                     + "&jobId=" + Uri.EscapeDataString(jobId);
 
+                WriteLaunchLog(root, "Starting Player for place " + placeId + ", job " + jobId + ".");
                 var child = Process.Start(new ProcessStartInfo
                 {
                     FileName = playerPath,
@@ -1719,6 +1716,12 @@ namespace LuckyBlox.Installer
                 });
                 if (child == null)
                     throw new InvalidOperationException("Windows did not start the LuckyBlox Player.");
+                int childPid = child.Id;
+                child.EnableRaisingEvents = true;
+                child.Exited += (sender, eventArgs) =>
+                {
+                    WriteLaunchLog(root, "Player process " + childPid + " exited with code " + child.ExitCode + ".");
+                };
                 return 0;
             }
             catch (Exception ex)
@@ -1735,6 +1738,27 @@ namespace LuckyBlox.Installer
         private static string QuoteArgument(string value)
         {
             return "\"" + (value ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+        }
+
+        private static void WriteLaunchLog(string root, string message)
+        {
+            try
+            {
+                string logDir = Path.Combine(InstallerConfig.InstallDir(root), "Logs");
+                Directory.CreateDirectory(logDir);
+                File.AppendAllText(
+                    Path.Combine(logDir, "client-launch.log"),
+                    DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture) + " " + message + Environment.NewLine,
+                    new UTF8Encoding(false));
+            }
+            catch (IOException error)
+            {
+                Console.Error.WriteLine("Could not write LuckyBlox launch log: " + error.Message);
+            }
+            catch (UnauthorizedAccessException error)
+            {
+                Console.Error.WriteLine("Could not write LuckyBlox launch log: " + error.Message);
+            }
         }
 
         [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]

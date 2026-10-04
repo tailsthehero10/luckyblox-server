@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<%= themeClass || '' %>">
 
 <head>
   <meta charset="UTF-8" />
@@ -24,7 +24,8 @@
     <div class="lb-page roblox-page">
       <%- include('partials/header', { user: user, currency: currency, activeNav: 'games' }) %>
 
-        <%- include('partials/sidebar', { user: user, activeNav: 'games' }) %>
+        <div class="lb-shell">
+          <%- include('partials/sidebar', { user: user, activeNav: 'games' }) %>
 
           <main class="lb-main roblox-main">
             <div class="games-page">
@@ -57,6 +58,7 @@
 
             </div>
           </main>
+        </div>
 
           <%- include('partials/scripts') %>
     </div>

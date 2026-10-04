@@ -56,24 +56,11 @@
                         <div class="roblox-avatar-render lb-loading-block is-loading"
                              style="--lb-loader-size:64px;">
                           <%#
-                            The local figure is ALWAYS drawn and the remote Roblox
-                            render is layered on top of it.
-
-                            The old markup was either/or, so when `fullBodyUrl` was
-                            present but the request then failed, the onerror hid the
-                            image and there was nothing underneath - the stage
-                            collapsed and the character vanished. Layering means a
-                            failed remote render simply reveals the local figure.
+                            The preview is built from the selected real RBXM model.
+                            It does not overlay a different Roblox account's
+                            thumbnail, so the model and saved controls stay in sync.
                           %>
-                          <div class="lb-avatar-stage-fallback">
-                            <%- lbAvatarFigure(user, 352) %>
-                          </div>
-                          <% if (avatar && avatar.fullBodyUrl) { %>
-                            <img class="lb-avatar-render-img lb-avatar-stage-top"
-                              src="<%= avatar.fullBodyUrl %>"
-                              alt="<%= user.username %>'s avatar"
-                              onerror="this.style.display='none';var b=this.parentNode;if(b)b.classList.remove('is-loading');" />
-                          <% } %>
+                          <%- lbAvatarViewer(user, 352) %>
 
                           <div class="av-render-name">
                             <%= user.displayName || user.username %>
@@ -420,24 +407,29 @@
        * saving the rig alone never wipes the colours or the outfit.
        */
       async function saveAvatar() {
-        var response = await fetch('/api/avatar/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            assetIds: Array.from(selected),
-            playerAvatarType: rig,
-            gender: gender,
-            bodyColors: bodyColors,
-            scales: scales
-          })
-        });
-        var payload = await response.json().catch(function () { return {}; });
-        if (!payload.ok) {
-          alert((payload && payload.message) || 'Could not save your avatar. Sign in and try again.');
+        try {
+          var response = await fetch('/api/avatar/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              assetIds: Array.from(selected),
+              playerAvatarType: rig,
+              gender: gender,
+              bodyColors: bodyColors,
+              scales: scales
+            })
+          });
+          var payload = await response.json().catch(function () { return {}; });
+          if (!response.ok || !payload.ok) {
+            alert((payload && payload.message) || 'Could not save your avatar. Sign in and try again.');
+            return false;
+          }
+          dirty = false;
+          return true;
+        } catch (error) {
+          alert('Could not reach LuckyBlox to save your avatar. Check your connection and try again.');
           return false;
         }
-        dirty = false;
-        return true;
       }
 
       // --- Rig picker ---------------------------------------------------------
@@ -585,7 +577,7 @@
       });
     }());
   </script>
-  <%- include('partials/scripts') %>
+  <%- include('partials/scripts', { withAvatarViewer: true }) %>
   </body>
 
 </html>

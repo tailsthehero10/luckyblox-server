@@ -115,10 +115,10 @@ function check(name, fn) {
       assert.ok(!/lb-asset-icon/.test(html), 'the letter-tile avatar is still present');
     });
 
-    check('the blocky figure is drawn as the avatar base', () => {
-      assert.ok(html.includes('lb-friend-avatar-base'), 'expected the figure layer');
-      assert.ok(html.includes('lb-avatar-figure'), 'expected the avatar figure markup');
-      assert.ok(html.includes('lb-avatar-svg'), 'expected the real rendered SVG');
+    check('the friend tile uses an image or neutral avatar icon, not an invented model', () => {
+      assert.ok(html.includes('lb-friend-avatar-base'), 'expected the avatar image layer');
+      assert.ok(html.includes('lb-user-avatar-placeholder'), 'expected a neutral avatar placeholder');
+      assert.ok(!html.includes('lb-avatar-svg'), 'generated avatar drawings must not stand in for an RBXM model');
     });
 
     check('presence is shown on the tile', () => {

@@ -137,7 +137,7 @@
                       <option value="light" <%= (user.theme || 'light') === 'light' ? 'selected' : '' %>>Light</option>
                       <option value="dark" <%= user.theme === 'dark' ? 'selected' : '' %>>Dark</option>
                     </select>
-                    <div class="settings-help">Applies to your profile and settings pages.</div>
+                    <div class="settings-help">Applies across the site and stays saved to your account.</div>
                   </div>
                 </div>
 
@@ -149,7 +149,7 @@
                     <div class="settings-pointer">
                       <img class="ch-ico ch-ico-sm" src="/icons/avatar.svg" alt="" />
                       <span>Your character, rig and outfit are managed on the
-                        <a href="/avatar?userId=<%= user.userId %>">Avatar page</a>.</span>
+                        <a href="/avatar">Avatar page</a>.</span>
                     </div>
                     <div class="settings-help">
                       Current rig: <strong><%= (user.avatar && user.avatar.playerAvatarType) || 'R15' %></strong>
@@ -382,7 +382,7 @@
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify(payload),
           });
-          var data = await response.json();
+          var data = await response.json().catch(function () { return {}; });
           if (!response.ok || !data.ok) {
             throw new Error((data && data.message) || 'Could not save your settings.');
           }

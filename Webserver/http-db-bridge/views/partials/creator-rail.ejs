@@ -24,7 +24,7 @@ var crStudioReady = (typeof studioReady !== 'undefined') ? studioReady : false;
 // browser resolved as a relative path and 404'd. A guest clicking either row hit
 // a dead page instead of the sign-in form.
 var crStudioHref = crUserId ? ('/studio?userId=' + crUserId) : '/signin';
-var crAvatarHref = crUserId ? ('/avatar?userId=' + crUserId) : '/signin';
+var crAvatarHref = crUserId ? '/avatar' : '/signin';
 
 var crCreate = [
   { key: 'create', label: 'Create', href: '/create', icon: '/icons/create.svg' },

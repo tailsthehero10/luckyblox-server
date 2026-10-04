@@ -17,7 +17,6 @@ const avatarRig = require('./avatarRig');
 const robloxApi = require('./robloxApi');
 const { getStudioBuildInfo, getStudioUpdateManifest, STUDIO_EXECUTABLE_PATH, DEFAULT_BASE_URL } = require('./studioBuildInfo');
 const clientLauncher = require(path.join(__dirname, '..', '..', 'server', 'clientLauncher.js'));
-const avatarRenderer = require(path.join(__dirname, '..', '..', 'server', 'avatarRenderer.js'));
 const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'server', 'studioApi.js'));
 const { installMarketplaceRoutes } = require(path.join(__dirname, '..', '..', 'server', 'marketplace.js'));
 const { installClientApi } = require('./clientApi.js');
@@ -116,12 +115,6 @@ function themeLocals(req, res, next) {
   let themeUser = null;
   try {
     themeUser = req.sessionUser || resolveSessionUser(req) || null;
-
-    if (!themeUser) {
-      const rawId = req.query.userId || req.query.userid;
-      const id = Number(Array.isArray(rawId) ? rawId[0] : rawId);
-      themeUser = getUser(Number.isFinite(id) && id > 0 ? id : 1);
-    }
   } catch (error) {
     // A theme lookup must never take a page down; fall back to light.
     themeUser = null;
@@ -142,13 +135,13 @@ function themeLocals(req, res, next) {
  * EJS without its `include` binding - which broke every view that includes a
  * partial with "include is not a function".
  *
- * Whose theme? The signed-in account when there is one; otherwise the account
- * named by ?userId= ; otherwise user 1. That last fallback matches the rule the
- * page controllers use (`getUser(req.query.userId || 1)`), so a page viewed
- * without a session shows the SAME account's content and theme.
+ * Whose theme? Only the signed-in account. A public profile's theme belongs to
+ * its owner, not the visitor, so neither the profile id nor the owner default
+ * may select the page theme.
  */
-app.use(themeLocals);
 app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
+app.use('/js', express.static(path.join(__dirname, 'public', 'js')));
+app.use('/vendor/three', express.static(path.join(__dirname, 'node_modules', 'three', 'build')));
 // LuckyBlox SVG icon set (Robux, friends, create, develop, studio, ...). Views
 // reference these by name instead of emoji glyphs so the UI matches Roblox's
 // 2021 look everywhere.
@@ -950,7 +943,7 @@ app.use((req, res, next) => {
   res.locals.abbreviateCount = abbreviateCount;
   res.locals.formatGameDate = formatGameDate;
   res.locals.formatJoinDate = formatJoinDate;
-  res.locals.lbAvatarFigure = renderAvatarFigure;
+  res.locals.lbAvatarViewer = renderAvatarViewer;
   // The account switcher's list: the accounts this browser has signed in as.
   // Available to every template so the header does not have to be passed it by
   // each of the ~40 routes that render a page.
@@ -1292,7 +1285,9 @@ function writeJson(filePath, data) {
   // so routing it here is what makes those survive a redeploy.
   const fileName = path.basename(filePath);
   if (path.resolve(path.dirname(filePath)) === dataDirResolved) {
-    storage.writeJson(fileName, data);
+    if (!storage.writeJson(fileName, data)) {
+      throw new Error(`Could not persist ${fileName}.`);
+    }
     return;
   }
 
@@ -1773,19 +1768,48 @@ function bodyColorPalette() {
  * @param {object} user  normalized user (uses avatar.bodyColors)
  * @param {number} size  target height in px; font-size is derived as size / 10
  */
-function renderAvatarFigure(user, size) {
+function renderAvatarViewer(user, size, options = {}) {
   const wanted = Number(size) > 0 ? Number(size) : 240;
-  // 10em tall: font-size = target height / 10. Rounded to 3dp so the emitted
-  // value is stable and short rather than a long float.
-  const fontPx = Math.round((wanted / 10) * 1000) / 1000;
+  const avatar = user && user.avatar && typeof user.avatar === 'object' ? user.avatar : {};
+  const sourceColors = avatar.bodyColors && typeof avatar.bodyColors === 'object' ? avatar.bodyColors : {};
+  const colorIdByPart = {
+    head: sourceColors.headColorId || 1002,
+    torso: sourceColors.torsoColorId || 1002,
+    leftArm: sourceColors.leftArmColorId || 1002,
+    rightArm: sourceColors.rightArmColorId || 1002,
+    leftLeg: sourceColors.leftLegColorId || 1002,
+    rightLeg: sourceColors.rightLegColorId || 1002,
+  };
+  const colors = Object.fromEntries(Object.entries(colorIdByPart).map(([part, colorId]) => [
+    part,
+    bodyColorRgb(colorId),
+  ]));
+  const scales = avatar.scales && typeof avatar.scales === 'object' ? avatar.scales : {};
+  const config = {
+    rig: String(user && (user.avatarType || avatar.playerAvatarType) || 'R15').toUpperCase() === 'R6'
+      ? 'R6' : 'R15',
+    colors,
+    scales: {
+      height: Number(scales.height) || 1,
+      width: Number(scales.width) || 1,
+      depth: Number(scales.depth) || 1,
+    },
+  };
+  const label = `${String(user && (user.displayName || user.username) || 'Avatar')} 3D avatar`;
+  const compactClass = wanted <= 160 ? ' lb-avatar-viewer--compact' : '';
+  const portraitMode = options && options.portrait === true;
+  const portraitClass = portraitMode ? ' lb-avatar-viewer--portrait' : '';
+  const mode = portraitMode ? 'portrait' : 'viewer';
+  const savePortrait = portraitMode && options.savePortrait === true;
 
-  const wearing = getWearingForUser(user);
-  // The SVG is generated at the wrapper's own box size so its internal viewBox
-  // measurement matches what is actually displayed (no upscale blur).
-  const svg = avatarRenderer.renderAvatarSvg(user, wanted, { wearing });
-
-  return `<div class="lb-avatar-figure" style="font-size:${fontPx}px;" role="img" `
-    + `aria-label="${escapeHtmlAttribute((user && user.username) || 'Avatar')}">${svg}</div>`;
+  return `<div class="lb-avatar-viewer${compactClass}${portraitClass}" data-avatar-viewer data-avatar-mode="${mode}" data-avatar-config="${escapeHtmlAttribute(JSON.stringify(config))}" `
+    + `data-save-portrait="${savePortrait ? 'true' : 'false'}" `
+    + `style="height:${wanted}px;" role="img" aria-label="${escapeHtmlAttribute(label)}">`
+    + (portraitMode
+      ? `<img data-avatar-portrait-image src="/icons/avatar.svg" alt="" aria-hidden="true" />`
+      : `<canvas aria-hidden="true"></canvas>`)
+    + `<div class="lb-avatar-viewer-status" data-avatar-viewer-status role="status" aria-live="polite">Loading RBXM avatar...</div>`
+    + `</div>`;
 }
 
 /** Escape a value for use inside a double-quoted HTML attribute. */
@@ -2556,7 +2580,9 @@ function syncLocalIdentity(user) {
   if (!username) {
     return false;
   }
-  const settingsRoot = path.join(releaseRoot, 'Settings');
+  const settingsRoot = process.env.LUCKYBLOX_SETTINGS_DIR
+    ? path.resolve(process.env.LUCKYBLOX_SETTINGS_DIR)
+    : path.join(releaseRoot, 'Settings');
   try {
     fs.mkdirSync(settingsRoot, { recursive: true });
 
@@ -3078,10 +3104,8 @@ function saveUser(userId, nextState) {
   // the sign-in path, so a balance changed any other way (an owner setting it, a
   // marketplace purchase) never reached the client and it kept showing the old
   // number. Doing it here means every write keeps the two in step.
-  try {
-    syncLocalIdentity(merged);
-  } catch (error) {
-    /* best effort - a failed mirror must not fail the save */
+  if (!syncLocalIdentity(merged)) {
+    console.error(`[luckyblox] account ${userId} was saved, but its client identity files could not be updated.`);
   }
 
   return merged;
@@ -4457,6 +4481,9 @@ app.get('/profile', async (req, res) => {
  */
 async function renderProfilePage2021(req, res, userId) {
   const user = getUser(userId);
+  const viewerUser = req.sessionUser || resolveSessionUser(req);
+  const isOwnProfile = Boolean(viewerUser
+    && String(viewerUser.userId || viewerUser.id) === String(user.userId || user.id));
   const assets = Object.values(getAssets());
   const publishedGames = getPublicGamesForUser(userId);
   const requestedTab = String(req.query.tab || '').toLowerCase();
@@ -4468,7 +4495,9 @@ async function renderProfilePage2021(req, res, userId) {
     assets,
     publishedGames,
     friends: getFriendsForUser(userId),
-    currency: getCurrencyForUser(user),
+    currency: getCurrencyForUser(viewerUser),
+    viewerUser,
+    isOwnProfile,
     adminBadge: getAdminBadge(user),
     games: publishedGames,
     profileAvatar: await resolveProfileAvatar(user),
@@ -4495,19 +4524,22 @@ app.get('/users/:id/profile', async (req, res) => {
 app.get('/users/:id/friends', (req, res) => {
   const userId = req.params.id || 1;
   const user = getUser(userId);
+  const viewerUser = req.sessionUser || resolveSessionUser(req);
   res.render('friends', {
     title: `${user.username} - Friends | LuckyBlox`,
     user,
+    viewerUser,
     friends: getFriendsForUser(userId),
-    currency: getCurrencyForUser(user),
+    currency: getCurrencyForUser(viewerUser),
     tab: 'friends',
   });
 });
 
 app.get('/account', (req, res) => {
   const sessionUser = req.sessionUser || resolveSessionUser(req);
-  const userId = req.query.userId || (sessionUser && (sessionUser.userId || sessionUser.id)) || 1;
-  const user = getUser(userId);
+  if (!sessionUser) return res.redirect('/signin?redirect=' + encodeURIComponent('/account'));
+  const user = sessionUser;
+  const userId = user.userId || user.id;
   const assets = Object.values(getAssets());
   const publishedGames = getPublicGamesForUser(userId);
   const adminBadge = getAdminBadge(user);
@@ -4526,18 +4558,22 @@ app.get('/account', (req, res) => {
 
 app.get('/friends', (req, res) => {
   const sessionUser = req.sessionUser || resolveSessionUser(req);
-  const userId = Number(req.query.userId || req.query.userid
-    || (sessionUser && (sessionUser.userId || sessionUser.id)) || 1);
+  const requestedId = req.query.userId || req.query.userid;
+  const userId = Number(requestedId || (sessionUser && (sessionUser.userId || sessionUser.id)));
+  if (!Number.isSafeInteger(userId) || userId < 1) {
+    return res.redirect('/signin?redirect=' + encodeURIComponent('/friends'));
+  }
   const user = getUser(userId);
   const friendUsers = getFriendsForUser(userId);
 
   res.render('friends', {
     title: `${user.username} - Friends | LuckyBlox`,
     user,
+    viewerUser: sessionUser,
     friends: friendUsers,
     // The 2021 header renders the Robux balance, so every page that includes it
-    // must supply the currency block.
-    currency: getCurrencyForUser(user),
+    // must supply the signed-in viewer's currency, never the profile target's.
+    currency: getCurrencyForUser(sessionUser),
   });
 });
 
@@ -5426,10 +5462,11 @@ async function renderAvatarPage2021(req, res, userId) {
 
 app.get('/avatar', async (req, res) => {
   // /my/avatar showed the SIGNED-IN user. A guest has no avatar to edit, so
-  // send them to sign in rather than rendering somebody else's character.
-  const viewer = resolveViewer(req);
-  if (!viewer.user) return res.redirect('/signin?redirect=' + encodeURIComponent('/avatar'));
-  return renderAvatarPage2021(req, res, viewer.user.userId || viewer.user.id);
+  // send them to sign in rather than rendering somebody else's character. The
+  // query string is never an identity selector for an editor or save form.
+  const sessionUser = req.sessionUser || resolveSessionUser(req);
+  if (!sessionUser) return res.redirect('/signin?redirect=' + encodeURIComponent('/avatar'));
+  return renderAvatarPage2021(req, res, sessionUser.userId || sessionUser.id);
 });
 
 // The 2021 URL for this page was /my/avatar (it showed the signed-in user).
@@ -6342,10 +6379,6 @@ app.post('/api/avatar/wear', (req, res) => {
     currentlyWearing: normalizedIds,
   });
 
-  // Keep the client-visible identity in sync so the game clients spawn the
-  // avatar the user just saved.
-  try { syncLocalIdentity(updatedUser); } catch (error) { /* best effort */ }
-
   res.json({
     ok: true,
     userId,
@@ -6381,8 +6414,32 @@ app.post('/api/avatar/save', (req, res) => {
   if (body.playerAvatarType && ['R6', 'R15'].includes(String(body.playerAvatarType))) {
     avatar.playerAvatarType = String(body.playerAvatarType);
   }
-  if (body.scales && typeof body.scales === 'object') {
-    avatar.scales = Object.assign({}, avatar.scales, body.scales);
+  if (body.scales !== undefined) {
+    const scaleLimits = {
+      height: [0.75, 1.25],
+      width: [0.70, 1.30],
+      head: [0.95, 1.05],
+      depth: [0.75, 1.25],
+      proportion: [0, 3],
+      bodyType: [0, 3],
+    };
+    if (!body.scales || typeof body.scales !== 'object' || Array.isArray(body.scales)) {
+      return res.status(400).json({ ok: false, error: 'invalid-scales', message: 'Avatar scales must be an object.' });
+    }
+    const nextScales = Object.assign({}, avatar.scales);
+    for (const [key, value] of Object.entries(body.scales)) {
+      const range = scaleLimits[key];
+      const number = Number(value);
+      if (!range || !Number.isFinite(number)) {
+        return res.status(400).json({
+          ok: false,
+          error: 'invalid-scales',
+          message: `Avatar scale "${key}" is invalid.`,
+        });
+      }
+      nextScales[key] = Math.max(range[0], Math.min(range[1], number));
+    }
+    avatar.scales = nextScales;
   }
   if (Array.isArray(body.assetIds)) {
     const ids = body.assetIds.map((id) => String(id));
@@ -6391,8 +6448,17 @@ app.post('/api/avatar/save', (req, res) => {
   }
 
   nextState.avatar = avatar;
-  const updated = saveUser(userId, nextState);
-  try { syncLocalIdentity(updated); } catch (error) { /* best effort */ }
+  let updated;
+  try {
+    updated = saveUser(userId, nextState);
+  } catch (error) {
+    console.error(`[luckyblox] avatar save failed for account ${userId}: ${error.message}`);
+    return res.status(500).json({
+      ok: false,
+      error: 'avatar-save-failed',
+      message: 'Your avatar could not be saved. Please try again.',
+    });
+  }
   audit('avatar_saved', { userId, wearing: (updated.currentlyWearing || []).length });
 
   return res.json({
@@ -8147,10 +8213,17 @@ app.post('/api/settings', (req, res) => {
     return res.json({ ok: true, user: current, message: 'Nothing to update.' });
   }
 
-  const updated = saveUser(userId, nextState);
-  // Keep the client-visible identity in sync so the launcher / clients pick up
-  // the display name and appearance change immediately.
-  try { syncLocalIdentity(updated); } catch (error) { /* best effort */ }
+  let updated;
+  try {
+    updated = saveUser(userId, nextState);
+  } catch (error) {
+    console.error(`[luckyblox] settings save failed for account ${userId}: ${error.message}`);
+    return res.status(500).json({
+      ok: false,
+      error: 'settings-save-failed',
+      message: 'Your settings could not be saved. Please try again.',
+    });
+  }
 
   audit('settings_saved', { userId, fields: Object.keys(nextState) });
 

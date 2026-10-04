@@ -28,6 +28,7 @@ const path = require('path');
 const releaseRoot = path.resolve(__dirname, '..');
 const viewsDir = path.join(releaseRoot, 'Webserver', 'http-db-bridge', 'views');
 const cssDir = path.join(releaseRoot, 'Webserver', 'http-db-bridge', 'public', 'css');
+const phpWebDir = path.join(releaseRoot, 'Webserver', 'www');
 
 let passed = 0;
 function test(name, fn) {
@@ -118,15 +119,106 @@ test('the avatar figure is sized by font-size, not transform: scale', () => {
   assert.ok(/height:\s*10em/.test(body), 'expected a 10em height so font-size controls the size');
 });
 
-test('the server renderer emits a font-size for the figure', () => {
+test('profile renders the bundled rigs and identity chips never generate stand-in models', () => {
+  const profile = fs.readFileSync(path.join(viewsDir, 'profile.ejs'), 'utf8');
+  assert.match(profile, /lbAvatarViewer\(user,\s*128,\s*\{\s*portrait:\s*true/);
+  assert.match(profile, /lbAvatarViewer\(user,\s*340\)/);
+
+  const avatarPartial = fs.readFileSync(path.join(viewsDir, 'partials', 'avatar-figure.ejs'), 'utf8');
+  assert.match(avatarPartial, /\/icons\/avatar\.svg/);
+  assert.match(avatarPartial, /lb-user-avatar-image/);
+  assert.doesNotMatch(avatarPartial, /lbAvatarFigure/);
+
   const server = fs.readFileSync(
     path.join(releaseRoot, 'Webserver', 'http-db-bridge', 'server.js'),
     'utf8',
   );
-  const start = server.indexOf('function renderAvatarFigure');
-  assert.ok(start >= 0, 'renderAvatarFigure not found');
-  const body = server.slice(start, start + 2000);
-  assert.ok(/font-size:\$\{fontPx\}px/.test(body), 'expected style="font-size:<n>px"');
+  assert.doesNotMatch(server, /renderAvatarFigure|avatarRenderer/,
+    'the website must not serve its synthetic SVG character as a Roblox avatar');
+});
+
+test('Discover content is offset by the shared fixed sidebar shell', () => {
+  const gamesPage = fs.readFileSync(path.join(viewsDir, 'games.ejs'), 'utf8');
+  const shellStart = gamesPage.indexOf('<div class="lb-shell">');
+  const sidebar = gamesPage.indexOf("include('partials/sidebar'", shellStart);
+  const main = gamesPage.indexOf('<main class="lb-main roblox-main">', sidebar);
+  assert.ok(shellStart >= 0 && sidebar > shellStart && main > sidebar,
+    'the sidebar and Discover content should share the rail-offset shell');
+});
+
+test('sidebar uses LuckyBlox-owned icons that match each navigation destination', () => {
+  const sidebar = fs.readFileSync(path.join(viewsDir, 'partials', 'sidebar.ejs'), 'utf8');
+  assert.match(sidebar, /label:\s*'Avatar Shop'[^}]*icon:\s*'\/icons\/store\.svg'/);
+  assert.match(sidebar, /label:\s*'Badges'[^}]*icon:\s*'\/icons\/star\.svg'/);
+});
+
+test('shared header allows the selected light or dark theme to control its background', () => {
+  const baseCss = fs.readFileSync(path.join(cssDir, 'roblox.css'), 'utf8');
+  const headerRule = baseCss.match(/\.lb-header,\s*\.roblox-topbar\s*\{([^}]*)\}/);
+  assert.ok(headerRule, 'shared header rule not found');
+  assert.doesNotMatch(
+    headerRule[1],
+    /background:\s*[^;]+!important/i,
+    'the shared header background must not block theme-specific background colors',
+  );
+
+  const themeCss = fs.readFileSync(path.join(cssDir, 'roblox-ui.css'), 'utf8');
+  assert.match(themeCss, /\.lb-header\.light-theme,[\s\S]*?\{\s*background-color:\s*var\(--rbx-header-bg-light\)/);
+  assert.match(themeCss, /\.lb-header\.dark-theme,[\s\S]*?\{\s*background-color:\s*var\(--rbx-header-bg-dark\)/);
+});
+
+test('shared page styling keeps the classic neutral canvas and flat surfaces', () => {
+  const themeCss = fs.readFileSync(path.join(cssDir, 'refresh-2021.css'), 'utf8');
+  assert.match(themeCss, /--rf-page:\s*#f2f4f5\s*;/);
+  assert.match(themeCss, /--rf-surface:\s*#ffffff\s*;/);
+  assert.match(themeCss, /--rf-line:\s*#dbdee6\s*;/);
+  assert.match(themeCss, /--rf-radius(?:-sm|-lg)?:\s*2px\s*;/);
+  assert.match(themeCss, /--rf-shadow-[123]:\s*none\s*;/);
+});
+
+test('Apache homepage uses local square game art and the shared 2021-style header', () => {
+  const home = fs.readFileSync(
+    path.join(phpWebDir, 'LuckyBlox.site', 'home', 'index.php'),
+    'utf8',
+  );
+  const phpCss = fs.readFileSync(path.join(phpWebDir, 'style.css'), 'utf8');
+  assert.match(home, /class="page home-page"/);
+  assert.match(home, /href="\/style\.css\?v=\d+"/);
+  assert.match(home, /class="featured-card-base"[^>]+src="\/gameplaceholder\/card\.png"/);
+  assert.match(home, /class="featured-card-image"/);
+  assert.match(home, /class="game-thumb-placeholder"[^>]+src="\/gameplaceholder\/card\.png"/);
+  assert.match(home, /class="game-thumb-image"/);
+  assert.match(phpCss, /background:\s*#dee1e3\s*!important/);
+  assert.match(phpCss, /min-height:\s*90px\s*!important/);
+  assert.doesNotMatch(
+    phpCss,
+    /url\(['"]https?:\/\/(?:static\.wikia\.nocookie\.net|tr\.rbxcdn\.com)/i,
+    'the PHP site must not replace local game art with unrelated remote thumbnails',
+  );
+});
+
+test('opening the mobile navigation overlays content without changing shell widths', () => {
+  const responsiveCss = fs.readFileSync(path.join(cssDir, 'roblox.css'), 'utf8');
+  const openRuleStart = responsiveCss.indexOf('body.lb-rail-open .lb-sidebar,');
+  const openRuleEnd = responsiveCss.indexOf('}', openRuleStart);
+  assert.ok(openRuleStart >= 0, 'mobile drawer open rule not found');
+  assert.match(responsiveCss.slice(openRuleStart, openRuleEnd), /width:\s*220px\s*!important/);
+  assert.doesNotMatch(responsiveCss.slice(openRuleStart, openRuleEnd), /--lb-rail-width/);
+  assert.doesNotMatch(responsiveCss, /body\.lb-rail-open\s*\{\s*--lb-rail-width/);
+
+  const refreshedCss = fs.readFileSync(path.join(cssDir, 'refresh-2021.css'), 'utf8');
+  assert.doesNotMatch(refreshedCss, /body\.lb-rail-open\s*\{\s*--rf-rail-w/);
+});
+
+test('active Discover filters keep readable text and dark icons invert site-wide', () => {
+  const gamesCss = fs.readFileSync(path.join(cssDir, 'games.css'), 'utf8');
+  const activeRuleStart = gamesCss.lastIndexOf('.games-filter-chip.is-active {');
+  const activeRuleEnd = gamesCss.indexOf('}', activeRuleStart);
+  assert.ok(activeRuleStart >= 0, 'active genre filter rule not found');
+  assert.match(gamesCss.slice(activeRuleStart, activeRuleEnd), /color:\s*#ffffff\s*!important/i);
+
+  const robloxCss = fs.readFileSync(path.join(cssDir, 'roblox.css'), 'utf8');
+  assert.match(robloxCss, /html\.theme-dark img\.ch-ico\s*\{[^}]*filter:\s*brightness\(0\)\s*invert\(1\)\s*!important/is);
 });
 
 test('cards fit artwork instead of cropping it (object-fit: contain)', () => {
@@ -141,6 +233,17 @@ test('cards fit artwork instead of cropping it (object-fit: contain)', () => {
     /object-fit:\s*contain/.test(last),
     'square game art must be fitted; cover crops the icon edges off',
   );
+});
+
+test('game-page icons use a real image and retain their placeholder on load failure', () => {
+  const gamePage = fs.readFileSync(path.join(viewsDir, 'game-about.ejs'), 'utf8');
+  const iconStart = gamePage.indexOf('id="gameIconBlock"');
+  assert.ok(iconStart >= 0, 'game icon loading block should exist');
+  const iconMarkup = gamePage.slice(iconStart, gamePage.indexOf('</div>', iconStart));
+  assert.match(iconMarkup, /<img[^>]+src="\/gameplaceholder\/card\.png"/);
+  assert.match(iconMarkup, /roblox-game-icon-top/);
+  assert.match(iconMarkup, /onerror="this\.style\.display='none'/);
+  assert.doesNotMatch(iconMarkup, /background-image/);
 });
 
 console.log(`\n${passed} assertions passed${process.exitCode ? ' (with failures)' : ''}`);

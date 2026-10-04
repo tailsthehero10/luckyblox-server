@@ -24,6 +24,7 @@
  *   GET  /v1/users/{id}/currently-wearing        equipped asset ids
  *   GET  /v1/inventory/{id}/assets/{type}        the player's inventory page
  *   GET  /v1/thumbnails/avatar                   avatar thumbnail batch
+ *   POST /api/avatar/thumbnail                   save the signed-in user's rendered PNG headshot
  *   GET  /thumbs/avatar.ashx                     classic-client profile picture
  *   GET  /v1/thumbnails/assets                   asset thumbnail batch
  *   GET  /v2/avatar                               avatar /v2 model
@@ -123,6 +124,11 @@ function installClientApi(app, ctx) {
   }
 
   async function avatarThumbnailUrl(userId, user, size) {
+    const file = readUserFile(userId);
+    const thumbnailData = (user && user.avatarThumbnailData) || (file && file.avatarThumbnailData);
+    if (thumbnailData) {
+      return `${ctx.publicOrigin}/thumbs/avatar.ashx?userId=${encodeURIComponent(userId)}&v=${stableHash(thumbnailData)}`;
+    }
     const savedUrl = storedAvatarThumbnail(userId, user);
     if (savedUrl) return savedUrl;
 
@@ -387,14 +393,48 @@ function installClientApi(app, ctx) {
       const user = id ? existingUser(id) : null;
       if (!id || !user) return null;
       const imageUrl = await avatarThumbnailUrl(id, user, '150x150');
+      const versionSource = user.avatarThumbnailData || user.updatedAt || id;
       return imageUrl
-        ? { targetId: id, state: 'Completed', imageUrl, version: `v${stableHash(id) % 900 + 100}` }
+        ? { targetId: id, state: 'Completed', imageUrl, version: `v${stableHash(versionSource) % 900 + 100}` }
         : { targetId: id, state: 'Pending' };
     })).then((data) => res.json({ data: data.filter(Boolean) }));
   }
 
   app.get('/v1/thumbnails/avatar', avatarThumbnails);
   app.post('/v1/thumbnails/avatar', avatarThumbnails);
+
+  app.post('/api/avatar/thumbnail', (req, res) => {
+    const sessionUser = ctx.resolveSessionUser(req);
+    if (!sessionUser) {
+      return res.status(401).json({ ok: false, error: 'sign-in-required' });
+    }
+    const userId = readId(sessionUser.userId || sessionUser.id);
+    if (!userId || !existingUser(userId)) {
+      return res.status(404).json({ ok: false, error: 'user-not-found' });
+    }
+
+    const image = req.body && req.body.image;
+    const match = typeof image === 'string'
+      && image.length <= 80 * 1024
+      ? /^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/.exec(image)
+      : null;
+    if (!match) {
+      return res.status(400).json({ ok: false, error: 'invalid-avatar-thumbnail' });
+    }
+    const png = Buffer.from(match[1], 'base64');
+    if (png.length < 24 || png.length > 60 * 1024
+      || !png.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
+      return res.status(400).json({ ok: false, error: 'invalid-avatar-thumbnail' });
+    }
+
+    try {
+      ctx.saveUser(String(userId), { avatarThumbnailData: image });
+    } catch (error) {
+      console.error(`[luckyblox] avatar thumbnail save failed for account ${userId}: ${error.message}`);
+      return res.status(500).json({ ok: false, error: 'avatar-thumbnail-save-failed' });
+    }
+    return res.json({ ok: true, userId });
+  });
 
   // Classic clients request the profile picture as an image rather than through
   // the batched thumbnail API.
@@ -408,6 +448,19 @@ function installClientApi(app, ctx) {
     const allowedSizes = ['48x48', '50x50', '100x100', '150x150', '180x180', '352x352', '420x420'];
     const requestedSize = `${width}x${height}`;
     const size = allowedSizes.includes(requestedSize) ? requestedSize : '352x352';
+    const localImage = user.avatarThumbnailData;
+    if (localImage) {
+      const match = /^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/.exec(String(localImage));
+      if (!match) return res.status(500).type('text/plain').send('Saved avatar thumbnail is invalid');
+      const png = Buffer.from(match[1], 'base64');
+      if (png.length < 24 || png.length > 60 * 1024
+        || !png.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
+        return res.status(500).type('text/plain').send('Saved avatar thumbnail is invalid');
+      }
+      res.set('Content-Type', 'image/png');
+      res.set('Cache-Control', 'private, max-age=300');
+      return res.status(200).send(png);
+    }
     const imageUrl = await avatarThumbnailUrl(id, user, size);
     if (!imageUrl) return res.status(404).type('text/plain').send('Avatar thumbnail unavailable');
     return res.redirect(302, imageUrl);

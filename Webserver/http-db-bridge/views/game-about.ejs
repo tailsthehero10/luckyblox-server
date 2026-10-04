@@ -87,7 +87,9 @@
                 Card_512x512 is the icon in the info column to the right.
               -->
               <img class="roblox-game-thumb-img roblox-game-thumb-base" src="/gameplaceholder/game-thumb.png"
-                   alt="<%= g.title %>" id="gameThumbFallback" />
+                   alt="<%= g.title %>" id="gameThumbFallback"
+                   onload="var b=document.getElementById('gameThumbBlock');if(b)b.classList.remove('is-loading');"
+                   onerror="var b=document.getElementById('gameThumbBlock');if(b)b.classList.remove('is-loading');" />
               <% if (thumbUrl && thumbUrl !== '/gameplaceholder/game-thumb.png') { %>
                 <img class="roblox-game-thumb-img roblox-game-thumb-top" src="<%= thumbUrl %>"
                      alt="<%= g.title %> thumbnail"
@@ -232,7 +234,16 @@
                description - the order the real 2021 page used. -->
           <div class="lb-game-info">
             <div class="lb-game-head">
-              <div class="lb-game-icon" style="background-image:url('<%= iconUrl %>');" aria-label="Game icon"></div>
+              <div class="lb-game-icon roblox-game-icon lb-loading-block is-loading" id="gameIconBlock" role="img" aria-label="<%= g.title %> game icon">
+                <img class="lb-game-icon-img" src="/gameplaceholder/card.png" alt=""
+                     onload="var b=document.getElementById('gameIconBlock');if(b)b.classList.remove('is-loading');"
+                     onerror="var b=document.getElementById('gameIconBlock');if(b)b.classList.remove('is-loading');" />
+                <% if (iconUrl && iconUrl !== '/gameplaceholder/card.png') { %>
+                  <img class="lb-game-icon-img roblox-game-icon-top" src="<%= iconUrl %>" alt=""
+                       onload="var b=document.getElementById('gameIconBlock');if(b)b.classList.remove('is-loading');"
+                       onerror="this.style.display='none';var b=document.getElementById('gameIconBlock');if(b)b.classList.remove('is-loading');" />
+                <% } %>
+              </div>
               <div>
                 <h1 class="lb-game-title"><%= g.title %></h1>
                 <div class="lb-game-byline">By <strong><%= creatorName %></strong></div>

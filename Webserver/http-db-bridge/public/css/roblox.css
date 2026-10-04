@@ -2707,7 +2707,7 @@ select:focus-visible {
   height: var(--lb-topbar-height, 90px);
   padding: 0 22px;
   box-sizing: border-box;
-  background: linear-gradient(180deg, var(--lb-header) 0%, var(--lb-header-2) 100%) !important;
+  background: linear-gradient(180deg, var(--lb-header) 0%, var(--lb-header-2) 100%);
   border-bottom: 1px solid var(--lb-header-line);
   box-shadow: none !important;
   position: fixed;
@@ -3730,6 +3730,12 @@ button.roblox-sidebar-link { min-height: 34px; }
   display: block;
 }
 
+.roblox-game-icon-top {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
 .lb-game-title,
 .roblox-game-title { font-size: 26px; font-weight: 900; line-height: 1.15; }
 .lb-game-byline,
@@ -4073,15 +4079,46 @@ button.roblox-sidebar-link { min-height: 34px; }
   margin: 0 auto;
 }
 
-/* The real 3D figure is an <svg> inside that box. It fills the box rather than
-   carrying its own width/height, so the drawn size and the reserved layout space
-   are the same thing - the wrapper alone decides how big the avatar is. */
+/* Kept for the offline diagnostic renderer; site identity chips use a saved
+   image or a neutral icon, never this generated character. */
 .lb-avatar-figure > .lb-avatar-svg,
 .lb-avatar-figure > svg {
   display: block;
   width: 100%;
   height: 100%;
   overflow: visible;
+}
+
+.lb-avatar-figure--square {
+  display: block;
+  width: 10em;
+  height: 10em;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--lb-line-soft);
+  border-radius: 50%;
+  background: var(--lb-surface-alt);
+}
+
+.lb-avatar-figure--square .lb-user-avatar-placeholder,
+.lb-avatar-figure--square .lb-user-avatar-image {
+  position: absolute;
+  display: block;
+}
+
+.lb-avatar-figure--square .lb-user-avatar-placeholder {
+  inset: 25%;
+  width: 50%;
+  height: 50%;
+  object-fit: contain;
+}
+
+.lb-avatar-figure--square .lb-user-avatar-image {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
 }
 
 .lb-af-part { position: absolute; }
@@ -5083,8 +5120,6 @@ button.roblox-sidebar-link { min-height: 34px; }
     max-width: 220px !important;
     z-index: 60;
   }
-  body.lb-rail-open { --lb-rail-width: 220px; }
-
   /* The toggle is only useful in this layout. */
   .lb-rail-toggle { display: inline-flex; }
 
@@ -5544,6 +5579,29 @@ html.theme-dark {
   --lb-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   --lb-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
 
+  /* The refreshed component sheet uses its own rf-* tokens. Keep them in
+     lockstep with lb-* so newer and legacy panels change theme together. */
+  --rf-page: #0f1216;
+  --rf-surface: #171b21;
+  --rf-surface-2: #1c2129;
+  --rf-line: #2a313b;
+  --rf-line-strong: #394250;
+  --rf-ink: #e8ebf0;
+  --rf-ink-2: #c3cad4;
+  --rf-muted: #99a3b0;
+  --rf-faint: #78828f;
+  --rf-link: #ffffff;
+  --rf-green: #22c47d;
+  --rf-green-hover: #36d28d;
+  --rf-blue: #7cc4ff;
+  --rf-blue-hover: #9bd2ff;
+  --rf-dark-bg: #121820;
+  --rf-dark-line: #05070a;
+  --rf-dark-surface: #12161c;
+  --rf-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --rf-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --rf-shadow-3: 0 12px 28px rgba(0, 0, 0, 0.52);
+
   /* --- The back-compat aliases, so older rules follow too --------------- */
   --bg-main: var(--lb-page);
   --bg-container: var(--lb-surface);
@@ -5853,6 +5911,7 @@ html.theme-dark .lb-loading-page-text { color: var(--lb-muted) !important; }
 /* --- The footer ------------------------------------------------------------ */
 html.theme-dark .lb-footer { border-top-color: var(--lb-line) !important; color: var(--lb-muted) !important; }
 html.theme-dark .lb-footer-links a { color: var(--lb-ink-2) !important; }/* ---------------------------------------------------------------------------
+html.theme-dark .lb-account-signout:hover { background: #392326 !important; }/* ---------------------------------------------------------------------------
    Account menu (top-right of the header)
    ---------------------------------------------------------------------------
    The signed-in identity used to be a plain link to the profile, so there was
@@ -6888,4 +6947,19 @@ html.theme-dark .lb-group-search-field::placeholder { color: var(--lb-faint) !im
   height: 100%;
   object-fit: cover;
   z-index: 1;
+}
+
+/* The local UI glyphs are monochrome SVGs loaded as images, so currentColor
+   cannot recolor them. Keep dark-theme controls legible on every page. */
+html.theme-dark img.ch-ico {
+  filter: brightness(0) invert(1) !important;
+  opacity: 0.92;
+}
+
+html.theme-dark .lb-header .ch-ico,
+html.theme-dark .roblox-topbar .ch-ico,
+html.theme-dark .lb-header img[src^="/icons/"],
+html.theme-dark .roblox-topbar img[src^="/icons/"] {
+  filter: brightness(0) invert(1) !important;
+  opacity: 0.92;
 }

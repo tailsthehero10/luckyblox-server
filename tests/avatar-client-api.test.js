@@ -34,6 +34,7 @@ const assets = {
   501: { id: 501, name: 'Real local shirt', assetTypeId: 11, assetType: 'Shirt', version: 3 },
   502: { id: 502, name: 'Saved pants', assetTypeId: 12, assetType: 'Pants', version: 2 },
 };
+let activeSession = null;
 
 fs.writeFileSync(path.join(dataDir, '2.json'), JSON.stringify({ currentlyWearing: ['502'] }));
 
@@ -52,17 +53,30 @@ installClientApi(app, {
   getFriendsForUser: () => [],
   getPublicGamesForUser: () => [],
   normalizePlaceId: (id) => String(id),
-  resolveSessionUser: () => null,
-  saveUser: () => {},
+  resolveSessionUser: () => activeSession,
+  saveUser: (id, update) => {
+    users[String(id)] = { ...users[String(id)], ...update };
+    return users[String(id)];
+  },
   publicOrigin: 'http://127.0.0.1:3000',
   dataDir,
   releaseRoot: path.resolve(__dirname, '..'),
 });
 
-function request(server, pathname) {
+function request(server, pathname, method = 'GET', payload = null) {
   const address = server.address();
   return new Promise((resolve, reject) => {
-    http.get({ host: '127.0.0.1', port: address.port, path: pathname }, (response) => {
+    const body = payload == null ? null : Buffer.from(JSON.stringify(payload));
+    const req = http.request({
+      host: '127.0.0.1',
+      port: address.port,
+      path: pathname,
+      method,
+      headers: body ? {
+        'Content-Type': 'application/json',
+        'Content-Length': body.length,
+      } : {},
+    }, (response) => {
       const chunks = [];
       response.on('data', (chunk) => chunks.push(chunk));
       response.on('end', () => resolve({
@@ -70,7 +84,10 @@ function request(server, pathname) {
         headers: response.headers,
         body: Buffer.concat(chunks).toString('utf8'),
       }));
-    }).on('error', reject);
+    });
+    req.on('error', reject);
+    if (body) req.write(body);
+    req.end();
   });
 }
 
@@ -111,6 +128,27 @@ function request(server, pathname) {
     assert.equal(classicThumbnail.status, 302);
     assert.equal(classicThumbnail.headers.location, 'http://127.0.0.1:3000/avatar-thumbs/1.webp');
     assert.equal((await request(server, '/thumbs/avatar.ashx?userId=2&x=48&y=48')).status, 404);
+
+    const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jXioAAAAASUVORK5CYII=';
+    assert.equal((await request(server, '/api/avatar/thumbnail', 'POST', { image })).status, 401,
+      'only an authenticated owner may update a local client portrait');
+    activeSession = { userId: '1' };
+    const savedThumbnail = await request(server, '/api/avatar/thumbnail', 'POST', { image });
+    assert.equal(savedThumbnail.status, 200);
+    assert.equal(JSON.parse(savedThumbnail.body).ok, true);
+
+    const localThumbnails = JSON.parse(
+      (await request(server, '/v1/thumbnails/avatar?userIds=1')).body,
+    );
+    assert.match(localThumbnails.data[0].imageUrl, /^http:\/\/127\.0\.0\.1:3000\/thumbs\/avatar\.ashx\?userId=1&v=\d+$/);
+    const localImage = await request(server, '/thumbs/avatar.ashx?userId=1&x=48&y=48');
+    assert.equal(localImage.status, 200);
+    assert.match(localImage.headers['content-type'], /^image\/png\b/i);
+    assert.ok(Buffer.from(localImage.body, 'binary').length > 0);
+    assert.equal((await request(server, '/api/avatar/thumbnail', 'POST', {
+      image: 'data:image/svg+xml;base64,PHN2Zy8+',
+    })).status, 400);
+
     assert.equal((await request(server, '/v1/avatar?userId=999')).status, 404);
     assert.equal((await request(server, '/v1/avatar?userId=1garbage')).status, 404);
     assert.equal((await request(server, '/v1/users/999')).status, 404);

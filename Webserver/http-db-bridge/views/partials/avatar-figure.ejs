@@ -1,31 +1,20 @@
 <%
-  /**
-   * The blocky character figure, drawn by the ONE shared renderer.
-   *
-   * This partial used to hand-build six flat coloured rectangles with a literal
-   * ":B" text face - a colour DIAGRAM, not a character. That is why every avatar
-   * on the site looked wrong, and why a friend's tile showed a grey box whatever
-   * their account held. server/avatarRenderer.js draws the real shaded isometric
-   * figure in the account's own BrickColor body colours, on the correct R6/R15
-   * rig, with equipped items composited on top.
-   *
-   * `lbAvatarFigure` is the same helper the profile, home and avatar pages use, so
-   * there is exactly one implementation and every page agrees. It emits a wrapper
-   * carrying the layout box (10em tall, sized by font-size) plus the SVG inside.
-   *
-   * Expects: user (the account record), size (target height in px).
-   */
+  // Compact user chips use a real saved headshot or neutral icon. Full previews
+  // use the supplied RBXM viewer instead of a drawn stand-in.
   var figSize = (typeof size !== 'undefined' && size) ? Number(size) : 240;
   if (!Number.isFinite(figSize) || figSize <= 0) figSize = 240;
   var figUserObj = (typeof user !== 'undefined' && user) ? user : {};
+  var figAvatarObj = figUserObj.avatar && typeof figUserObj.avatar === 'object' ? figUserObj.avatar : {};
+  var figImageUrl = String(figUserObj.headshotUrl || figAvatarObj.headshotUrl || '');
+  if (!/^https?:\/\//i.test(figImageUrl)
+      && !(figImageUrl.charAt(0) === '/' && figImageUrl.charAt(1) !== '/')) figImageUrl = '';
 -%>
-<% if (typeof lbAvatarFigure === 'function') { %>
-<%- lbAvatarFigure(figUserObj, figSize) %>
-<% } else { %>
-<%# Defensive fallback. lbAvatarFigure is attached in the bridge's res.locals, so
-    it is always present in the running site; this branch exists so a partial
-    rendered outside that context (a test harness, a script) still emits a shaped
-    box rather than throwing and taking the whole page down. %>
-<div class="lb-avatar-figure" style="font-size:<%= Math.round((figSize / 10) * 1000) / 1000 %>px;"
-     role="img" aria-label="Avatar"></div>
-<% } %>
+<div class="lb-avatar-figure lb-avatar-figure--square"
+     style="font-size:<%= Math.round((figSize / 10) * 1000) / 1000 %>px;"
+     role="img" aria-label="<%= figUserObj.displayName || figUserObj.username || 'User' %> profile picture">
+  <img class="lb-user-avatar-placeholder ch-ico" src="/icons/avatar.svg" alt="" aria-hidden="true" />
+  <% if (figImageUrl) { %>
+    <img class="lb-user-avatar-image" src="<%= figImageUrl %>" alt="" loading="lazy"
+         onerror="this.onerror=null;this.remove();" />
+  <% } %>
+</div>

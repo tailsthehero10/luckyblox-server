@@ -21,10 +21,10 @@
 %>
 <body>
   <div class="lb-page">
-    <%- include('partials/header', { user: user, currency: currency, activeNav: 'friends' }) %>
+    <%- include('partials/header', { user: viewerUser || user, currency: currency, activeNav: 'friends' }) %>
 
     <div class="lb-shell">
-      <%- include('partials/sidebar', { user: user, activeNav: 'friends' }) %>
+      <%- include('partials/sidebar', { user: viewerUser || user, activeNav: 'friends' }) %>
 
       <main class="lb-main">
         <div class="lb-sort-row">
@@ -44,28 +44,17 @@
           </div>
           <div class="lb-panel-body">
             <% if (friendList.length) { %>
-              <%# The real 2013 friends row: a wrap of 100x130 tiles, each a 100x100
-                  avatar over the name. The previous markup rendered a letter tile
-                  in a single-column list, which is why the page "looked bad" - it
-                  was a text list, not the friends row the real site had. %>
+              <%# The 2013 friends row uses 100x130 tiles. Each tile shows a saved
+                  headshot or neutral avatar icon rather than generated geometry. %>
               <div class="lb-friends-container">
                 <% friendList.forEach(function (friend) { %>
                   <a class="lb-friend-container"
                      href="<%= friend.profileUrl || ('/users/' + friend.userId + '/profile') %>"
                      title="<%= friend.username %>">
                     <div class="lb-friend-avatar">
-                      <%# A real <img> layered over the blocky figure. The figure is
-                          always drawn, so a friend with no headshot still shows a
-                          character rather than an empty box, and a 404 headshot
-                          reveals it instead of collapsing the tile. %>
-                      <div class="lb-friend-avatar-base">
-                        <%- include('partials/avatar-figure', { user: friend, size: 100 }) %>
-                      </div>
-                      <% if (friend.headshotUrl) { %>
-                        <img class="lb-friend-avatar-top" src="<%= friend.headshotUrl %>" alt=""
-                             loading="lazy"
-                             onerror="this.onerror=null;this.remove();" />
-                      <% } %>
+                        <div class="lb-friend-avatar-base">
+                          <%- include('partials/avatar-figure', { user: friend, size: 100 }) %>
+                        </div>
                       <span class="lb-presence-dot lb-presence-<%= friend.online ? 'online' : (friend.status === 'away' ? 'away' : 'offline') %>
                             lb-friend-presence"
                             title="<%= friend.online ? 'Online' : (friend.status === 'away' ? 'Away' : 'Offline') %>"></span>

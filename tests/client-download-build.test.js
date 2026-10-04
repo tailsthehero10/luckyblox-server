@@ -17,6 +17,7 @@
 
 const assert = require('assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
@@ -26,6 +27,8 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 delete process.env.LUCKYBLOX_CLIENT_PATH;
 delete process.env.LUCKYBLOX_CLIENT_ROOT;
 delete process.env.LUCKYBLOX_INSTALLER_PATH;
+delete process.env.LOCAL_APP_DATA;
+process.env.LOCALAPPDATA = path.join(os.tmpdir(), `luckyblox-client-build-${process.pid}`);
 
 const clientBuildInfo = require(path.join(PROJECT_ROOT, 'Webserver', 'http-db-bridge', 'clientBuildInfo.js'));
 const clientLauncher = require(path.join(PROJECT_ROOT, 'server', 'clientLauncher.js'));
@@ -158,8 +161,8 @@ check('installer provisions real PlatformContent files before its up-to-date ret
   );
   assert.match(
     installerSource,
-    /Path\.Combine\(sharedDir,\s*"PlatformContent"\)/,
-    'the installer should keep PlatformContent beside the ContentFolder directory',
+    /Path\.Combine\(contentDir,\s*"PlatformContent"\)/,
+    'the installer should provision PlatformContent inside the configured ContentFolder directory',
   );
   assert.match(
     installerSource,
@@ -170,6 +173,16 @@ check('installer provisions real PlatformContent files before its up-to-date ret
     path.resolve('Luckyblox', 'Versions', '2021M', '..', '..', 'shared', 'Content'),
     path.resolve('Luckyblox', 'shared', 'Content'),
     'the configured path must resolve from the versioned executable to the install-root shared directory',
+  );
+  assert.strictEqual(
+    path.resolve('Luckyblox', 'Versions', '2021M', '..', '..', 'shared', 'Content', 'PlatformContent', 'pc'),
+    path.resolve('Luckyblox', 'shared', 'Content', 'PlatformContent', 'pc'),
+    'the provisioned platform assets must resolve under shared Content for the client',
+  );
+  assert.match(
+    installerSource,
+    /Text = "Open LuckyBlox"[\s\S]+?FileName = _baseUrl/,
+    'the installer window must hand users to the site rather than starting the player without a game ticket',
   );
   assert.match(
     installerSource,

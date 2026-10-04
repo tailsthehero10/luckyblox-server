@@ -1,0 +1,30 @@
+var _____WB$wombat$assign$function_____=function(name){return (globalThis._wb_wombat && globalThis._wb_wombat.local_init && globalThis._wb_wombat.local_init(name))||globalThis[name];};if(!globalThis.__WB_pmw){globalThis.__WB_pmw=function(obj){this.__WB_source=obj;return this;}}{
+let window = _____WB$wombat$assign$function_____("window");
+let self = _____WB$wombat$assign$function_____("self");
+let document = _____WB$wombat$assign$function_____("document");
+let location = _____WB$wombat$assign$function_____("location");
+let top = _____WB$wombat$assign$function_____("top");
+let parent = _____WB$wombat$assign$function_____("parent");
+let frames = _____WB$wombat$assign$function_____("frames");
+let opener = _____WB$wombat$assign$function_____("opener");
+var Roblox = Roblox || {};
+Roblox.LangDynamicDefault = Roblox.LangDynamicDefault || {};
+Roblox.LangDynamicDefault["Feature.GameDetails"] = {"Label.By":"By","Label.ByCreator":"{byText} {creatorLink}","Label.ExperimentalMode":"Experimental Mode","Label.About":"About","Label.Store":"Store","Label.Leaderboards":"Leaderboards","Label.Servers":"Servers","Heading.Description":"Description","Label.GameRequiresBuildersClub":"This Experience requires Builders Club","Label.Playing":"Active","Label.Visits":"Visits","Label.Created":"Created","Label.Updated":"Updated","Label.MaxPlayers":"Server Size","Label.Genre":"Genre","Label.AllowedGear":"Allowed Gear","Label.GameCopyLocked":"This experience is copylocked","Label.ReportAbuse":"Report Abuse","Heading.RecommendedGames":"Recommended Experiences","Label.GameDoesNotSell":"No passes available.","Label.NoRunningGames":"There are currently no running experiences.","Action.ShareGameToChat":"Share to chat","Label.PublicSource":"Public Source","Label.PrivateSource":"Private Source","Label.PublicSourceDescription":"This experience's source is public","Label.PrivateSourceDescription":"This experience's source is private","Label.PublicPrivateSourceCheckBox":"By leaving this checkbox checked, you are agreeing to allow every other user of Roblox the right to use (in various ways) the content you are now making available, as set out in the Terms. If you do not want to grant this right, please uncheck this box.","Label.CopyingTitle":"Copying","Label.AllowCopyingCheckbox":"Allow Copying","Label.PlaceCopyingAllowed":"This experience's source can be copied.","Description.AllowCopyingDisclaimer":"By checking this box, {boldTagStart}you are granting every other user of Roblox the right to use{boldTagEnd} (in various ways) the content you are now sharing. {boldTagStart2}If you do not want to grant this right, please do not check this box{boldTagEnd2}. For more information about sharing content, please review the Roblox {linkStart}Terms of Use{linkEnd}.","Label.Favorites":"Favorites","Label.ExperimentalWarning":"{aTagStartWithHref}{ExperimentalGamesInfoLink}{hrefEnd}This experience may not function as intended.{aTagEnd} The developer needs to update the experience.","Message.ExternalLinkWarning":"By clicking \"continue\", you will be redirected to a website that is not owned or operated by Roblox. They may have different terms and privacy policies.","Message.LeavingRobloxTitle":"Leaving Roblox"};
+window.Roblox && window.Roblox.BundleDetector && window.Roblox.BundleDetector.bundleDetected("DynamicLocalizationResourceScript_Feature.GameDetails");
+
+}
+
+/*
+     FILE ARCHIVED ON 21:09:52 Aug 08, 2021 AND RETRIEVED FROM THE
+     INTERNET ARCHIVE ON 21:04:38 Sep 25, 2026.
+     JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+
+     ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+     SECTION 108(a)(3)).
+*/
+/*
+playback timings (ms):
+  capture_cache.get: 0.415
+  load_resource: 12.735
+  PetaboxLoader3.datanode: 11.667
+*/

@@ -46,9 +46,8 @@ the currently-wearing outfit on the right. Panel chrome (.roblox-panel / header 
   text-align: center;
 }
 
-/* The 3D avatar render (server/avatarRenderer.js). It is inline SVG so it scales
-   cleanly, needs no network, and carries the account's real body colours. The
-   wrapper reserves the box so the figure can never spill into the panels below. */
+/* The character stage renders part transforms and meshes from the supplied
+   R6/R15 RBXM files. Its wrapper reserves the box so it cannot overlap panels. */
 .lb-avatar-stage-fallback {
   display: flex;
   align-items: center;
@@ -72,6 +71,178 @@ the currently-wearing outfit on the right. Panel chrome (.roblox-panel / header 
   height: auto;
   object-fit: contain;
 }
+
+.lb-avatar-viewer {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 100%;
+  min-height: 260px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 34%, rgba(255, 255, 255, 0.98), rgba(238, 241, 244, 0.84) 70%),
+    var(--lb-surface-alt);
+  touch-action: none;
+}
+
+.lb-avatar-viewer canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.lb-avatar-viewer canvas:active { cursor: grabbing; }
+
+.lb-avatar-viewer--portrait {
+  cursor: default !important;
+  pointer-events: none;
+  touch-action: auto;
+}
+
+.lb-avatar-viewer--portrait [data-avatar-portrait-image] {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lb-avatar-viewer-status {
+  position: absolute;
+  z-index: 1;
+  right: 10px;
+  bottom: 10px;
+  left: 10px;
+  padding: 7px 10px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--lb-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.lb-avatar-viewer-status.is-error {
+  background: rgba(255, 244, 244, 0.96);
+  color: #a12626;
+}
+
+.lb-avatar-viewer--compact .lb-avatar-viewer-status {
+  display: none;
+}
+
+.lb-avatar-viewer--compact .lb-avatar-viewer-status.is-error {
+  display: block;
+}
+
+.lb-avatar-viewer--compact {
+  min-height: 0 !important;
+}
+
+.roblox-avatar-render .lb-avatar-viewer {
+  height: 352px;
+  flex: 0 0 auto;
+}
+
+.lb-avatar-stage-showcase .lb-avatar-viewer {
+  height: 100%;
+  min-height: 0;
+}
+
+.lb-avatar-viewer.is-rendered .lb-avatar-viewer-status:not(.is-error) {
+  opacity: 0.72;
+}
+
+/* The profile header has an inner row wrapper, so the old two-column grid
+   allocated only its 190px avatar track to the name and counters. */
+.lb-profile-header {
+  display: block !important;
+  width: 100%;
+  grid-template-columns: none;
+}
+
+.lb-profile-header-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.lb-profile-header-info {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+}
+
+.lb-profile-header .lb-avatar-stage {
+  min-height: 128px;
+  margin-right: 0 !important;
+}
+
+.lb-profile-header-info .lb-counter-row {
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.lb-profile-header-info .lb-counter {
+  min-width: 76px;
+}
+
+.lb-avatar-stage-showcase {
+  display: block;
+  width: 100% !important;
+  height: 340px !important;
+  min-height: 340px !important;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #eef1f4;
+}
+
+.lb-avatar-stage-showcase .lb-avatar-stage-fallback {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+html.theme-dark .lb-avatar-viewer {
+  background:
+    radial-gradient(ellipse at 50% 34%, rgba(43, 51, 63, 0.98), rgba(20, 25, 32, 0.9) 70%),
+    #141920 !important;
+}
+
+html.theme-dark .lb-avatar-viewer-status {
+  background: rgba(20, 25, 32, 0.92);
+  color: var(--lb-ink-2);
+}
+
+html.theme-dark .lb-avatar-viewer-status.is-error {
+  background: rgba(75, 30, 34, 0.96);
+  color: #ffc4c4;
+}
+
+html.theme-dark .av-rig-option {
+  background: var(--lb-surface) !important;
+  border-color: var(--lb-line) !important;
+  color: var(--lb-ink) !important;
+}
+
+html.theme-dark .av-rig-option span,
+html.theme-dark .av-rig-option strong { color: var(--lb-ink-2) !important; }
+
+html.theme-dark .av-rig-option.is-active {
+  background: #152433 !important;
+  border-color: var(--lb-blue) !important;
+}
+
+html.theme-dark .av-rig-option.is-active strong { color: var(--lb-blue) !important; }
 
 /* --- Buttons never show a focus outline ------------------------------------
    Roblox removed the default focus ring on their controls; the browser's blue
@@ -453,6 +624,22 @@ button:focus-visible {
 
 /* --- Responsive ------------------------------------------------------------ */
 @media (max-width: 900px) {
+  .lb-profile-header-top {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .lb-profile-header .lb-avatar-stage {
+    min-height: 102px;
+    margin: 0 auto 10px !important;
+  }
+
+  .lb-profile-header-info { width: 100%; }
+  .lb-profile-header-info .lb-counter-row,
+  .lb-profile-header-info .lb-meta-row,
+  .lb-profile-header-info .lb-action-row { justify-content: center; }
+
   .av-layout {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -25,3 +25,6 @@
 <% if (spWithSelect) { %>
   <script src="/lb-select.js"></script>
 <% } %>
+<% if (typeof withAvatarViewer !== 'undefined' && withAvatarViewer) { %>
+  <script type="module" src="/js/avatar-viewer.mjs"></script>
+<% } %>

@@ -1,0 +1,30 @@
+var _____WB$wombat$assign$function_____=function(name){return (globalThis._wb_wombat && globalThis._wb_wombat.local_init && globalThis._wb_wombat.local_init(name))||globalThis[name];};if(!globalThis.__WB_pmw){globalThis.__WB_pmw=function(obj){this.__WB_source=obj;return this;}}{
+let window = _____WB$wombat$assign$function_____("window");
+let self = _____WB$wombat$assign$function_____("self");
+let document = _____WB$wombat$assign$function_____("document");
+let location = _____WB$wombat$assign$function_____("location");
+let top = _____WB$wombat$assign$function_____("top");
+let parent = _____WB$wombat$assign$function_____("parent");
+let frames = _____WB$wombat$assign$function_____("frames");
+let opener = _____WB$wombat$assign$function_____("opener");
+var Roblox = Roblox || {};
+Roblox.LangDynamic = Roblox.LangDynamic || {};
+Roblox.LangDynamic["Feature.SecurityQuestions"] = {"Action.Confirm":"Confirm","Action.PickN":"Pick {count}.","Action.PleaseTryAgain":"Please try again.","Action.SelectAllThatApply":"Select all that apply.","Description.VerifyYourIdentity":"To keep your account secure, please verify your identity.","Description.WhichGames":"Which of these experiences have you joined in the last {days} days?","Header.PleaseConfirmYourIdentity":"Please Confirm Your Identity","Message.Error.Default":"An unknown error occurred.","Message.Error.MustPickN":"You must pick the required number of choices.","Message.Error.SecurityQuestions.SessionInactive":"Session has expired.","Description.UnknownGame":"Unknown Game","Description.UnknownChoice":"Unknown Choice","Action.Reload":"Reload"};
+window.Roblox && window.Roblox.BundleDetector && window.Roblox.BundleDetector.bundleDetected("DynamicLocalizationResourceScript_Feature.SecurityQuestions");
+
+}
+
+/*
+     FILE ARCHIVED ON 08:10:33 Sep 02, 2021 AND RETRIEVED FROM THE
+     INTERNET ARCHIVE ON 09:58:13 Sep 26, 2026.
+     JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+
+     ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+     SECTION 108(a)(3)).
+*/
+/*
+playback timings (ms):
+  capture_cache.get: 4.13
+  load_resource: 33.236 (2)
+  PetaboxLoader3.datanode: 30.323 (2)
+*/

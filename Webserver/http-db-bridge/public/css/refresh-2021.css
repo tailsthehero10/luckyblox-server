@@ -1,34 +1,10 @@
 /* ===========================================================================
-   LuckyBlox - the 2021 look, REFRESHED.
+   LuckyBlox - shared layout styled with 2021-era visual references.
 
-   Same POSITIONS and STRUCTURE as the real 2021 roblox.com, with a modern
-   surface: softer radii, subtle elevation, cleaner type rhythm. Nothing moves
-   from where the real page put it - the top bar is still 90px, the nav is still
-   the same list in the same order, the search still sits between the nav and the
-   account cluster, the sidebar is still the same rail.
-
-   Values quoted from the real 2021 stylesheet shipped with the saved pages
-   (D:\DownLoads\Discover - Roblox_files\9436c6cb...0558d.css):
-
-     .rbx-header{height:90px}
-     .rbx-header .rbx-navbar{margin:4px auto;display:flex}
-     .rbx-header .rbx-navbar li .nav-menu-title{padding:6px 9px;display:inline-block}
-     .light-theme .rbx-header{background-color:#dee1e3;border:solid #c7cbce;border-width:0 0 1px}
-     .dark-theme  .rbx-header{background-color:#191b1d;border:solid #111214;border-width:0 0 1px}
-     .navbar-search{box-sizing:border-box;margin-top:6px;position:relative;border-radius:8px}
-     .light-theme .rbx-header .navbar-search{background-color:#f2f4f5}
-     .navbar-search .new-input-field{color:#393b3d}
-     .rbx-header .rbx-navbar li:hover{border:0 #393b3d;border-bottom:2px solid #393b3d}
-
-   What "refreshed" means here, concretely:
-     - the SAME 90px bar and the same element order, but the light theme is a
-       clean white (#ffffff) instead of the 2021 grey (#dee1e3), which is what
-       made the old page read as dated
-     - the same 2px underline nav hover, kept (it is the signature interaction)
-     - radii go 2px -> 8px on surfaces and controls; the 2021 sheet used almost
-       no rounding, which is the single biggest "2010s" tell
-     - elevation is one soft shadow instead of a hard 1px border everywhere
-     - the same Gotham SSm stack, with a tighter line-height and better contrast
+   This is original LuckyBlox CSS: it adapts the palette and restrained surfaces
+   to the local templates instead of importing Roblox's archived stylesheet.
+   Keep the existing page structure and behavior; the shared tokens below make
+   the site's pages feel consistent without replacing their assets.
    =========================================================================== */
 
 /* ---------------------------------------------------------------------------
@@ -36,18 +12,18 @@
    --------------------------------------------------------------------------- */
 
 :root {
-  /* Surfaces: white page, white bars, a whisper-grey canvas. */
-  --rf-page: #f7f8fa;
+  /* The classic light canvas, white content surfaces, and quiet separators. */
+  --rf-page: #f2f4f5;
   --rf-surface: #ffffff;
-  --rf-surface-2: #f2f4f7;
-  --rf-line: #e4e7ec;
-  --rf-line-strong: #d0d5dd;
+  --rf-surface-2: #f2f4f5;
+  --rf-line: #dbdee6;
+  --rf-line-strong: #c7cbce;
 
-  /* Text: near-black headings, muted body. */
-  --rf-ink: #14161a;
-  --rf-ink-2: #3d444d;
-  --rf-muted: #667085;
-  --rf-faint: #98a2b3;
+  /* Gotham-era dark text and neutral supporting labels. */
+  --rf-ink: #191b1f;
+  --rf-ink-2: #3a3f47;
+  --rf-muted: #6d7278;
+  --rf-faint: #9a9fa5;
 
   /* The 2021 brand accents, kept exactly. */
   --rf-green: #02b757;
@@ -61,13 +37,13 @@
   --rf-dark-line: #111214;
   --rf-dark-surface: #232527;
 
-  --rf-radius: 8px;
-  --rf-radius-sm: 6px;
-  --rf-radius-lg: 12px;
+  --rf-radius: 2px;
+  --rf-radius-sm: 2px;
+  --rf-radius-lg: 2px;
 
-  --rf-shadow-1: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --rf-shadow-2: 0 4px 12px rgba(16, 24, 40, 0.08);
-  --rf-shadow-3: 0 12px 28px rgba(16, 24, 40, 0.12);
+  --rf-shadow-1: none;
+  --rf-shadow-2: none;
+  --rf-shadow-3: none;
 
   /* The bar height is the real 2021 value: .rbx-header{height:90px}. The rail
      offset is derived from it so the two can never drift apart. */
@@ -172,10 +148,7 @@ h3 {
 }
 
 /* ---------------------------------------------------------------------------
-   Header - the 2021 90px bar, refreshed
-   ---------------------------------------------------------------------------
-   SAME structure: brand, nav list, search, account cluster. SAME height (90px).
-   The only change is the surface - white instead of #dee1e3.
+   Header - shared 90px layout; theme colors are set by the header theme rules.
    --------------------------------------------------------------------------- */
 
 .rf-header,
@@ -478,11 +451,7 @@ textarea:focus-visible,
 }
 
 /* ---------------------------------------------------------------------------
-   Left rail - the 2021 sidebar, refreshed
-   ---------------------------------------------------------------------------
-   Same position (fixed, left, below the 90px bar) and the same 220px width. The
-   rail is now a white card-floating column with rounded rows, instead of the
-   flat 2021 strip.
+   Left rail - fixed below the shared header, with compact navigation rows.
    --------------------------------------------------------------------------- */
 
 .rf-rail,
@@ -527,7 +496,7 @@ textarea:focus-visible,
   text-decoration: none;
 }
 
-/* The active row: the 2021 blue pill, refreshed. */
+/* The active row uses the site accent without a large rounded pill. */
 .rf-rail-link.is-active,
 .lb-sidebar-link.is-active,
 .roblox-sidebar-link.is-active {
@@ -636,7 +605,7 @@ textarea:focus-visible,
 }
 
 /* ---------------------------------------------------------------------------
-   Panels - one soft card instead of the 2021 hard 1px box
+   Panels - simple white surfaces with a thin border.
    --------------------------------------------------------------------------- */
 
 .rf-panel,
@@ -718,14 +687,6 @@ textarea:focus-visible,
     z-index: 60;
   }
 
-  body.lb-rail-open {
-    --rf-rail-w: 240px;
-  }
-
-  .lb-rail-toggle {
-    display: inline-flex;
-  }
-
   body.lb-rail-open::after {
     content: '';
     position: fixed;
@@ -776,6 +737,12 @@ textarea:focus-visible,
 
 .dark-theme .lb-rail-toggle {
   color: #ffffff;
+}
+
+@media (max-width: 760px) {
+  .lb-rail-toggle {
+    display: inline-flex;
+  }
 }
 
 /* ---------------------------------------------------------------------------

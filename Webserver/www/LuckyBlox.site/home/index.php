@@ -50,7 +50,7 @@ $mapCount = count($maps);
     <title>LuckyBlox | Home</title>
     <link rel="icon" href="/site-icon/luckyblox.ico" sizes="any" />
     <link rel="icon" type="image/png" href="/site-icon/luckyblox.png" />
-    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/style.css?v=20261004" />
     <style>
         :root {
             --bg: #0b0f17;
@@ -513,7 +513,7 @@ $mapCount = count($maps);
     </style>
 </head>
 <body>
-    <div class="page">
+    <div class="page home-page">
         <header class="topbar">
             <a class="brand" href="/LuckBlox.site/home" aria-label="LuckyBlox home">
                 <img src="/site-icon/luckyblox.png" alt="LuckyBlox" />
@@ -554,7 +554,13 @@ $mapCount = count($maps);
             </div>
 
             <div class="hero-visual">
-                <div class="featured-card" style="background-image: url('<?php echo htmlspecialchars(lb_resolve_game_feat($featuredMetadata)); ?>');">
+                <div class="featured-card">
+                    <img class="featured-card-base" src="/gameplaceholder/card.png" alt="" />
+                    <img class="featured-card-image"
+                         src="<?php echo htmlspecialchars(lb_resolve_game_feat($featuredMetadata), ENT_QUOTES, 'UTF-8'); ?>"
+                         alt="<?php echo htmlspecialchars($featuredMetadata['name'], ENT_QUOTES, 'UTF-8'); ?>"
+                         loading="lazy"
+                         onerror="this.style.display='none';" />
                     <div class="featured-overlay">
                         <h2 class="featured-title"><?php echo htmlspecialchars($featuredMetadata['name']); ?></h2>
                         <div class="featured-meta">
@@ -608,7 +614,14 @@ $mapCount = count($maps);
                     foreach ($gamePreview as $game):
                     ?>
                     <div class="game-item">
-                        <div class="game-thumb" style="background-image: url('<?php echo htmlspecialchars(lb_resolve_game_icon($game)); ?>');"></div>
+                        <div class="game-thumb">
+                            <img class="game-thumb-placeholder" src="/gameplaceholder/card.png" alt="" />
+                            <img class="game-thumb-image"
+                                 src="<?php echo htmlspecialchars(lb_resolve_game_icon($game), ENT_QUOTES, 'UTF-8'); ?>"
+                                 alt="<?php echo htmlspecialchars($game['title'], ENT_QUOTES, 'UTF-8'); ?>"
+                                 loading="lazy"
+                                 onerror="this.style.display='none';" />
+                        </div>
                         <h3><?php echo htmlspecialchars($game['title']); ?></h3>
                         <p><?php echo htmlspecialchars($game['description'] ?: 'A local map packaged as a playable LuckyBlox experience.'); ?></p>
                         <div class="game-links">

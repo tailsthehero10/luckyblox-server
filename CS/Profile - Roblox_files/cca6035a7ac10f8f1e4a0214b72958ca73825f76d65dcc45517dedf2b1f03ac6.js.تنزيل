@@ -1,0 +1,31 @@
+var _____WB$wombat$assign$function_____=function(name){return (globalThis._wb_wombat && globalThis._wb_wombat.local_init && globalThis._wb_wombat.local_init(name))||globalThis[name];};if(!globalThis.__WB_pmw){globalThis.__WB_pmw=function(obj){this.__WB_source=obj;return this;}}{
+let window = _____WB$wombat$assign$function_____("window");
+let self = _____WB$wombat$assign$function_____("self");
+let document = _____WB$wombat$assign$function_____("document");
+let location = _____WB$wombat$assign$function_____("location");
+let top = _____WB$wombat$assign$function_____("top");
+let parent = _____WB$wombat$assign$function_____("parent");
+let frames = _____WB$wombat$assign$function_____("frames");
+let opener = _____WB$wombat$assign$function_____("opener");
+var Roblox = Roblox || {};
+Roblox.LangDynamic = Roblox.LangDynamic || {};
+Roblox.LangDynamic["Authentication.CrossDevice"] = {"Heading.QuickLogin":"Quick Log In","Heading.LoginAnotherDevice":"Log in to another Device","Heading.LoginWarning":"TO LOG IN, MAKE SURE YOU:","Label.Warning1":"• Only enter codes that you requested","Label.Warning2":"• Never enter another user's code","Label.EnterCode":"Enter Quick Log In Code","Action.Enter":"Enter","Heading.Warning":"WARNING!","Label.ConfirmationMessage1":"You are about to sign in to: %s","Label.ConfirmationMessage2":"This new device will receive access to your account, Robux, and inventory.","Label.ConfirmationMessage3":"Please confirm this is you.","Action.ConfirmLogin":"Confirm Login","Action.Done":"Done","Action.CancelLogin":"Cancel","Action.TryAgain":"Try Again","Response.LoginSuccess":"Log in Successful","Response.LoginFail":"Log in Failed","Label.DeviceLoggedIn":"%s logged in","Label.CodeNotVerified":"The Quick Log In code was not verified.","Heading.LoginCode":"Quick Log In Code","Label.DevicePrompt":"GO TO YOUR LOGGED IN DEVICE TO ENTER THIS CODE AND EXPLORE","Label.LoginInstructions":"On your logged in device, go to:","Label.LoginLocation":"<b>Account Settings > Quick Log In</b> to enter your code.","Label.HaveQuestions":"Have questions?","Action.LearnMore":"Learn More","Label.ConfirmOnDevice":"CONFIRM LOGIN ON YOUR OTHER DEVICE","Label.LogginInAs":"Logging in as %s","Response.InvalidCode":"The code you entered was invalid. Please make sure you entered it correctly.","Label.WebLogginInAs":"Logging in as","Label.ConfirmationMessage1Web":"You are about to sign in to: {deviceInfo}","Label.DeviceLoggedInWeb":"{deviceLoggedIn} logged in","Label.DeviceLoggedInLocation":"Location: {location}","Label.InvalidLocationError":"We couldn't match your location to the device trying to log in. Please try again on the same network."};
+window.Roblox && window.Roblox.BundleDetector && window.Roblox.BundleDetector.bundleDetected("DynamicLocalizationResourceScript_Authentication.CrossDevice");
+
+}
+
+/*
+     FILE ARCHIVED ON 22:12:13 Aug 04, 2021 AND RETRIEVED FROM THE
+     INTERNET ARCHIVE ON 21:07:04 Sep 25, 2026.
+     JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+
+     ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+     SECTION 108(a)(3)).
+*/
+/*
+playback timings (ms):
+  capture_cache.get: 0.388
+  load_resource: 51.681
+  PetaboxLoader3.resolve: 27.231
+  PetaboxLoader3.datanode: 23.71
+*/

@@ -59,9 +59,13 @@ var hDark = (typeof themeOn !== 'undefined') ? !!themeOn : false;
     (function () {
       var header = document.currentScript && document.currentScript.parentNode;
       if (!header) return;
+      var root = document.documentElement;
+      var initialDark = header.classList.contains('dark-theme');
+      root.classList.toggle('theme-dark', initialDark);
+      if (document.body) document.body.classList.toggle('theme-dark', initialDark);
       function sync() {
-        var dark = document.documentElement.classList.contains('dark-theme')
-          || document.documentElement.classList.contains('theme-dark')
+        var dark = root.classList.contains('dark-theme')
+          || root.classList.contains('theme-dark')
           || (document.body && (document.body.classList.contains('dark-theme')
             || document.body.classList.contains('theme-dark')));
         header.classList.toggle('dark-theme', dark);
@@ -176,15 +180,9 @@ var hDark = (typeof themeOn !== 'undefined') ? !!themeOn : false;
               showed a stray letter instead of a person, and it read as text
               beside the username rather than as an avatar.
 
-              `lbAvatarFigure` draws the real shaded R6/R15 figure in the saved
-              BrickColor palette, the same renderer the profile and friends pages
-              use. The headshot still layers on top when the account HAS one,
-              fitted so a square render is never cropped. %>
-          <%- include('avatar-figure', { user: hUser, size: 32 }) %>
-          <% if (hUser.avatar && hUser.avatar.headshotUrl) { %>
-          <img class="lb-account-headshot" src="<%= hUser.avatar.headshotUrl %>" alt=""
-               loading="lazy" onerror="this.onerror=null;this.remove();" />
-          <% } %>
+              Compact chips use the saved headshot or a neutral profile glyph;
+              the full character preview uses the supplied R6/R15 RBXM models. %>
+          <%- include('avatar-figure', { user: hUser, size: 26 }) %>
         </span>
         <span class="lb-account-name"><%= hUser.username %></span>
         <img class="ch-ico lb-account-caret" src="/icons/dropdown.svg" alt="" />
@@ -193,11 +191,7 @@ var hDark = (typeof themeOn !== 'undefined') ? !!themeOn : false;
       <div class="lb-account-dropdown" id="accountMenuPanel" role="menu">
         <div class="lb-account-dropdown-head">
           <span class="lb-account-dropdown-avatar">
-            <%- include('avatar-figure', { user: hUser, size: 48 }) %>
-            <% if (hUser.avatar && hUser.avatar.headshotUrl) { %>
-            <img class="lb-account-headshot" src="<%= hUser.avatar.headshotUrl %>" alt=""
-                 loading="lazy" onerror="this.onerror=null;this.remove();" />
-            <% } %>
+            <%- include('avatar-figure', { user: hUser, size: 36 }) %>
           </span>
           <span class="lb-account-dropdown-identity">
             <strong><%= hUser.displayName || hUser.username %></strong>
@@ -262,7 +256,7 @@ var hDark = (typeof themeOn !== 'undefined') ? !!themeOn : false;
         <a class="lb-account-dropdown-item" role="menuitem" href="/users/<%= hUserId %>/profile">
           <img class="ch-ico" src="/icons/profile.svg" alt="" /> Profile
         </a>
-        <a class="lb-account-dropdown-item" role="menuitem" href="/avatar?userId=<%= hUserId %>">
+        <a class="lb-account-dropdown-item" role="menuitem" href="/avatar">
           <img class="ch-ico" src="/icons/avatar.svg" alt="" /> Avatar
         </a>
         <a class="lb-account-dropdown-item" role="menuitem" href="/users/<%= hUserId %>/friends">

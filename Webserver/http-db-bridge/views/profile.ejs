@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/css/roblox.css" />
   <link rel="stylesheet" href="/css/refresh-2021.css" />
   <link rel="stylesheet" href="/css/roblox-ui.css" />
+  <link rel="stylesheet" href="/css/avatar.css" />
   <%# The real 2021 site stylesheets, served from /css/2021. The avatar editor
       chrome included further down is captured markup and expects these rules. %>
   <link rel="stylesheet" href="/css/2021/Navigation.css" />
@@ -50,21 +51,22 @@
   // linked to a real Roblox user id and Roblox answered; otherwise they are null
   // and the page draws the local blocky figure from the saved body colours.
   var headshot = (typeof profileAvatar !== 'undefined' && profileAvatar) ? profileAvatar.headshotUrl : null;
-  var fullBody = (typeof profileAvatar !== 'undefined' && profileAvatar) ? profileAvatar.fullBodyUrl : null;
   var wornFromApi = (typeof profileAvatar !== 'undefined' && profileAvatar && profileAvatar.equipped && profileAvatar.equipped.length)
     ? profileAvatar.equipped : null;
   if (wornFromApi) wornItems = wornFromApi;
+  var profileViewer = (typeof viewerUser !== 'undefined' && viewerUser) ? viewerUser : null;
+  var ownProfile = !!(typeof isOwnProfile !== 'undefined' && isOwnProfile);
 %>
 <body>
   <div class="lb-page">
     <%- include('partials/header', {
-      user: user,
+      user: profileViewer,
       currency: currency,
       activeNav: 'profile'
     }) %>
 
     <div class="lb-shell">
-      <%- include('partials/sidebar', { user: user, activeNav: 'profile' }) %>
+      <%- include('partials/sidebar', { user: profileViewer, activeNav: 'profile' }) %>
 
       <main class="lb-main">
         <!--
@@ -82,16 +84,7 @@
         <section class="lb-profile-header">
           <div class="lb-profile-header-top">
             <div class="lb-avatar-stage">
-              <%# Layered: the local figure is always drawn and the remote headshot
-                  sits on top of it, so a failed request reveals the figure rather
-                  than an empty box. %>
-              <div class="lb-avatar-stage-fallback">
-                <%= lbAvatarFigure(user, 128) %>
-              </div>
-              <% if (headshot || fullBody) { %>
-                <img class="roblox-avatar-image lb-avatar-stage-top" src="<%= headshot || fullBody %>"
-                     alt="<%= user.username %>" onerror="this.style.display='none';" />
-              <% } %>
+              <%- lbAvatarViewer(user, 128, { portrait: true, savePortrait: ownProfile }) %>
             </div>
 
             <div class="lb-profile-header-info">
@@ -124,16 +117,14 @@
               <span class="lb-pill">Joined <%= formatJoinDate(user.joinDate) %></span>
               <span class="lb-pill">ID <%= user.userId %></span>
               <span class="lb-pill"><%= user.membershipStatus || user.membership || 'None' %></span>
-              <span class="lb-pill">
-                <img class="ch-ico ch-ico-sm ch-ico--ink" src="/icons/robux-outline.svg" alt="" />
-                <%= currency ? currency.robux : (user.robux || 0) %>
-              </span>
             </div>
 
             <div class="lb-action-row">
               <a class="lb-btn lb-btn-secondary" href="/users/<%= user.userId %>/friends">Friends</a>
-              <a class="lb-btn lb-btn-secondary" href="/avatar?userId=<%= user.userId %>">Customize Avatar</a>
-              <a class="lb-btn lb-btn-secondary" href="/account?userId=<%= user.userId %>">Account</a>
+              <% if (ownProfile) { %>
+                <a class="lb-btn lb-btn-secondary" href="/avatar">Customize Avatar</a>
+                <a class="lb-btn lb-btn-secondary" href="/account">Account</a>
+              <% } %>
             </div>
             </div>
           </div>
@@ -205,25 +196,14 @@
           <div class="lb-panel-body">
             <div class="lb-content-grid">
               <div>
-                <div class="lb-avatar-stage">
+                <div class="lb-avatar-stage lb-avatar-stage-showcase">
                   <%#
-                    The local figure is ALWAYS rendered, and the remote render is
-                    layered on top of it when there is one.
-
-                    The old markup was either/or: the fallback figure only existed
-                    in the `else` branch, so when `fullBody` was set but the request
-                    then failed, the onerror hid the <img> and there was nothing
-                    underneath it - the stage collapsed and left a gap. Layering
-                    means a failed remote render simply reveals the local figure.
+                    Render the supplied RBXM rig in both profile previews; no
+                    generated stand-in avatar is used.
                   %>
                   <div class="lb-avatar-stage-fallback">
-                    <%- include('partials/avatar-figure', { user: user, size: 220 }) %>
+                    <%- lbAvatarViewer(user, 340) %>
                   </div>
-                  <% if (fullBody) { %>
-                    <img class="roblox-avatar-image roblox-avatar-image-large lb-avatar-stage-top"
-                         src="<%= fullBody %>" alt="<%= user.username %> avatar"
-                         onerror="this.style.display='none';" />
-                  <% } %>
                 </div>
                 <div class="lb-faint" style="text-align:center;margin-top:8px;"><%= user.username %></div>
               </div>
@@ -279,11 +259,13 @@
           <div class="lb-panel-header"><span>Avatar</span></div>
           <div class="lb-panel-body">
             <div class="lb-action-row">
-              <a class="lb-btn lb-btn-primary" href="/avatar?userId=<%= user.userId %>">
-                <img class="ch-ico" src="/icons/avatar.svg" alt="" /> Customize Avatar
-              </a>
+              <% if (ownProfile) { %>
+                <a class="lb-btn lb-btn-primary" href="/avatar">
+                  <img class="ch-ico" src="/icons/avatar.svg" alt="" /> Customize Avatar
+                </a>
+              <% } %>
               <span class="lb-faint" style="align-self:center;">
-                Rig, body colours, scales and outfit are all edited there.
+                <%= ownProfile ? 'Rig, body colours, scales and outfit are all edited here.' : 'This character is displayed from the user avatar saved on LuckyBlox.' %>
               </span>
             </div>
           </div>
@@ -307,11 +289,11 @@
           </section>
 
           <section class="lb-panel">
-            <div class="lb-panel-header"><span>Currency</span></div>
+            <div class="lb-panel-header"><span>Avatar</span></div>
             <div class="lb-panel-body">
               <div class="lb-stat-list">
-                <span>Robux</span><strong><%= currency ? currency.robux : (user.robux || 0) %></strong>
-                <span>Inventory</span><strong><%= Array.isArray(user.inventory) ? user.inventory.length : 0 %> items</strong>
+                <span>Rig</span><strong><%= (user.avatar && user.avatar.playerAvatarType) || 'R15' %></strong>
+                <span>Wearing</span><strong><%= wornItems.length %> items</strong>
               </div>
             </div>
           </section>
@@ -366,6 +348,6 @@
       </main>
     </div>
   </div>
-  <%- include('partials/scripts') %>
+  <%- include('partials/scripts', { withAvatarViewer: true }) %>
 </body>
 </html>

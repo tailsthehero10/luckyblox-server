@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node ../../tests/remoteStore.test.js && node ../../tests/storage.test.js && node ../../tests/avatar-rig.test.js && node ../../tests/avatar-rig-route.test.js && node ../../tests/avatar-client-api.test.js && node ../../tests/legacy-client-endpoints.test.js && node ../../tests/orchestrator-platform.test.js && node ../../tests/roblox-asset-delivery.test.js && node ../../tests/studio-asset-fallback.test.js && node ../../tests/user-search.test.js && node ../../tests/games-genre-filter.test.js && node ../../tests/game-launch-uri.test.js"
+    "test": "node ../../tests/remoteStore.test.js && node ../../tests/storage.test.js && node ../../tests/avatar-rig.test.js && node ../../tests/roblox-mesh-parser.test.js && node ../../tests/avatar-rig-route.test.js && node ../../tests/avatar-client-api.test.js && node ../../tests/legacy-client-endpoints.test.js && node ../../tests/settings-avatar-persistence.test.js && node ../../tests/orchestrator-platform.test.js && node ../../tests/roblox-asset-delivery.test.js && node ../../tests/studio-asset-fallback.test.js && node ../../tests/user-search.test.js && node ../../tests/friends-row.test.js && node ../../tests/games-genre-filter.test.js && node ../../tests/game-launch-uri.test.js"
   },
   "dependencies": {
     "ejs": "^3.1.10",
@@ -13,6 +13,7 @@
     "lz4": "file:../tools/rbxm-lz4-compat",
     "lz4js": "0.2.0",
     "pg": "^8.23.0",
-    "rbxm-parser": "1.1.4"
+    "rbxm-parser": "1.1.4",
+    "three": "^0.170.0"
   }
 }

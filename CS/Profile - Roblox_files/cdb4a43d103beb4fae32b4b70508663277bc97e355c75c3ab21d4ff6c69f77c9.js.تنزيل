@@ -1,0 +1,31 @@
+var _____WB$wombat$assign$function_____=function(name){return (globalThis._wb_wombat && globalThis._wb_wombat.local_init && globalThis._wb_wombat.local_init(name))||globalThis[name];};if(!globalThis.__WB_pmw){globalThis.__WB_pmw=function(obj){this.__WB_source=obj;return this;}}{
+let window = _____WB$wombat$assign$function_____("window");
+let self = _____WB$wombat$assign$function_____("self");
+let document = _____WB$wombat$assign$function_____("document");
+let location = _____WB$wombat$assign$function_____("location");
+let top = _____WB$wombat$assign$function_____("top");
+let parent = _____WB$wombat$assign$function_____("parent");
+let frames = _____WB$wombat$assign$function_____("frames");
+let opener = _____WB$wombat$assign$function_____("opener");
+var Roblox = Roblox || {};
+Roblox.LangDynamic = Roblox.LangDynamic || {};
+Roblox.LangDynamic["Feature.Profile"] = {"Label.About":"About","Label.Creations":"Creations","Label.ShowLess":"Show Less","Label.ReadMore":"Read More","Label.SlideshowView":"Slideshow View","Label.GridView":"Grid View","Label.LoadMore":"Load More","Label.PastUsername":"Past Usernames","Label.WarningTitle":"Warning","Label.Cancel":"Cancel","Label.BlockWarningConfirm":"Block","Label.UnblockWarningConfirm":"Unblock","Label.BlockWarningBody":"Are you sure you want to block this user?","Label.UnblockWarningBody":"Are you sure you want to unblock this user?","Label.BlockWarningFooter":"When you've blocked a user, neither of you can directly contact the other.","Label.JoinDate":"Join Date","Label.PlaceVisits":"Place Visits","Label.ForumPosts":"Forum Posts","Action.SeeAll":"See All","Action.Favorites":"Favorites","Heading.ProfileGroups":"Groups","Heading.PlayerAssetsBadges":"Badges","Heading.PlayerAssetsClothing":"Clothing","Heading.PlayerAssetsModels":"Models","Heading.RobloxBadge":"Roblox Badges","Heading.GameTitle":"Experiences","Heading.Statistics":"Statistics","Message.NoCreation":"{username} has no creations.","Heading.Profile":"Profile","Heading.Friends":"Friends","Heading.FriendsNum":"Friends ({friendsCount})","Heading.Collections":"Collections","Heading.CurrentlyWearing":"Currently Wearing","Heading.PlayerBadge":"Badges","Heading.FavoriteGames":"Favorites","Heading.Games":"Experiences","Heading.Groups":"Groups","Label.Members":"Members","Label.Rank":"Rank","Label.Friends":"Friends","Label.Followers":"Followers","Label.Following":"Following","Label.ReportAbuse":"Report Abuse","Label.PastUsernames":"Previous usernames","Label.Playing":"Active","Label.Visits":"Visits","Action.SlideshowView":"Slideshow View","Action.GridView":"Grid View","Action.SeeMore":"See More","Action.SeeLess":"See Less","Action.Inventory":"Inventory","Action.Trade":"Trade","Action.TradeItems":"Trade Items","Action.Unfriend":"Unfriend","Action.Chat":"Chat","Action.Message":"Message","Action.Follow":"Follow","Action.Unfollow":"Unfollow","Action.BlockUser":"Block User","Action.UnblockUser":"Unblock User","Action.Accept":"Accept","Action.AddFriend":"Add Friend","Action.Pending":"Pending","Action.JoinGame":"Join","Action.ImpersonateUser":"Impersonate User","Action.UpdateStatus":"Update Status","Action.Save":"Save","Message.Sharing":"Sharing...","Message.ChangeStatus":"What are you up to?","Action.ConfirmBlockUser":"Block","Description.BlockUserPrompt":"Are you sure you want to block this user?","Description.BlockUserFooter":"When you've blocked a user, neither of you can directly contact the other.","Action.ConfirmUnblockUser":"Unblock","Description.UnblockUserPrompt":"Are you sure you want to unblock this user?","Heading.BlockUserTitle":"Warning","Action.CancelBlockUser":"Cancel","Message.ErrorBlockLimit":"Operation failed! You may have blocked too many people.","Message.ErrorGeneral":"Something went wrong. Please check back in a few minutes.","Heading.AboutTab":"About","Response.TooManyAttempts":"Too many attempts. Please try again later.","Label.Quotation":"\"{userStatus}\"","Label.Alias":"Alias","Label.ChangeAlias":"Set Alias","Description.ChangeAlias":"Only you can see this information","Action.Close":"Close","Message.AliasIsModerated":"Please avoid using full names or offensive language.","Message.AliasHasError":"An error has occurred. Please try again later","Description.AboutWarning":"Keep yourself safe, do not share personal details online.","Description.PlaceholderStatus":"Tell the Roblox community about what you like to make, build, and explore...","Description.Error":"Unable to update description, please try again later.","Description.AboutSuccess":"Successfully updated description.","Message.AcceptFriendRequestError":"Unable to accept friend request.","Message.SendFriendRequestError":"Unable to send friend request.","Message.RemoveFriendError":"Unable to unfriend user.","Message.FollowError":"Unable to follow user.","Message.UnfollowError":"Unable to unfollow user.","Message.BlockError":"Unable to block user. You may have blocked too many people.","Message.BlockRequestError":"Unable to block user.","Message.ImpersonateUserError":"Unable to impersonate user.","Message.UpdateStatusError":"Unable to update status."};
+window.Roblox && window.Roblox.BundleDetector && window.Roblox.BundleDetector.bundleDetected("DynamicLocalizationResourceScript_Feature.Profile");
+
+}
+
+/*
+     FILE ARCHIVED ON 00:05:44 Aug 05, 2021 AND RETRIEVED FROM THE
+     INTERNET ARCHIVE ON 21:07:02 Sep 25, 2026.
+     JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+
+     ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+     SECTION 108(a)(3)).
+*/
+/*
+playback timings (ms):
+  capture_cache.get: 11.738
+  load_resource: 147.65 (2)
+  PetaboxLoader3.resolve: 113.777 (2)
+  PetaboxLoader3.datanode: 31.407 (2)
+*/

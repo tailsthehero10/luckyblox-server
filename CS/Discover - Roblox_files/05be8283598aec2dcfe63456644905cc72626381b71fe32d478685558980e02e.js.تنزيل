@@ -1,0 +1,31 @@
+var _____WB$wombat$assign$function_____=function(name){return (globalThis._wb_wombat && globalThis._wb_wombat.local_init && globalThis._wb_wombat.local_init(name))||globalThis[name];};if(!globalThis.__WB_pmw){globalThis.__WB_pmw=function(obj){this.__WB_source=obj;return this;}}{
+let window = _____WB$wombat$assign$function_____("window");
+let self = _____WB$wombat$assign$function_____("self");
+let document = _____WB$wombat$assign$function_____("document");
+let location = _____WB$wombat$assign$function_____("location");
+let top = _____WB$wombat$assign$function_____("top");
+let parent = _____WB$wombat$assign$function_____("parent");
+let frames = _____WB$wombat$assign$function_____("frames");
+let opener = _____WB$wombat$assign$function_____("opener");
+var Roblox = Roblox || {};
+Roblox.LangDynamicDefault = Roblox.LangDynamicDefault || {};
+Roblox.LangDynamicDefault["Feature.GamePage"] = {"abelFilterDefault":"Default","LabelFilterPopular":"Popular","LabelFilterTopFavorite":"Top Favorite","LabelFilterFeatured":"Featured","LabelFilterContest":"Contest","LabelFilterMyFavorite":"My Favorite","LabelFilterMyRecent":"My Recent","LabelFilterTopGrossing":"Top Earning","LabelFilterTopPaid":"Top Paid","LabelFilterPurchased":"Purchased","LabelFilterTopRated":"Top Rated","LabelFilterBuildersClub":"Builders Club","LabelFilterPersonalServer":"Personal Server","LabelFilterTopRetaining":"Recommended","LabelFilterFriendActivity":"Friend Activity","LabelFilterPersonalizedByLiked":"Because You Liked","LabelFilterPopularInVr":"Popular in VR","LabelFilterNow":"Now","LabelFilterPastDay":"Past Day","LabelFilterPastWeek":"Past Week","LabelFilterAllTime":"All Time","LabelFilterBy":"Filter By","LabelFilterDefault":"Default","LabelExperimentalMode":"Experimental Mode","LabelExperimental":"Experimental","LabelPlayingPhrase":"{playerCount} Visiting","LabelCreatorBy":"By {creatorLink}","ActionSeeAll":"See All","LabelFilterGenre":"Genre","LabelFilterTime":"Time","LabelNoSearchResults":"No Results Found","LabelSearchField":"Search","LabelCancelField":"Cancel","LabelShowingResultsFor":"Showing results for","LabelSearchInsteadFor":"Search instead for","LabelSearchYouMightMean":"Did you mean:","LabelExperimentalResults":"These results contain Experimental Mode experiences.","ActionDisableExperimentalMode":"Disable","HeadingExperimentalMode":"Experimental Mode Experiences","LabelExperimentalHelpText":"What's this?","LabelFilterPopularByCountry":"Popular in {CountryName}","Label.FilterExperimental":"Recommended","LabelServerError":"An Error Occured","LabelFilterPopularNearYou":"Popular Near You","LabelFilterBecauseYouLiked":"Because You Liked {gameName}","Label.Sponsored":"Sponsored","Label.SponsoredAd":"Sponsored Ad","LabelFilterMyFavorites":"My Favorites","LabelFilterRecentlyPlayed ":"Recently Played","Label.MoreResults":"more results","Label.TopResult":"Top Result","Label.MoreResultsFor":"More Results For","LabelFilterPopularWorldwide":"Popular Worldwide","LabelRecommendedForYou":"Recommended For You","Label.Free":"Free","LabelFilterRecommendedForYou":"Recommended For You","LabelFilterMyLibrary":"My Library","LabelPlayingOneUser":"{user} is visiting","LabelPlayingTwoUsers":"{1}, {2} are playing","LabelPlayingMultipleUsers":"{username1}, {username2} +{count} are visiting","LabelPlayingTwoUsersFixed":"{username1}, {username2} are visiting","LabelPlayingOnePlusUsers":"{username} +{count} are visiting","LabelFilterContinuePlayingAndFavorites":"Continue Playing + Favorites","LabelPlayingOnePlusUsersWithComma":"{username}, +{count} are visiting"};
+window.Roblox && window.Roblox.BundleDetector && window.Roblox.BundleDetector.bundleDetected("DynamicLocalizationResourceScript_Feature.GamePage");
+
+}
+
+/*
+     FILE ARCHIVED ON 16:51:51 Jun 24, 2021 AND RETRIEVED FROM THE
+     INTERNET ARCHIVE ON 09:41:13 Sep 26, 2026.
+     JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+
+     ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+     SECTION 108(a)(3)).
+*/
+/*
+playback timings (ms):
+  capture_cache.get: 0.387
+  load_resource: 298.034
+  PetaboxLoader3.resolve: 238.417
+  PetaboxLoader3.datanode: 16.798
+*/

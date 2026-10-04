@@ -17,13 +17,13 @@ var sbUserId = sbUser ? sbUser.userId : null;
 var sbItems = [
   { key: 'home',      label: 'Home',       href: '/',                                                icon: '/icons/home.svg' },
   { key: 'games',     label: 'Discover',   href: '/games',                                         icon: '/icons/games.svg' },
-  { key: 'avatar',    label: 'Avatar',     href: sbUserId ? ('/avatar?userId=' + sbUserId) : '/signin', icon: '/icons/avatar.svg' },
+  { key: 'avatar',    label: 'Avatar',     href: sbUserId ? '/avatar' : '/signin', icon: '/icons/avatar.svg' },
   { key: 'friends',   label: 'Friends',    href: sbUserId ? ('/users/' + sbUserId + '/friends') : '/signin', icon: '/icons/friends.svg' },
   { key: 'inventory', label: 'Inventory',  href: '/inventory',                                     icon: '/icons/assets.svg' },
   { key: 'groups',    label: 'Groups',     href: '/search/groups',                                 icon: '/icons/groups.svg' },
-  { key: 'catalog',   label: 'Avatar Shop', href: '/catalog',                                      icon: '/icons/robux-outline.svg' },
+  { key: 'catalog',   label: 'Avatar Shop', href: '/catalog',                                      icon: '/icons/store.svg' },
   { key: 'create',    label: 'Create',     href: '/develop',                                       icon: '/icons/develop.svg' },
-  { key: 'badges',    label: 'Badges',     href: sbUserId ? ('/badges?userId=' + sbUserId) : '/signin', icon: '/icons/studio.svg' },
+  { key: 'badges',    label: 'Badges',     href: sbUserId ? ('/badges?userId=' + sbUserId) : '/signin', icon: '/icons/star.svg' },
   { key: 'download',  label: 'Download',   href: '/download',                                      icon: '/icons/download.svg' },
   { key: 'account',   label: 'Settings',   href: '/settings',                                      icon: '/icons/settings.svg' }
 ];
@@ -38,19 +38,8 @@ var sbItems = [
 <% if (sbUser) { %>
   <div class="lb-sidebar-user roblox-sidebar-user">
     <div class="lb-sidebar-avatar roblox-sidebar-avatar">
-      <%# The account's own character, not a letter.
-
-          This rendered `String(username).slice(0,1)` - a bare "T" for
-          tailsthehero10 - whenever the account had no `avatar.headshotUrl`,
-          which is every locally registered account. It reads as stray text next
-          to the name rather than as an avatar, and it is the same defect that was
-          in the header chip. `lbAvatarFigure` draws the real figure; a headshot
-          still layers over it when the account has one. %>
-      <%- include('avatar-figure', { user: sbUser, size: 36 }) %>
-      <% if (sbUser.avatar && sbUser.avatar.headshotUrl) { %>
-      <img class="lb-sidebar-headshot" src="<%= sbUser.avatar.headshotUrl %>" alt=""
-           loading="lazy" onerror="this.onerror=null;this.remove();" />
-      <% } %>
+      <%# Show a saved headshot or the neutral avatar glyph; don't draw a fake model. %>
+      <%- include('avatar-figure', { user: sbUser, size: 32 }) %>
     </div>
     <div class="lb-sidebar-identity">
       <div class="lb-sidebar-username roblox-sidebar-username"><%= sbUser.username %></div>

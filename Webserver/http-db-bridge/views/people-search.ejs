@@ -39,7 +39,9 @@
               <div class="lb-asset-list">
                 <% people.forEach(function (person) { %>
                   <a class="lb-asset-item" href="/users/<%= person.userId %>/profile">
-                    <div class="lb-asset-icon" aria-hidden="true"><%- lbAvatarFigure(person, 40) %></div>
+                    <div class="lb-asset-icon">
+                      <%- include('partials/avatar-figure', { user: person, size: 40 }) %>
+                    </div>
                     <div>
                       <div class="lb-asset-name"><%= person.displayName || person.username %></div>
                       <div class="lb-asset-type">@<%= person.username %> &middot; ID <%= person.userId %></div>

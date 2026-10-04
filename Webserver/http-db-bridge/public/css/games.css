@@ -404,7 +404,7 @@ a.game-name:hover {
 .games-filter-chip.is-active {
   background: #393b3d;
   border-color: #393b3d;
-  color: #ffffff;
+  color: #ffffff !important;
 }
 
 .games-filter-chip.is-active .games-filter-count {
