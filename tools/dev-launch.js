@@ -989,7 +989,7 @@ async function main() {
   const userId = launch.userId || 1;
   // Keep auth on the ticket issuer's origin so its redemption cookie is scoped
   // to the same site APIs; only the join and map endpoints use loopback.
-  const authUrl = `${args.url}/v1/authentication-tickets?userId=${userId}&placeId=${launch.placeId}`;
+  const authUrl = `${args.url}/v1/authentication-ticket/redeem`;
   const runId = randomUUID();
 
   if (args.dryRun) {

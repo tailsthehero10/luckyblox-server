@@ -103,6 +103,28 @@ function cookieFrom(response) {
       assetTypeId: 12,
     },
   }));
+  fs.writeFileSync(path.join(dataDir, 'games.json'), JSON.stringify({
+    1803: {
+      placeId: 1803,
+      title: '2007 - Crossroads',
+      name: '2007 - Crossroads',
+      developer: 'Old Creator',
+      creatorName: 'Old Creator',
+      creatorId: 2,
+      author: 'Old Creator',
+      authorId: 2,
+    },
+  }));
+  fs.writeFileSync(path.join(dataDir, 'places.json'), JSON.stringify({
+    1803: {
+      placeId: 1803,
+      universeId: 1803,
+      name: '2007 - Crossroads',
+      author: 'Old Creator',
+      authorId: 2,
+      creators: ['Old Creator'],
+    },
+  }));
   const child = spawn(process.execPath, ['Webserver/http-db-bridge/server.js'], {
     cwd: path.resolve(__dirname, '..'),
     env: { ...process.env, PORT: String(port), LUCKYBLOX_DATA_DIR: dataDir },
@@ -123,6 +145,36 @@ function cookieFrom(response) {
       }
     }
     assert.equal(ready, true, `bridge should start:\n${errors.join('')}`);
+
+    const gameDetails = await get(port, '/api/games/1803');
+    assert.equal(gameDetails.status, 200);
+    const game = JSON.parse(gameDetails.body).game;
+    assert.equal(game.developer, 'tailsthehero10');
+    assert.equal(game.creatorName, 'tailsthehero10');
+    assert.equal(game.creatorId, 1);
+    assert.equal(game.author, 'tailsthehero10');
+    assert.equal(game.authorId, 1);
+
+    const studioPlaces = await get(port, '/v1/places');
+    assert.equal(studioPlaces.status, 200);
+    const place = JSON.parse(studioPlaces.body).places.find((entry) => entry.placeId === 1803);
+    assert.equal(place.author, 'tailsthehero10');
+    assert.equal(place.authorId, 1);
+
+    const gameList = await get(port, '/api/games');
+    assert.equal(gameList.status, 200);
+    const listedGame = JSON.parse(gameList.body).games.find((entry) => entry.placeId === 1803);
+    assert.equal(listedGame.developer, 'tailsthehero10');
+    assert.equal(listedGame.creatorName, 'tailsthehero10');
+    assert.equal(listedGame.creatorId, 1);
+
+    const migratedGames = JSON.parse(fs.readFileSync(path.join(dataDir, 'games.json'), 'utf8'));
+    assert.equal(migratedGames['1803'].developer, 'tailsthehero10');
+    assert.equal(migratedGames['1803'].creatorId, 1);
+    const migratedPlaces = JSON.parse(fs.readFileSync(path.join(dataDir, 'places.json'), 'utf8'));
+    assert.equal(migratedPlaces['1803'].author, 'tailsthehero10');
+    assert.equal(migratedPlaces['1803'].authorId, 1);
+    assert.deepEqual(migratedPlaces['1803'].creators, ['tailsthehero10']);
 
     const viewerLogin = await request(port, '/api/login', {
       method: 'POST',

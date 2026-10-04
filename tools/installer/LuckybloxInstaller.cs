@@ -1695,9 +1695,7 @@ namespace LuckyBlox.Installer
 
                 string baseUrl = InstallerConfig.NormalizeBaseUrl(
                     string.IsNullOrWhiteSpace(requestedBaseUrl) ? InstallerConfig.BaseUrl : requestedBaseUrl).TrimEnd('/');
-                string authUrl = baseUrl + "/v1/authentication-tickets?";
-                if (userId > 0) authUrl += "userId=" + userId.ToString(CultureInfo.InvariantCulture) + "&";
-                authUrl += "placeId=" + placeId.ToString(CultureInfo.InvariantCulture);
+                string authUrl = baseUrl + "/v1/authentication-ticket/redeem";
                 string joinUrl = baseUrl + "/game/join?placeId="
                     + placeId.ToString(CultureInfo.InvariantCulture)
                     + (userId > 0 ? "&userId=" + userId.ToString(CultureInfo.InvariantCulture) : "")

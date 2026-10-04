@@ -98,8 +98,8 @@ async function waitForReady(proc) {
     assert.equal(productInfo.AssetId, PLACE_ID);
     assert.equal(productInfo.Name, 'Saved Test Place');
     assert.equal(productInfo.Description, 'A place record stored by the test.');
-    assert.equal(productInfo.Creator.Id, 17);
-    assert.equal(productInfo.Creator.Name, 'TestCreator');
+    assert.equal(productInfo.Creator.Id, 1);
+    assert.equal(productInfo.Creator.Name, 'tailsthehero10');
 
     const anonymousTicketResponse = await request(`/v1/authentication-tickets?userId=1&placeId=${PLACE_ID}`);
     assert.equal(anonymousTicketResponse.status, 401, 'ticket issuance requires a signed-in LuckyBlox account');
@@ -108,7 +108,12 @@ async function waitForReady(proc) {
       placeId: PLACE_ID,
     }, { cookie: `luckblox_session=${sessionId}` });
     assert.equal(issuedTicketResponse.status, 201);
-    const issuedTicket = JSON.parse(issuedTicketResponse.body.toString('utf8')).ticket;
+    const ticketPayload = JSON.parse(issuedTicketResponse.body.toString('utf8'));
+    const issuedTicket = ticketPayload.ticket;
+    assert.ok(
+      new Date(ticketPayload.expiresAt).getTime() - Date.now() >= 4 * 60 * 1000,
+      'the client ticket should survive local DEV-PLAY server startup',
+    );
     const redeemedTicket = await request('/v1/authentication-ticket/redeem', 'POST', {
       authenticationTicket: issuedTicket,
     });

@@ -16,6 +16,8 @@ const bridgeRoot = path.join(releaseRoot, 'Webserver', 'http-db-bridge');
 let assetsDbPath = path.join(bridgeRoot, 'data', 'assets.json');
 let placesDbPath = path.join(bridgeRoot, 'data', 'places.json');
 let dataStore = null;
+const GAME_OWNER_ID = 1;
+const GAME_OWNER_USERNAME = 'tailsthehero10';
 
 function configureDataStore(store) {
   if (!store || typeof store.dataPath !== 'function'
@@ -89,9 +91,9 @@ function seedPlaceDatabase() {
       fileName: 'LuckyBlox Arena.rbxlx',
       filePath: path.join(savedPlacesRoot, 'LuckyBlox Arena.rbxlx'),
       version: 1,
-      author: 'LuckyBlox Studio',
-      authorId: 1,
-      creators: ['LuckyBlox Studio'],
+      author: GAME_OWNER_USERNAME,
+      authorId: GAME_OWNER_ID,
+      creators: [GAME_OWNER_USERNAME],
       maxPlayers: 20,
       allowHttpRequests: true,
       source: 'workspace/saved_places/LuckyBlox Arena.rbxlx',
@@ -112,7 +114,22 @@ function getAssetsDb() {
 }
 
 function getPlacesDb() {
-  return readJson(placesDbPath, seedPlaceDatabase());
+  const db = readJson(placesDbPath, seedPlaceDatabase());
+  if (!db || typeof db !== 'object' || Array.isArray(db)) return seedPlaceDatabase();
+  let changed = false;
+  for (const place of Object.values(db)) {
+    if (!place || typeof place !== 'object' || Array.isArray(place)) continue;
+    const creators = [GAME_OWNER_USERNAME];
+    if (place.author !== GAME_OWNER_USERNAME || Number(place.authorId) !== GAME_OWNER_ID
+      || JSON.stringify(place.creators) !== JSON.stringify(creators)) {
+      place.author = GAME_OWNER_USERNAME;
+      place.authorId = GAME_OWNER_ID;
+      place.creators = creators;
+      changed = true;
+    }
+  }
+  if (changed) writeJson(placesDbPath, db);
+  return db;
 }
 
 function listSavedPlaceFiles() {
@@ -133,9 +150,9 @@ function updatePlaceRecord(placeId, updates) {
     fileName: `place-${placeId || 1818}.rbxlx`,
     filePath: path.join(savedPlacesRoot, `place-${placeId || 1818}.rbxlx`),
     version: 1,
-    author: 'LuckyBlox Studio',
-    authorId: 1,
-    creators: ['LuckyBlox Studio'],
+    author: GAME_OWNER_USERNAME,
+    authorId: GAME_OWNER_ID,
+    creators: [GAME_OWNER_USERNAME],
     maxPlayers: 20,
     allowHttpRequests: true,
     source: `workspace/saved_places/place-${placeId || 1818}.rbxlx`,
@@ -143,7 +160,16 @@ function updatePlaceRecord(placeId, updates) {
     updatedAt: new Date().toISOString(),
   };
 
-  const next = { ...existing, ...updates, placeId: Number(placeId || existing.placeId || 1818), universeId: Number(placeId || existing.universeId || 1818), updatedAt: new Date().toISOString() };
+  const next = {
+    ...existing,
+    ...updates,
+    placeId: Number(placeId || existing.placeId || 1818),
+    universeId: Number(placeId || existing.universeId || 1818),
+    author: GAME_OWNER_USERNAME,
+    authorId: GAME_OWNER_ID,
+    creators: [GAME_OWNER_USERNAME],
+    updatedAt: new Date().toISOString(),
+  };
   db[key] = next;
   writeJson(placesDbPath, db);
   return next;
@@ -224,9 +250,9 @@ function writePlacePayloadToStorage(fileName, buffer, defaultKind = 'rbxlx') {
         fileName: resolvedName,
         filePath,
         version: 1,
-        author: 'LuckyBlox Studio',
-        authorId: 1,
-        creators: ['LuckyBlox Studio'],
+        author: GAME_OWNER_USERNAME,
+        authorId: GAME_OWNER_ID,
+        creators: [GAME_OWNER_USERNAME],
         maxPlayers: 20,
         allowHttpRequests: true,
         source: `workspace/saved_places/${resolvedName}`,
@@ -488,8 +514,8 @@ function installStudioApiRoutes(app, options = {}) {
           fileName: safeName,
           filePath,
           version: Number(req.query.version || 1),
-          author: req.body?.author || 'LuckyBlox Studio',
-          authorId: Number(req.body?.authorId || 1),
+          author: GAME_OWNER_USERNAME,
+          authorId: GAME_OWNER_ID,
           size: stat.size,
           source: `workspace/saved_places/${safeName}`,
         });
@@ -633,8 +659,8 @@ function installStudioApiRoutes(app, options = {}) {
       name: entry.name || 'LuckyBlox Place',
       description: entry.description || 'Local Studio place.',
       version: Number(entry.version || 1),
-      author: entry.author || 'LuckyBlox Studio',
-      authorId: Number(entry.authorId || 1),
+      author: GAME_OWNER_USERNAME,
+      authorId: GAME_OWNER_ID,
       maxPlayers: Number(entry.maxPlayers || 20),
       allowHttpRequests: Boolean(entry.allowHttpRequests !== false),
       source: entry.source || 'workspace/saved_places',
@@ -657,7 +683,7 @@ function installStudioApiRoutes(app, options = {}) {
         name: 'LuckyBlox Arena',
         description: 'Default local Studio place.',
         version: 1,
-        author: 'LuckyBlox Studio',
+        author: GAME_OWNER_USERNAME,
         maxPlayers: 20,
         allowHttpRequests: true,
       },
@@ -734,7 +760,7 @@ function installStudioApiRoutes(app, options = {}) {
           fileName: safeFileName,
           filePath,
           version: Number(body.version || 1),
-          author: body.author || 'LuckyBlox Studio',
+          author: GAME_OWNER_USERNAME,
           authorId: Number(body.authorId || 1),
           maxPlayers: Number(body.maxPlayers || 20),
           allowHttpRequests: body.allowHttpRequests !== false,
@@ -782,8 +808,8 @@ function installStudioApiRoutes(app, options = {}) {
           fileName,
           filePath,
           version: Number(req.query.version || 1),
-          author: 'LuckyBlox Studio',
-          authorId: 1,
+          author: GAME_OWNER_USERNAME,
+          authorId: GAME_OWNER_ID,
           maxPlayers: Number(req.query.maxPlayers || 20),
           allowHttpRequests: true,
           source: `workspace/saved_places/${fileName}`,

@@ -1084,6 +1084,8 @@ const ROBLOX_AGE_RATINGS = [
  */
 const OWNER_USER_ID = String(process.env.LUCKYBLOX_OWNER_ID || '1');
 const OWNER_USERNAME = String(process.env.LUCKYBLOX_OWNER_USERNAME || 'tailsthehero10').toLowerCase();
+const GAME_OWNER_ID = 1;
+const GAME_OWNER_USERNAME = 'tailsthehero10';
 
 /**
  * Is this account the deployment owner?
@@ -1426,7 +1428,7 @@ function createDefaultGames() {
       placeId: 1818,
       title: 'LuckyBlox Arena',
       description: 'A local Roblox-style competitive hub with quests, social features, and classic game discovery.',
-      developer: 'LuckyBlox Studio',
+      developer: GAME_OWNER_USERNAME,
       // The built-in games belong to the DEPLOYMENT OWNER.
       //
       // They used to carry no author at all, so the Studio could only say
@@ -1434,8 +1436,8 @@ function createDefaultGames() {
       // ownership check meaningless and the "You own this" row a guess. Naming
       // the owner here is what makes "id 1 owns the pre-added games" true rather
       // than assumed.
-      authorId: Number(OWNER_USER_ID) || 1,
-      author: OWNER_USERNAME,
+      authorId: GAME_OWNER_ID,
+      author: GAME_OWNER_USERNAME,
       icon: DEFAULT_GAME_ICON,
       genre: 'Adventure',
       // Real counters only. This deployment just started, so a brand new game
@@ -1471,10 +1473,10 @@ function createDefaultGames() {
       placeId,
       title: entry.title || `Game ${placeId}`,
       description: 'A local map packaged as a playable LuckyBlox experience.',
-      developer: 'LuckyBlox Studio',
+      developer: GAME_OWNER_USERNAME,
       // Imported maps are the owner's too - they ship with the deployment.
-      authorId: Number(OWNER_USER_ID) || 1,
-      author: OWNER_USERNAME,
+      authorId: GAME_OWNER_ID,
+      author: GAME_OWNER_USERNAME,
       icon: DEFAULT_GAME_ICON,
       genre: 'Adventure',
       visibility: 'Public',
@@ -1910,16 +1912,15 @@ function getWearingForUser(user) {
 function serializeGame(placeId) {
   const normalized = normalizePlaceId(placeId);
   const game = getGameEntry(normalized);
-  const owner = getUser(OWNER_USER_ID);
-  const ownerName = String((owner && owner.username) || OWNER_USERNAME);
   return {
     placeId: Number(game.placeId || normalized || 1818),
     title: game.title || 'LuckyBlox Arena',
     description: game.description || 'Local LuckyBlox demo game',
-    developer: ownerName,
-    creatorName: ownerName,
-    creatorId: Number(OWNER_USER_ID) || 1,
-    authorId: Number(OWNER_USER_ID) || 1,
+    developer: GAME_OWNER_USERNAME,
+    creatorName: GAME_OWNER_USERNAME,
+    creatorId: GAME_OWNER_ID,
+    author: GAME_OWNER_USERNAME,
+    authorId: GAME_OWNER_ID,
     genre: game.genre || 'Adventure',
     icon: game.icon || DEFAULT_GAME_ICON,
     playerCount: Number(game.playerCount || 0),
@@ -2061,12 +2062,60 @@ function ensureSeedData() {
           added += 1;
         }
       }
-      if (added > 0) {
+      const ownershipChanged = normalizeGameOwnership(current);
+      if (added > 0 || ownershipChanged) {
         writeJson(gamesPath, current);
-        console.log(`[luckyblox] imported ${added} built-in game(s) into the store`);
+        console.log(`[luckyblox] imported ${added} built-in game(s) and normalized game ownership`);
       }
     }
   }
+
+  const placesFilePath = path.join(dataDir, 'places.json');
+  const places = readJson(placesFilePath, {});
+  if (places && typeof places === 'object' && !Array.isArray(places)) {
+    const ownershipChanged = normalizePlaceOwnership(places);
+    if (ownershipChanged) writeJson(placesFilePath, places);
+  }
+}
+
+function normalizeGameOwnership(games) {
+  let changed = false;
+  for (const game of Object.values(games || {})) {
+    if (!game || typeof game !== 'object' || Array.isArray(game)) continue;
+    const ownerFields = {
+      developer: GAME_OWNER_USERNAME,
+      author: GAME_OWNER_USERNAME,
+      authorId: GAME_OWNER_ID,
+      creatorName: GAME_OWNER_USERNAME,
+      creatorId: GAME_OWNER_ID,
+    };
+    for (const [field, value] of Object.entries(ownerFields)) {
+      if (game[field] !== value) {
+        game[field] = value;
+        changed = true;
+      }
+    }
+  }
+  return changed;
+}
+
+function normalizePlaceOwnership(places) {
+  let changed = false;
+  for (const place of Object.values(places || {})) {
+    if (!place || typeof place !== 'object' || Array.isArray(place)) continue;
+    const ownerFields = {
+      author: GAME_OWNER_USERNAME,
+      authorId: GAME_OWNER_ID,
+      creators: [GAME_OWNER_USERNAME],
+    };
+    for (const [field, value] of Object.entries(ownerFields)) {
+      if (JSON.stringify(place[field]) !== JSON.stringify(value)) {
+        place[field] = value;
+        changed = true;
+      }
+    }
+  }
+  return changed;
 }
 
 /**
@@ -2325,7 +2374,9 @@ function getGames() {
     });
   }
 
-  return merged && typeof merged === 'object' ? merged : createDefaultGames();
+  if (!merged || typeof merged !== 'object' || Array.isArray(merged)) return createDefaultGames();
+  normalizeGameOwnership(merged);
+  return merged;
 }
 
 function getAssets() {
@@ -2839,8 +2890,8 @@ function getPlaceSettings(placeId) {
     universeId: Number(record.universeId || record.placeId || normalized),
     name: record.name || 'LuckyBlox Place',
     description: record.description || 'Local Studio place',
-    author: record.author || 'LocalPlayer',
-    authorId: Number(record.authorId || 1),
+    author: GAME_OWNER_USERNAME,
+    authorId: GAME_OWNER_ID,
     visibility: String(record.visibility || 'Public'),
     genre: String(record.genre || 'Adventure'),
     maxPlayers: Number(record.maxPlayers || 20),
@@ -2864,8 +2915,8 @@ function savePlaceSettings(placeId, updates) {
     universeId: normalized,
     name: String(updates.name || current.name || 'LuckyBlox Place'),
     description: String(updates.description || current.description || 'Local Studio place'),
-    author: updates.author || current.author || 'LocalPlayer',
-    authorId: Number(updates.authorId || current.authorId || 1),
+    author: GAME_OWNER_USERNAME,
+    authorId: GAME_OWNER_ID,
     maxPlayers: Number(updates.maxPlayers || current.maxPlayers || 20),
     visibility: String(updates.visibility || current.visibility || 'Public'),
     genre: String(updates.genre || current.genre || 'Adventure'),
@@ -2992,8 +3043,11 @@ function saveGameSettings(placeId, updates) {
   // A game with no author is claimed by the DEPLOYMENT OWNER, not by account 1
   // blindly - the built-in games exist before anybody signs up, and the owner is
   // the person who edits them (see OWNER_USER_ID).
-  if (!next.authorId) next.authorId = Number(OWNER_USER_ID) || 1;
-  if (!next.developer) next.developer = 'LuckyBlox Studio';
+  next.authorId = GAME_OWNER_ID;
+  next.author = GAME_OWNER_USERNAME;
+  next.developer = GAME_OWNER_USERNAME;
+  next.creatorId = GAME_OWNER_ID;
+  next.creatorName = GAME_OWNER_USERNAME;
 
   // Defaults for a record that has never been saved before, so the public page
   // and the Studio agree on the initial state rather than showing `undefined`.
@@ -3068,9 +3122,9 @@ function createGameRecord(placeId, fields) {
     placeId: normalized,
     title: String(input.title || `Game ${normalized}`),
     description: String(input.description || 'Created in LuckyBlox Studio.'),
-    developer: String(input.author || 'LuckyBlox Studio'),
-    authorId: Number(input.authorId || OWNER_USER_ID) || 1,
-    author: String(input.author || OWNER_USERNAME),
+    developer: GAME_OWNER_USERNAME,
+    authorId: GAME_OWNER_ID,
+    author: GAME_OWNER_USERNAME,
     icon: String(input.icon || DEFAULT_GAME_ICON),
     genre: String(input.genre || 'Adventure'),
     visibility: String(input.visibility || 'Public'),
@@ -3229,7 +3283,7 @@ function buildAvatarPayload(userId, placeId = 1818) {
 
 function createAuthTicket(userId, placeId, serverContext = {}) {
   const issuedAt = Date.now();
-  const expiresAt = issuedAt + 60 * 1000;
+  const expiresAt = issuedAt + 5 * 60 * 1000;
   const nonce = crypto.randomBytes(16).toString('hex');
 
   const claim = {
@@ -3346,9 +3400,8 @@ function gameClientMetadata(placeId, game = getGameEntry(placeId)) {
     }
     return new URL(fallback, publicOrigin).href;
   };
-  const owner = getUser(OWNER_USER_ID);
-  const creatorId = Number(OWNER_USER_ID) || 1;
-  const creatorName = String((owner && owner.username) || OWNER_USERNAME);
+  const creatorId = GAME_OWNER_ID;
+  const creatorName = GAME_OWNER_USERNAME;
   const storedIcon = [
     game.icon,
     game.iconUrl,
@@ -3440,7 +3493,7 @@ function launchLocalRobloxClient({ userId, placeId, port, serverJobId, ticket })
     };
   }
 
-  const authUrl = `${publicOrigin}/v1/authentication-tickets?userId=${userId}&placeId=${placeId}`;
+  const authUrl = `${publicOrigin}/v1/authentication-ticket/redeem`;
   const joinUrl = `${publicOrigin}/game/join?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${port}&jobId=${encodeURIComponent(serverJobId)}`;
 
   try {
@@ -6934,7 +6987,7 @@ app.post('/v1/launch-client', (req, res) => {
   const serverJobId = req.body.serverJobId || req.query.serverJobId || `game-${Date.now()}`;
 
   try {
-    const authUrl = `${publicOrigin}/v1/authentication-tickets?userId=${userId}&placeId=${placeId}`;
+    const authUrl = `${publicOrigin}/v1/authentication-ticket/redeem`;
     const joinUrl = `${publicOrigin}/game/join?placeId=${placeId}&userId=${userId}&ticket=local&serverPort=${port}&jobId=${encodeURIComponent(serverJobId)}`;
 
     const { spawn } = require('child_process');
@@ -7515,9 +7568,9 @@ app.get('/api/games', (req, res) => {
         placeId: Number(game.placeId),
         title: game.name,
         description: game.description,
-        developer: String((getUser(OWNER_USER_ID) || {}).username || OWNER_USERNAME),
-        creatorName: String((getUser(OWNER_USER_ID) || {}).username || OWNER_USERNAME),
-        creatorId: Number(OWNER_USER_ID) || 1,
+        developer: GAME_OWNER_USERNAME,
+        creatorName: GAME_OWNER_USERNAME,
+        creatorId: GAME_OWNER_ID,
         genre: 'Adventure',
         playerCount: 0,
         likes: 0,

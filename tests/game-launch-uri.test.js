@@ -107,8 +107,7 @@ assert.match(gameAbout, /new AbortController\(\)/);
 assert.match(gameAbout, /controller\.abort\(\);\s*\}, 20000/);
 assert.match(gameAbout, /spinner\.hidden = state !== 'working'/);
 assert.match(gameAbout, /showJoinState\('manual', 'Continue in LuckyBlox'/);
-assert.match(server, /const owner = getUser\(OWNER_USER_ID\);[\s\S]*?creatorName = String\(\(owner && owner\.username\) \|\| OWNER_USERNAME\)/);
-assert.match(server, /creatorId: Number\(OWNER_USER_ID\) \|\| 1/);
+assert.match(server, /const creatorId = GAME_OWNER_ID;\s*const creatorName = GAME_OWNER_USERNAME;/);
 assert.ok(
   gameAbout.indexOf('data.client && data.client.supported === false')
     < gameAbout.indexOf("if (data.launchURI && /^luckyblox-player:/i.test(data.launchURI))"),
@@ -126,6 +125,17 @@ assert.match(playMarkup, /controller\.abort\(\);\s*\}, 20000/);
 
 const installer = fs.readFileSync(path.join(root, 'tools', 'installer', 'LuckybloxInstaller.cs'), 'utf8');
 const installerBuild = fs.readFileSync(path.join(root, 'tools', 'installer', 'build-installer.bat'), 'utf8');
+const devLauncher = fs.readFileSync(path.join(root, 'tools', 'dev-launch.js'), 'utf8');
+assert.match(server, /const authUrl = `\$\{publicOrigin\}\/v1\/authentication-ticket\/redeem`/);
+assert.match(server, /developer: GAME_OWNER_USERNAME/);
+assert.match(server, /creatorId: GAME_OWNER_ID/);
+assert.match(server, /normalizeGameOwnership\(current\)/);
+assert.match(server, /normalizePlaceOwnership\(places\)/);
+assert.doesNotMatch(server, /const authUrl = `\$\{publicOrigin\}\/v1\/authentication-tickets\?/);
+assert.match(devLauncher, /const authUrl = `\$\{args\.url\}\/v1\/authentication-ticket\/redeem`/);
+assert.doesNotMatch(devLauncher, /const authUrl = `\$\{args\.url\}\/v1\/authentication-tickets\?/);
+assert.match(installer, /string authUrl = baseUrl \+ "\/v1\/authentication-ticket\/redeem";/);
+assert.doesNotMatch(installer, /string authUrl = baseUrl \+ "\/v1\/authentication-tickets/);
 assert.match(installer, /Software\\Classes\\luckyblox-player/);
 assert.match(installer, /command\.SetValue\("",.*\/Launch/);
 assert.match(installer, /LaunchClientFromProtocolUri/);
