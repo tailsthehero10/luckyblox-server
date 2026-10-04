@@ -229,11 +229,14 @@ console.log('ok: DEV-PLAY resolves the selected map/place, prepares local-test s
       title: 'A Real Test Map',
       creatorName: 'LuckyBlox Test Owner',
       creatorId: 42,
+      creatorType: 'User',
+      universeId: 27014,
       thumbnailUrl: 'https://example.test/art/test-map.png',
       iconUrl: 'https://example.test/art/test-icon.png',
       description: 'Test experience metadata',
       genre: 'Adventure',
     },
+    signJoinScript: (script) => `--rbxsig%test-signature%${script}`,
   });
   try {
     const health = await fetch(local.baseUrl);
@@ -258,24 +261,40 @@ console.log('ok: DEV-PLAY resolves the selected map/place, prepares local-test s
     assert.equal(await asset.text(), 'actual map fixture');
     const missing = await fetch(`${local.baseUrl}/asset/?id=1818`);
     assert.equal(missing.status, 404, 'the local asset endpoint must not return a different map');
-    const join = await fetch(
-      `${local.baseUrl}/game/join?placeId=27013&userId=42&ticket=test-ticket`,
+    const placeLauncher = await fetch(
+      `${local.baseUrl}/game/PlaceLauncher.ashx?placeId=27013&userId=42&ticket=test-ticket`,
     );
-    const payload = await join.json();
-    assert.equal(payload.placeId, 27013);
-    assert.equal(payload.userId, 42);
-    assert.equal(payload.port, 53644, 'the client is directed to the local server port');
+    assert.equal(placeLauncher.status, 200);
+    const payload = await placeLauncher.json();
+    assert.equal(payload.status, 2);
     assert.equal(payload.jobId, 'test-job');
+    assert.match(payload.joinScriptUrl, /^http:\/\/127\.0\.0\.1:\d+\/2021\/game\/join\.ashx\?/);
     assert.equal(
       payload.authenticationUrl,
-      'https://example.test/v1/authentication-ticket/redeem',
-      'the join response must advertise the endpoint that redeems the player ticket and sets its cookie',
+      'https://example.test/2021/Login/Negotiate.ashx',
+      'the legacy PlaceLauncher response must use the 2021 authentication endpoint',
     );
-    assert.equal(payload.game.title, 'A Real Test Map');
-    assert.equal(payload.game.creatorName, 'LuckyBlox Test Owner');
-    assert.equal(payload.game.thumbnailUrl, 'https://example.test/art/test-map.png');
+    assert.equal(payload.authenticationTicket, 'test-ticket');
+
+    const signedJoin = await fetch(payload.joinScriptUrl);
+    assert.equal(signedJoin.status, 200, 'the PlaceLauncher response must lead to a distinct join-script response');
+    const signedJoinText = await signedJoin.text();
+    const signedJoinMatch = signedJoinText.match(/^--rbxsig%[^%]+%([\s\S]+)$/);
+    assert.ok(signedJoinMatch, 'the join-script response must be signed in the client protocol format');
+    const joinSettings = JSON.parse(signedJoinMatch[1]);
+    assert.equal(joinSettings.MachineAddress, '127.0.0.1');
+    assert.equal(joinSettings.ServerPort, 53644);
+    assert.deepEqual(joinSettings.ServerConnections, [{ Address: '127.0.0.1', Port: 53644 }]);
+    assert.equal(joinSettings.ClientTicket, 'test-ticket');
+    assert.equal(joinSettings.UserId, 42);
+    assert.equal(joinSettings.PlaceId, 27013);
+    assert.equal(joinSettings.GameId, 'test-job');
+    assert.equal(joinSettings.CreatorId, 42);
+    assert.equal(joinSettings.CreatorTypeEnum, 'User');
+    assert.equal(joinSettings.UniverseId, 27014);
+
     const wrongJoinPlace = await fetch(
-      `${local.baseUrl}/game/join?placeId=1811&userId=42&ticket=test-ticket`,
+      `${local.baseUrl}/game/PlaceLauncher.ashx?placeId=1811&userId=42&ticket=test-ticket`,
     );
     assert.equal(wrongJoinPlace.status, 404, 'join must not silently return the selected map for another place');
   } finally {

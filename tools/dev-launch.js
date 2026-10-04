@@ -42,7 +42,7 @@ const http = require('http');
 const net = require('net');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
-const { randomUUID } = require('crypto');
+const { createPrivateKey, createSign, randomUUID } = require('crypto');
 
 const RELEASE_ROOT = path.resolve(__dirname, '..');
 const DEFAULT_LIVE_URL = 'https://luckyblox-server.onrender.com';
@@ -51,6 +51,34 @@ const SERVER_START_TIMEOUT_MS = 60000;
 const MAPS_DIR = path.join(RELEASE_ROOT, 'Maps');
 const GAMES_FILE = path.join(RELEASE_ROOT, 'Webserver', 'http-db-bridge', 'data', 'games.json');
 const SERVER_ROOT = path.join(RELEASE_ROOT, 'shared');
+const JOIN_PRIVATE_KEY_PATH = path.join(
+  RELEASE_ROOT,
+  'Webserver',
+  'www',
+  '2021',
+  'game',
+  'Join.ashx',
+  'PrivateKey.pem',
+);
+
+let cachedJoinPrivateKey;
+
+function signLocalJoinScript(payload) {
+  if (!cachedJoinPrivateKey) {
+    const keyPath = process.env.LUCKYBLOX_JOIN_PRIVATE_KEY || JOIN_PRIVATE_KEY_PATH;
+    try {
+      cachedJoinPrivateKey = createPrivateKey(fs.readFileSync(keyPath));
+    } catch (error) {
+      throw new Error(`could not load the 2021 join signing key at ${keyPath}: ${error.message}`);
+    }
+  }
+
+  const signer = createSign('RSA-SHA1');
+  signer.update(payload, 'utf8');
+  signer.end();
+  const signature = signer.sign(cachedJoinPrivateKey).toString('base64');
+  return `--rbxsig%${signature}%${payload}`;
+}
 
 /**
  * The client folder a --client name resolves to.
@@ -444,8 +472,57 @@ function resolveGameMetadata(metadata, placeId, fallbackTitle, games = readLocal
   }, placeId, fallbackTitle);
 }
 
+function createLegacyJoinPayload({
+  placeId, userId, ticket, jobId, gamePort, baseUrl, game,
+}) {
+  const origin = new URL(String(baseUrl)).origin;
+  const creatorId = Number(game.creatorId) || 1;
+  const creatorType = ['User', 'Group'].includes(game.creatorType) ? game.creatorType : 'User';
+  const serverAddress = '127.0.0.1';
+
+  return {
+    ClientPort: 0,
+    MachineAddress: serverAddress,
+    ServerPort: Number(gamePort),
+    ServerConnections: [{ Address: serverAddress, Port: Number(gamePort) }],
+    DirectServerReturn: true,
+    PingUrl: '',
+    PingInterval: 120,
+    UserName: `Player${Number(userId)}`,
+    SeleniumTestMode: false,
+    UserId: Number(userId),
+    RobloxLocale: 'en_us',
+    GameLocale: 'en_us',
+    SuperSafeChat: false,
+    CharacterAppearance: `${origin}/v1/avatar-fetch?placeId=${Number(placeId)}&userId=${Number(userId)}`,
+    ClientTicket: String(ticket),
+    GameId: String(jobId),
+    PlaceId: Number(placeId),
+    BaseUrl: `${origin}/`,
+    ChatStyle: 'ClassicAndBubble',
+    CreatorId: creatorId,
+    CreatorTypeEnum: creatorType,
+    MembershipType: 'None',
+    AccountAge: 0,
+    CookieStoreFirstTimePlayKey: 'rbx_evt_ftp',
+    CookieStoreFiveMinutePlayKey: 'rbx_evt_fmp',
+    CookieStoreEnabled: true,
+    IsRobloxPlace: true,
+    GenerateTeleportJoin: false,
+    IsUnknownOrUnder13: false,
+    GameChatType: 'AllUsers',
+    SessionId: '',
+    DataCenterId: 0,
+    UniverseId: Number(game.universeId) || Number(placeId),
+    FollowUserId: 0,
+    characterAppearanceId: Number(userId),
+    CountryCode: 'US',
+  };
+}
+
 function createDevHttpServer({
   placeId, mapPath, userId, ticket, jobId, gamePort, baseUrl, gameMetadata,
+  signJoinScript = signLocalJoinScript,
 }) {
   const game = normalizeGameMetadata(gameMetadata, placeId, path.basename(mapPath, path.extname(mapPath)));
   const server = http.createServer((req, res) => {
@@ -500,11 +577,57 @@ function createDevHttpServer({
       return;
     }
 
-    if (requestUrl.pathname === '/game/join' || requestUrl.pathname === '/game/Join.ashx') {
+    if (requestUrl.pathname === '/2021/game/join.ashx'
+      || requestUrl.pathname === '/2021/game/Join.ashx'
+      || requestUrl.pathname === '/game/Join.ashx') {
+      const requestedPlaceId = Number(requestUrl.searchParams.get('placeId') || requestUrl.searchParams.get('placeid'));
+      const requestedUserId = Number(
+        requestUrl.searchParams.get('userId')
+          || requestUrl.searchParams.get('userid')
+          || requestUrl.searchParams.get('user')
+          || requestUrl.searchParams.get('id'),
+      );
+      const requestedIp = requestUrl.searchParams.get('ip');
+      const requestedPort = Number(requestUrl.searchParams.get('serverPort') || requestUrl.searchParams.get('port'));
+      log('local-api', `GET join script place=${requestedPlaceId || 'missing'} user=${requestedUserId || 'missing'}`);
+      if (requestedPlaceId !== Number(placeId)
+        || requestedUserId !== Number(userId)
+        || requestedIp !== '127.0.0.1'
+        || requestedPort !== Number(gamePort)) {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end('Local join target mismatch.');
+        return;
+      }
+
+      try {
+        const script = JSON.stringify(createLegacyJoinPayload({
+          placeId, userId, ticket, jobId, gamePort, baseUrl, game,
+        }));
+        const signedScript = signJoinScript(script);
+        if (typeof signedScript !== 'string' || !signedScript.startsWith('--rbxsig%')) {
+          throw new Error('the join signer returned an invalid response');
+        }
+        res.writeHead(200, {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Content-Length': Buffer.byteLength(signedScript),
+          'Cache-Control': 'no-store',
+        });
+        res.end(signedScript);
+      } catch (error) {
+        log('local-api!', `could not create the signed join script: ${error.message}`);
+        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end('Could not create the signed local join script.');
+      }
+      return;
+    }
+
+    if (requestUrl.pathname === '/game/join'
+      || requestUrl.pathname === '/game/placelauncher.ashx'
+      || requestUrl.pathname === '/game/PlaceLauncher.ashx') {
       const requestedPlaceId = Number(requestUrl.searchParams.get('placeId') || requestUrl.searchParams.get('placeid'));
       const requestedUserId = Number(requestUrl.searchParams.get('userId') || requestUrl.searchParams.get('userid'));
       const requestedTicket = requestUrl.searchParams.get('ticket');
-      log('local-api', `${req.method} join place=${requestedPlaceId || 'missing'} user=${requestedUserId || 'missing'}`);
+      log('local-api', `${req.method} PlaceLauncher place=${requestedPlaceId || 'missing'} user=${requestedUserId || 'missing'}`);
       if (requestedPlaceId !== Number(placeId)
         || requestedUserId !== Number(userId)
         || requestedTicket !== String(ticket)) {
@@ -513,23 +636,26 @@ function createDevHttpServer({
         return;
       }
       log('local-api', `join accepted for place=${placeId} on port=${gamePort}`);
-      const joinScriptUrl = `http://127.0.0.1:${server.address().port}/game/join?placeId=${placeId}`
-        + `&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${gamePort}&jobId=${encodeURIComponent(jobId)}`;
+      const joinScriptUrl = new URL('/2021/game/join.ashx', `http://127.0.0.1:${server.address().port}`);
+      joinScriptUrl.search = new URLSearchParams({
+        placeid: String(placeId),
+        ip: '127.0.0.1',
+        port: String(gamePort),
+        user: String(userId),
+        id: String(userId),
+        membership: 'None',
+        app: `${new URL(String(baseUrl)).origin}/v1/avatar-fetch?placeId=${Number(placeId)}&userId=${Number(userId)}`,
+        age: '0',
+        jobId: String(jobId),
+      }).toString();
+      const origin = new URL(String(baseUrl)).origin;
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
       res.end(JSON.stringify({
-        ok: true,
         status: 2,
-        jobId,
-        placeId: Number(placeId),
-        userId: Number(userId),
-        game,
-        ip: '127.0.0.1',
-        port: Number(gamePort),
-        serverPort: Number(gamePort),
-        joinScriptUrl,
-        authenticationUrl: `${baseUrl}/v1/authentication-ticket/redeem`,
+        jobId: String(jobId),
+        joinScriptUrl: joinScriptUrl.toString(),
+        authenticationUrl: `${origin}/2021/Login/Negotiate.ashx`,
         authenticationTicket: String(ticket),
-        clientTicket: String(ticket),
         message: null,
       }));
       return;
@@ -1187,7 +1313,7 @@ async function main() {
       baseUrl: args.url,
       gameMetadata: launch.gameMetadata,
     });
-    log('local-api', `${devHttp.baseUrl} serves the selected map and local join response`);
+    log('local-api', `${devHttp.baseUrl} serves the selected map and 2021 join responses`);
 
     serverScratch = path.join(scratchDir(), `dev-server-${runId}`);
     gameServer = await startLocalGameServer({
@@ -1203,7 +1329,7 @@ async function main() {
 
     const client = prepareDevClient(clientDir, args.client, args.url, runId);
     clientRunDir = client.runDir;
-    const joinUrl = `${devHttp.baseUrl}/game/join?placeId=${launch.placeId}&userId=${userId}`
+    const joinUrl = `${devHttp.baseUrl}/game/PlaceLauncher.ashx?placeId=${launch.placeId}&userId=${userId}`
       + `&ticket=${encodeURIComponent(launch.ticket)}&serverPort=${localPort}&jobId=${encodeURIComponent(launch.jobId)}`;
 
     // Launch in the isolated folder: the checked-in client AppSettings remains
