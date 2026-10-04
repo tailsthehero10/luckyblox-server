@@ -169,6 +169,38 @@
 
 .lb-avatar-viewer canvas:active { cursor: grabbing; }
 
+.lb-avatar-accessory-fallbacks {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 5px;
+  max-width: calc(100% - 16px);
+}
+
+.lb-avatar-accessory-fallback[hidden] {
+  display: none;
+}
+
+.lb-avatar-accessory-fallback {
+  display: block;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 3px;
+  background: #e8e8e8;
+}
+
+.lb-avatar-accessory-fallback img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .lb-avatar-viewer--portrait {
   cursor: default !important;
   pointer-events: none;
