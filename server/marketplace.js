@@ -231,14 +231,16 @@ function installMarketplaceRoutes(app, deps) {
     const games = typeof deps.getGames === 'function' ? deps.getGames() : {};
     const game = games && typeof games === 'object' ? games[id] : null;
     if (game) {
-      const creatorId = Number(game.authorId || game.creatorId);
-      const creatorName = String(game.author || game.developer || '').trim();
+      const creatorId = Number(game.creatorId || game.authorId || game.ownerId || game.developerId);
+      const creatorName = String(game.creatorName || game.author || game.developer || '').trim();
       const name = String(game.title || game.name || '').trim();
       if (!name) return null;
       const creator = {
         Id: Number.isSafeInteger(creatorId) && creatorId > 0 ? creatorId : 0,
         Name: creatorName,
-        CreatorType: 'User',
+        CreatorType: ['User', 'Group'].includes(game.creatorType)
+          ? game.creatorType
+          : ['User', 'Group'].includes(game.authorType) ? game.authorType : 'User',
       };
       if (creator.Id > 0) creator.CreatorTargetId = creator.Id;
       const info = {

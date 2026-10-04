@@ -74,6 +74,7 @@ async function waitForReady(proc) {
       description: 'A place record stored by the test.',
       authorId: 17,
       author: 'TestCreator',
+      creatorType: 'Group',
       icon: '/gameplaceholder/card.png',
     },
   }));
@@ -98,8 +99,9 @@ async function waitForReady(proc) {
     assert.equal(productInfo.AssetId, PLACE_ID);
     assert.equal(productInfo.Name, 'Saved Test Place');
     assert.equal(productInfo.Description, 'A place record stored by the test.');
-    assert.equal(productInfo.Creator.Id, 1);
-    assert.equal(productInfo.Creator.Name, 'tailsthehero10');
+    assert.equal(productInfo.Creator.Id, 17);
+    assert.equal(productInfo.Creator.Name, 'TestCreator');
+    assert.equal(productInfo.Creator.CreatorType, 'Group');
 
     const anonymousTicketResponse = await request(`/v1/authentication-tickets?userId=1&placeId=${PLACE_ID}`);
     assert.equal(anonymousTicketResponse.status, 401, 'ticket issuance requires a signed-in LuckyBlox account');
@@ -158,8 +160,16 @@ async function waitForReady(proc) {
     );
     assert.equal(protocolJoinPayload.game.placeId, PLACE_ID);
     assert.ok(protocolJoinPayload.game.title, 'the client join response carries the experience title');
-    assert.ok(protocolJoinPayload.game.creatorName, 'the client join response carries the experience owner');
+    assert.equal(protocolJoinPayload.game.creatorName, 'TestCreator', 'the join response uses the creator saved in games.json');
+    assert.equal(protocolJoinPayload.game.creatorId, 17, 'the join response uses the creator ID saved in games.json');
+    assert.equal(protocolJoinPayload.game.creatorType, 'Group', 'the join response preserves the creator type');
     assert.match(protocolJoinPayload.game.thumbnailUrl, /^https?:\/\//);
+
+    const serializedGameResponse = await request(`/api/v1/games/${PLACE_ID}`);
+    assert.equal(serializedGameResponse.status, 200);
+    const serializedGame = JSON.parse(serializedGameResponse.body.toString('utf8')).game;
+    assert.equal(serializedGame.creatorName, 'TestCreator', 'the game API uses the creator saved in games.json');
+    assert.equal(serializedGame.creatorId, 17, 'the game API uses the creator ID saved in games.json');
 
     const legacySettings = await request('/home/Setting/QuietGet/ClientAppSettings?apiKey=test-key&client=CUSTOM-2021M');
     assert.equal(legacySettings.status, 200);

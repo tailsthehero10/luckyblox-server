@@ -1917,15 +1917,17 @@ function getWearingForUser(user) {
 function serializeGame(placeId) {
   const normalized = normalizePlaceId(placeId);
   const game = getGameEntry(normalized);
+  const creator = gameCreatorMetadata(game);
   return {
     placeId: Number(game.placeId || normalized || 1818),
     title: game.title || 'LuckyBlox Arena',
     description: game.description || 'Local LuckyBlox demo game',
-    developer: GAME_OWNER_USERNAME,
-    creatorName: GAME_OWNER_USERNAME,
-    creatorId: GAME_OWNER_ID,
-    author: GAME_OWNER_USERNAME,
-    authorId: GAME_OWNER_ID,
+    developer: game.developer || creator.creatorName,
+    creatorName: creator.creatorName,
+    creatorId: creator.creatorId,
+    creatorType: creator.creatorType,
+    author: game.author || creator.creatorName,
+    authorId: Number(game.authorId) || creator.creatorId,
     genre: game.genre || 'Adventure',
     icon: game.icon || DEFAULT_GAME_ICON,
     playerCount: Number(game.playerCount || 0),
@@ -2087,15 +2089,17 @@ function normalizeGameOwnership(games) {
   let changed = false;
   for (const game of Object.values(games || {})) {
     if (!game || typeof game !== 'object' || Array.isArray(game)) continue;
+    const creator = gameCreatorMetadata(game);
     const ownerFields = {
-      developer: GAME_OWNER_USERNAME,
-      author: GAME_OWNER_USERNAME,
-      authorId: GAME_OWNER_ID,
-      creatorName: GAME_OWNER_USERNAME,
-      creatorId: GAME_OWNER_ID,
+      developer: creator.creatorName,
+      author: creator.creatorName,
+      authorId: creator.creatorId,
+      creatorName: creator.creatorName,
+      creatorId: creator.creatorId,
+      creatorType: creator.creatorType,
     };
     for (const [field, value] of Object.entries(ownerFields)) {
-      if (game[field] !== value) {
+      if (game[field] == null || game[field] === '') {
         game[field] = value;
         changed = true;
       }
@@ -2108,13 +2112,21 @@ function normalizePlaceOwnership(places) {
   let changed = false;
   for (const place of Object.values(places || {})) {
     if (!place || typeof place !== 'object' || Array.isArray(place)) continue;
+    const creatorName = String(
+      place.author || place.creatorName || place.developer
+      || (Array.isArray(place.creators) && place.creators[0])
+      || GAME_OWNER_USERNAME,
+    ).trim() || GAME_OWNER_USERNAME;
+    const candidateId = Number(place.authorId || place.creatorId || place.ownerId);
+    const creatorId = Number.isSafeInteger(candidateId) && candidateId > 0 ? candidateId : GAME_OWNER_ID;
     const ownerFields = {
-      author: GAME_OWNER_USERNAME,
-      authorId: GAME_OWNER_ID,
-      creators: [GAME_OWNER_USERNAME],
+      author: creatorName,
+      authorId: creatorId,
+      creators: [creatorName],
     };
     for (const [field, value] of Object.entries(ownerFields)) {
-      if (JSON.stringify(place[field]) !== JSON.stringify(value)) {
+      if (place[field] == null || place[field] === ''
+        || (field === 'creators' && (!Array.isArray(place[field]) || place[field].length === 0))) {
         place[field] = value;
         changed = true;
       }
@@ -2334,6 +2346,7 @@ function getGames() {
     catalog.forEach((entry, index) => {
       const placeId = Number(entry.placeId || 1800 + index + 1);
       const existing = merged[String(placeId)] || {};
+      const creator = gameCreatorMetadata(existing);
 
       // mapTitle is only a FALLBACK. The map file's name is a starting point for a
       // game nobody has edited yet; once a creator renames it in the Studio, that
@@ -2349,11 +2362,14 @@ function getGames() {
         placeId,
         title: hasCreatorTitle ? existing.title : mapTitle,
         description: existing.description || 'A local map packaged as a playable LuckyBlox experience.',
-        developer: existing.developer || 'LuckyBlox Studio',
+        developer: existing.developer || creator.creatorName,
         // Ownership must survive this merge. Without it an imported map lost its
         // author every load and the Studio could not say who owned it.
-        authorId: Number(existing.authorId || OWNER_USER_ID) || 1,
-        author: existing.author || OWNER_USERNAME,
+        authorId: creator.creatorId,
+        author: existing.author || creator.creatorName,
+        creatorId: creator.creatorId,
+        creatorName: existing.creatorName || creator.creatorName,
+        creatorType: creator.creatorType,
         visibility: existing.visibility || 'Public',
         maxPlayers: Number(existing.maxPlayers || 20),
         allowHttpRequests: existing.allowHttpRequests !== false,
@@ -3047,14 +3063,7 @@ function saveGameSettings(placeId, updates) {
     if (Number.isFinite(n) && n > 0) next.maxPlayers = n;
   }
 
-  // A game with no author is claimed by the DEPLOYMENT OWNER, not by account 1
-  // blindly - the built-in games exist before anybody signs up, and the owner is
-  // the person who edits them (see OWNER_USER_ID).
-  next.authorId = GAME_OWNER_ID;
-  next.author = GAME_OWNER_USERNAME;
-  next.developer = GAME_OWNER_USERNAME;
-  next.creatorId = GAME_OWNER_ID;
-  next.creatorName = GAME_OWNER_USERNAME;
+  normalizeGameOwnership({ [key]: next });
 
   // Defaults for a record that has never been saved before, so the public page
   // and the Studio agree on the initial state rather than showing `undefined`.
@@ -3407,8 +3416,7 @@ function gameClientMetadata(placeId, game = getGameEntry(placeId)) {
     }
     return new URL(fallback, publicOrigin).href;
   };
-  const creatorId = GAME_OWNER_ID;
-  const creatorName = GAME_OWNER_USERNAME;
+  const creator = gameCreatorMetadata(game);
   const storedIcon = [
     game.icon,
     game.iconUrl,
@@ -3436,14 +3444,29 @@ function gameClientMetadata(placeId, game = getGameEntry(placeId)) {
     placeId: Number(placeId) || 0,
     universeId: Number(game.universeId || game.gameId || game.universeID) || Number(placeId) || 0,
     title: String(game.title || game.name || 'LuckyBlox Arena'),
-    creatorName,
-    creatorId,
-    creatorType: 'User',
+    creatorName: creator.creatorName,
+    creatorId: creator.creatorId,
+    creatorType: creator.creatorType,
     thumbnailUrl: absoluteAssetUrl(storedThumbnail, '/gameplaceholder/game-thumb.png'),
     iconUrl: absoluteAssetUrl(storedIcon, '/gameplaceholder/card.png'),
     description: String(game.description || ''),
     genre: String(game.genre || 'Adventure'),
   };
+}
+
+function gameCreatorMetadata(game) {
+  const source = game && typeof game === 'object' ? game : {};
+  const creatorName = [source.creatorName, source.author, source.developer]
+    .map((value) => String(value || '').trim())
+    .find(Boolean) || GAME_OWNER_USERNAME;
+  const creatorId = [source.creatorId, source.authorId, source.ownerId, source.developerId]
+    .map(Number)
+    .find((value) => Number.isSafeInteger(value) && value > 0) || GAME_OWNER_ID;
+  const creatorType = ['User', 'Group'].includes(source.creatorType)
+    ? source.creatorType
+    : ['User', 'Group'].includes(source.authorType) ? source.authorType : 'User';
+
+  return { creatorName, creatorId, creatorType };
 }
 
 function normalizePlaceId(rawPlaceId) {

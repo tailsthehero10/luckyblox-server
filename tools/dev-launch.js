@@ -401,15 +401,18 @@ function normalizeGameMetadata(metadata, placeId, fallbackTitle) {
     }
     return null;
   };
-  const creatorId = Number(source.creatorId);
+  const creatorId = Number(source.creatorId || source.authorId || source.ownerId || source.developerId);
   const universeId = Number(source.universeId);
+  const creatorName = [source.creatorName, source.author, source.developer]
+    .map((value) => text(value, 120))
+    .find(Boolean) || null;
 
   return {
     placeId: Number(placeId),
     universeId: Number.isSafeInteger(universeId) && universeId > 0
       ? universeId : Number(placeId),
     title: text(source.title || fallbackTitle || '', 160),
-    creatorName: text(source.creatorName, 120) || null,
+    creatorName,
     creatorId: Number.isSafeInteger(creatorId) && creatorId > 0 ? creatorId : null,
     creatorType: ['User', 'Group'].includes(source.creatorType) ? source.creatorType : null,
     thumbnailUrl: safeUrl(source.thumbnailUrl),
@@ -417,6 +420,26 @@ function normalizeGameMetadata(metadata, placeId, fallbackTitle) {
     description: text(source.description, 1200),
     genre: text(source.genre, 100) || null,
   };
+}
+
+function resolveGameMetadata(metadata, placeId, fallbackTitle, games = readLocalGames()) {
+  const localGame = games.find((game) => Number(game.placeId) === Number(placeId)) || {};
+  const handoffMetadata = metadata && typeof metadata === 'object' ? metadata : {};
+  const creatorName = (source) => [source.creatorName, source.author, source.developer]
+    .map((value) => String(value || '').trim())
+    .find(Boolean);
+  const creatorId = (source) => [source.creatorId, source.authorId, source.ownerId, source.developerId]
+    .map(Number)
+    .find((value) => Number.isSafeInteger(value) && value > 0);
+
+  return normalizeGameMetadata({
+    ...localGame,
+    ...handoffMetadata,
+    creatorName: creatorName(handoffMetadata) || creatorName(localGame),
+    creatorId: creatorId(handoffMetadata) || creatorId(localGame),
+    creatorType: handoffMetadata.creatorType || handoffMetadata.authorType
+      || localGame.creatorType || localGame.authorType,
+  }, placeId, fallbackTitle);
 }
 
 function createDevHttpServer({
@@ -970,7 +993,7 @@ async function main() {
   if (!launch.ticket || !launch.jobId) {
     throw new Error('LIVE site returned an incomplete launch ticket (missing ticket or jobId).');
   }
-  launch.gameMetadata = normalizeGameMetadata(
+  launch.gameMetadata = resolveGameMetadata(
     launch.gameMetadata || launch.game,
     launch.placeId,
     args.placeTitle,
@@ -1097,6 +1120,7 @@ module.exports = {
   prepareDevClient,
   readSelectedClient,
   readLocalGames,
+  resolveGameMetadata,
   resolveDefaultPlace,
   resolvePlaceMap,
   resolveServerBinary,
