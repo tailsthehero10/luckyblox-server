@@ -256,6 +256,25 @@ function createDevHttpServer({
 }) {
   const server = http.createServer((req, res) => {
     const requestUrl = new URL(req.url, 'http://127.0.0.1');
+    if (requestUrl.pathname === '/' && (req.method === 'GET' || req.method === 'HEAD')) {
+      const payload = JSON.stringify({
+        ok: true,
+        service: 'LuckyBlox DEV-PLAY local API',
+        placeId: Number(placeId),
+        endpoints: {
+          map: `/asset/?id=${Number(placeId)}`,
+          join: `/game/join?placeId=${Number(placeId)}&userId=${Number(userId)}&ticket=...`,
+        },
+      });
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Length': Buffer.byteLength(payload),
+        'Cache-Control': 'no-store',
+      });
+      res.end(req.method === 'HEAD' ? undefined : payload);
+      return;
+    }
+
     if (requestUrl.pathname === '/asset/' || requestUrl.pathname === '/asset') {
       if (Number(requestUrl.searchParams.get('id')) !== Number(placeId)) {
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });

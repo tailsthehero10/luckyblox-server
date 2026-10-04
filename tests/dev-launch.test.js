@@ -126,6 +126,13 @@ console.log('ok: DEV-PLAY resolves the selected map/place, prepares local-test s
     baseUrl: 'https://example.test',
   });
   try {
+    const health = await fetch(local.baseUrl);
+    assert.equal(health.status, 200, 'opening the advertised local API URL should show it is running');
+    const healthPayload = await health.json();
+    assert.equal(healthPayload.ok, true);
+    assert.equal(healthPayload.placeId, 27013);
+    assert.match(healthPayload.endpoints.map, /id=27013/);
+
     const asset = await fetch(`${local.baseUrl}/asset/?id=27013`);
     assert.equal(asset.status, 200);
     assert.equal(await asset.text(), 'actual map fixture');
