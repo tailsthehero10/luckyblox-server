@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const http = require('node:http');
 const os = require('node:os');
 const path = require('node:path');
 const {
@@ -13,6 +14,7 @@ const {
   resolveDefaultPlace,
   resolveServerBinary,
   resolveClientDir,
+  verifyTicketRedemptionRoute,
 } = require('../tools/dev-launch');
 
 const releaseRoot = path.resolve(__dirname, '..');
@@ -114,6 +116,32 @@ try {
 console.log('ok: DEV-PLAY resolves the selected map/place, prepares local-test settings, and isolates the client config');
 
 (async () => {
+  let authStatus = 401;
+  const authServer = http.createServer((req, res) => {
+    assert.equal(req.method, 'POST');
+    assert.equal(req.url, '/v1/authentication-ticket/redeem');
+    res.writeHead(authStatus);
+    res.end();
+  });
+  await new Promise((resolve, reject) => {
+    authServer.once('error', reject);
+    authServer.listen(0, '127.0.0.1', resolve);
+  });
+  try {
+    const authUrl = `http://127.0.0.1:${authServer.address().port}`;
+    await verifyTicketRedemptionRoute(authUrl);
+    authStatus = 404;
+    await assert.rejects(
+      verifyTicketRedemptionRoute(authUrl),
+      /ticket-redemption endpoint returned HTTP 404/,
+      'DEV-PLAY must detect when the live deployment has not received the required route',
+    );
+  } finally {
+    await new Promise((resolve, reject) => {
+      authServer.close((error) => (error ? reject(error) : resolve()));
+    });
+  }
+
   const mapPath = path.join(os.tmpdir(), `lb-dev-place-${process.pid}.rbxl`);
   fs.writeFileSync(mapPath, Buffer.from('actual map fixture'));
   const local = await createDevHttpServer({

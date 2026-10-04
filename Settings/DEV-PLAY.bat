@@ -15,6 +15,10 @@ REM   Settings\DEV-PLAY.bat --place ID       (pick a local catalog place)
 REM   Settings\DEV-PLAY.bat --testblox --Testblox10
 REM   Settings\DEV-PLAY.bat --dry-run        (resolve only, launch nothing)
 REM
+REM Run this batch once before using the website's "Open this game in DEV-PLAY"
+REM action. The launcher registers the luckyblox-devplay URL handler for this
+REM release folder; the website then passes its selected place and launch ticket.
+REM
 REM NOTE ON NODE
 REM ------------
 REM This used to call "where node" and abort with "Node.js was not found on PATH"

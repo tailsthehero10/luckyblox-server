@@ -41,7 +41,7 @@ const fs = require('fs');
 const http = require('http');
 const net = require('net');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const { randomUUID } = require('crypto');
 
 const RELEASE_ROOT = path.resolve(__dirname, '..');
@@ -175,6 +175,104 @@ function readSelectedClient(selectedFile = path.join(RELEASE_ROOT, 'Settings', '
   return DEFAULT_CLIENT;
 }
 
+function parseLaunchUri(launchUri) {
+  const value = String(launchUri || '');
+  const match = value.match(/^luckyblox-devplay:1(?:\+|$)(.*)$/i);
+  if (!match) throw new Error('invalid DEV-PLAY launch link');
+
+  const fields = {};
+  for (const part of match[1].split('+')) {
+    const separator = part.indexOf(':');
+    if (separator < 1) continue;
+    const key = part.slice(0, separator);
+    try {
+      fields[key] = decodeURIComponent(part.slice(separator + 1));
+    } catch (error) {
+      throw new Error(`invalid ${key} value in DEV-PLAY launch link: ${error.message}`);
+    }
+  }
+
+  const placeId = Number(fields.placeId);
+  const userId = Number(fields.userId);
+  if (!Number.isSafeInteger(placeId) || placeId <= 0
+    || !Number.isSafeInteger(userId) || userId <= 0
+    || !fields.gameinfo || !fields.jobId || !fields.baseUrl) {
+    throw new Error('DEV-PLAY launch link is missing its place, account, ticket, job, or site URL.');
+  }
+  let baseUrl;
+  try {
+    const parsed = new URL(fields.baseUrl);
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+      throw new Error('unsupported URL');
+    }
+    baseUrl = parsed.origin;
+  } catch {
+    throw new Error('DEV-PLAY launch link contains an invalid site URL.');
+  }
+
+  return {
+    placeId,
+    userId,
+    ticket: fields.gameinfo,
+    jobId: fields.jobId,
+    url: baseUrl,
+  };
+}
+
+function registerDevPlayProtocol() {
+  if (process.platform !== 'win32') return false;
+
+  const batchPath = path.join(RELEASE_ROOT, 'Settings', 'DEV-PLAY.bat');
+  const command = `"${batchPath}" --launch-uri "%1"`;
+  const result = spawnSync('reg.exe', [
+    'add',
+    'HKCU\\Software\\Classes\\luckyblox-devplay\\shell\\open\\command',
+    '/ve',
+    '/d',
+    command,
+    '/f',
+  ], { encoding: 'utf8', windowsHide: true });
+  if (result.error) {
+    throw new Error(`could not register the DEV-PLAY browser link: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    throw new Error(
+      `could not register the DEV-PLAY browser link: ${(result.stderr || result.stdout || '').trim() || `reg.exe exited ${result.status}`}`,
+    );
+  }
+
+  const protocol = spawnSync('reg.exe', [
+    'add',
+    'HKCU\\Software\\Classes\\luckyblox-devplay',
+    '/ve',
+    '/d',
+    'URL:LuckyBlox DEV-PLAY',
+    '/f',
+  ], { encoding: 'utf8', windowsHide: true });
+  if (protocol.error || protocol.status !== 0) {
+    const detail = protocol.error
+      ? protocol.error.message
+      : (protocol.stderr || protocol.stdout || `reg.exe exited ${protocol.status}`).trim();
+    throw new Error(`could not register the DEV-PLAY URL protocol: ${detail}`);
+  }
+  const urlProtocol = spawnSync('reg.exe', [
+    'add',
+    'HKCU\\Software\\Classes\\luckyblox-devplay',
+    '/v',
+    'URL Protocol',
+    '/d',
+    '',
+    '/f',
+  ], { encoding: 'utf8', windowsHide: true });
+  if (urlProtocol.error || urlProtocol.status !== 0) {
+    const detail = urlProtocol.error
+      ? urlProtocol.error.message
+      : (urlProtocol.stderr || urlProtocol.stdout || `reg.exe exited ${urlProtocol.status}`).trim();
+    throw new Error(`could not mark the DEV-PLAY URL protocol: ${detail}`);
+  }
+  return true;
+}
+
 function parseArgs(argv) {
   const args = {
     url: DEFAULT_LIVE_URL,
@@ -185,6 +283,7 @@ function parseArgs(argv) {
     // defaulting to true meant DEV-PLAY.bat never actually played anything.
     dryRun: false,
     keepAlive: true,
+    registerOnly: false,
     // Credentials for the LIVE site. Taken from the environment by default so a
     // developer can set them once; --user/--pass override for a one-off.
     user: process.env.LUCKYBLOX_DEV_USER || 'testblox',
@@ -201,8 +300,18 @@ function parseArgs(argv) {
     else if (token === '--client') args.client = argv[++i];
     else if (token === '--dry-run') args.dryRun = true;
     else if (token === '--no-keepalive') args.keepAlive = false;
+    else if (token === '--register-only') args.registerOnly = true;
     else if (token === '--user' || token === '--username') args.user = argv[++i] || '';
     else if (token === '--pass' || token === '--password') args.pass = argv[++i] || '';
+    else if (token === '--launch-uri') {
+      const launch = parseLaunchUri(argv[++i]);
+      args.place = launch.placeId;
+      args.placeExplicit = true;
+      args.userId = launch.userId;
+      args.ticket = launch.ticket;
+      args.jobId = launch.jobId;
+      args.url = launch.url;
+    }
     // `--testblox [password]` is the shorthand the DEV-PLAY.bat header documents.
     // It used to be swallowed as an unknown flag, so the documented one-liner did
     // nothing. Treat it as "sign in as testblox" and take the NEXT token as the
@@ -227,7 +336,7 @@ function parseArgs(argv) {
     args.place = envPlace;
     args.placeExplicit = true;
   }
-  if (args.help) return args;
+  if (args.help || args.registerOnly) return args;
   if (!args.placeExplicit) {
     const selected = resolveDefaultPlace();
     if (!selected) {
@@ -276,6 +385,7 @@ function createDevHttpServer({
     }
 
     if (requestUrl.pathname === '/asset/' || requestUrl.pathname === '/asset') {
+      log('local-api', `${req.method} map asset id=${requestUrl.searchParams.get('id') || 'missing'}`);
       if (Number(requestUrl.searchParams.get('id')) !== Number(placeId)) {
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('Local place asset not found.');
@@ -296,6 +406,7 @@ function createDevHttpServer({
       const requestedPlaceId = Number(requestUrl.searchParams.get('placeId') || requestUrl.searchParams.get('placeid'));
       const requestedUserId = Number(requestUrl.searchParams.get('userId') || requestUrl.searchParams.get('userid'));
       const requestedTicket = requestUrl.searchParams.get('ticket');
+      log('local-api', `${req.method} join place=${requestedPlaceId || 'missing'} user=${requestedUserId || 'missing'}`);
       if (requestedPlaceId !== Number(placeId)
         || requestedUserId !== Number(userId)
         || requestedTicket !== String(ticket)) {
@@ -303,6 +414,7 @@ function createDevHttpServer({
         res.end(JSON.stringify({ ok: false, error: 'local-launch-target-mismatch' }));
         return;
       }
+      log('local-api', `join accepted for place=${placeId} on port=${gamePort}`);
       const joinScriptUrl = `http://127.0.0.1:${server.address().port}/game/join?placeId=${placeId}`
         + `&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${gamePort}&jobId=${encodeURIComponent(jobId)}`;
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -487,6 +599,21 @@ async function requestLaunchTicket(baseUrl, placeId, cookie) {
     throw new Error(`LIVE site refused the launch (${res.status}): ${detail}`);
   }
   return payload;
+}
+
+async function verifyTicketRedemptionRoute(baseUrl) {
+  const response = await fetch(`${baseUrl}/v1/authentication-ticket/redeem`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: '{}',
+  });
+
+  if (response.status === 401) return;
+  throw new Error(
+    `the LIVE site ticket-redemption endpoint returned HTTP ${response.status}; `
+    + 'the player cannot authenticate and join until POST '
+    + '/v1/authentication-ticket/redeem is deployed and returns HTTP 401 for an empty ticket.',
+  );
 }
 
 /** Find a free TCP port on the loopback interface. */
@@ -693,9 +820,16 @@ async function main() {
     console.log('  --pass <word>    its password (or LUCKYBLOX_DEV_PASS)');
     console.log('  --testblox [pw]  shorthand for --user testblox');
     console.log('  --dry-run        resolve everything, launch nothing');
+    console.log('  --register-only  register the website-to-DEV-PLAY browser handoff');
     console.log('  --no-keepalive   exit right after launching the client');
     console.log('');
     console.log('Launching is the DEFAULT. Pass --dry-run to only resolve the ticket.');
+    return;
+  }
+
+  if (args.registerOnly) {
+    registerDevPlayProtocol();
+    log('protocol', 'registered luckyblox-devplay browser handoff');
     return;
   }
 
@@ -711,29 +845,41 @@ async function main() {
   log('map', args.mapPath);
   log('scratch', scratchDir());
 
-  // 0. Sign in. A launch ticket belongs to an account, so this comes first.
-  if (!args.user || !args.pass) {
-    throw new Error(
-      'no credentials given, and the LIVE launch route requires a signed-in account.\n'
-      + '       Pass --user and --pass, or set LUCKYBLOX_DEV_USER / LUCKYBLOX_DEV_PASS.\n'
-      + '       (Running with --dry-run still needs them: it resolves a real ticket.)',
-    );
+  let launch;
+  if (args.ticket) {
+    launch = {
+      ticket: args.ticket,
+      userId: args.userId,
+      jobId: args.jobId,
+      placeId: args.place,
+      port: 0,
+    };
+    log('ticket', `using website launch ticket for place=${launch.placeId}, jobId=${launch.jobId}`);
+  } else {
+    if (!args.user || !args.pass) {
+      throw new Error(
+        'no credentials given, and the LIVE launch route requires a signed-in account.\n'
+        + '       Pass --user and --pass, or set LUCKYBLOX_DEV_USER / LUCKYBLOX_DEV_PASS.\n'
+        + '       (Running with --dry-run still needs them: it resolves a real ticket.)',
+      );
+    }
+
+    log('auth', `signing in as ${args.user}...`);
+    const cookie = await signIn(args.url, args.user, args.pass);
+    log('auth', 'session established');
+
+    log('ticket', 'requesting launch ticket from LIVE...');
+    launch = await requestLaunchTicket(args.url, args.place, cookie);
   }
-
-  log('auth', `signing in as ${args.user}...`);
-  const cookie = await signIn(args.url, args.user, args.pass);
-  log('auth', 'session established');
-
-  // 1. Ask the LIVE site for a real launch ticket, as that account.
-  log('ticket', 'requesting launch ticket from LIVE...');
-  const launch = await requestLaunchTicket(args.url, args.place, cookie);
   if (Number(launch.placeId) !== Number(args.place)) {
     throw new Error(`LIVE site returned place ${launch.placeId} for requested place ${args.place}. Refusing to launch the wrong place.`);
   }
   if (!launch.ticket || !launch.jobId) {
     throw new Error('LIVE site returned an incomplete launch ticket (missing ticket or jobId).');
   }
-  log('ticket', `ok: jobId=${launch.jobId} place=${launch.placeId} livePort=${launch.port}`);
+  log('ticket', `ok: jobId=${launch.jobId} place=${launch.placeId}`);
+  await verifyTicketRedemptionRoute(args.url);
+  log('auth', 'LIVE ticket-redemption endpoint is available');
 
   // Render's game port is not reachable from the desktop. Allocate our own
   // listener and keep the Live site only for account authentication.
@@ -748,6 +894,9 @@ async function main() {
   const runId = randomUUID();
 
   if (args.dryRun) {
+    if (process.platform === 'win32') {
+      log('dry-run', 'would register luckyblox-devplay so the website can open this batch file with the selected place and ticket');
+    }
     const serverBinary = resolveServerBinary(args.client);
     if (!serverBinary) throw new Error(`no shared local-test server executable exists for ${args.client}`);
     log('port', `would start local game server on 127.0.0.1:${localPort}`);
@@ -757,6 +906,9 @@ async function main() {
     log('dry-run', `join/map endpoints: local loopback only`);
     return;
   }
+
+  registerDevPlayProtocol();
+  log('protocol', 'registered luckyblox-devplay browser handoff');
 
   let devHttp;
   let gameServer;
@@ -817,7 +969,7 @@ async function main() {
     }
 
     console.log('\n[dev-launch] Local game server running. Close this window (or Ctrl+C) to stop it.');
-    console.log(`[dev-launch] Playing ${launch.placeId} on 127.0.0.1:${localPort} as ${args.user}.`);
+    console.log(`[dev-launch] Playing ${launch.placeId} on 127.0.0.1:${localPort} as user ${userId}.`);
 
     const stop = () => {
       cleanup().finally(() => process.exit(0));
@@ -849,4 +1001,7 @@ module.exports = {
   resolveServerBinary,
   startLocalGameServer,
   resolveClientDir,
+  verifyTicketRedemptionRoute,
+  parseLaunchUri,
+  registerDevPlayProtocol,
 };

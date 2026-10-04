@@ -11,6 +11,7 @@
      .is-playing  success, the client is opening
      .is-missing  no client installed - a normal, actionable state, so it reads as
                   information (blue) rather than as a failure (red)
+     .is-manual   the host cannot run a game server, so the player must be started locally
      .is-error    something failed
    --------------------------------------------------------------------------- */
 .lb-join-panel {
@@ -73,6 +74,10 @@
 .lb-join-panel.is-missing .lb-join-panel-title { color: #0b5c8a; }
 .lb-join-panel.is-missing .lb-join-panel-body { color: #245f80; }
 
+.lb-join-panel.is-manual { border-left-color: var(--lb-blue); background: #f2f9ff; }
+.lb-join-panel.is-manual .lb-join-panel-title { color: #0b5c8a; }
+.lb-join-panel.is-manual .lb-join-panel-body { color: #245f80; }
+
 .lb-join-panel.is-error {
   border-left-color: var(--lb-red);
   background: #fdecec;
@@ -97,6 +102,12 @@ html.theme-dark .lb-join-panel.is-missing {
 }
 html.theme-dark .lb-join-panel.is-missing .lb-join-panel-title { color: #7cc9ff !important; }
 html.theme-dark .lb-join-panel.is-missing .lb-join-panel-body { color: #a5cde6 !important; }
+html.theme-dark .lb-join-panel.is-manual {
+  background: #0d2233 !important;
+  border-left-color: var(--lb-blue) !important;
+}
+html.theme-dark .lb-join-panel.is-manual .lb-join-panel-title { color: #7cc9ff !important; }
+html.theme-dark .lb-join-panel.is-manual .lb-join-panel-body { color: #a5cde6 !important; }
 html.theme-dark .lb-join-panel.is-error {
   background: #2c1414 !important;
   border-left-color: var(--lb-red) !important;

@@ -127,6 +127,17 @@
             return;
           }
 
+          if (data && data.client && data.client.supported === false
+            && data.devPlayURI && /^luckyblox-devplay:/i.test(data.devPlayURI)) {
+            say('Open DEV-PLAY to start the game server for place ' + Number(data.placeId || placeId)
+              + '. If this browser has no DEV-PLAY handler yet, run Settings\\DEV-PLAY.bat --register-only once.');
+            var devPlayLink = document.createElement('a');
+            devPlayLink.href = data.devPlayURI;
+            devPlayLink.textContent = 'Open this game in DEV-PLAY';
+            statusLine.replaceChildren(devPlayLink);
+            return;
+          }
+
           if (data && data.launchURI && /^luckyblox-player:/i.test(data.launchURI)) {
             say('The server cannot open apps on your computer. Click here to open LuckyBlox.');
             var launchLink = document.createElement('a');

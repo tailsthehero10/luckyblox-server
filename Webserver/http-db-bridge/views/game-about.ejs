@@ -536,6 +536,45 @@
           return;
         }
 
+        // A public Linux host cannot run the Windows game server. Sending its
+        // in-process listener's port to the desktop client only leaves it waiting
+        // on a port that does not speak the game protocol; DEV-PLAY runs it locally.
+        if (data.client && data.client.supported === false) {
+          var devPlayPlaceId = Number(data.placeId) || placeId;
+          var devPlayCommand = data.devPlayURI
+            ? 'Settings\\DEV-PLAY.bat --launch-uri "' + data.devPlayURI + '"'
+            : 'Settings\\DEV-PLAY.bat --place ' + devPlayPlaceId;
+          var devPlayActions = [];
+          if (data.devPlayURI && /^luckyblox-devplay:/i.test(data.devPlayURI)) {
+            devPlayActions.push({
+              label: 'Open this game in DEV-PLAY',
+              href: data.devPlayURI,
+              primary: true
+            });
+          }
+          devPlayActions.push({
+            label: 'Copy DEV-PLAY command',
+            primary: !data.devPlayURI,
+            onClick: function (event) {
+              var button = event.currentTarget;
+              if (!navigator.clipboard || !navigator.clipboard.writeText) {
+                window.prompt('Copy this DEV-PLAY command:', devPlayCommand);
+                return;
+              }
+              navigator.clipboard.writeText(devPlayCommand).then(function () {
+                button.textContent = 'Command copied';
+              }).catch(function () {
+                window.prompt('Copy this DEV-PLAY command:', devPlayCommand);
+              });
+            }
+          });
+          showJoinState('manual', 'Run DEV-PLAY on this PC',
+            'The website has prepared this game and its launch ticket. Open DEV-PLAY to start the local game server and pass it this exact place. If the browser has no DEV-PLAY handler yet, run '
+              + 'Settings\\DEV-PLAY.bat --register-only once from the LuckyBlox release folder, or copy and run the exact launch command below.',
+            devPlayActions);
+          return;
+        }
+
         // On a public web host the server cannot spawn a process on the visitor's
         // PC. Keep the game page open and give the visitor a direct client handoff.
         if (data.launchURI && /^luckyblox-player:/i.test(data.launchURI)) {

@@ -3,7 +3,8 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { createClientLaunchUri } = require('../server/clientLaunchUri');
+const { createClientLaunchUri, createDevPlayLaunchUri } = require('../server/clientLaunchUri');
+const { parseLaunchUri, parseArgs } = require('../tools/dev-launch');
 
 const root = path.resolve(__dirname, '..');
 
@@ -28,16 +29,57 @@ assert.throws(
   /valid place ID, valid user ID, and server URL/,
 );
 
+const devPlayUri = createDevPlayLaunchUri({
+  ticket: 'LB_ticket.signature+part',
+  placeId: 1811,
+  userId: 4,
+  jobId: 'selected-job',
+  baseUrl: 'https://games.example.test/path',
+});
+assert.match(devPlayUri, /^luckyblox-devplay:1\+placeId:1811\+userId:4/);
+assert.match(devPlayUri, /\+gameinfo:LB_ticket\.signature%2Bpart\+jobId:selected-job/);
+assert.deepEqual(parseLaunchUri(devPlayUri), {
+  placeId: 1811,
+  userId: 4,
+  ticket: 'LB_ticket.signature+part',
+  jobId: 'selected-job',
+  url: 'https://games.example.test',
+});
+const devPlayArgs = parseArgs(['--launch-uri', devPlayUri]);
+assert.equal(devPlayArgs.place, 1811, 'the game page place ID must override MapPath.txt');
+assert.equal(devPlayArgs.userId, 4);
+assert.equal(devPlayArgs.ticket, 'LB_ticket.signature+part');
+assert.equal(devPlayArgs.jobId, 'selected-job');
+assert.equal(devPlayArgs.url, 'https://games.example.test');
+
 const server = fs.readFileSync(path.join(root, 'Webserver', 'http-db-bridge', 'server.js'), 'utf8');
 assert.match(server, /launchURI:\s*ticket\.launchURI/);
+assert.match(server, /devPlayURI:\s*createDevPlayLaunchUri/);
 assert.doesNotMatch(server, /launchURI:\s*playUrl/);
+assert.match(server, /createDevPlayLaunchUri\(\{[\s\S]{0,180}ticket:\s*ticket\.ticket,[\s\S]{0,180}placeId,[\s\S]{0,180}userId,[\s\S]{0,180}jobId:\s*job\.jobId/);
 
 const home = fs.readFileSync(path.join(root, 'Webserver', 'http-db-bridge', 'views', 'home.ejs'), 'utf8');
 assert.match(home, /payload\.launchURI[\s\S]{0,180}luckyblox-player:/);
+assert.match(home, /payload\.devPlayURI[\s\S]{0,100}luckyblox-devplay:/);
 assert.doesNotMatch(home, /window\.location\.href\s*=\s*payload\.playUrl/);
+
+const play = fs.readFileSync(path.join(root, 'Webserver', 'http-db-bridge', 'views', 'play.ejs'), 'utf8');
+assert.match(play, /data\.devPlayURI[\s\S]{0,100}luckyblox-devplay:/);
 
 const gameAbout = fs.readFileSync(path.join(root, 'Webserver', 'http-db-bridge', 'views', 'game-about.ejs'), 'utf8');
 assert.match(gameAbout, /data\.launchURI[\s\S]{0,500}Open LuckyBlox/);
+assert.match(gameAbout, /data\.client && data\.client\.supported === false/);
+assert.match(gameAbout, /data\.devPlayURI[\s\S]{0,100}luckyblox-devplay:/);
+assert.match(gameAbout, /Open this game in DEV-PLAY/);
+assert.ok(
+  gameAbout.indexOf('data.client && data.client.supported === false')
+    < gameAbout.indexOf("if (data.launchURI && /^luckyblox-player:/i.test(data.launchURI))"),
+  'the public-host DEV-PLAY instructions must appear before the direct player handoff',
+);
+assert.ok(
+  gameAbout.includes("Settings\\\\DEV-PLAY.bat --place "),
+  'the public game page must show the clicked place ID in its local DEV-PLAY command',
+);
 assert.doesNotMatch(gameAbout, /window\.location\.href\s*=\s*data\.playUrl/);
 
 const installer = fs.readFileSync(path.join(root, 'tools', 'installer', 'LuckybloxInstaller.cs'), 'utf8');

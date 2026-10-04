@@ -209,6 +209,12 @@
           return payload;
         }
 
+        if (payload.client && payload.client.supported === false
+          && payload.devPlayURI && /^luckyblox-devplay:/i.test(payload.devPlayURI)) {
+          window.location.href = payload.devPlayURI;
+          return payload;
+        }
+
         // This request reaches the website server, which cannot start a process
         // on the visitor's computer. Hand the signed ticket to the local player
         // protocol instead of navigating back to the site's /play or /games page.

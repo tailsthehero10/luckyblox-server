@@ -22,7 +22,10 @@ const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'ser
 const { installMarketplaceRoutes } = require(path.join(__dirname, '..', '..', 'server', 'marketplace.js'));
 const { installClientApi } = require('./clientApi.js');
 const { getClientBuildInfo, getClientUpdateManifest } = require('./clientBuildInfo.js');
-const { createClientLaunchUri } = require(path.join(__dirname, '..', '..', 'server', 'clientLaunchUri'));
+const {
+  createClientLaunchUri,
+  createDevPlayLaunchUri,
+} = require(path.join(__dirname, '..', '..', 'server', 'clientLaunchUri'));
 const datastore = require('./datastore.js');
 const assetFetcher = require(path.join(__dirname, '..', '..', 'server', 'assetFetcher.js'));
 const robloxAssetDelivery = require(path.join(__dirname, '..', '..', 'server', 'robloxAssetDelivery.js'));
@@ -7114,6 +7117,13 @@ app.post('/api/client/launch', (req, res) => {
     ticket: ticket.ticket,
     authTicket: ticket.authTicket,
     launchURI: ticket.launchURI,
+    devPlayURI: createDevPlayLaunchUri({
+      ticket: ticket.ticket,
+      placeId,
+      userId,
+      jobId: job.jobId,
+      baseUrl: publicOrigin,
+    }),
     playUrl: `/play?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket.ticket)}&serverPort=${job.port}&jobId=${encodeURIComponent(job.jobId)}`,
   });
 });
@@ -7199,6 +7209,13 @@ app.post('/api/launch-game', (req, res) => {
       authTicket: ticket.authTicket,
       expiresAt: new Date(ticket.expiresAt).toISOString(),
       launchURI: ticket.launchURI,
+      devPlayURI: createDevPlayLaunchUri({
+        ticket: ticket.ticket,
+        placeId,
+        userId,
+        jobId: job.jobId,
+        baseUrl: publicOrigin,
+      }),
       playUrl,
       // Client install state, so the page can say "launching" or "download".
       client: clientStatus,
