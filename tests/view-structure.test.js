@@ -169,9 +169,18 @@ test('avatar viewer reports accessory preview failures without covering the rend
     path.join(releaseRoot, 'Webserver', 'http-db-bridge', 'public', 'js', 'avatar-viewer.mjs'),
     'utf8',
   );
-  assert.match(viewer, /accessories could be previewed[\s\S]{0,160}Your saved outfit is unchanged/);
+  assert.match(viewer, /of \$\{totalAccessories\} equipped accessories rendered in 3D/);
+  assert.match(viewer, /Your saved outfit is unchanged\.\$\{thumbnailNotice\}/);
   assert.match(viewer, /showStatus\([\s\S]{0,240}missing\.join\('; '\)/);
   assert.match(viewer, /console\.warn\('\[LuckyBlox avatar viewer\]/);
+  assert.match(viewer, /accessory\.renderable === false && accessory\.kind === 'clothing'/);
+  assert.match(viewer, /accessory\.renderable === false && accessory\.kind === 'thumbnail'/);
+  assert.match(viewer, /renderAccessoryThumbnails\(viewer,\s*thumbnailFallbacks\)/);
+  assert.match(viewer, /result !== 'clothing'/);
+
+  const server = fs.readFileSync(path.join(releaseRoot, 'Webserver', 'http-db-bridge', 'server.js'), 'utf8');
+  assert.match(server, /thumbnailFallbacks:\s*wearing\.map/);
+  assert.match(server, /Roblox restricts this asset model; showing its official thumbnail instead/);
 });
 
 test('profile renders the bundled rigs and identity chips never generate stand-in models', () => {

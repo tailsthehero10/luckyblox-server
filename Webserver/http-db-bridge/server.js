@@ -15,6 +15,7 @@ const { getRobloxProfileTemplateItems } = require('./robloxTemplateSource');
 const { searchUsers } = require(path.join(__dirname, '..', '..', 'server', 'userSearch.js'));
 const avatarRig = require('./avatarRig');
 const { parseAccessoryAsset } = require('./avatarAccessories');
+const { getAvatarAccessoryThumbnail } = require('./avatarAccessoryThumbnail');
 const robloxApi = require('./robloxApi');
 const { getStudioBuildInfo, getStudioUpdateManifest, STUDIO_EXECUTABLE_PATH, DEFAULT_BASE_URL } = require('./studioBuildInfo');
 const clientLauncher = require(path.join(__dirname, '..', '..', 'server', 'clientLauncher.js'));
@@ -1799,6 +1800,10 @@ function renderAvatarViewer(user, size, options = {}) {
     bodyColorRgb(colorId),
   ]));
   const scales = avatar.scales && typeof avatar.scales === 'object' ? avatar.scales : {};
+  const wearing = Array.isArray(user && user.currentlyWearing)
+    ? user.currentlyWearing.map(String).filter((id) => /^\d+$/.test(id) && Number(id) > 0)
+    : [];
+  const assets = getAssets();
   const config = {
     rig: String(user && (user.avatarType || avatar.playerAvatarType) || 'R15').toUpperCase() === 'R6'
       ? 'R6' : 'R15',
@@ -1808,9 +1813,17 @@ function renderAvatarViewer(user, size, options = {}) {
       width: Number(scales.width) || 1,
       depth: Number(scales.depth) || 1,
     },
-    wearing: Array.isArray(user && user.currentlyWearing)
-      ? user.currentlyWearing.map(String).filter((id) => /^\d+$/.test(id) && Number(id) > 0)
-      : [],
+    wearing,
+    thumbnailFallbacks: wearing.map((id) => {
+      const asset = assets[id];
+      return asset && (asset.thumbnail || asset.image)
+        ? {
+          id,
+          name: asset.name || `Asset ${id}`,
+          thumbnailUrl: asset.thumbnail || asset.image,
+        }
+        : null;
+    }).filter(Boolean),
   };
   const label = `${String(user && (user.displayName || user.username) || 'Avatar')} 3D avatar`;
   const compactClass = wanted <= 160 ? ' lb-avatar-viewer--compact' : '';
@@ -1821,7 +1834,7 @@ function renderAvatarViewer(user, size, options = {}) {
 
   return `<div class="lb-avatar-viewer${compactClass}${portraitClass}" data-avatar-viewer data-avatar-mode="${mode}" data-avatar-config="${escapeHtmlAttribute(JSON.stringify(config))}" `
     + `data-save-portrait="${savePortrait ? 'true' : 'false'}" `
-    + `style="height:${wanted}px;" role="img" aria-label="${escapeHtmlAttribute(label)}">`
+    + `style="height:${wanted}px;" role="group" aria-label="${escapeHtmlAttribute(label)}">`
     + (portraitMode
       ? `<img data-avatar-portrait-image src="/icons/avatar.svg" alt="" aria-hidden="true" />`
       : `<canvas aria-hidden="true"></canvas>`)
@@ -5552,11 +5565,35 @@ app.get('/api/avatar/accessories/:id', async (req, res) => {
   if (!/^\d+$/.test(id) || Number(id) <= 0) {
     return res.status(400).json({ ok: false, error: 'invalid-avatar-accessory-id' });
   }
+  const asset = resolveAssetById(id);
+  const assetTypeId = Number(asset && asset.assetTypeId);
+  const assetType = String((asset && (asset.assetType || asset.className)) || '');
+  if ([2, 11, 12].includes(assetTypeId) || /^(?:T-?Shirt|Shirt|Pants)$/i.test(assetType)) {
+    return res.json({
+      ok: true,
+      renderable: false,
+      kind: 'clothing',
+      id,
+      name: asset.name || `Asset ${id}`,
+      assetType: assetType || 'Clothing',
+    });
+  }
   try {
     const delivered = await robloxAssetDelivery.fetchAssetContent(id, null, {
       cacheDir: path.join(releaseRoot, 'Webserver', 'www', 'asset-content'),
     });
     if (!delivered.ok) {
+      const fallback = await getAvatarAccessoryThumbnail(id, asset);
+      if (fallback) {
+        return res.json({
+          ok: true,
+          renderable: false,
+          kind: 'thumbnail',
+          id,
+          ...fallback,
+          message: 'Roblox restricts this asset model; showing its official thumbnail instead.',
+        });
+      }
       const status = delivered.statusCode === 403 || delivered.statusCode === 404
         ? 404 : delivered.statusCode || 502;
       return res.status(status).json({
@@ -5565,7 +5602,7 @@ app.get('/api/avatar/accessories/:id', async (req, res) => {
         message: delivered.reason,
       });
     }
-    return res.json({ ok: true, ...parseAccessoryAsset(delivered.buffer, id) });
+    return res.json({ ok: true, renderable: true, ...parseAccessoryAsset(delivered.buffer, id) });
   } catch (error) {
     console.error(`[luckyblox] could not load avatar accessory ${id}: ${error.message}`);
     return res.status(422).json({

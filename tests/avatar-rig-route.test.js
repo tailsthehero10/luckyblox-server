@@ -96,6 +96,12 @@ function cookieFrom(response) {
       assetType: 'Hat',
       thumbnail: '/gameplaceholder/card.png',
     },
+    25330901: {
+      id: 25330901,
+      name: 'Test Classic Pants',
+      assetType: 'Pants',
+      assetTypeId: 12,
+    },
   }));
   const child = spawn(process.execPath, ['Webserver/http-db-bridge/server.js'], {
     cwd: path.resolve(__dirname, '..'),
@@ -149,6 +155,16 @@ function cookieFrom(response) {
     }
 
     assert.equal((await get(port, '/api/avatar/rig/R7')).status, 404);
+    const classicPants = await get(port, '/api/avatar/accessories/25330901');
+    assert.equal(classicPants.status, 200);
+    assert.deepEqual(JSON.parse(classicPants.body), {
+      ok: true,
+      renderable: false,
+      kind: 'clothing',
+      id: '25330901',
+      name: 'Test Classic Pants',
+      assetType: 'Pants',
+    });
     const publicProfile = await get(port, '/users/1/profile', viewerSession);
     assert.equal(publicProfile.status, 200);
     assert.match(publicProfile.body, /class="theme-dark dark-theme"/);
@@ -163,6 +179,8 @@ function cookieFrom(response) {
       'the full-size avatar remains a separate interactive viewer');
     assert.match(publicProfile.body, /&quot;wearing&quot;:\[&quot;607702162&quot;\]/,
       'the profile 3D viewer receives the saved equipped asset ids');
+    assert.match(publicProfile.body, /&quot;thumbnailFallbacks&quot;/,
+      'the viewer receives saved Roblox asset thumbnails for restricted model fallbacks');
     assert.match(publicProfile.body, /lb-user-avatar-placeholder/);
     assert.doesNotMatch(publicProfile.body, /lb-avatar-svg/,
       'the profile and account chips must not substitute a generated avatar drawing');

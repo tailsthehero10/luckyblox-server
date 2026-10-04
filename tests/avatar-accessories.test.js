@@ -1,7 +1,13 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const { parseAccessoryAsset } = require('../Webserver/http-db-bridge/avatarAccessories');
+const {
+  parseAccessoryAsset,
+  parseRobloxAccessory,
+} = require('../Webserver/http-db-bridge/avatarAccessories');
+const {
+  getAvatarAccessoryThumbnail,
+} = require('../Webserver/http-db-bridge/avatarAccessoryThumbnail');
 
 const accessoryXml = `<?xml version="1.0"?>
 <roblox version="4">
@@ -46,7 +52,82 @@ assert.equal(parsed.meshType, 'SpecialMesh');
 assert.deepEqual(parsed.meshScale, { x: 0.66, y: 0.66, z: 0.66 });
 assert.equal(parsed.attachmentName, 'HatAttachment');
 assert.deepEqual(parsed.handleAttachment.position, { x: 0, y: 0.025, z: 0.2 });
+
+const binaryParsed = parseRobloxAccessory({
+  ClassName: 'Accessory',
+  Name: 'Binary Fedora',
+  Children: [{
+    ClassName: 'Part',
+    Name: 'Handle',
+    Size: { X: 1, Y: 0.4, Z: 1 },
+    Children: [
+      {
+        ClassName: 'SpecialMesh',
+        MeshId: 'http://www.roblox.com/asset/?id=1029012',
+        TextureId: 'rbxassetid://6858319566',
+        Scale: { X: 1.1, Y: 1.1, Z: 1.1 },
+        Offset: { X: 0, Y: 0, Z: 0 },
+      },
+      {
+        ClassName: 'Attachment',
+        Name: 'HatAttachment',
+        CFrame: {
+          Position: { X: 0, Y: 0, Z: 0.05 },
+          Orientation: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+        },
+      },
+    ],
+  }],
+}, '1029025');
+assert.equal(binaryParsed.name, 'Binary Fedora');
+assert.equal(binaryParsed.meshId, '1029012');
+assert.equal(binaryParsed.textureId, '6858319566');
+assert.equal(binaryParsed.meshType, 'SpecialMesh');
+assert.deepEqual(binaryParsed.meshScale, { x: 1.1, y: 1.1, z: 1.1 });
+assert.equal(binaryParsed.attachmentName, 'HatAttachment');
+
+async function testThumbnailFallback() {
+  const remoteThumbnail = 'https://tr.rbxcdn.com/180DAY-test/420/420/Hat/Png/noFilter';
+  const remoteDetails = await getAvatarAccessoryThumbnail('17892778209', null, {
+    getAssetDetails: async () => ({
+      name: ':D SDSW',
+      assetTypeId: 8,
+    }),
+    getAssetThumbnailUrl: async (id, size) => {
+      assert.equal(id, '17892778209');
+      assert.equal(size, '420x420');
+      return remoteThumbnail;
+    },
+  });
+  assert.deepEqual(remoteDetails, {
+    name: ':D SDSW',
+    assetType: 'Hat',
+    thumbnailUrl: remoteThumbnail,
+  });
+
+  const localThumbnail = await getAvatarAccessoryThumbnail('607702162', {
+    name: 'Local hat',
+    assetType: 'Hat',
+    thumbnail: '/asset-cache/607702162.png',
+  }, {
+    getAssetDetails: async () => { throw new Error('stored item should not need a details lookup'); },
+    getAssetThumbnailUrl: async () => { throw new Error('stored thumbnail should be reused'); },
+  });
+  assert.equal(localThumbnail.thumbnailUrl, '/asset-cache/607702162.png');
+
+  const rejectedUrl = await getAvatarAccessoryThumbnail('123', null, {
+    getAssetDetails: async () => null,
+    getAssetThumbnailUrl: async () => 'https://example.invalid/image.png',
+  });
+  assert.equal(rejectedUrl, null);
+}
+
 assert.throws(() => parseAccessoryAsset(Buffer.from('<roblox/>'), '123'), /does not contain an Accessory/);
 assert.throws(() => parseAccessoryAsset(Buffer.from('<roblox>'), '123'), /not valid XML/);
 
-console.log('ok: real Roblox accessory model XML resolves its mesh, texture, scale, and rig attachment');
+testThumbnailFallback().then(() => {
+  console.log('ok: Roblox accessory models and official thumbnail fallbacks resolve safely');
+}).catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

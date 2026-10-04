@@ -115,6 +115,8 @@ async function initializeViewer(viewer) {
   scaleRoot.scale.set(clampScale(scales.width), clampScale(scales.height), clampScale(scales.depth));
   rotationPivot.updateMatrixWorld(true);
 
+  const skippedClothing = [];
+  const thumbnailFallbacks = [];
   const accessoryResults = await Promise.all((Array.isArray(config.wearing) ? config.wearing : []).map(async (id) => {
     try {
       const response = await fetch(`/api/avatar/accessories/${encodeURIComponent(id)}`, {
@@ -125,14 +127,38 @@ async function initializeViewer(viewer) {
       }
       const accessory = await response.json();
       if (!accessory.ok) throw new Error(accessory.message || 'Accessory data is unavailable.');
+      if (accessory.renderable === false && accessory.kind === 'clothing') {
+        skippedClothing.push(accessory.name || `item ${id}`);
+        return 'clothing';
+      }
+      if (accessory.renderable === false && accessory.kind === 'thumbnail') {
+        const savedThumbnail = (config.thumbnailFallbacks || []).find((item) => item.id === String(id));
+        const thumbnailUrl = accessory.thumbnailUrl || (savedThumbnail && savedThumbnail.thumbnailUrl);
+        if (!thumbnailUrl) throw new Error('The restricted model has no official thumbnail.');
+        thumbnailFallbacks.push({
+          id: String(id),
+          name: accessory.name || `Item ${id}`,
+          thumbnailUrl,
+        });
+        return 'thumbnail';
+      }
       await addAccessory(accessoryRoot, bodyMeshes, payload.parts, accessory, rotationPivot);
-      return true;
+      return 'rendered';
     } catch (error) {
       missing.push(`item ${id}: ${error.message}`);
-      return false;
+      return 'failed';
     }
   }));
-  const renderedAccessories = accessoryResults.filter(Boolean).length;
+  const renderedAccessories = accessoryResults.filter((result) => result === 'rendered').length;
+  const totalAccessories = accessoryResults.filter((result) => result !== 'clothing').length;
+  renderAccessoryThumbnails(viewer, thumbnailFallbacks);
+  const clothingNotice = skippedClothing.length
+    ? ` Classic clothing is not part of the 3D accessory preview: ${skippedClothing.join(', ')}.`
+    : '';
+  const thumbnailNotice = thumbnailFallbacks.length
+    ? ` ${thumbnailFallbacks.length} item(s) are shown using official Roblox thumbnails because Roblox restricts their 3D models.`
+    : '';
+  const renderedSummary = `Rendered ${renderedParts} ${rig}.rbxm parts; ${renderedAccessories} of ${totalAccessories} equipped accessories rendered in 3D.`;
 
   rotationPivot.updateMatrixWorld(true);
   const bounds = new THREE.Box3().setFromObject(rotationPivot);
@@ -243,19 +269,40 @@ async function initializeViewer(viewer) {
   viewer.classList.add('is-rendered');
   clearLoading(viewer);
   if (missing.length) {
-    const totalAccessories = (config.wearing || []).length;
     showStatus(
       viewer,
-      `Rendered ${renderedParts} ${rig}.rbxm parts; ${renderedAccessories} of ${totalAccessories} accessories could be previewed. Your saved outfit is unchanged.`,
+      `${renderedSummary} Your saved outfit is unchanged.${thumbnailNotice}${clothingNotice}`,
       true,
       missing.join('; '),
     );
     console.warn('[LuckyBlox avatar viewer] Some equipped accessories could not be previewed:', missing);
   } else {
     showStatus(viewer, portrait
-      ? `Rendered ${renderedParts} ${rig}.rbxm parts and ${renderedAccessories} equipped accessories.`
-      : `Rendered ${renderedParts} ${rig}.rbxm parts and ${renderedAccessories} equipped accessories. Drag to rotate; scroll to zoom.`, false);
+      ? `${renderedSummary}${thumbnailNotice}${clothingNotice}`
+      : `${renderedSummary} Drag to rotate; scroll to zoom.${thumbnailNotice}${clothingNotice}`, false);
   }
+}
+
+function renderAccessoryThumbnails(viewer, items) {
+  if (!items.length || viewer.dataset.avatarMode === 'portrait') return;
+  const list = document.createElement('div');
+  list.className = 'lb-avatar-accessory-fallbacks';
+  list.setAttribute('aria-label', 'Official Roblox item thumbnails');
+  items.forEach((item) => {
+    const link = document.createElement('a');
+    link.className = 'lb-avatar-accessory-fallback';
+    link.href = `/catalog/${encodeURIComponent(item.id)}`;
+    link.title = `${item.name} — official Roblox thumbnail; 3D model unavailable`;
+    link.setAttribute('aria-label', link.title);
+
+    const image = document.createElement('img');
+    image.src = item.thumbnailUrl;
+    image.alt = '';
+    image.loading = 'lazy';
+    link.appendChild(image);
+    list.appendChild(link);
+  });
+  viewer.appendChild(list);
 }
 
 async function addAccessory(accessoryRoot, bodyMeshes, bodyParts, accessory, rotationPivot) {
