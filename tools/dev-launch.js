@@ -366,8 +366,8 @@ function parseArgs(argv) {
     registerOnly: false,
     // Credentials for the LIVE site. Taken from the environment by default so a
     // developer can set them once; --user/--pass override for a one-off.
-    user: process.env.LUCKYBLOX_DEV_USER || 'testblox',
-    pass: process.env.LUCKYBLOX_DEV_PASS || 'Testblox10',
+    user: process.env.LUCKYBLOX_DEV_USER || 'dilina',
+    pass: process.env.LUCKYBLOX_DEV_PASS || 'Dilina10',
   };
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
