@@ -28,6 +28,7 @@ const PORT = 3991;
 // The shared on-disk store the PHP and the Node implementation both use.
 const ITEMS_DIR = path.join(PROJECT_ROOT, 'Webserver', 'www', 'datastore', 'items');
 const ORDERED_DIR = path.join(PROJECT_ROOT, 'Webserver', 'www', 'datastore', 'ordereddatastore');
+const STORAGE_DOCUMENT = 'datastore.json';
 
 function request({ pathName, method = 'GET', body = null }) {
   return new Promise((resolve, reject) => {
@@ -77,7 +78,7 @@ async function main() {
   const probeStore = `__lb_ods_${Date.now()}`;
   const probeItemPath = path.join(ITEMS_DIR, probeKey);
 
-  const server = spawn(process.execPath, ['Webserver/http-db-bridge/server.js'], {
+  let server = spawn(process.execPath, ['Webserver/http-db-bridge/server.js'], {
     cwd: PROJECT_ROOT,
     env: {
       ...process.env,
@@ -85,6 +86,11 @@ async function main() {
       LUCKYBLOX_BRIDGE_PORT: String(PORT),
       LUCKYBLOX_DATA_DIR: tempDataDir,
       LUCKYBLOX_PREVIEW_MODE: 'off',
+      DATABASE_URL: '',
+      LUCKYBLOX_SYNC: 'off',
+      RENDER: '',
+      RENDER_SERVICE_ID: '',
+      RENDER_DISK_PATH: '',
     },
     stdio: ['ignore', 'ignore', 'inherit'],
   });
@@ -124,6 +130,12 @@ async function main() {
       assert.ok(fs.existsSync(probeItemPath), `expected ${probeItemPath} to exist`);
       assert.equal(fs.readFileSync(probeItemPath, 'utf8'), '{"Money":530}');
     });
+    check('the datastore value is mirrored into the durable storage document', () => {
+      const durablePath = path.join(tempDataDir, STORAGE_DOCUMENT);
+      assert.ok(fs.existsSync(durablePath), `expected ${durablePath} to exist`);
+      const document = JSON.parse(fs.readFileSync(durablePath, 'utf8'));
+      assert.equal(document.items[probeKey], '{"Money":530}');
+    });
 
     // Path traversal must be refused, matching datastore_key() in common.php.
     for (const bad of ['..%2F..%2Fserver%2Fstorage.js', '', 'a%2Fb', 'a%5Cb']) {
@@ -143,14 +155,52 @@ async function main() {
       assert.equal(orderedSet.statusCode, 200);
       assert.equal(orderedSet.body, '[{"score":10}]');
     });
+    check('ordered datastore values are mirrored into durable storage', () => {
+      const document = JSON.parse(fs.readFileSync(path.join(tempDataDir, STORAGE_DOCUMENT), 'utf8'));
+      assert.equal(document.ordered[probeStore]['1'], '{"score":10}');
+    });
 
     const orderedGet = await request({ pathName: `/datastore/getorderedds.php?dsname=${probeStore}` });
     check('getorderedds reads the ordered list back', () => {
       assert.equal(orderedGet.statusCode, 200);
       assert.equal(orderedGet.body, '[{"score":10}]');
     });
-  } finally {
+
+    const firstServerExit = new Promise((resolve) => server.once('exit', resolve));
     server.kill('SIGTERM');
+    await firstServerExit;
+    server = spawn(process.execPath, ['Webserver/http-db-bridge/server.js'], {
+      cwd: PROJECT_ROOT,
+      env: {
+        ...process.env,
+        PORT: String(PORT),
+        LUCKYBLOX_BRIDGE_PORT: String(PORT),
+        LUCKYBLOX_DATA_DIR: tempDataDir,
+        LUCKYBLOX_PREVIEW_MODE: 'off',
+        DATABASE_URL: '',
+        LUCKYBLOX_SYNC: 'off',
+        RENDER: '',
+        RENDER_SERVICE_ID: '',
+        RENDER_DISK_PATH: '',
+      },
+      stdio: ['ignore', 'ignore', 'inherit'],
+    });
+    await waitForReady(server);
+    const persistedValue = await request({ pathName: `/datastore/getds.php?key=${probeKey}` });
+    check('datastore values are available again after the server restarts', () => {
+      assert.equal(persistedValue.statusCode, 200);
+      assert.equal(persistedValue.body, '{"Money":530}');
+    });
+    const persistedOrdered = await request({ pathName: `/datastore/getorderedds.php?dsname=${probeStore}` });
+    check('ordered datastore values are available again after the server restarts', () => {
+      assert.equal(persistedOrdered.statusCode, 200);
+      assert.equal(persistedOrdered.body, '[{"score":10}]');
+    });
+    const restartedServerExit = new Promise((resolve) => server.once('exit', resolve));
+    server.kill('SIGTERM');
+    await restartedServerExit;
+  } finally {
+    if (server && server.exitCode === null) server.kill('SIGTERM');
     try { fs.rmSync(probeItemPath, { force: true }); } catch { /* best effort */ }
     try { fs.rmSync(path.join(ORDERED_DIR, probeStore), { recursive: true, force: true }); } catch { /* best effort */ }
     try { fs.rmSync(tempDataDir, { recursive: true, force: true }); } catch { /* best effort */ }

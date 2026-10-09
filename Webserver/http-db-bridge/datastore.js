@@ -42,6 +42,40 @@ const MAX_VALUE_BYTES = 4 * 1024 * 1024;
 const DATASTORE_ROOT = path.resolve(__dirname, '..', 'www', 'datastore');
 const ITEMS_DIR = path.join(DATASTORE_ROOT, 'items');
 const ORDERED_DIR = path.join(DATASTORE_ROOT, 'ordereddatastore');
+const STORAGE_DOCUMENT = 'datastore.json';
+let durableStorage = null;
+let useDurableStorage = false;
+
+function configureStorage(storage) {
+  if (!storage || typeof storage.readJson !== 'function'
+    || typeof storage.writeJson !== 'function'
+    || typeof storage.describeStorage !== 'function') {
+    throw new TypeError('datastore requires the LuckyBlox storage adapter');
+  }
+  durableStorage = storage;
+  useDurableStorage = Boolean(storage.describeStorage().persistent);
+}
+
+function readStorageDocument() {
+  const value = durableStorage.readJson(STORAGE_DOCUMENT, {});
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { items: {}, ordered: {} };
+  }
+  return {
+    items: value.items && typeof value.items === 'object' && !Array.isArray(value.items)
+      ? value.items : {},
+    ordered: value.ordered && typeof value.ordered === 'object' && !Array.isArray(value.ordered)
+      ? value.ordered : {},
+  };
+}
+
+function writeStorageDocument(document) {
+  if (!durableStorage.writeJson(STORAGE_DOCUMENT, document)) {
+    const error = new Error('Datastore persistence write failed');
+    error.status = 503;
+    throw error;
+  }
+}
 
 /**
  * Validate a datastore key. Returns the key when safe, otherwise throws an
@@ -92,6 +126,15 @@ function readEntry(filePath) {
     return fs.readFileSync(filePath, 'utf8');
   } catch (error) {
     if (error && error.code === 'ENOENT') return '';
+    throw error;
+  }
+}
+
+function readExistingEntry(filePath) {
+  try {
+    return fs.readFileSync(filePath, 'utf8');
+  } catch (error) {
+    if (error && error.code === 'ENOENT') return null;
     throw error;
   }
 }
@@ -148,6 +191,19 @@ function readOrderedValues(dir) {
 
 function getValue(rawKey) {
   const key = validateKey(rawKey);
+  if (useDurableStorage) {
+    const document = readStorageDocument();
+    if (Object.prototype.hasOwnProperty.call(document.items, key)) {
+      return String(document.items[key]);
+    }
+    const legacyValue = readExistingEntry(path.join(ITEMS_DIR, key));
+    if (legacyValue !== null) {
+      document.items[key] = legacyValue;
+      writeStorageDocument(document);
+      return legacyValue;
+    }
+    return '';
+  }
   return readEntry(path.join(ITEMS_DIR, key));
 }
 
@@ -156,6 +212,11 @@ function setValue(rawKey, rawData) {
   const value = validateValue(rawData);
   const filePath = path.join(ITEMS_DIR, key);
   writeEntry(filePath, value);
+  if (useDurableStorage) {
+    const document = readStorageDocument();
+    document.items[key] = value;
+    writeStorageDocument(document);
+  }
   return readEntry(filePath);
 }
 
@@ -165,7 +226,49 @@ function setValue(rawKey, rawData) {
 
 function getOrderedValues(rawStore) {
   const store = validateKey(rawStore, 'dsname');
+  if (useDurableStorage) {
+    const document = readStorageDocument();
+    if (Object.prototype.hasOwnProperty.call(document.ordered, store)) {
+      return orderedValuesFromRecord(document.ordered[store]);
+    }
+    const dir = path.join(ORDERED_DIR, store);
+    const legacyValues = readOrderedValues(dir);
+    if (fs.existsSync(dir)) {
+      document.ordered[store] = readOrderedRecord(dir);
+      writeStorageDocument(document);
+    }
+    return legacyValues;
+  }
   return readOrderedValues(path.join(ORDERED_DIR, store));
+}
+
+function orderedValuesFromRecord(record) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return [];
+  return Object.keys(record).sort().map((key) => String(record[key])).filter((raw) => {
+    try {
+      JSON.parse(raw);
+      return true;
+    } catch (error) {
+      return raw.trim() === 'null';
+    }
+  });
+}
+
+function readOrderedRecord(dir) {
+  let names;
+  try {
+    names = fs.readdirSync(dir);
+  } catch (error) {
+    if (error && error.code === 'ENOENT') return {};
+    throw error;
+  }
+
+  const record = {};
+  for (const name of names.sort()) {
+    const raw = readExistingEntry(path.join(dir, name));
+    if (raw !== null) record[name] = raw;
+  }
+  return record;
 }
 
 function setOrderedValue(rawStore, rawKey, rawData) {
@@ -174,13 +277,25 @@ function setOrderedValue(rawStore, rawKey, rawData) {
   const value = validateValue(rawData);
   const dir = path.join(ORDERED_DIR, store);
   writeEntry(path.join(dir, key), value);
+  if (useDurableStorage) {
+    const document = readStorageDocument();
+    const record = document.ordered[store]
+      && typeof document.ordered[store] === 'object'
+      && !Array.isArray(document.ordered[store])
+      ? document.ordered[store] : {};
+    record[key] = value;
+    document.ordered[store] = record;
+    writeStorageDocument(document);
+  }
   return readOrderedValues(dir);
 }
 
 module.exports = {
   DATASTORE_ROOT,
+  STORAGE_DOCUMENT,
   MAX_KEY_LENGTH,
   MAX_VALUE_BYTES,
+  configureStorage,
   validateKey,
   getValue,
   setValue,

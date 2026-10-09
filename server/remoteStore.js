@@ -71,6 +71,7 @@ const FILES = [
   'places.json',
   'players.json',
   'sessions.json',
+  'datastore.json',
   'published-assets.json',
   'site-status.json',
   'studio-handshakes.json',

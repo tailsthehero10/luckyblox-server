@@ -120,6 +120,11 @@ LuckyBlox is a local Roblox-style game platform served from a release folder. Ap
   routes those endpoints 404'd on any Node-fronted deployment and in-game saving
   silently failed. A missing key must answer `200` with an empty body, never a
   `404` - a non-2xx is what makes the client's `GetAsync` throw.
+- When a durable storage backend is configured (Postgres, remote sync, or a
+  persistent data directory), Node also mirrors DataStore values to
+  `datastore.json` in the configured data directory, so game saves can be
+  restored after a server restart/redeploy. The JSON API value format remains
+  unchanged; the Apache-compatible files continue to be written as well.
 - Keys are validated like `datastore_key()` in `common.php`: no `/`, `\`, `..`,
   control characters, or over-long values. Guarded by `tests/datastore.test.js`.
 

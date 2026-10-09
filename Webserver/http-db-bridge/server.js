@@ -89,6 +89,7 @@ const security = require(path.join(releaseRoot, 'server', 'security.js'));
 // All persisted data goes through the storage layer, which honours
 // LUCKYBLOX_DATA_DIR / RENDER_DISK_PATH so accounts survive redeploys.
 const dataDir = storage.dataDir;
+datastore.configureStorage(storage);
 // Normalised for comparison: readJson/writeJson below decide whether a path is a
 // data file (and therefore mirrored to the free remote store) by checking its
 // directory against this.
@@ -1930,10 +1931,20 @@ function getWearingForUser(user) {
   return result;
 }
 
+function getLiveGameServerSummary(placeId) {
+  const servers = listServersForPlace(placeId);
+  const host = new URL(`http://${gameServerHost}`).hostname;
+  return {
+    playerCount: servers.reduce((total, server) => total + Number(server.playing || 0), 0),
+    addresses: servers.map((server) => `${host}:${server.port}`),
+  };
+}
+
 function serializeGame(placeId) {
   const normalized = normalizePlaceId(placeId);
   const game = getGameEntry(normalized);
   const creator = gameCreatorMetadata(game);
+  const liveServers = getLiveGameServerSummary(normalized);
   return {
     placeId: Number(game.placeId || normalized || 1818),
     title: game.title || 'LuckyBlox Arena',
@@ -1946,11 +1957,11 @@ function serializeGame(placeId) {
     authorId: Number(game.authorId) || creator.creatorId,
     genre: game.genre || 'Adventure',
     icon: game.icon || DEFAULT_GAME_ICON,
-    playerCount: Number(game.playerCount || 0),
+    playerCount: liveServers.playerCount,
     likes: Number(game.likes || 0),
     favorites: Number(game.favorites || 0),
-    activeServers: Array.isArray(game.activeServers) ? game.activeServers : [`${gameServerHost}:${gamePort}`],
-    serverList: Array.isArray(game.serverList) ? game.serverList : [`${gameServerHost}:${gamePort}`],
+    activeServers: liveServers.addresses,
+    serverList: liveServers.addresses,
     votes: game.votes || { likes: 0, dislikes: 0 },
     tags: Array.isArray(game.tags) ? game.tags : ['Local'],
     updatedAt: game.updatedAt || new Date().toISOString(),
@@ -2398,8 +2409,8 @@ function getGames() {
         playerCount: Number(existing.playerCount || 0),
         likes: Number(existing.likes || 0),
         favorites: Number(existing.favorites || 0),
-        activeServers: Array.isArray(existing.activeServers) ? existing.activeServers : [`${gameServerHost}:${gamePort}`],
-        serverList: Array.isArray(existing.serverList) ? existing.serverList : [`${gameServerHost}:${gamePort}`],
+        activeServers: Array.isArray(existing.activeServers) ? existing.activeServers : [],
+        serverList: Array.isArray(existing.serverList) ? existing.serverList : [],
         votes: existing.votes || { likes: 0, dislikes: 0 },
         tags: Array.isArray(existing.tags) ? existing.tags : ['Community', 'Playtest'],
         updatedAt: existing.updatedAt || new Date().toISOString(),
@@ -3406,8 +3417,8 @@ function getGameEntry(placeId) {
     playerCount: 0,
     likes: 0,
     favorites: 0,
-    activeServers: [`${gameServerHost}:${gamePort}`],
-    serverList: [`${gameServerHost}:${gamePort}`],
+    activeServers: [],
+    serverList: [],
     votes: { likes: 0, dislikes: 0 },
     tags: ['Playtest'],
     mapFile: catalogEntry.filename || null,
@@ -7735,25 +7746,28 @@ app.get('/game/:placeId/players', (req, res) => {
 app.get('/api/games', (req, res) => {
   const published = getPublishedPlaces();
   const games = published.length > 0
-    ? published.map((game) => ({
-        placeId: Number(game.placeId),
-        title: game.name,
-        description: game.description,
-        developer: GAME_OWNER_USERNAME,
-        creatorName: GAME_OWNER_USERNAME,
-        creatorId: GAME_OWNER_ID,
-        genre: 'Adventure',
-        playerCount: 0,
-        likes: 0,
-        favorites: 0,
-        activeServers: [`${gameServerHost}:${gamePort}`],
-        serverList: [`${gameServerHost}:${gamePort}`],
-        votes: { likes: 0, dislikes: 0 },
-        tags: ['Public', 'Published'],
-        updatedAt: game.publishedAt,
-        aboutUrl: `/game/${game.placeId}`,
-        playUrl: `/play?placeId=${game.placeId}`,
-      }))
+    ? published.map((game) => {
+        const liveServers = getLiveGameServerSummary(game.placeId);
+        return {
+          placeId: Number(game.placeId),
+          title: game.name,
+          description: game.description,
+          developer: GAME_OWNER_USERNAME,
+          creatorName: GAME_OWNER_USERNAME,
+          creatorId: GAME_OWNER_ID,
+          genre: 'Adventure',
+          playerCount: liveServers.playerCount,
+          likes: 0,
+          favorites: 0,
+          activeServers: liveServers.addresses,
+          serverList: liveServers.addresses,
+          votes: { likes: 0, dislikes: 0 },
+          tags: ['Public', 'Published'],
+          updatedAt: game.publishedAt,
+          aboutUrl: `/game/${game.placeId}`,
+          playUrl: `/play?placeId=${game.placeId}`,
+        };
+      })
     : Object.values(getGames()).map((game) => serializeGame(game.placeId || 1818));
 
   res.json({ ok: true, games, total: games.length, source: 'roblox-profile-templates' });

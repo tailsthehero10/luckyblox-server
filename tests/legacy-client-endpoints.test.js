@@ -111,6 +111,21 @@ async function waitForReady(proc) {
     assert.equal(productInfo.Creator.Name, 'TestCreator');
     assert.equal(productInfo.Creator.CreatorType, 'Group');
 
+    const serverListResponse = await request(`/api/servers?placeId=${PLACE_ID}`);
+    assert.equal(serverListResponse.status, 200);
+    assert.deepEqual(
+      JSON.parse(serverListResponse.body.toString('utf8')).servers,
+      [],
+      'the server browser lists only jobs running in the current process',
+    );
+    const serializedGameResponse = await request(`/api/v1/games/${PLACE_ID}`);
+    assert.equal(serializedGameResponse.status, 200);
+    const serializedGame = JSON.parse(serializedGameResponse.body.toString('utf8')).game;
+    assert.equal(serializedGame.creatorName, 'TestCreator', 'the game API uses the creator saved in games.json');
+    assert.equal(serializedGame.creatorId, 17, 'the game API uses the creator ID saved in games.json');
+    assert.deepEqual(serializedGame.activeServers, [], 'games without a running server must not advertise a made-up address');
+    assert.equal(serializedGame.playerCount, 0, 'games without a running server must not report stored player counts');
+
     const anonymousTicketResponse = await request(`/v1/authentication-tickets?userId=1&placeId=${PLACE_ID}`);
     assert.equal(anonymousTicketResponse.status, 401, 'ticket issuance requires a signed-in LuckyBlox account');
     const issuedTicketResponse = await request('/v1/authentication-tickets', 'POST', {
@@ -179,6 +194,10 @@ async function waitForReady(proc) {
     assert.equal(protocolJoinPayload.game.creatorId, 17, 'the join response uses the creator ID saved in games.json');
     assert.equal(protocolJoinPayload.game.creatorType, 'Group', 'the join response preserves the creator type');
     assert.match(protocolJoinPayload.game.thumbnailUrl, /^https?:\/\//);
+    const liveGameResponse = await request(`/api/v1/games/${PLACE_ID}`);
+    const liveGame = JSON.parse(liveGameResponse.body.toString('utf8')).game;
+    assert.equal(liveGame.activeServers.length, 1, 'a running game server is exposed in the game API');
+    assert.doesNotMatch(liveGame.activeServers[0], /:3991:/, 'game server addresses must not include the website port');
 
     const characterAppearance = await request(
       `/v1/avatar-fetch?placeId=${PLACE_ID}&userId=1`,
@@ -193,12 +212,6 @@ async function waitForReady(proc) {
     assert.equal(appearanceData.userId, 1);
     assert.equal(appearanceData.placeId, PLACE_ID);
     }
-
-    const serializedGameResponse = await request(`/api/v1/games/${PLACE_ID}`);
-    assert.equal(serializedGameResponse.status, 200);
-    const serializedGame = JSON.parse(serializedGameResponse.body.toString('utf8')).game;
-    assert.equal(serializedGame.creatorName, 'TestCreator', 'the game API uses the creator saved in games.json');
-    assert.equal(serializedGame.creatorId, 17, 'the game API uses the creator ID saved in games.json');
 
     const ownerFallbackResponse = await request(`/api/v1/games/${PLACE_ID + 1}`);
     assert.equal(ownerFallbackResponse.status, 200);
