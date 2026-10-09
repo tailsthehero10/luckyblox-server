@@ -150,9 +150,14 @@ assert.match(playMarkup, /controller\.abort\(\);\s*\}, 20000/);
 const gamePlayer = fs.readFileSync(path.join(root, 'Webserver', 'http-db-bridge', 'views', 'gameplayer.ejs'), 'utf8');
 assert.match(gamePlayer, /data-place-id="<%= placeId %>"/);
 assert.match(gamePlayer, /fetch\('\/api\/launch-game'/);
-assert.match(gamePlayer, /Open this game in DEV-PLAY/);
+assert.match(gamePlayer, /Use local DEV-PLAY instead/);
 assert.match(gamePlayer, /luckyblox-player:/);
 assert.match(gamePlayer, /luckyblox-devplay:/);
+assert.ok(
+  gamePlayer.indexOf("if (data.launchURI && /^luckyblox-player:/i.test(data.launchURI))")
+    < gamePlayer.indexOf("if (data.client && data.client.supported === false)"),
+  'the dedicated player must offer the cloud-client handoff before local DEV-PLAY',
+);
 
 const installer = fs.readFileSync(path.join(root, 'tools', 'installer', 'LuckybloxInstaller.cs'), 'utf8');
 const installerBuild = fs.readFileSync(path.join(root, 'tools', 'installer', 'build-installer.bat'), 'utf8');
