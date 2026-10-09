@@ -30,8 +30,7 @@ COPY . .
 ENV PORT=3002 \
     HOST=0.0.0.0 \
     LUCKYBLOX_BRIDGE_HOST=127.0.0.1 \
-    LUCKYBLOX_BRIDGE_PORT=3001 \
-    LUCKYBLOX_GAME_HOST=0.0.0.0
+    LUCKYBLOX_BRIDGE_PORT=3001
 
 # The platform routes to a single port, so we do not EXPOSE fixed 3001/3002.
 EXPOSE 3002

@@ -5,6 +5,8 @@ const { spawnSync } = require('node:child_process');
 const {
   buildLaunchCommand,
   resolveServerBinary,
+  spawnDedicatedServer,
+  activeGameServers,
 } = require('../server/orchestrator');
 const runtimeConfig = require('../server/runtimeConfig');
 const fs = require('node:fs');
@@ -40,9 +42,17 @@ assert.deepEqual(linuxLaunch, {
   command: null,
   args: [],
   type: 'none',
-  reason: 'bundled RCCService.exe is Windows-only; using the in-process listener',
+  reason: 'the bundled RCCService binary is Windows-only and cannot run on this host',
 });
 assert.equal(resolveServerBinary('linux'), null);
+const serverCountBeforeLinuxAttempt = activeGameServers.length;
+assert.throws(
+  () => spawnDedicatedServer(1818, 'linux'),
+  (error) => error.code === 'game-server-unavailable'
+    && /Windows-only/i.test(error.message),
+  'Linux must fail the join instead of passing a fake TCP listener to the client',
+);
+assert.equal(activeGameServers.length, serverCountBeforeLinuxAttempt);
 assert.equal(runtimeConfig.gameListenHost, runtimeConfig.bindHost);
 assert.notEqual(runtimeConfig.gameServerHost, '0.0.0.0');
 if (!runtimeConfig.isCloud) {
@@ -58,6 +68,16 @@ const cloudConfig = loadRuntimeConfig({
 });
 assert.equal(cloudConfig.gameListenHost, '0.0.0.0');
 assert.equal(cloudConfig.gameServerHost, 'games.example.test');
+const wildcardGameHostConfig = loadRuntimeConfig({
+  PORT: '10000',
+  RENDER_EXTERNAL_HOSTNAME: 'games.example.test',
+  LUCKYBLOX_GAME_HOST: '0.0.0.0',
+});
+assert.equal(
+  wildcardGameHostConfig.gameServerHost,
+  'games.example.test',
+  'a wildcard bind address must never be advertised to game clients',
+);
 const explicitGameHostConfig = loadRuntimeConfig({
   PORT: '10000',
   RENDER_EXTERNAL_HOSTNAME: 'games.example.test',
@@ -71,8 +91,9 @@ const orchestratorSource = fs.readFileSync(
 );
 assert.match(
   orchestratorSource,
-  /else\s*\{\s*console\.log\(\`\[LuckyBlox Server:\$\{serverJobId\}\] no desktop client to launch \(\$\{launch\.reason\}\)`\);\s*ensureServerListener\(serverRecord\);\s*\}/,
-  'the JSON fallback listener must only bind when no dedicated RCCService process is launched',
+  /if\s*\(!launch\.command\)\s*\{\s*const error = new Error\(`Cannot host this game here:/,
+  'a missing RCCService binary must fail closed rather than create a non-game TCP listener',
 );
+assert.doesNotMatch(orchestratorSource, /function ensureServerListener/);
 
 console.log('orchestrator does not try to execute bundled Windows RCCService binaries on Linux.');

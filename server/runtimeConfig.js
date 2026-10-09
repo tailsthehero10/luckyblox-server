@@ -121,8 +121,11 @@ const publicBaseUrl = stripTrailingSlash(
 
 const isCloud = Boolean(process.env.PORT || process.env.RENDER || process.env.RENDER_EXTERNAL_HOSTNAME);
 const gameListenHost = bindHost;
-const gameServerHost = process.env.LUCKYBLOX_GAME_HOST
-  || (isCloud ? publicHostname : '127.0.0.1');
+const configuredGameServerHost = String(process.env.LUCKYBLOX_GAME_HOST || '').trim();
+const gameServerHost = configuredGameServerHost
+  && !['0.0.0.0', '::', '[::]'].includes(configuredGameServerHost)
+  ? configuredGameServerHost
+  : (isCloud ? publicHostname : '127.0.0.1');
 
 const gamePort = toPort(
   process.env.LUCKYBLOX_GAME_PORT || process.env.GAME_PORT,

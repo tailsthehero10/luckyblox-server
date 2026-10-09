@@ -10,7 +10,6 @@ services:
       - HOST=0.0.0.0
       - LUCKYBLOX_BRIDGE_HOST=127.0.0.1
       - LUCKYBLOX_BRIDGE_PORT=3001
-      - LUCKYBLOX_GAME_HOST=0.0.0.0
       - PUBLIC_URL=http://localhost:3002
     ports:
       - "3002:3002"

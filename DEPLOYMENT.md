@@ -46,7 +46,7 @@ placeholder page back, set `LUCKYBLOX_PREVIEW_MODE=on` in the Render dashboard.
 | `HOST` | `0.0.0.0` | Bind interface so the container is internet-reachable. |
 | `LUCKYBLOX_BRIDGE_HOST` | `127.0.0.1` | Internal bridge host (same container). |
 | `LUCKYBLOX_BRIDGE_PORT` | `3001` | Internal bridge port. |
-| `LUCKYBLOX_GAME_HOST` | `0.0.0.0` | Interface for spawned game servers. |
+| `LUCKYBLOX_GAME_HOST` | auto-detected | Address advertised to game clients. |
 | `LUCKYBLOX_GAME_PORT` | `53640` | Base port for game servers. |
 | `PUBLIC_URL` / `RENDER_EXTERNAL_URL` | auto | Full public base URL. |
 | `PUBLIC_HOST` / `RENDER_EXTERNAL_HOSTNAME` | auto | Public hostname. |
@@ -60,6 +60,16 @@ placeholder page back, set `LUCKYBLOX_PREVIEW_MODE=on` in the Render dashboard.
 On Render these public values are auto-detected from `RENDER_EXTERNAL_URL` /
 `RENDER_EXTERNAL_HOSTNAME`, so links always point at
 `https://luckyblox-server.onrender.com` without editing any file.
+
+`LUCKYBLOX_GAME_HOST` is the address put into the legacy client join payload,
+not the interface the web service binds to. Never set it to `0.0.0.0` or `::`;
+wildcard addresses are for server-side binding only and cannot be dialed by the
+player. The web service binds using `HOST`. Render web services expose the web
+port, not the separate raw TCP game port; this deployment also cannot run the
+bundled Windows RCC binary. If no dedicated server binary can start, play/join
+requests return `503 game-server-unavailable` instead of directing the client
+to a placeholder TCP listener. A real remote game session requires a compatible
+RCC host with its game port reachable by clients.
 
 ## Deploying to Render
 

@@ -3533,6 +3533,15 @@ function createNamedJoinJob(userId, placeId) {
   return job;
 }
 
+function respondGameServerUnavailable(res, error) {
+  if (!error || error.code !== 'game-server-unavailable') return false;
+  return res.status(503).json({
+    ok: false,
+    error: 'game-server-unavailable',
+    message: error.message,
+  });
+}
+
 function getTicketStatus(ticket) {
   return activeTickets.get(ticket) || null;
 }
@@ -6038,7 +6047,12 @@ function legacyJoinResponse(req, res) {
 
   let server = activeGameServers.find((candidate) => candidate.serverJobId === serverJobId || Number(candidate.placeId) === Number(placeId));
   if (!server) {
-    server = allocatePlayerToServer(userId, placeId);
+    try {
+      server = allocatePlayerToServer(userId, placeId);
+    } catch (error) {
+      if (respondGameServerUnavailable(res, error)) return;
+      throw error;
+    }
   }
 
   const selectedPort = Number(server.port || requestPort || gamePort);
@@ -6308,7 +6322,13 @@ app.get('/game/placelauncher.ashx', (req, res) => {
   const placeId = normalizePlaceId(req.query.placeId || req.query.placeid || req.query.placeid || 1818);
   const requestedPort = Number(req.query.port || gamePort);
   const serverJobId = req.query.jobId || req.query.serverJobId || `game-${Date.now()}`;
-  const allocatedServer = allocatePlayerToServer(userId, placeId);
+  let allocatedServer;
+  try {
+    allocatedServer = allocatePlayerToServer(userId, placeId);
+  } catch (error) {
+    if (respondGameServerUnavailable(res, error)) return;
+    throw error;
+  }
   const selectedPort = Number(allocatedServer.port || requestedPort || gamePort);
   const finalJobId = String(allocatedServer.serverJobId || serverJobId);
   const ticket = createAuthTicket(userId, placeId, {
@@ -6593,7 +6613,13 @@ app.get('/v1/join-script', (req, res) => {
   try {
     // Naming the job here means /api/jobs/<id> can report the game's name to the
     // Discord companion and any status consumer.
-    const job = createNamedJoinJob(userId, placeId);
+    let job;
+    try {
+      job = createNamedJoinJob(userId, placeId);
+    } catch (error) {
+      if (respondGameServerUnavailable(res, error)) return;
+      throw error;
+    }
     const ticket = createAuthTicket(userId, placeId, {
       port: job.port,
       serverJobId: job.jobId,
@@ -6628,6 +6654,7 @@ app.get('/v1/join-script', (req, res) => {
       message: null,
     });
   } catch (error) {
+    if (respondGameServerUnavailable(res, error)) return;
     return res.status(500).json({
       ok: false,
       error: 'join-script-failed',
@@ -6991,6 +7018,7 @@ app.post('/v1/authentication-tickets', (req, res) => {
     allocation = allocatePlayerToServer(userId, placeId);
   } catch (error) {
     console.error('Failed to allocate player to server:', error);
+    if (respondGameServerUnavailable(res, error)) return;
     return res.status(500).json({ ok: false, error: 'server-allocation-failed' });
   }
 
@@ -7371,7 +7399,13 @@ app.post('/api/client/launch', (req, res) => {
   const placeId = Number(req.body.placeId || req.query.placeId || 1818);
   const gameMetadata = gameClientMetadata(placeId);
   const playerMetadata = clientPlayerMetadata(userId, sessionUser);
-  const job = createNamedJoinJob(userId, placeId);
+  let job;
+  try {
+    job = createNamedJoinJob(userId, placeId);
+  } catch (error) {
+    if (respondGameServerUnavailable(res, error)) return;
+    throw error;
+  }
   const ticket = createAuthTicket(userId, placeId, {
     port: job.port,
     serverJobId: job.jobId,
@@ -7524,6 +7558,7 @@ app.post('/api/launch-game', (req, res) => {
     });
   } catch (error) {
     console.error('Launch failed:', error);
+    if (respondGameServerUnavailable(res, error)) return;
     return res.status(500).json({
       ok: false,
       error: 'launch-failed',
@@ -7591,24 +7626,12 @@ app.get('/game/:placeId/servers', (req, res) => {
       uptime: Date.now() - new Date(s.startedAt || Date.now()).getTime(),
     }));
 
-  const fallback = [{
-    serverJobId: `fallback-${placeId}`,
-    placeId,
-    port: gamePort,
-    status: 'available',
-    playerCount: 0,
-    maxPlayers: 20,
-    players: [],
-    startedAt: null,
-    uptime: 0,
-  }];
-
   res.json({
     ok: true,
     placeId,
-    totalServers: servers.length || 1,
+    totalServers: servers.length,
     maxServers: 50,
-    servers: servers.length ? servers : fallback,
+    servers,
   });
 });
 
@@ -7626,7 +7649,13 @@ app.get('/game/:placeId/join', (req, res) => {
     server = getServerForPlace(placeId);
   }
   if (!server) {
-    const alloc = allocatePlayerToServer(userId, placeId);
+    let alloc;
+    try {
+      alloc = allocatePlayerToServer(userId, placeId);
+    } catch (error) {
+      if (respondGameServerUnavailable(res, error)) return;
+      throw error;
+    }
     server = activeGameServers.find((s) => s.serverJobId === alloc.serverJobId);
   }
 

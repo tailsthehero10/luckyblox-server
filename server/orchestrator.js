@@ -1,14 +1,10 @@
 const { spawn, execFile } = require('child_process');
 const { randomUUID } = require('crypto');
-const net = require('net');
 const path = require('path');
 const fs = require('fs');
-const { gamePort, gameListenHost, gameServerHost } = require('./runtimeConfig');
+const { gamePort, gameServerHost } = require('./runtimeConfig');
 
 const DEFAULT_PORT_START = gamePort;
-// Bind game servers on every interface so remote players on other devices can
-// reach them inside the container, not just the local loopback address.
-const GAME_LISTEN_HOST = gameListenHost;
 const activeGameServers = [];
 const serverRuntimeState = {
   lastAssignedPort: DEFAULT_PORT_START,
@@ -98,37 +94,6 @@ function removeServerByJobId(serverJobId) {
   return null;
 }
 
-function ensureServerListener(serverRecord) {
-  if (!serverRecord || serverRecord.listener) {
-    return serverRecord;
-  }
-
-  const listener = net.createServer((socket) => {
-    const remoteAddress = socket.remoteAddress || 'unknown';
-    console.log(`[LuckyBlox Server:${serverRecord.serverJobId}] connection from ${remoteAddress}`);
-    socket.write(JSON.stringify({
-      ok: true,
-      status: 'connected',
-      jobId: serverRecord.serverJobId,
-      placeId: serverRecord.placeId,
-      port: serverRecord.port,
-      server: 'LuckyBlox local game server',
-    }));
-    socket.end();
-  });
-
-  listener.on('error', (error) => {
-    console.error(`[LuckyBlox Server:${serverRecord.serverJobId}] listener error: ${error.message}`);
-  });
-
-  listener.listen(serverRecord.port, GAME_LISTEN_HOST, () => {
-    console.log(`[LuckyBlox Server:${serverRecord.serverJobId}] listening on ${GAME_LISTEN_HOST}:${serverRecord.port}`);
-  });
-
-  serverRecord.listener = listener;
-  return serverRecord;
-}
-
 function getServerForPlace(placeId) {
   return activeGameServers.find((server) => Number(server.placeId) === Number(placeId) && Array.isArray(server.currentPlayers) && server.currentPlayers.length < server.maxPlayers);
 }
@@ -162,7 +127,8 @@ function buildLaunchCommand(placeId, port, jobId, platform = process.platform) {
   // "legacy-server-proxy-failed" on the join URL.
   //
   // A game server with no dedicated binary cannot serve a real Roblox session.
-  // The in-process listener below is only a local fallback for API/dev checks.
+  // Never substitute a TCP/JSON listener: legacy clients interpret this job as
+  // a real game server and may crash when they receive a non-Roblox protocol.
   if (!serverBinary) {
     return {
       command: null,
@@ -170,7 +136,7 @@ function buildLaunchCommand(placeId, port, jobId, platform = process.platform) {
       type: 'none',
       reason: platform === 'win32'
         ? 'no dedicated server binary found (looked for Clients/2021E/RCCService)'
-        : 'bundled RCCService.exe is Windows-only; using the in-process listener',
+        : 'the bundled RCCService binary is Windows-only and cannot run on this host',
     };
   }
 
@@ -190,7 +156,7 @@ function buildLaunchCommand(placeId, port, jobId, platform = process.platform) {
   };
 }
 
-function spawnDedicatedServer(placeId) {
+function spawnDedicatedServer(placeId, platform = process.platform) {
   const port = nextAvailablePort();
   const serverJobId = randomUUID();
   const serverRecord = {
@@ -205,70 +171,69 @@ function spawnDedicatedServer(placeId) {
     launchCommand: null,
   };
 
-  const launch = buildLaunchCommand(placeId, port, serverJobId);
+  const launch = buildLaunchCommand(placeId, port, serverJobId, platform);
   serverRecord.launchCommand = launch;
 
-  // Only spawn when there is actually something to spawn. On Linux there is no
-  // Windows RCCService binary, and the old code still tried to run a Windows
-  // shell - the spawn error propagated and killed the bridge process.
-  if (launch.command) {
-    try {
-      // Keep every child temp/cache path on the release drive (E:) rather than
-      // inheriting C:\Users\...\AppData, which is what filled C: up.
-      const scratch = serverScratchDir(serverJobId);
+  if (!launch.command) {
+    const error = new Error(`Cannot host this game here: ${launch.reason}`);
+    error.code = 'game-server-unavailable';
+    throw error;
+  }
 
-      const child = spawn(launch.command, launch.args, {
-        detached: false,
-        stdio: ['ignore', 'pipe', 'pipe'],
-        windowsHide: true,
-        cwd: path.dirname(launch.command),
-        env: {
-          ...process.env,
-          TEMP: scratch,
-          TMP: scratch,
-          TMPDIR: scratch,
-          LOCALAPPDATA: scratch,
-          APPDATA: scratch,
-          USERPROFILE: scratch,
-          HOME: scratch,
-        },
-      });
+  try {
+    // Keep every child temp/cache path on the release drive (E:) rather than
+    // inheriting C:\Users\...\AppData, which is what filled C: up.
+    const scratch = serverScratchDir(serverJobId);
 
-      serverRecord.pid = child.pid;
+    const child = spawn(launch.command, launch.args, {
+      detached: false,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+      cwd: path.dirname(launch.command),
+      env: {
+        ...process.env,
+        TEMP: scratch,
+        TMP: scratch,
+        TMPDIR: scratch,
+        LOCALAPPDATA: scratch,
+        APPDATA: scratch,
+        USERPROFILE: scratch,
+        HOME: scratch,
+      },
+    });
 
-      child.on('error', (error) => {
-        console.warn(`[LuckyBlox Server:${serverJobId}] dedicated server launch unavailable: ${error.message}`);
-        serverRecord.pid = null;
-        serverRecord.status = 'failed';
-        removeServerByJobId(serverJobId);
-      });
+    serverRecord.pid = child.pid;
 
-      child.stdout.on('data', (chunk) => {
-        const text = String(chunk).trim();
-        if (text.length) {
-          console.log(`[LuckyBlox Server:${serverJobId}] stdout: ${text}`);
-        }
-      });
+    child.on('error', (error) => {
+      console.warn(`[LuckyBlox Server:${serverJobId}] dedicated server launch unavailable: ${error.message}`);
+      serverRecord.pid = null;
+      serverRecord.status = 'failed';
+      removeServerByJobId(serverJobId);
+    });
 
-      child.stderr.on('data', (chunk) => {
-        const text = String(chunk).trim();
-        if (text.length) {
-          console.error(`[LuckyBlox Server:${serverJobId}] stderr: ${text}`);
-        }
-      });
+    child.stdout.on('data', (chunk) => {
+      const text = String(chunk).trim();
+      if (text.length) {
+        console.log(`[LuckyBlox Server:${serverJobId}] stdout: ${text}`);
+      }
+    });
 
-      child.on('exit', (code, signal) => {
-        console.log(`[LuckyBlox Server:${serverJobId}] exited code=${code} signal=${signal}`);
-        serverRecord.pid = null;
-        serverRecord.status = 'stopped';
-        removeServerByJobId(serverJobId);
-      });
-    } catch (error) {
-      console.warn(`[LuckyBlox Server:${serverJobId}] client launch not available: ${error.message}`);
-    }
-  } else {
-    console.log(`[LuckyBlox Server:${serverJobId}] no desktop client to launch (${launch.reason})`);
-    ensureServerListener(serverRecord);
+    child.stderr.on('data', (chunk) => {
+      const text = String(chunk).trim();
+      if (text.length) {
+        console.error(`[LuckyBlox Server:${serverJobId}] stderr: ${text}`);
+      }
+    });
+
+    child.on('exit', (code, signal) => {
+      console.log(`[LuckyBlox Server:${serverJobId}] exited code=${code} signal=${signal}`);
+      serverRecord.pid = null;
+      serverRecord.status = 'stopped';
+      removeServerByJobId(serverJobId);
+    });
+  } catch (error) {
+    console.warn(`[LuckyBlox Server:${serverJobId}] dedicated server launch failed: ${error.message}`);
+    throw error;
   }
 
   serverRecord.status = 'running';

@@ -31,6 +31,16 @@ function test(name, fn) {
   }
 }
 
+if (!orch.resolveServerBinary()) {
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  } catch (error) {
+    // The test directory is disposable; cleanup must not mask server availability.
+  }
+  console.log('skipped: real job tests require a bundled Windows game-server binary');
+  process.exit(0);
+}
+
 console.log('orchestrator job pipeline');
 
 test('createJoinJob returns a UUID-shaped job id', () => {
