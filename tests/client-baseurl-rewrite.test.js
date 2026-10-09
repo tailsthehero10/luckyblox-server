@@ -98,6 +98,19 @@ function check(name, fn) {
       assert.equal(baseUrlOf(localhost2021.body), `http://localhost:${PORT}/LuckBlox.site.tk/home/`);
     });
 
+    const clientSettings2021 = await request({
+      pathName: '/ClientSettings/AppSettings.xml?client=CUSTOM-2021M',
+      headers: { host: `127.0.0.1:${PORT}` },
+    });
+    check('legacy ClientSettings path serves CUSTOM-2021M root AppSettings.xml', () => {
+      assert.equal(clientSettings2021.statusCode, 200);
+      assert.equal(clientSettings2021.headers['x-luckyblox-client'], 'CUSTOM-2021M');
+      assert.equal(
+        baseUrlOf(clientSettings2021.body),
+        `http://127.0.0.1:${PORT}/LuckBlox.site.tk/home/`,
+      );
+    });
+
     const loopback2022 = await request({
       pathName: '/AppSettings.xml?client=2022M',
       headers: { host: `127.0.0.1:${PORT}` },
