@@ -5,6 +5,8 @@ const fs = require('fs');
 const { gamePort, gameServerHost } = require('./runtimeConfig');
 
 const DEFAULT_PORT_START = gamePort;
+const advertisedGameHost = new URL(`http://${gameServerHost}`).hostname;
+const REMOTE_SERVER_HEARTBEAT_TTL_MS = 60 * 1000;
 const activeGameServers = [];
 const serverRuntimeState = {
   lastAssignedPort: DEFAULT_PORT_START,
@@ -94,7 +96,20 @@ function removeServerByJobId(serverJobId) {
   return null;
 }
 
+function pruneStaleRemoteServers() {
+  const now = Date.now();
+  activeGameServers
+    .filter((server) => server.remoteHost)
+    .forEach((server) => {
+      const lastHeartbeat = Date.parse(server.lastHeartbeatAt || '');
+      if (!Number.isFinite(lastHeartbeat) || now - lastHeartbeat > REMOTE_SERVER_HEARTBEAT_TTL_MS) {
+        removeServerByJobId(server.serverJobId);
+      }
+    });
+}
+
 function getServerForPlace(placeId) {
+  pruneStaleRemoteServers();
   return activeGameServers.find((server) => Number(server.placeId) === Number(placeId) && Array.isArray(server.currentPlayers) && server.currentPlayers.length < server.maxPlayers);
 }
 
@@ -163,6 +178,7 @@ function spawnDedicatedServer(placeId, platform = process.platform) {
     serverJobId,
     placeId: Number(placeId),
     port,
+    serverHost: advertisedGameHost,
     currentPlayers: [],
     maxPlayers: 20,
     status: 'starting',
@@ -255,6 +271,7 @@ function allocatePlayerToServer(userId, placeId) {
       port: Number(server.port),
       placeId: Number(targetPlaceId),
       playerCount: server.currentPlayers.length,
+      serverHost: server.serverHost || advertisedGameHost,
       created: false,
     };
   }
@@ -274,6 +291,7 @@ function allocatePlayerToServer(userId, placeId) {
     port: Number(newServer.port),
     placeId: Number(targetPlaceId),
     playerCount: newServer.currentPlayers.length,
+    serverHost: newServer.serverHost || advertisedGameHost,
     created: true,
   };
 }
@@ -293,6 +311,7 @@ function removePlayerFromServer(userId, serverJobId) {
  * job the way a client expects to see it when it asks "where can I join?".
  */
 function listServersForPlace(placeId) {
+  pruneStaleRemoteServers();
   const target = Number(placeId || 1818);
   return activeGameServers
     .filter((server) => Number(server.placeId) === target)
@@ -304,6 +323,7 @@ function listServersForPlace(placeId) {
       playerTokens: Array.isArray(server.currentPlayers) ? server.currentPlayers.slice() : [],
       players: Array.isArray(server.currentPlayers) ? server.currentPlayers.slice() : [],
       port: Number(server.port),
+      host: server.serverHost || advertisedGameHost,
       status: server.status || 'running',
       ping: 0,
       fps: 60,
@@ -315,6 +335,7 @@ function listServersForPlace(placeId) {
  * this after joining so a dead job is detected instead of hanging.
  */
 function getJobStatus(serverJobId) {
+  pruneStaleRemoteServers();
   const server = activeGameServers.find((candidate) => candidate.serverJobId === serverJobId);
   if (!server) {
     return null;
@@ -334,6 +355,7 @@ function getJobStatus(serverJobId) {
     placeId: Number(server.placeId),
     placeName: server.placeName || null,
     port: Number(server.port),
+    serverHost: server.serverHost || advertisedGameHost,
     status: server.status || 'running',
     playerCount: players.length,
     maxPlayers: Number(server.maxPlayers || 20),
@@ -382,12 +404,13 @@ function createJoinJob(userId, placeId) {
     maxPlayers: status ? status.maxPlayers : 20,
     slotsLeft: status ? status.slotsLeft : 20,
     created: Boolean(allocation.created),
-    serverHost: gameServerHost,
+    serverHost: allocation.serverHost || (status && status.serverHost) || advertisedGameHost,
   };
 }
 
 /** Total players across every running job — used by the preview page. */
 function getTotalPlayerCount() {
+  pruneStaleRemoteServers();
   return activeGameServers.reduce((sum, server) => {
     return sum + (Array.isArray(server.currentPlayers) ? server.currentPlayers.length : 0);
   }, 0);
@@ -405,6 +428,7 @@ module.exports = {
   listServersForPlace,
   removePlayerFromServer,
   removeServerByJobId,
+  pruneStaleRemoteServers,
   registerServerRecord,
   spawnDedicatedServer,
   resolveServerBinary,

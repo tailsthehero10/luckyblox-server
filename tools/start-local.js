@@ -46,6 +46,8 @@ function configureLocalEnvironment(env = process.env) {
     HOST: '127.0.0.1',
     LUCKYBLOX_BRIDGE_HOST: '127.0.0.1',
     LUCKYBLOX_BRIDGE_PORT: '3001',
+    GAME_SERVER_IP: '127.0.0.1',
+    GAME_SERVER_PORT: String(gamePort),
     LUCKYBLOX_GAME_HOST: '127.0.0.1',
     LUCKYBLOX_GAME_PORT: String(gamePort),
     PUBLIC_URL: `http://localhost:${port}`,

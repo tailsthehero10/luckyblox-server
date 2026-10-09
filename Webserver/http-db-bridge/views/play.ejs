@@ -110,12 +110,14 @@
 
         try {
           var controller = new AbortController();
-          var timeout = window.setTimeout(function () { controller.abort(); }, 20000);
-          var res = await fetch('/api/client/launch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ placeId: placeId }),
-            signal: controller.signal
+          var timeout = window.setTimeout(function () { controller.abort(); }, 120000);
+          var res = await window.LBLoading.requestWithHostStartupRetry(function () {
+            return fetch('/api/client/launch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify({ placeId: placeId }),
+              signal: controller.signal
+            });
           });
           var data = await res.json();
 

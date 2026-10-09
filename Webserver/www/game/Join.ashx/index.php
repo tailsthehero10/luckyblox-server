@@ -1,10 +1,11 @@
 <?php
 error_reporting(~E_ALL);
 require("functions.php");
+require_once __DIR__ . '/../../api/common.php';
 header("content-type:text/plain");
 $placeid = $_GET["placeid"];
-$ip = $_GET['ip'];
-$port = $_GET['port'];
+$ip = isset($_GET['ip']) && trim((string) $_GET['ip']) !== '' ? $_GET['ip'] : api_public_server_ip();
+$port = isset($_GET['port']) && trim((string) $_GET['port']) !== '' ? $_GET['port'] : api_public_game_port();
 $id = $_GET['id'];
 $user = $_GET['user'];
 $app = $_GET['app'];

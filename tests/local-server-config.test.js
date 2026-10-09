@@ -18,6 +18,8 @@ const env = {
   LUCKYBLOX_GAME_HOST: '0.0.0.0',
   LUCKYBLOX_SYNC: 'github',
   DATABASE_URL: 'postgres://production',
+  GAME_SERVER_IP: 'public.example.net',
+  GAME_SERVER_PORT: '64989',
 };
 
 assert.equal(configureLocalEnvironment(env), 'http://localhost:10001');
@@ -31,6 +33,8 @@ assert.equal(env.PUBLIC_HOST, 'localhost:10001');
 assert.equal(env.PUBLIC_PROTOCOL, 'http');
 assert.equal(env.LUCKYBLOX_GAME_HOST, '127.0.0.1');
 assert.equal(env.LUCKYBLOX_GAME_PORT, '53641');
+assert.equal(env.GAME_SERVER_IP, '127.0.0.1');
+assert.equal(env.GAME_SERVER_PORT, '53641');
 assert.match(env.LUCKYBLOX_DATA_DIR, /local-site-data$/);
 assert.equal(env.LUCKYBLOX_SYNC, 'off');
 assert.equal(env.DATABASE_URL.trim(), '');

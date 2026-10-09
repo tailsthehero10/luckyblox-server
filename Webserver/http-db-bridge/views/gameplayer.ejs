@@ -92,12 +92,14 @@
         if (loading) loading.button(button, true);
 
         try {
-          timeout = window.setTimeout(function () { controller.abort(); }, 20000);
-          var response = await fetch('/api/launch-game', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ placeId: Number(button.dataset.placeId) }),
-            signal: controller.signal
+          timeout = window.setTimeout(function () { controller.abort(); }, 120000);
+          var response = await window.LBLoading.requestWithHostStartupRetry(function () {
+            return fetch('/api/launch-game', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify({ placeId: Number(button.dataset.placeId) }),
+              signal: controller.signal
+            });
           });
           var data = await response.json().catch(function () { return {}; });
 

@@ -171,9 +171,16 @@ function api_public_base_url() {
 
 /**
  * Resolve the public hostname/IP clients should connect to for game traffic.
- * Environment first, then Settings/ip.txt, then the request host.
+ * Dedicated game host settings take priority over the website's own hostname.
  */
 function api_public_server_ip() {
+    foreach (array('GAME_SERVER_IP', 'LUCKYBLOX_GAME_HOST') as $envKey) {
+        $host = getenv($envKey);
+        if ($host !== false && trim((string) $host) !== '') {
+            return trim((string) $host);
+        }
+    }
+
     $host = getenv('PUBLIC_HOST') ?: getenv('RENDER_EXTERNAL_HOSTNAME');
     if ($host !== false && trim((string) $host) !== '') {
         return trim((string) $host);
@@ -184,18 +191,24 @@ function api_public_server_ip() {
 }
 
 /**
- * Resolve the game server port. Environment first, then Settings/HostPort.txt.
+ * Resolve the RCC game port. Environment first, then Settings/HostPort.txt.
  */
 function api_public_game_port() {
-    foreach (array('LUCKYBLOX_GAME_PORT', 'GAME_PORT') as $envKey) {
+    foreach (array('GAME_SERVER_PORT', 'LUCKYBLOX_GAME_PORT', 'GAME_PORT') as $envKey) {
         $value = getenv($envKey);
         if ($value !== false && trim((string) $value) !== '') {
-            return trim((string) $value);
+            $port = trim((string) $value);
+            if (ctype_digit($port) && (int) $port >= 1 && (int) $port <= 65535) {
+                return $port;
+            }
         }
     }
 
     $settingsRoot = api_settings_root();
-    return api_get_setting_value($settingsRoot . '/HostPort.txt', '53640');
+    $port = api_get_setting_value($settingsRoot . '/HostPort.txt', '53640');
+    return ctype_digit((string) $port) && (int) $port >= 1 && (int) $port <= 65535
+        ? (string) $port
+        : '53640';
 }
 
 function api_get_local_player_state($placeId) {

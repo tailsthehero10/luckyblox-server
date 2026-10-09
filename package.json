@@ -9,6 +9,7 @@
     "start:local": "node tools/start-local.js",
     "start:bridge": "node Webserver/http-db-bridge/server.js",
     "start:legacy": "node server.js",
+    "start:host": "node tools/rcc-host-worker.js",
     "dev:play": "node tools/dev-launch.js",
     "dev:play:dry": "node tools/dev-launch.js --dry-run"
   },

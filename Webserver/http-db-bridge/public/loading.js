@@ -167,6 +167,25 @@
       });
   }
 
+  function requestWithHostStartupRetry(request, maxWaitMs) {
+    var deadline = Date.now() + (Number(maxWaitMs) > 0 ? Number(maxWaitMs) : 120000);
+
+    function attempt() {
+      return Promise.resolve().then(request).then(function (response) {
+        if (response.status !== 503) return response;
+        return response.clone().json().catch(function () { return {}; }).then(function (data) {
+          if (!data || data.error !== 'game-server-starting' || Date.now() >= deadline) {
+            return response;
+          }
+          var waitMs = Math.max(1000, Math.min(10000, Number(data.retryAfterSeconds || 5) * 1000));
+          return new Promise(function (resolve) { window.setTimeout(resolve, waitMs); }).then(attempt);
+        });
+      });
+    }
+
+    return attempt();
+  }
+
   window.LBLoading = {
     show: show,
     hide: hide,
@@ -177,6 +196,7 @@
     run: run,
     button: button,
     json: json,
+    requestWithHostStartupRetry: requestWithHostStartupRetry,
   };
 
   // A navigation that leaves the page mid-load should not strand the veil: the

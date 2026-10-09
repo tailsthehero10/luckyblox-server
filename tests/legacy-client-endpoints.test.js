@@ -11,6 +11,8 @@ const { resolveServerBinary } = require('../server/orchestrator');
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const PORT = 3991;
 const PLACE_ID = 987654321;
+const HOST_TEST_PLACE_ID = PLACE_ID + 100;
+const HOST_TOKEN = 'legacy-endpoint-test-host-token-32-chars';
 const HAS_DEDICATED_SERVER = Boolean(resolveServerBinary());
 
 function request(pathName, method = 'GET', body, extraHeaders = {}) {
@@ -94,6 +96,7 @@ async function waitForReady(proc) {
       PORT: String(PORT),
       LUCKYBLOX_DATA_DIR: dataDir,
       LUCKYBLOX_PREVIEW_MODE: 'off',
+      LUCKYBLOX_HOST_TOKEN: HOST_TOKEN,
     },
     stdio: ['ignore', 'ignore', 'inherit'],
   });
@@ -281,6 +284,114 @@ async function waitForReady(proc) {
     assert.equal((await request('/home/asset-thumbnail/image?assetId=987654323')).status, 404);
     assert.equal((await request('/home/asset-thumbnail/json?assetId=not-a-number')).status, 400);
     assert.equal((await request('/home/marketplace/productinfo?placeId=987654323')).status, 404);
+
+    const unauthenticatedHost = await request('/api/servers/register', 'POST', {
+      jobId: 'untrusted-host',
+      placeId: HOST_TEST_PLACE_ID,
+      port: 55000,
+      serverHost: 'games.example.net',
+    });
+    assert.equal(unauthenticatedHost.status, 401, 'untrusted clients cannot advertise fake game servers');
+
+    const hostHeaders = { authorization: `Bearer ${HOST_TOKEN}` };
+    if (!HAS_DEDICATED_SERVER) {
+      const dynamicPlaceId = HOST_TEST_PLACE_ID + 1;
+      const launchRequest = request('/api/launch-game', 'POST', {
+        placeId: dynamicPlaceId,
+      }, { cookie: `luckblox_session=${sessionId}` });
+      let queuedRequest = null;
+      for (let attempt = 0; attempt < 20 && !queuedRequest; attempt += 1) {
+        const queueResponse = await request('/api/servers/host-requests', 'POST', {
+          workerId: 'integration-test-worker',
+        }, hostHeaders);
+        assert.equal(queueResponse.status, 200);
+        queuedRequest = JSON.parse(queueResponse.body.toString('utf8')).requests
+          .find((item) => item.placeId === dynamicPlaceId) || null;
+        if (!queuedRequest) await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      assert.ok(queuedRequest, 'a join for any place queues it for an available public host');
+
+      const dynamicRegistration = await request('/api/servers/register', 'POST', {
+        jobId: 'dynamic-host-test',
+        requestId: queuedRequest.requestId,
+        workerId: 'integration-test-worker',
+        placeId: dynamicPlaceId,
+        port: 55001,
+        serverHost: 'games.example.net',
+        maxPlayers: 20,
+        playerIds: [],
+      }, hostHeaders);
+      assert.equal(dynamicRegistration.status, 200, 'a worker can register the requested dynamic instance');
+
+      const dynamicLaunch = await launchRequest;
+      assert.equal(dynamicLaunch.status, 200, 'the waiting launch completes after dynamic host registration');
+      const dynamicLaunchPayload = JSON.parse(dynamicLaunch.body.toString('utf8'));
+      assert.equal(dynamicLaunchPayload.serverHost, 'games.example.net');
+      assert.equal(dynamicLaunchPayload.port, 55001);
+      await request('/api/servers/close', 'POST', { jobId: 'dynamic-host-test' }, hostHeaders);
+    }
+
+    const registeredHost = await request('/api/servers/register', 'POST', {
+      jobId: 'cloud-host-test',
+      placeId: HOST_TEST_PLACE_ID,
+      port: 55000,
+      serverHost: 'games.example.net',
+      maxPlayers: 20,
+      playerIds: [],
+    }, hostHeaders);
+    assert.equal(registeredHost.status, 200);
+
+    const invalidHost = await request('/api/servers/register', 'POST', {
+      jobId: 'bad-host',
+      placeId: HOST_TEST_PLACE_ID,
+      port: 55000,
+      serverHost: 'localhost',
+    }, hostHeaders);
+    assert.equal(invalidHost.status, 400, 'remote registrations cannot advertise localhost');
+    const privateAddress = await request('/api/servers/register', 'POST', {
+      jobId: 'private-host',
+      placeId: HOST_TEST_PLACE_ID,
+      port: 55000,
+      serverHost: '127.0.0.1',
+    }, hostHeaders);
+    assert.equal(privateAddress.status, 400, 'remote registrations cannot advertise a loopback address');
+
+    const remoteServersResponse = await request(`/api/servers?placeId=${HOST_TEST_PLACE_ID}`);
+    const remoteServers = JSON.parse(remoteServersResponse.body.toString('utf8')).servers;
+    assert.equal(remoteServers.length, 1);
+    assert.equal(remoteServers[0].host, 'games.example.net');
+    assert.equal(remoteServers[0].port, 55000);
+
+    const remoteGameResponse = await request(`/api/v1/games/${HOST_TEST_PLACE_ID}`);
+    const remoteGame = JSON.parse(remoteGameResponse.body.toString('utf8')).game;
+    assert.deepEqual(remoteGame.activeServers, ['games.example.net:55000']);
+
+    const remoteJoinResponse = await request(`/game/Join.ashx?placeId=${HOST_TEST_PLACE_ID}&jobId=cloud-host-test&userId=1&ticket=test-ticket`);
+    assert.equal(remoteJoinResponse.status, 200);
+    assert.equal(JSON.parse(remoteJoinResponse.body.toString('utf8')).ip, 'games.example.net');
+
+    const hostHeartbeat = await request('/api/servers/update-players', 'POST', {
+      jobId: 'cloud-host-test',
+      playerIds: ['9'],
+    }, hostHeaders);
+    assert.equal(hostHeartbeat.status, 200);
+    const heartbeatWithoutPlayers = await request('/api/servers/update-players', 'POST', {
+      jobId: 'cloud-host-test',
+    }, hostHeaders);
+    assert.equal(heartbeatWithoutPlayers.status, 200, 'heartbeats without player data preserve allocated player records');
+    assert.equal(
+      JSON.parse((await request(`/api/servers?placeId=${HOST_TEST_PLACE_ID}`)).body.toString('utf8')).servers[0].playing,
+      1,
+    );
+
+    const closedHost = await request('/api/servers/close', 'POST', {
+      jobId: 'cloud-host-test',
+    }, hostHeaders);
+    assert.equal(closedHost.status, 200);
+    assert.deepEqual(
+      JSON.parse((await request(`/api/servers?placeId=${HOST_TEST_PLACE_ID}`)).body.toString('utf8')).servers,
+      [],
+    );
   } finally {
     bridge.kill('SIGTERM');
     try {

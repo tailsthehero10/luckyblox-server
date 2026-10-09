@@ -925,6 +925,11 @@ function lb_get_latest_published_place_id() {
 }
 
 function lb_get_server_ip() {
+    $envIp = getenv('GAME_SERVER_IP') ?: getenv('LUCKYBLOX_GAME_HOST');
+    if ($envIp !== false && trim((string) $envIp) !== '') {
+        return trim((string) $envIp);
+    }
+
     $envIp = getenv('PUBLIC_HOST') ?: getenv('RENDER_EXTERNAL_HOSTNAME');
     if ($envIp !== false && trim((string) $envIp) !== '') {
         return trim((string) $envIp);
@@ -935,13 +940,19 @@ function lb_get_server_ip() {
 }
 
 function lb_get_host_port() {
-    $envPort = getenv('LUCKYBLOX_GAME_PORT') ?: getenv('GAME_PORT');
-    if ($envPort !== false && trim((string) $envPort) !== '') {
-        return trim((string) $envPort);
+    foreach (array('GAME_SERVER_PORT', 'LUCKYBLOX_GAME_PORT', 'GAME_PORT') as $envKey) {
+        $envPort = getenv($envKey);
+        if ($envPort !== false && ctype_digit(trim((string) $envPort))
+            && (int) $envPort >= 1 && (int) $envPort <= 65535) {
+            return trim((string) $envPort);
+        }
     }
     $settingsRoot = lb_settings_root();
     $port = @file_get_contents($settingsRoot . '/HostPort.txt');
-    return ($port !== false && trim($port) !== '') ? trim($port) : '53640';
+    return ($port !== false && ctype_digit(trim($port))
+        && (int) trim($port) >= 1 && (int) trim($port) <= 65535)
+        ? trim($port)
+        : '53640';
 }
 
 function lb_get_client_port() {

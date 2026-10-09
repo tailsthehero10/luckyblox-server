@@ -185,10 +185,12 @@
       var loading = window.LBLoading;
       if (loading) loading.show('Starting LuckyBlox\u2026');
       try {
-        const response = await fetch('/api/launch-game', {
+        const response = await window.LBLoading.requestWithHostStartupRetry(function () {
+          return fetch('/api/launch-game', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ placeId })
+          });
         });
 
         const payload = await response.json();

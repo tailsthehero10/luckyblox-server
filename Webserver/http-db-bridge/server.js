@@ -1,5 +1,6 @@
 const express = require('express');
 const fs = require('fs');
+const net = require('net');
 const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
@@ -44,6 +45,8 @@ const {
   getServerForPlace,
   spawnDedicatedServer,
   setJobTitle,
+  registerServerRecord,
+  pruneStaleRemoteServers,
 } = require(path.join(__dirname, '..', '..', 'server', 'orchestrator.js'));
 
 const {
@@ -104,6 +107,10 @@ const mapsRoot = path.join(releaseRoot, 'Maps');
 const secretKey = process.env.LUCKBLOX_SECRET || 'luckblox-local-dev-secret';
 const activeTickets = new Map();
 const activeSessions = new Map();
+const pendingRemoteHostRequests = new Map();
+const REMOTE_HOST_REQUEST_TIMEOUT_MS = 25000;
+const REMOTE_HOST_REQUEST_LEASE_MS = 90000;
+const REMOTE_HOST_REQUEST_TTL_MS = 5 * 60 * 1000;
 
 // Owner-controlled open/close switch for the whole site (see siteStatus.js).
 const siteStatus = require('./siteStatus').createSiteStatus({
@@ -1932,11 +1939,11 @@ function getWearingForUser(user) {
 }
 
 function getLiveGameServerSummary(placeId) {
+  pruneStaleRemoteServers();
   const servers = listServersForPlace(placeId);
-  const host = new URL(`http://${gameServerHost}`).hostname;
   return {
     playerCount: servers.reduce((total, server) => total + Number(server.playing || 0), 0),
-    addresses: servers.map((server) => `${host}:${server.port}`),
+    addresses: servers.map((server) => `${server.host}:${server.port}`),
   };
 }
 
@@ -3530,8 +3537,61 @@ function normalizePlaceId(rawPlaceId) {
  * status page) that wanted to show the game's NAME had to re-derive it from a
  * local file - which does not exist on a machine that only runs the browser.
  */
+function enqueueRemoteHostRequest(placeId) {
+  if (!process.env.LUCKYBLOX_HOST_TOKEN) {
+    const error = new Error('No public RCC host is connected. Configure LUCKYBLOX_HOST_TOKEN and start the Windows host worker.');
+    error.code = 'game-server-unavailable';
+    throw error;
+  }
+
+  const normalizedPlaceId = Number(placeId);
+  let request = pendingRemoteHostRequests.get(normalizedPlaceId);
+  if (!request) {
+    request = {
+      requestId: crypto.randomUUID(),
+      placeId: normalizedPlaceId,
+      createdAt: Date.now(),
+      claimedBy: '',
+      leaseUntil: 0,
+      waiters: new Set(),
+    };
+    pendingRemoteHostRequests.set(normalizedPlaceId, request);
+  }
+
+  return new Promise((resolve, reject) => {
+    const waiter = { resolve, reject, timer: null };
+    waiter.timer = setTimeout(() => {
+      request.waiters.delete(waiter);
+      const error = new Error(`A public server for place ${normalizedPlaceId} is starting. Retry in a few seconds.`);
+      error.code = 'game-server-starting';
+      reject(error);
+    }, REMOTE_HOST_REQUEST_TIMEOUT_MS);
+    request.waiters.add(waiter);
+  });
+}
+
+function finishRemoteHostRequest(request, error) {
+  if (!request) return;
+  if (pendingRemoteHostRequests.get(request.placeId) === request) {
+    pendingRemoteHostRequests.delete(request.placeId);
+  }
+  for (const waiter of request.waiters) {
+    clearTimeout(waiter.timer);
+    if (error) waiter.reject(error);
+    else waiter.resolve();
+  }
+  request.waiters.clear();
+}
+
 function createNamedJoinJob(userId, placeId) {
-  const job = createJoinJob(userId, placeId);
+  pruneStaleRemoteServers();
+  let job;
+  try {
+    job = createJoinJob(userId, placeId);
+  } catch (error) {
+    if (!error || error.code !== 'game-server-unavailable') throw error;
+    return enqueueRemoteHostRequest(placeId).then(() => createNamedJoinJob(userId, placeId));
+  }
   try {
     const entry = getGameEntry(placeId);
     if (entry && entry.title) {
@@ -3545,11 +3605,12 @@ function createNamedJoinJob(userId, placeId) {
 }
 
 function respondGameServerUnavailable(res, error) {
-  if (!error || error.code !== 'game-server-unavailable') return false;
+  if (!error || !['game-server-unavailable', 'game-server-starting'].includes(error.code)) return false;
   return res.status(503).json({
     ok: false,
-    error: 'game-server-unavailable',
+    error: error.code,
     message: error.message,
+    retryAfterSeconds: error.code === 'game-server-starting' ? 5 : undefined,
   });
 }
 
@@ -6086,7 +6147,7 @@ function legacyJoinResponse(req, res) {
     placeId: Number(server.placeId || placeId),
     userId: Number(userId),
     game: gameClientMetadata(placeId),
-    ip: gameServerHost,
+    ip: server.serverHost || gameServerHost,
     port: selectedPort,
     serverPort: selectedPort,
     joinScriptUrl: `${publicOrigin}/game/Join.ashx?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${selectedPort}&jobId=${encodeURIComponent(finalJobId)}`,
@@ -6568,6 +6629,7 @@ app.get('/api/games/:placeId', (req, res) => {
 });
 
 app.get('/api/servers', (req, res) => {
+  pruneStaleRemoteServers();
   const placeId = Number(req.query.placeId || req.query.placeid || 0);
 
   // When a placeId is given, return just that place's jobs in Roblox-style shape.
@@ -6581,6 +6643,7 @@ app.get('/api/servers', (req, res) => {
     jobId: server.serverJobId,
     placeId: Number(server.placeId || 1818),
     port: Number(server.port || gamePort),
+    serverHost: server.serverHost || gameServerHost,
     currentPlayers: Array.isArray(server.currentPlayers) ? server.currentPlayers : [],
     playerCount: Array.isArray(server.currentPlayers) ? server.currentPlayers.length : 0,
     maxPlayers: Number(server.maxPlayers || 20),
@@ -6624,7 +6687,7 @@ app.get('/v1/games/:placeId/servers/Public', (req, res) => {
  * call to learn WHERE to connect (host, port, jobId) before they hand off to
  * the join script itself. Returns a real job bound to the caller.
  */
-app.get('/v1/join-script', (req, res) => {
+app.get('/v1/join-script', async (req, res) => {
   const sessionUser = req.sessionUser || resolveSessionUser(req);
   if (!sessionUser) {
     return res.status(401).json({ ok: false, error: 'sign-in-required' });
@@ -6637,7 +6700,7 @@ app.get('/v1/join-script', (req, res) => {
     // Discord companion and any status consumer.
     let job;
     try {
-      job = createNamedJoinJob(userId, placeId);
+      job = await createNamedJoinJob(userId, placeId);
     } catch (error) {
       if (respondGameServerUnavailable(res, error)) return;
       throw error;
@@ -6664,7 +6727,7 @@ app.get('/v1/join-script', (req, res) => {
       serverJobId: job.jobId,
       placeId,
       userId: String(userId),
-      ip: gameServerHost,
+      ip: job.serverHost || gameServerHost,
       port: job.port,
       serverPort: job.port,
       maxPlayers: job.maxPlayers,
@@ -7423,7 +7486,7 @@ app.post('/api/client/launch', async (req, res) => {
   const playerMetadata = clientPlayerMetadata(userId, sessionUser);
   let job;
   try {
-    job = createNamedJoinJob(userId, placeId);
+    job = await createNamedJoinJob(userId, placeId);
   } catch (error) {
     if (respondGameServerUnavailable(res, error)) return;
     throw error;
@@ -7494,7 +7557,7 @@ app.post('/api/launch-game', async (req, res) => {
     // One call creates (or reuses) the job AND binds the player to it, so the
     // ticket, the jobId and the port can never disagree with each other. It also
     // names the job, so the Discord companion and status UIs can show the game.
-    const job = createNamedJoinJob(userId, placeId);
+    const job = await createNamedJoinJob(userId, placeId);
     const ticket = createAuthTicket(userId, placeId, {
       port: job.port,
       serverJobId: job.jobId,
@@ -7624,7 +7687,7 @@ app.get('/game/join', (req, res) => {
     jobId: String(server.serverJobId || jobId),
     placeId: Number(server.placeId || placeId),
     userId: Number(userId),
-    ip: gameServerHost,
+    ip: server.serverHost || gameServerHost,
     port: Number(server.port || requestPort || gamePort),
     serverPort: Number(server.port || requestPort || gamePort),
     joinScriptUrl: `${publicOrigin}/game/join?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${Number(server.port || requestPort || gamePort)}&jobId=${encodeURIComponent(server.serverJobId || jobId)}`,
@@ -7700,7 +7763,7 @@ app.get('/game/:placeId/join', (req, res) => {
     serverJobId: finalJobId,
     placeId: Number(server.placeId || placeId),
     userId: Number(userId),
-    ip: gameServerHost,
+    ip: server.serverHost || gameServerHost,
     port: selectedPort,
     serverPort: selectedPort,
     joinScriptUrl: `${publicOrigin}/game/Join.ashx?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket)}&serverPort=${selectedPort}&jobId=${encodeURIComponent(finalJobId)}`,
@@ -7986,63 +8049,166 @@ app.post('/datastore/setorderedds.php', (req, res) => {
   }
 });
 
-app.post('/api/servers/register', (req, res) => {
-  const payload = req.body || {};
-  const jobId = payload.jobId || payload.serverJobId || `server-${Date.now()}`;
-  const match = activeGameServers.find((server) => server.serverJobId === jobId);
-
-  if (match) {
-    match.placeId = Number(payload.placeId || match.placeId);
-    match.port = Number(payload.port || match.port);
-    match.currentPlayers = Array.isArray(payload.currentPlayers) ? payload.currentPlayers : match.currentPlayers || [];
-    match.maxPlayers = Number(payload.maxPlayers || match.maxPlayers || 20);
-    match.status = 'running';
-    return res.json({ ok: true, server: match });
+function authorizeRemoteGameHost(req, res) {
+  const configuredToken = String(process.env.LUCKYBLOX_HOST_TOKEN || '');
+  if (!configuredToken) {
+    res.status(503).json({ ok: false, error: 'game-hosting-not-configured' });
+    return false;
   }
 
+  const authorization = String(req.get('authorization') || '');
+  const suppliedToken = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+  const expected = Buffer.from(configuredToken);
+  const supplied = Buffer.from(suppliedToken);
+  if (expected.length !== supplied.length || !crypto.timingSafeEqual(expected, supplied)) {
+    res.status(401).json({ ok: false, error: 'game-host-unauthorized' });
+    return false;
+  }
+  return true;
+}
+
+function isValidAdvertisedHost(rawHost) {
+  const host = String(rawHost || '').trim().replace(/^\[|\]$/g, '');
+  if (!host || host.length > 253 || /[\/\\\s:@?#]/.test(host) || host.toLowerCase() === 'localhost') {
+    return false;
+  }
+  if (/^\d+(?:\.\d+){3}$/.test(host) && net.isIP(host) !== 4) return false;
+  if (net.isIP(host) === 4) {
+    const [first, second] = host.split('.').map(Number);
+    if (first === 0 || first === 10 || first === 127 || first >= 224
+      || (first === 169 && second === 254)
+      || (first === 172 && second >= 16 && second <= 31)
+      || (first === 192 && second === 168)
+      || (first === 100 && second >= 64 && second <= 127)) return false;
+  }
+  return /^[a-zA-Z0-9.-]+$/.test(host)
+    && host.split('.').every((label) => label.length > 0 && label.length <= 63 && /^[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?$/.test(label));
+}
+
+function validRemotePlayerIds(value, maxPlayers) {
+  if (!Array.isArray(value) || value.length > maxPlayers) return null;
+  const ids = value.map((id) => String(id));
+  return ids.every((id) => id.length > 0 && id.length <= 64 && !/[\u0000-\u001f\u007f]/.test(id)) ? ids : null;
+}
+
+app.post('/api/servers/host-requests', (req, res) => {
+  if (!authorizeRemoteGameHost(req, res)) return;
+  const workerId = String((req.body || {}).workerId || '');
+  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(workerId)) {
+    return res.status(400).json({ ok: false, error: 'invalid-host-worker-id' });
+  }
+
+  const now = Date.now();
+  const requests = [];
+  for (const request of pendingRemoteHostRequests.values()) {
+    if (now - request.createdAt > REMOTE_HOST_REQUEST_TTL_MS) {
+      const error = new Error(`No host worker started a server for place ${request.placeId}.`);
+      error.code = 'game-server-unavailable';
+      finishRemoteHostRequest(request, error);
+      continue;
+    }
+    if (request.claimedBy && request.claimedBy !== workerId && request.leaseUntil > now) continue;
+    request.claimedBy = workerId;
+    request.leaseUntil = now + REMOTE_HOST_REQUEST_LEASE_MS;
+    requests.push({ requestId: request.requestId, placeId: request.placeId });
+    if (requests.length >= 10) break;
+  }
+  return res.json({ ok: true, requests });
+});
+
+app.post('/api/servers/host-request-failed', (req, res) => {
+  if (!authorizeRemoteGameHost(req, res)) return;
+  const payload = req.body || {};
+  const requestId = String(payload.requestId || '');
+  const request = [...pendingRemoteHostRequests.values()].find((item) => item.requestId === requestId);
+  if (!request || request.claimedBy !== String(payload.workerId || '')) {
+    return res.status(404).json({ ok: false, error: 'host-request-not-found' });
+  }
+  const error = new Error(`Could not start a public server for place ${request.placeId}: ${String(payload.message || 'RCC startup failed').slice(0, 300)}`);
+  error.code = 'game-server-unavailable';
+  finishRemoteHostRequest(request, error);
+  return res.json({ ok: true, requestId });
+});
+
+app.post('/api/servers/register', (req, res) => {
+  if (!authorizeRemoteGameHost(req, res)) return;
+  pruneStaleRemoteServers();
+  const payload = req.body || {};
+  const jobId = String(payload.jobId || payload.serverJobId || '');
+  const requestId = String(payload.requestId || '');
+  const placeId = Number(payload.placeId);
+  const port = Number(payload.port);
+  const maxPlayers = Number(payload.maxPlayers || 20);
+  const serverHost = String(payload.serverHost || '');
+  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(jobId)
+    || !Number.isSafeInteger(placeId) || placeId <= 0
+    || !Number.isInteger(port) || port < 1 || port > 65535
+    || !Number.isInteger(maxPlayers) || maxPlayers < 1 || maxPlayers > 100
+    || !isValidAdvertisedHost(serverHost)) {
+    return res.status(400).json({ ok: false, error: 'invalid-game-server-registration' });
+  }
+  let hostRequest = null;
+  if (requestId) {
+    hostRequest = [...pendingRemoteHostRequests.values()].find((item) => item.requestId === requestId);
+    if (!hostRequest || hostRequest.placeId !== placeId
+      || hostRequest.claimedBy !== String(payload.workerId || '')) {
+      return res.status(409).json({ ok: false, error: 'host-request-mismatch' });
+    }
+  }
+
+  const suppliedPlayers = payload.playerIds !== undefined ? payload.playerIds : payload.currentPlayers;
+  const playerIds = suppliedPlayers === undefined ? [] : validRemotePlayerIds(suppliedPlayers, maxPlayers);
+  if (playerIds === null) {
+    return res.status(400).json({ ok: false, error: 'invalid-game-server-players' });
+  }
+  const now = new Date().toISOString();
   const serverRecord = {
     serverJobId: jobId,
-    placeId: Number(payload.placeId || 1818),
-    port: Number(payload.port || gamePort),
-    currentPlayers: Array.isArray(payload.playerIds) ? payload.playerIds : [],
-    maxPlayers: Number(payload.maxPlayers || 20),
+    placeId,
+    port,
+    serverHost: serverHost.replace(/^\[|\]$/g, ''),
+    currentPlayers: playerIds,
+    maxPlayers,
     status: 'running',
-    startedAt: new Date().toISOString(),
+    remoteHost: true,
+    startedAt: now,
+    lastHeartbeatAt: now,
   };
-
-  activeGameServers.push(serverRecord);
+  registerServerRecord(serverRecord);
+  if (hostRequest) finishRemoteHostRequest(hostRequest);
   return res.json({ ok: true, server: serverRecord });
 });
 
 app.post('/api/servers/update-players', (req, res) => {
+  if (!authorizeRemoteGameHost(req, res)) return;
+  pruneStaleRemoteServers();
   const payload = req.body || {};
-  const serverJobId = payload.jobId || payload.serverJobId;
-  const server = activeGameServers.find((candidate) => candidate.serverJobId === serverJobId);
-
+  const serverJobId = String(payload.jobId || payload.serverJobId || '');
+  const server = activeGameServers.find((candidate) => candidate.serverJobId === serverJobId && candidate.remoteHost);
   if (!server) {
     return res.status(404).json({ ok: false, message: 'server-not-found' });
   }
 
-  const playerIds = Array.isArray(payload.playerIds)
-    ? payload.playerIds
-    : Array.isArray(payload.currentPlayers)
-      ? payload.currentPlayers
-      : [];
-
-  server.currentPlayers = playerIds.map((id) => String(id));
-  server.maxPlayers = Number(payload.maxPlayers || server.maxPlayers || 20);
-  server.currentPlayers = server.currentPlayers.slice(0, server.maxPlayers);
-
+  if (payload.playerIds !== undefined || payload.currentPlayers !== undefined) {
+    const players = validRemotePlayerIds(
+      payload.playerIds !== undefined ? payload.playerIds : payload.currentPlayers,
+      server.maxPlayers,
+    );
+    if (players === null) return res.status(400).json({ ok: false, error: 'invalid-game-server-players' });
+    server.currentPlayers = players;
+  }
+  server.lastHeartbeatAt = new Date().toISOString();
   return res.json({ ok: true, server });
 });
 
 app.post('/api/servers/close', (req, res) => {
+  if (!authorizeRemoteGameHost(req, res)) return;
   const payload = req.body || {};
-  const serverJobId = payload.jobId || payload.serverJobId;
-  if (serverJobId) {
-    removeServerByJobId(String(serverJobId));
-  }
-  res.json({ ok: true, serverJobId: String(serverJobId || 'unknown') });
+  const serverJobId = String(payload.jobId || payload.serverJobId || '');
+  const server = activeGameServers.find((candidate) => candidate.serverJobId === serverJobId && candidate.remoteHost);
+  if (!server) return res.status(404).json({ ok: false, error: 'server-not-found' });
+  removeServerByJobId(serverJobId);
+  return res.json({ ok: true, serverJobId });
 });
 
 app.post('/ide/publish', express.raw({ type: '*/*', limit: '100mb' }), (req, res) => {

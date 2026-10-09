@@ -529,12 +529,14 @@
         'Checking this computer for an installed client.');
 
       try {
-        requestTimer = window.setTimeout(function () { controller.abort(); }, 20000);
-        const response = await fetch('/api/launch-game', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ placeId }),
-          signal: controller.signal
+        requestTimer = window.setTimeout(function () { controller.abort(); }, 120000);
+        const response = await window.LBLoading.requestWithHostStartupRetry(function () {
+          return fetch('/api/launch-game', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ placeId }),
+            signal: controller.signal
+          });
         });
 
         const data = await response.json().catch(function () { return {}; });
