@@ -248,13 +248,36 @@ test('dark theme state is consistent across server-rendered pages and live setti
   assert.match(settings, /document\.body\.classList\.toggle\('dark-theme',\s*theme === 'dark'\)/);
 });
 
-test('shared page styling keeps the classic neutral canvas and flat surfaces', () => {
+test('shared page styling keeps the neutral canvas with consistent panel depth', () => {
   const themeCss = fs.readFileSync(path.join(cssDir, 'refresh-2021.css'), 'utf8');
   assert.match(themeCss, /--rf-page:\s*#f2f4f5\s*;/);
   assert.match(themeCss, /--rf-surface:\s*#ffffff\s*;/);
   assert.match(themeCss, /--rf-line:\s*#dbdee6\s*;/);
-  assert.match(themeCss, /--rf-radius(?:-sm|-lg)?:\s*2px\s*;/);
-  assert.match(themeCss, /--rf-shadow-[123]:\s*none\s*;/);
+  const layoutPolish = themeCss.slice(themeCss.lastIndexOf('/* Keep the fixed bar'));
+  assert.match(layoutPolish, /--rf-radius:\s*4px\s*;/);
+  assert.match(layoutPolish, /--rf-radius-sm:\s*4px\s*;/);
+  assert.match(layoutPolish, /--rf-radius-lg:\s*8px\s*;/);
+  assert.match(layoutPolish, /--rf-shadow-1:\s*0 1px 3px/);
+});
+
+test('shared shell synchronizes fixed header, rail, and mobile offsets', () => {
+  const themeCss = fs.readFileSync(path.join(cssDir, 'refresh-2021.css'), 'utf8');
+  const layoutPolish = themeCss.slice(themeCss.lastIndexOf('/* Keep the fixed bar'));
+  assert.match(layoutPolish, /position:\s*fixed !important;/);
+  assert.match(layoutPolish, /z-index:\s*1000 !important;/);
+  assert.match(layoutPolish, /padding-top:\s*var\(--lb-topbar-height\) !important;/);
+  assert.match(layoutPolish, /--rf-header-h:\s*64px\s*;/);
+  assert.match(layoutPolish, /--rf-rail-w:\s*0px\s*;/);
+  assert.match(layoutPolish, /display:\s*flex !important;\s*min-width:\s*0;\s*margin-left:\s*auto;/);
+});
+
+test('Discover carousels fit the content column on narrow screens', () => {
+  const gamesCss = fs.readFileSync(path.join(cssDir, 'games.css'), 'utf8');
+  const listContainer = gamesCss.match(/\.games-lists-container\s*\{([^}]*)\}/);
+  assert.ok(listContainer, 'games carousel container rule not found');
+  assert.match(listContainer[1], /width:\s*100%/);
+  assert.match(listContainer[1], /min-width:\s*0/);
+  assert.match(gamesCss, /@media \(max-width:\s*560px\)[\s\S]*?\.games-list-header h2\s*\{[^}]*white-space:\s*normal/);
 });
 
 test('dark theme styles Discover, shop, and avatar controls left white by page sheets', () => {

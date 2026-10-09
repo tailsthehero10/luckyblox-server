@@ -790,3 +790,166 @@ textarea:focus-visible,
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+/* Keep the fixed bar, rail, and shell on the same geometry tokens. */
+:root {
+  --rf-header-h: 90px;
+  --lb-topbar-height: var(--rf-header-h);
+  --rf-rail-w: 220px;
+  --lb-rail-width: var(--rf-rail-w);
+  --rf-radius: 4px;
+  --rf-radius-sm: 4px;
+  --rf-radius-lg: 8px;
+  --rf-shadow-1: 0 1px 3px rgba(25, 27, 31, 0.08);
+  --rf-shadow-2: 0 5px 16px rgba(25, 27, 31, 0.1);
+}
+
+html {
+  scroll-padding-top: var(--rf-header-h);
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* A fixed header must not also occupy normal flow above the shell. The shell
+   already reserves this exact height, so sticky positioning doubled the gap. */
+.lb-page > .lb-header,
+.lb-page > .roblox-topbar,
+.roblox-page > .lb-header,
+.roblox-page > .roblox-topbar {
+  position: fixed !important;
+  inset: 0 0 auto;
+  z-index: 1000 !important;
+}
+
+.lb-shell,
+.roblox-shell {
+  box-sizing: border-box;
+  width: 100%;
+  padding-top: var(--lb-topbar-height) !important;
+  padding-left: var(--lb-rail-width) !important;
+}
+
+.lb-sidebar,
+.roblox-sidebar {
+  top: var(--lb-topbar-height) !important;
+  z-index: 40;
+}
+
+.lb-main,
+.roblox-main {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1180px;
+  padding: 24px 28px 56px !important;
+}
+
+.lb-panel,
+.roblox-panel,
+.lb-game-hero,
+.roblox-game-hero,
+.lb-hero,
+.roblox-hero {
+  border-radius: var(--rf-radius-lg);
+  box-shadow: var(--rf-shadow-1);
+}
+
+.lb-panel-header,
+.roblox-panel-header {
+  padding: 14px 18px;
+}
+
+.lb-panel-body,
+.roblox-panel-body {
+  padding: 18px;
+}
+
+.lb-btn,
+.roblox-primary-button,
+.roblox-secondary-button {
+  min-height: 36px;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease, box-shadow 0.15s ease;
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --rf-rail-w: 200px;
+  }
+
+  .lb-main,
+  .roblox-main {
+    padding: 20px 22px 48px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --rf-header-h: 64px;
+    --rf-rail-w: 0px;
+  }
+
+  .lb-page > .lb-header,
+  .lb-page > .roblox-topbar,
+  .roblox-page > .lb-header,
+  .roblox-page > .roblox-topbar {
+    height: var(--rf-header-h) !important;
+    min-height: var(--rf-header-h) !important;
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 0 12px !important;
+  }
+
+  .lb-header-nav,
+  .roblox-nav {
+    display: none !important;
+  }
+
+  .lb-header-right,
+  .roblox-right {
+    display: flex !important;
+    min-width: 0;
+    margin-left: auto;
+  }
+
+  .lb-sidebar,
+  .roblox-sidebar {
+    top: var(--rf-header-h) !important;
+  }
+
+  .lb-main,
+  .roblox-main {
+    padding: 18px 16px 40px !important;
+  }
+
+  .lb-panel-body,
+  .roblox-panel-body {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 560px) {
+  h1 {
+    font-size: clamp(22px, 7vw, 28px);
+  }
+
+  .lb-hero,
+  .roblox-hero {
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .lb-hero-art {
+    width: 80px;
+    height: 80px;
+  }
+
+  .lb-main,
+  .roblox-main {
+    padding-right: 12px !important;
+    padding-left: 12px !important;
+  }
+}

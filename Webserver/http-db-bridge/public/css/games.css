@@ -41,7 +41,8 @@
 }
 
 .games-lists-container {
-  min-width: 500px;
+  width: 100%;
+  min-width: 0;
   /* The real 2013 sheet sets min-height: 820px. That value existed to reserve room
      for the page's RIGHT-HAND AD COLUMN, which sat beside the lists and had to be
      able to fill a tall area.
@@ -482,6 +483,16 @@ a.game-name:hover {
 }
 
 @media (max-width: 560px) {
+  .games-list-top {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .games-list-header h2 {
+    font-size: 18px;
+    white-space: normal;
+  }
+
   /* Shrink the SQUARE frame proportionally. The old block set a 150x84 wide box,
      which contradicted the square frame above and re-introduced the letterboxing
      on small screens - so the fix would have held on desktop and come back on a
