@@ -6,6 +6,7 @@ const http = require('node:http');
 const os = require('node:os');
 const path = require('node:path');
 const {
+  LOCAL_GAME_ADDRESS,
   createDevHttpServer,
   createLocalServerConfig,
   prepareServerRuntime,
@@ -18,6 +19,8 @@ const {
   resolveClientDir,
   verifyTicketRedemptionRoute,
 } = require('../tools/dev-launch');
+
+assert.equal(LOCAL_GAME_ADDRESS, '127.0.0.1', 'the 2021 join protocol must advertise IPv4 loopback');
 
 const releaseRoot = path.resolve(__dirname, '..');
 const selectedFile = path.join(releaseRoot, 'Settings', 'SelectedClient.txt');
@@ -288,9 +291,9 @@ console.log('ok: DEV-PLAY resolves the selected map/place, prepares local-test s
     const signedJoinMatch = signedJoinText.match(/^--rbxsig%[^%]+%([\s\S]+)$/);
     assert.ok(signedJoinMatch, 'the join-script response must be signed in the client protocol format');
     const joinSettings = JSON.parse(signedJoinMatch[1]);
-    assert.equal(joinSettings.MachineAddress, '::1');
+    assert.equal(joinSettings.MachineAddress, '127.0.0.1');
     assert.equal(joinSettings.ServerPort, 53644);
-    assert.deepEqual(joinSettings.ServerConnections, [{ Address: '::1', Port: 53644 }]);
+    assert.deepEqual(joinSettings.ServerConnections, [{ Address: '127.0.0.1', Port: 53644 }]);
     assert.equal(joinSettings.ClientTicket, 'test-ticket');
     assert.equal(joinSettings.UserId, 42);
     assert.equal(joinSettings.UserName, 'RealPlayer');

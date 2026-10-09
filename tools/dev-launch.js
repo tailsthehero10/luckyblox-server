@@ -51,7 +51,10 @@ const SERVER_START_TIMEOUT_MS = 60000;
 const MAPS_DIR = path.join(RELEASE_ROOT, 'Maps');
 const GAMES_FILE = path.join(RELEASE_ROOT, 'Webserver', 'http-db-bridge', 'data', 'games.json');
 const SERVER_ROOT = path.join(RELEASE_ROOT, 'shared');
-const LOCAL_GAME_ADDRESS = '::1';
+// The 2021 PlaceLauncher join payload's `ip`/ServerConnections fields use an
+// IPv4 address. Advertising ::1 leaves this client at "Joining server" even
+// when RCC itself has opened the requested port.
+const LOCAL_GAME_ADDRESS = '127.0.0.1';
 const JOIN_PRIVATE_KEY_PATH = path.join(
   RELEASE_ROOT,
   'Webserver',
@@ -155,8 +158,19 @@ function resolveDefaultPlace(settingsDir = path.join(RELEASE_ROOT, 'Settings'), 
   }
 
   if (selectedMap) {
-    const resolvedPath = path.resolve(selectedMap);
-    if (!/\.(rbxl|rbxlx)$/i.test(resolvedPath) || !fs.existsSync(resolvedPath) || !fs.statSync(resolvedPath).isFile()) {
+    const candidates = path.isAbsolute(selectedMap)
+      ? [path.resolve(selectedMap)]
+      : [
+        path.resolve(RELEASE_ROOT, selectedMap),
+        path.resolve(MAPS_DIR, selectedMap),
+        path.resolve(settingsDir, selectedMap),
+      ];
+    const resolvedPath = candidates.find((candidate) => (
+      /\.(rbxl|rbxlx)$/i.test(candidate)
+      && fs.existsSync(candidate)
+      && fs.statSync(candidate).isFile()
+    ));
+    if (!resolvedPath) {
       throw new Error(`the selected map does not exist or is not an RBXL file: ${selectedMap}`);
     }
     const selectedTitle = normalizeTitle(resolvedPath);
