@@ -5857,6 +5857,55 @@ app.get('/game', (req, res) => {
   return renderGamePage2021(req, res, normalizePlaceId(req.query.placeId || req.query.placeid || 1818));
 });
 
+function gamePlayerSlug(value) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+app.get('/gameplayer/:gamename', (req, res) => {
+  const wantedSlug = gamePlayerSlug(req.params.gamename);
+  const entries = Object.entries(getGames())
+    .filter(([, game]) => game && typeof game === 'object')
+    .filter(([placeId, game]) => {
+      const title = game.title || game.name;
+      return (title && gamePlayerSlug(title) === wantedSlug)
+        || (/^\d+$/.test(req.params.gamename) && String(placeId) === req.params.gamename);
+    });
+  const requestedPlaceId = req.query.placeId && String(req.query.placeId);
+  const matches = requestedPlaceId
+    ? entries.filter(([placeId]) => placeId === requestedPlaceId)
+    : entries;
+
+  if (matches.length !== 1) {
+    const user = resolveViewer(req).user;
+    return res.status(404).render('not-found', {
+      title: 'Experience not found - LuckyBlox',
+      user,
+      currency: getCurrencyForUser(user),
+      requestedPath: req.originalUrl || req.path,
+    });
+  }
+
+  const [placeId] = matches[0];
+  const normalizedPlaceId = normalizePlaceId(placeId);
+  const user = resolveViewer(req).user;
+  const game = getGameEntry(normalizedPlaceId);
+  const metadata = gameClientMetadata(normalizedPlaceId, game);
+  return res.render('gameplayer', {
+    title: `${metadata.title} - Play on LuckyBlox`,
+    user,
+    currency: getCurrencyForUser(user),
+    game,
+    gameMetadata: metadata,
+    placeId: normalizedPlaceId,
+    gameSlug: gamePlayerSlug(metadata.title),
+  });
+});
+
 /**
  * Shared renderer for the game (experience) page.
  *
@@ -5915,6 +5964,7 @@ function renderGamePage2021(req, res, placeId) {
     // on the game page showed a square icon inside a wide frame. When a game has
     // its own wide artwork it is used; otherwise the 16:9 placeholder stands in.
     gameIcon: gameClientMetadata(placeId, game).iconUrl,
+    gamePlayerSlug: gamePlayerSlug(game.title || game.name || ''),
     gameThumb: (game.thumbnail || game.thumbnailUrl || game.thumbnailSource)
       && /^\/|^https?:\/\//.test(game.thumbnail || game.thumbnailUrl || game.thumbnailSource)
       && !/\/gameplaceholder\/(?:card|game-thumb)\.png(?:$|[?#])/i.test(game.thumbnail || game.thumbnailUrl || game.thumbnailSource)

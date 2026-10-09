@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en" class="<%= themeClass || '' %>">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/css/roblox.css" />
+  <link rel="stylesheet" href="/css/refresh-2021.css" />
+  <link rel="stylesheet" href="/css/roblox-ui.css" />
+  <style>
+    .lb-gameplayer { max-width: 900px; margin: 36px auto; }
+    .lb-gameplayer-card { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 28px; align-items: center; padding: 28px; }
+    .lb-gameplayer-art { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 12px; background: #f2f4f5; }
+    .lb-gameplayer-title { margin: 8px 0; }
+    .lb-gameplayer-status { min-height: 52px; margin: 20px 0 12px; line-height: 1.5; }
+    .lb-gameplayer-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .lb-gameplayer-note { color: #6d7378; font-size: 13px; line-height: 1.5; }
+    @media (max-width: 640px) {
+      .lb-gameplayer-card { grid-template-columns: 1fr; }
+      .lb-gameplayer-art { max-width: 220px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="lb-page">
+    <%- include('partials/header', { user: user, currency: currency, activeNav: 'games' }) %>
+    <div class="lb-shell">
+      <%- include('partials/sidebar', { user: user, activeNav: 'games' }) %>
+      <main class="lb-main">
+        <section class="lb-panel lb-gameplayer">
+          <div class="lb-panel-header"><span>LuckyBlox Player</span></div>
+          <div class="lb-panel-body lb-gameplayer-card">
+            <img class="lb-gameplayer-art"
+                 src="<%= gameMetadata.iconUrl || '/gameplaceholder/card.png' %>"
+                 alt="<%= gameMetadata.title %>"
+                 onerror="this.onerror=null;this.src='/gameplaceholder/card.png';" />
+            <div>
+              <div class="roblox-eyebrow">CUSTOM-2021M desktop client</div>
+              <h1 class="lb-gameplayer-title"><%= gameMetadata.title %></h1>
+              <p class="roblox-description">By <strong><%= gameMetadata.creatorName || 'LuckyBlox Studio' %></strong></p>
+              <p class="lb-gameplayer-note">
+                This page starts the installed 2021 client. It does not simulate the game in a web-based 3D viewer.
+                Your browser will ask before opening the desktop client.
+              </p>
+              <button class="lb-btn lb-btn-primary" type="button" id="gameplayerLaunch"
+                      data-place-id="<%= placeId %>">Play in the 2021 client</button>
+              <p class="lb-gameplayer-status" id="gameplayerStatus" role="status" aria-live="polite">
+                Press Play to prepare a secure join ticket for <%= gameMetadata.title %>.
+              </p>
+              <div class="lb-gameplayer-actions" id="gameplayerActions" hidden></div>
+              <p class="lb-gameplayer-note">
+                If you are on the public website, the server cannot run programs on your PC. Use the desktop handoff below,
+                or use DEV-PLAY from your LuckyBlox release folder to run the game server locally.
+              </p>
+              <a href="/game/<%= placeId %>">Back to the experience page</a>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <%- include('partials/scripts') %>
+  <script>
+    (function () {
+      var button = document.getElementById('gameplayerLaunch');
+      var status = document.getElementById('gameplayerStatus');
+      var actions = document.getElementById('gameplayerActions');
+      if (!button || !status || !actions) return;
+
+      function setStatus(message) {
+        status.textContent = message;
+      }
+
+      function addAction(label, href, primary) {
+        var link = document.createElement('a');
+        link.className = 'lb-btn ' + (primary ? 'lb-btn-primary' : 'lb-btn-secondary');
+        link.href = href;
+        link.textContent = label;
+        actions.appendChild(link);
+        actions.hidden = false;
+      }
+
+      button.addEventListener('click', async function () {
+        var loading = window.LBLoading;
+        var timeout;
+        var controller = new AbortController();
+        actions.textContent = '';
+        actions.hidden = true;
+        button.disabled = true;
+        setStatus('Preparing the game and checking the client installation…');
+        if (loading) loading.button(button, true);
+
+        try {
+          timeout = window.setTimeout(function () { controller.abort(); }, 20000);
+          var response = await fetch('/api/launch-game', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ placeId: Number(button.dataset.placeId) }),
+            signal: controller.signal
+          });
+          var data = await response.json().catch(function () { return {}; });
+
+          if (response.status === 401 || data.error === 'sign-in-required') {
+            window.location.href = '/signin?redirect='
+              + encodeURIComponent(window.location.pathname + window.location.search);
+            return;
+          }
+          if (!response.ok || !data.ok) {
+            setStatus(data.message || 'The server could not prepare this game. Please try again.');
+            return;
+          }
+          if (data.nativeLaunch && data.nativeLaunch.status === 'launched') {
+            setStatus('The installed client was started. If it does not appear, check whether Windows or your antivirus blocked it.');
+            return;
+          }
+          if (data.client && data.client.supported === false) {
+            setStatus('The public server cannot start a Windows program on your computer. Open this game through DEV-PLAY on your PC.');
+            if (data.devPlayURI && /^luckyblox-devplay:/i.test(data.devPlayURI)) {
+              addAction('Open this game in DEV-PLAY', data.devPlayURI, true);
+            }
+            if (data.client.downloadUrl) addAction('Install or repair the client', '/download', false);
+            return;
+          }
+          if (data.launchURI && /^luckyblox-player:/i.test(data.launchURI)) {
+            setStatus('The join ticket is ready. Click below to allow your browser to open the installed LuckyBlox client.');
+            addAction('Open LuckyBlox', data.launchURI, true);
+            return;
+          }
+          if (data.client && data.client.downloadUrl) {
+            setStatus('The LuckyBlox client is not installed yet.');
+            addAction('Install LuckyBlox', '/download', true);
+            return;
+          }
+          setStatus(data.nativeLaunch && data.nativeLaunch.error
+            ? 'Could not start the client: ' + data.nativeLaunch.error
+            : 'The game ticket was prepared, but no compatible client handoff is available.');
+        } catch (error) {
+          setStatus(error && error.name === 'AbortError'
+            ? 'The game took too long to prepare. Press Play to try again.'
+            : 'Could not reach the LuckyBlox server. Check your connection and try again.');
+        } finally {
+          if (timeout) window.clearTimeout(timeout);
+          button.disabled = false;
+          if (loading) loading.button(button, false);
+        }
+      });
+    }());
+  </script>
+</body>
+</html>

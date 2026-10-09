@@ -129,6 +129,9 @@ assert.match(gameAbout, /showJoinState\('manual', 'Continue in LuckyBlox'/);
 assert.match(server, /function gameCreatorMetadata\(game\)/);
 assert.match(server, /creatorName: creator\.creatorName/);
 assert.match(server, /creatorId: creator\.creatorId/);
+assert.match(server, /app\.get\('\/gameplayer\/:gamename'/);
+assert.match(server, /function gamePlayerSlug\(value\)/);
+assert.match(server, /res\.render\('gameplayer'/);
 assert.ok(
   gameAbout.indexOf('data.client && data.client.supported === false')
     < gameAbout.indexOf("if (data.launchURI && /^luckyblox-player:/i.test(data.launchURI))"),
@@ -139,10 +142,17 @@ assert.ok(
   'the public game page must show the clicked place ID in its local DEV-PLAY command',
 );
 assert.doesNotMatch(gameAbout, /window\.location\.href\s*=\s*data\.playUrl/);
+assert.match(gameAbout, /href="\/gameplayer\/<%= gamePlayerSlug %>"/);
 const playMarkup = fs.readFileSync(path.join(root, 'Webserver', 'http-db-bridge', 'views', 'play.ejs'), 'utf8');
 assert.match(playMarkup, /roblox-eyebrow">Experience/);
 assert.match(playMarkup, /By <strong><%= creatorName/);
 assert.match(playMarkup, /controller\.abort\(\);\s*\}, 20000/);
+const gamePlayer = fs.readFileSync(path.join(root, 'Webserver', 'http-db-bridge', 'views', 'gameplayer.ejs'), 'utf8');
+assert.match(gamePlayer, /data-place-id="<%= placeId %>"/);
+assert.match(gamePlayer, /fetch\('\/api\/launch-game'/);
+assert.match(gamePlayer, /Open this game in DEV-PLAY/);
+assert.match(gamePlayer, /luckyblox-player:/);
+assert.match(gamePlayer, /luckyblox-devplay:/);
 
 const installer = fs.readFileSync(path.join(root, 'tools', 'installer', 'LuckybloxInstaller.cs'), 'utf8');
 const installerBuild = fs.readFileSync(path.join(root, 'tools', 'installer', 'build-installer.bat'), 'utf8');
