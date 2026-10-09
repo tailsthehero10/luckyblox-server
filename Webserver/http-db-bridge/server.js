@@ -15,6 +15,7 @@ const { getRobloxProfileTemplateItems } = require('./robloxTemplateSource');
 const { searchUsers } = require(path.join(__dirname, '..', '..', 'server', 'userSearch.js'));
 const avatarRig = require('./avatarRig');
 const { parseAccessoryAsset } = require('./avatarAccessories');
+const { loadClientEngineApi } = require('./engineApiReference');
 const { getAvatarAccessoryThumbnail } = require('./avatarAccessoryThumbnail');
 const robloxApi = require('./robloxApi');
 const { getStudioBuildInfo, getStudioUpdateManifest, STUDIO_EXECUTABLE_PATH, DEFAULT_BASE_URL } = require('./studioBuildInfo');
@@ -3467,6 +3468,26 @@ function gameClientMetadata(placeId, game = getGameEntry(placeId)) {
     iconUrl: absoluteAssetUrl(storedIcon, '/gameplaceholder/card.png'),
     description: String(game.description || ''),
     genre: String(game.genre || 'Adventure'),
+  };
+}
+
+function clientPlayerMetadata(userId, sessionUser) {
+  const user = getUser(userId);
+  const accountCreatedAt = Date.parse(String(user.joinDate || ''));
+  const accountAge = Number.isFinite(accountCreatedAt)
+    ? Math.max(0, Math.floor((Date.now() - accountCreatedAt) / 86400000))
+    : 0;
+  const username = String(user.username || (sessionUser && sessionUser.username) || `Player${userId}`)
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .slice(0, 50);
+
+  return {
+    username,
+    displayName: String(user.displayName || username).replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 50),
+    membershipType: String(user.membershipStatus || user.membership || 'None')
+      .replace(/[\u0000-\u001f\u007f]/g, '')
+      .slice(0, 32),
+    accountAge,
   };
 }
 
@@ -7299,6 +7320,7 @@ app.post('/api/client/launch', (req, res) => {
   const userId = Number(sessionUser.userId || sessionUser.id) || 1;
   const placeId = Number(req.body.placeId || req.query.placeId || 1818);
   const gameMetadata = gameClientMetadata(placeId);
+  const playerMetadata = clientPlayerMetadata(userId, sessionUser);
   const job = createNamedJoinJob(userId, placeId);
   const ticket = createAuthTicket(userId, placeId, {
     port: job.port,
@@ -7332,7 +7354,9 @@ app.post('/api/client/launch', (req, res) => {
       jobId: job.jobId,
       baseUrl: publicOrigin,
       gameMetadata,
+      playerMetadata,
     }),
+    player: playerMetadata,
     playUrl: `/play?placeId=${placeId}&userId=${userId}&ticket=${encodeURIComponent(ticket.ticket)}&serverPort=${job.port}&jobId=${encodeURIComponent(job.jobId)}`,
   });
 });
@@ -7357,6 +7381,7 @@ app.post('/api/launch-game', (req, res) => {
   // request a ticket for somebody else.
   const userId = Number(sessionUser.userId || sessionUser.id) || 1;
   const placeId = Number(req.body.placeId || req.body.placeid || req.query.placeId || 1818);
+  const playerMetadata = clientPlayerMetadata(userId, sessionUser);
 
   try {
     const gameMetadata = gameClientMetadata(placeId);
@@ -7427,8 +7452,10 @@ app.post('/api/launch-game', (req, res) => {
         jobId: job.jobId,
         baseUrl: publicOrigin,
         gameMetadata,
+        playerMetadata,
       }),
-      playUrl,
+        player: playerMetadata,
+        playUrl,
       // Client install state, so the page can say "launching" or "download".
       client: clientStatus,
       nativeLaunch: launchResult.ok
@@ -9004,9 +9031,13 @@ app.get('/dev/docs', requireDevAuth, (req, res) => {
 
 app.get('/dev/docs/games', requireDevAuth, (req, res) => {
   const user = getDevUser(req);
+  const engineApi = loadClientEngineApi(releaseRoot, selectedClientName());
   res.render('dev/docs/games', {
     title: 'Game Engine API - LuckyBlox Studio',
     user,
+    engineApi,
+    currency: getCurrencyForUser(user),
+    adminBadge: getAdminBadge(user),
   });
 });
 

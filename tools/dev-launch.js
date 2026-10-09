@@ -51,6 +51,7 @@ const SERVER_START_TIMEOUT_MS = 60000;
 const MAPS_DIR = path.join(RELEASE_ROOT, 'Maps');
 const GAMES_FILE = path.join(RELEASE_ROOT, 'Webserver', 'http-db-bridge', 'data', 'games.json');
 const SERVER_ROOT = path.join(RELEASE_ROOT, 'shared');
+const LOCAL_GAME_ADDRESS = '::1';
 const JOIN_PRIVATE_KEY_PATH = path.join(
   RELEASE_ROOT,
   'Webserver',
@@ -255,6 +256,22 @@ function parseLaunchUri(launchUri) {
       gameMetadata[key] = fields[field].replace(/[\u0000-\u001f\u007f]/g, '').slice(0, maxLength);
     }
   }
+  const playerMetadata = {};
+  const playerFields = {
+    playerName: ['username', 50],
+    playerDisplayName: ['displayName', 50],
+    playerMembership: ['membershipType', 32],
+    playerAccountAge: ['accountAge', 8],
+  };
+  for (const [field, [key, maxLength]] of Object.entries(playerFields)) {
+    if (fields[field]) {
+      playerMetadata[key] = fields[field].replace(/[\u0000-\u001f\u007f]/g, '').slice(0, maxLength);
+    }
+  }
+  if (playerMetadata.accountAge !== undefined) {
+    const accountAge = Number(playerMetadata.accountAge);
+    playerMetadata.accountAge = Number.isFinite(accountAge) ? Math.max(0, Math.floor(accountAge)) : 0;
+  }
   if (Object.keys(gameMetadata).length) gameMetadata.placeId = placeId;
 
   return {
@@ -264,6 +281,7 @@ function parseLaunchUri(launchUri) {
     jobId: fields.jobId,
     url: baseUrl,
     ...(Object.keys(gameMetadata).length ? { gameMetadata } : {}),
+    ...(Object.keys(playerMetadata).length ? { playerMetadata } : {}),
   };
 }
 
@@ -360,6 +378,7 @@ function parseArgs(argv) {
       args.jobId = launch.jobId;
       args.url = launch.url;
       args.gameMetadata = launch.gameMetadata;
+      args.playerMetadata = launch.playerMetadata;
       if (launch.gameMetadata && launch.gameMetadata.title) {
         args.placeTitle = launch.gameMetadata.title;
       }
@@ -473,12 +492,14 @@ function resolveGameMetadata(metadata, placeId, fallbackTitle, games = readLocal
 }
 
 function createLegacyJoinPayload({
-  placeId, userId, ticket, jobId, gamePort, baseUrl, game,
+  placeId, userId, ticket, jobId, gamePort, baseUrl, game, playerMetadata,
 }) {
   const origin = new URL(String(baseUrl)).origin;
   const creatorId = Number(game.creatorId) || 1;
   const creatorType = ['User', 'Group'].includes(game.creatorType) ? game.creatorType : 'User';
-  const serverAddress = '127.0.0.1';
+  const player = playerMetadata && typeof playerMetadata === 'object' ? playerMetadata : {};
+  const serverAddress = LOCAL_GAME_ADDRESS;
+  const userName = String(player.username || `Player${Number(userId)}`).slice(0, 50);
 
   return {
     ClientPort: 0,
@@ -488,7 +509,8 @@ function createLegacyJoinPayload({
     DirectServerReturn: true,
     PingUrl: '',
     PingInterval: 120,
-    UserName: `Player${Number(userId)}`,
+    UserName: userName,
+    DisplayName: String(player.displayName || userName).slice(0, 50),
     SeleniumTestMode: false,
     UserId: Number(userId),
     RobloxLocale: 'en_us',
@@ -498,12 +520,13 @@ function createLegacyJoinPayload({
     ClientTicket: String(ticket),
     GameId: String(jobId),
     PlaceId: Number(placeId),
+    PlaceName: String(game.title || `Place ${Number(placeId)}`).slice(0, 160),
     BaseUrl: `${origin}/`,
     ChatStyle: 'ClassicAndBubble',
     CreatorId: creatorId,
     CreatorTypeEnum: creatorType,
-    MembershipType: 'None',
-    AccountAge: 0,
+    MembershipType: String(player.membershipType || 'None').slice(0, 32),
+    AccountAge: Math.max(0, Number(player.accountAge) || 0),
     CookieStoreFirstTimePlayKey: 'rbx_evt_ftp',
     CookieStoreFiveMinutePlayKey: 'rbx_evt_fmp',
     CookieStoreEnabled: true,
@@ -521,7 +544,7 @@ function createLegacyJoinPayload({
 }
 
 function createDevHttpServer({
-  placeId, mapPath, userId, ticket, jobId, gamePort, baseUrl, gameMetadata,
+  placeId, mapPath, userId, ticket, jobId, gamePort, baseUrl, gameMetadata, playerMetadata,
   signJoinScript = signLocalJoinScript,
 }) {
   const game = normalizeGameMetadata(gameMetadata, placeId, path.basename(mapPath, path.extname(mapPath)));
@@ -592,7 +615,7 @@ function createDevHttpServer({
       log('local-api', `GET join script place=${requestedPlaceId || 'missing'} user=${requestedUserId || 'missing'}`);
       if (requestedPlaceId !== Number(placeId)
         || requestedUserId !== Number(userId)
-        || requestedIp !== '127.0.0.1'
+        || requestedIp !== LOCAL_GAME_ADDRESS
         || requestedPort !== Number(gamePort)) {
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
         res.end('Local join target mismatch.');
@@ -601,7 +624,7 @@ function createDevHttpServer({
 
       try {
         const script = JSON.stringify(createLegacyJoinPayload({
-          placeId, userId, ticket, jobId, gamePort, baseUrl, game,
+          placeId, userId, ticket, jobId, gamePort, baseUrl, game, playerMetadata,
         }));
         const signedScript = signJoinScript(script);
         if (typeof signedScript !== 'string' || !signedScript.startsWith('--rbxsig%')) {
@@ -639,13 +662,13 @@ function createDevHttpServer({
       const joinScriptUrl = new URL('/2021/game/join.ashx', `http://127.0.0.1:${server.address().port}`);
       joinScriptUrl.search = new URLSearchParams({
         placeid: String(placeId),
-        ip: '127.0.0.1',
+        ip: LOCAL_GAME_ADDRESS,
         port: String(gamePort),
         user: String(userId),
         id: String(userId),
-        membership: 'None',
+        membership: String(playerMetadata && playerMetadata.membershipType || 'None'),
         app: `${new URL(String(baseUrl)).origin}/v1/avatar-fetch?placeId=${Number(placeId)}&userId=${Number(userId)}`,
-        age: '0',
+        age: String(Math.max(0, Number(playerMetadata && playerMetadata.accountAge) || 0)),
         jobId: String(jobId),
       }).toString();
       const origin = new URL(String(baseUrl)).origin;
@@ -965,7 +988,7 @@ function findFreePort(start = 53640) {
       probe.once('listening', () => {
         probe.close(() => resolve(port));
       });
-      probe.listen(port, '127.0.0.1');
+      probe.listen(port, LOCAL_GAME_ADDRESS);
     };
     tryPort();
   });
@@ -1102,12 +1125,12 @@ function startLocalGameServer({
 
     const checkPort = () => {
       if (settled) return;
-      const socket = net.createConnection({ host: '127.0.0.1', port });
+      const socket = net.createConnection({ host: LOCAL_GAME_ADDRESS, port });
       socket.setTimeout(500);
       socket.once('connect', () => {
         socket.destroy();
         finish(null);
-        log('game-server', `listening on 127.0.0.1:${port}`);
+        log('game-server', `listening on [${LOCAL_GAME_ADDRESS}]:${port}`);
       });
       socket.once('error', () => {
         socket.destroy();
@@ -1250,6 +1273,7 @@ async function main() {
     launch.placeId,
     args.placeTitle,
   );
+  launch.playerMetadata = launch.playerMetadata || launch.player || args.playerMetadata || {};
   log('ticket', `ok: jobId=${launch.jobId} place=${launch.placeId}`);
   log('game', `${launch.gameMetadata.title || `place ${launch.placeId}`} by ${launch.gameMetadata.creatorName || 'unknown creator'}`);
   await verifyTicketRedemptionRoute(args.url);
@@ -1273,7 +1297,7 @@ async function main() {
     }
     const serverBinary = resolveServerBinary(args.client);
     if (!serverBinary) throw new Error(`no shared local-test server executable exists for ${args.client}`);
-    log('port', `would start local game server on 127.0.0.1:${localPort}`);
+    log('port', `would start local game server on [${LOCAL_GAME_ADDRESS}]:${localPort}`);
     log('dry-run', `would start ${serverBinary} with shared local-test settings for place ${args.place}`);
     log('dry-run', `would launch an isolated ${path.join(clientDir, 'RobloxPlayerBeta.exe')} copy`);
     log('dry-run', `auth: local loopback endpoint for place ${launch.placeId}, user ${userId}, port ${localPort}`);
@@ -1312,6 +1336,7 @@ async function main() {
       gamePort: localPort,
       baseUrl: args.url,
       gameMetadata: launch.gameMetadata,
+      playerMetadata: launch.playerMetadata,
     });
     log('local-api', `${devHttp.baseUrl} serves the selected map and 2021 join responses`);
 
@@ -1345,7 +1370,7 @@ async function main() {
     }
 
     console.log('\n[dev-launch] Local game server running. Close this window (or Ctrl+C) to stop it.');
-    console.log(`[dev-launch] Playing ${launch.placeId} on 127.0.0.1:${localPort} as user ${userId}.`);
+    console.log(`[dev-launch] Playing ${launch.placeId} on [${LOCAL_GAME_ADDRESS}]:${localPort} as ${launch.playerMetadata.username || `user ${userId}`}.`);
 
     const stop = () => {
       cleanup().finally(() => process.exit(0));
@@ -1366,6 +1391,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  LOCAL_GAME_ADDRESS,
   createDevHttpServer,
   createLocalServerConfig,
   prepareServerRuntime,

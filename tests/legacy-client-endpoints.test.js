@@ -171,6 +171,19 @@ async function waitForReady(proc) {
     assert.equal(protocolJoinPayload.game.creatorType, 'Group', 'the join response preserves the creator type');
     assert.match(protocolJoinPayload.game.thumbnailUrl, /^https?:\/\//);
 
+    const characterAppearance = await request(
+      `/v1/avatar-fetch?placeId=${PLACE_ID}&userId=1`,
+    );
+    assert.equal(characterAppearance.status, 200);
+    assert.match(
+      characterAppearance.headers['content-type'],
+      /application\/json/i,
+      'the 2021 join payload avatar URL must resolve to the player appearance document',
+    );
+    const appearanceData = JSON.parse(characterAppearance.body.toString('utf8'));
+    assert.equal(appearanceData.userId, 1);
+    assert.equal(appearanceData.placeId, PLACE_ID);
+
     const serializedGameResponse = await request(`/api/v1/games/${PLACE_ID}`);
     assert.equal(serializedGameResponse.status, 200);
     const serializedGame = JSON.parse(serializedGameResponse.body.toString('utf8')).game;

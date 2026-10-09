@@ -236,6 +236,12 @@ console.log('ok: DEV-PLAY resolves the selected map/place, prepares local-test s
       description: 'Test experience metadata',
       genre: 'Adventure',
     },
+    playerMetadata: {
+      username: 'RealPlayer',
+      displayName: 'Actual Display',
+      membershipType: 'None',
+      accountAge: 123,
+    },
     signJoinScript: (script) => `--rbxsig%test-signature%${script}`,
   });
   try {
@@ -282,11 +288,20 @@ console.log('ok: DEV-PLAY resolves the selected map/place, prepares local-test s
     const signedJoinMatch = signedJoinText.match(/^--rbxsig%[^%]+%([\s\S]+)$/);
     assert.ok(signedJoinMatch, 'the join-script response must be signed in the client protocol format');
     const joinSettings = JSON.parse(signedJoinMatch[1]);
-    assert.equal(joinSettings.MachineAddress, '127.0.0.1');
+    assert.equal(joinSettings.MachineAddress, '::1');
     assert.equal(joinSettings.ServerPort, 53644);
-    assert.deepEqual(joinSettings.ServerConnections, [{ Address: '127.0.0.1', Port: 53644 }]);
+    assert.deepEqual(joinSettings.ServerConnections, [{ Address: '::1', Port: 53644 }]);
     assert.equal(joinSettings.ClientTicket, 'test-ticket');
     assert.equal(joinSettings.UserId, 42);
+    assert.equal(joinSettings.UserName, 'RealPlayer');
+    assert.equal(joinSettings.DisplayName, 'Actual Display');
+    assert.equal(joinSettings.MembershipType, 'None');
+    assert.equal(joinSettings.AccountAge, 123);
+    assert.equal(joinSettings.PlaceName, 'A Real Test Map');
+    assert.equal(
+      joinSettings.CharacterAppearance,
+      'https://example.test/v1/avatar-fetch?placeId=27013&userId=42',
+    );
     assert.equal(joinSettings.PlaceId, 27013);
     assert.equal(joinSettings.GameId, 'test-job');
     assert.equal(joinSettings.CreatorId, 42);

@@ -27,7 +27,9 @@ function createClientLaunchUri({ ticket, placeId, userId, port, jobId, baseUrl }
     + `+baseUrl:${encodeURIComponent(serverUrl)}`;
 }
 
-function createDevPlayLaunchUri({ ticket, placeId, userId, jobId, baseUrl, gameMetadata }) {
+function createDevPlayLaunchUri({
+  ticket, placeId, userId, jobId, baseUrl, gameMetadata, playerMetadata,
+}) {
   if (!ticket || !Number.isSafeInteger(Number(placeId)) || Number(placeId) <= 0
     || !Number.isSafeInteger(Number(userId)) || Number(userId) <= 0 || !jobId || !baseUrl) {
     throw new Error('A launch ticket, valid place ID, valid user ID, job ID, and server URL are required.');
@@ -61,12 +63,25 @@ function createDevPlayLaunchUri({ ticket, placeId, userId, jobId, baseUrl, gameM
     const value = String(raw).replace(/[\u0000-\u001f\u007f]/g, '').slice(0, maxLength);
     return value ? `+${field}:${encodeURIComponent(value)}` : '';
   }).join('');
+  const playerFields = [
+    ['playerName', 'username', 50],
+    ['playerDisplayName', 'displayName', 50],
+    ['playerMembership', 'membershipType', 32],
+    ['playerAccountAge', 'accountAge', 8],
+  ];
+  const encodedPlayer = playerFields.map(([field, key, maxLength]) => {
+    const raw = playerMetadata && playerMetadata[key];
+    if (raw == null || raw === '') return '';
+    const value = String(raw).replace(/[\u0000-\u001f\u007f]/g, '').slice(0, maxLength);
+    return value ? `+${field}:${encodeURIComponent(value)}` : '';
+  }).join('');
 
   return `luckyblox-devplay:1+placeId:${Number(placeId)}`
     + `+userId:${Number(userId)}`
     + `+gameinfo:${encodeURIComponent(String(ticket))}`
     + `+jobId:${encodeURIComponent(String(jobId))}`
     + encodedMetadata
+    + encodedPlayer
     + `+baseUrl:${encodeURIComponent(serverUrl)}`;
 }
 

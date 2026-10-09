@@ -70,111 +70,118 @@
       <div class="dev-header">
         <div>
           <h1>Game Engine API</h1>
-          <div class="dev-header-subtitle">Create, query, and publish game experiences</div>
+          <div class="dev-header-subtitle">Engine classes and members from the selected client build</div>
         </div>
       </div>
 
-      <div class="dev-api-section">
-        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/api/v1/games</span></h3>
-        <p>List all published games.</p>
-        <div class="dev-code-block">{
-  "ok": true,
-  "games": [
-    {
-      "placeId": 1818,
-      "name": "LuckyBlox Arena",
-      "description": "Local Studio place",
-      "genre": "Adventure",
-      "author": "LocalPlayer",
-      "playerCount": 0,
-      "visibility": "Public",
-      "updatedAt": "2026-09-13T12:00:00.000Z"
-    }
-  ],
-  "total": 1
-}</div>
-      </div>
+      <% if (engineApi) { %>
+        <section class="dev-api-section" aria-labelledby="engine-api-source">
+          <h2 id="engine-api-source"><%= engineApi.clientName %> · <%= engineApi.engineVersion %></h2>
+          <p>
+            Source: <code><%= engineApi.sourceFile %></code> from the selected local client.
+            This bundled reflection metadata documents class names, member names, categories,
+            and available summaries; it is not a complete API dump and does not include every
+            runtime signature or security annotation.
+            <a href="https://robloxapi.github.io/ref/updates/2021.html" target="_blank" rel="noopener noreferrer">2021 API update archive</a>
+          </p>
+          <p><strong><%= engineApi.classCount %></strong> classes · <strong><%= engineApi.memberCount %></strong> documented members</p>
+        </section>
 
-      <div class="dev-api-section">
-        <h3><span class="dev-method get">GET</span><span class="dev-endpoint">/api/v1/games/:placeId</span></h3>
-        <p>Get detailed info for a specific game.</p>
-        <div class="dev-code-block">// GET /api/v1/games/1818
-{
-  "ok": true,
-  "game": { "placeId": 1818, "name": "LuckyBlox Arena", ... }
-}</div>
-      </div>
+        <div class="dev-api-section">
+          <label for="engine-api-search"><strong>Search classes and members</strong></label>
+          <input id="engine-api-search" type="search" placeholder="e.g. Workspace, FindPartOnRay, CFrame" autocomplete="off" />
+          <label for="engine-api-category"><strong>Category</strong></label>
+          <select id="engine-api-category">
+            <option value="">All categories</option>
+            <% engineApi.categories.forEach(function(category) { %>
+              <option value="<%= category %>"><%= category %></option>
+            <% }); %>
+          </select>
+          <p id="engine-api-result-count" role="status" aria-live="polite"><%= engineApi.classCount %> classes</p>
+        </div>
 
-      <div class="dev-api-section">
-        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/places</span></h3>
-        <p>Create a new place. Raw body sent as .rbxlx file data.</p>
-        <div class="dev-code-block">// POST /api/v1/places?name=MyPlace
-// Body: raw .rbxlx binary or JSON
-{
-  "ok": true,
-  "placeId": 1819,
-  "fileName": "MyPlace.rbblx",
-  "filePath": "/workspace/saved_places/MyPlace.rbblx"
-}</div>
-      </div>
-
-      <div class="dev-api-section">
-        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/dev/create</span></h3>
-        <p>Create a new experience via the web portal. Form-encoded or raw body.</p>
-        <div class="dev-code-block">// POST /dev/create?name=NewExperience
-// Body: form data or raw place file
-{
-  "ok": true,
-  "placeId": 1819,
-  "fileName": "NewExperience.rbblx",
-  "filePath": "/workspace/saved_places/NewExperience.rbblx"
-}</div>
-      </div>
-
-      <div class="dev-api-section">
-        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/places/:placeId/publish</span></h3>
-        <p>Publish a place to make it publicly available.</p>
-        <div class="dev-code-block">// POST /api/v1/places/1818/publish
-{
-  "ok": true,
-  "placeId": 1818,
-  "publishedAt": "2026-09-13T12:00:00.000Z"
-}</div>
-      </div>
-
-      <div class="dev-api-section">
-        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/game/save</span></h3>
-        <p>Save game instance data.</p>
-        <div class="dev-code-block">// POST /api/v1/game/save
-// Body: { placeId: 1818, data: { ... } }
-{ "ok": true, "placeId": 1818 }</div>
-      </div>
-
-      <div class="dev-api-section">
-        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/game/publish</span></h3>
-        <p>Publish a game from Studio.</p>
-        <div class="dev-code-block">// POST /api/v1/game/publish
-// Body: { placeId: 1818, name: "My Place" }
-{ "ok": true, "placeId": 1818 }</div>
-      </div>
-
-      <div class="dev-api-section">
-        <h3><span class="dev-method post">POST</span><span class="dev-endpoint">/api/v1/games/:placeId/launch</span></h3>
-        <p>Launch a game server instance.</p>
-        <div class="dev-code-block">// POST /api/v1/games/1818/launch
-{
-  "ok": true,
-  "jobId": "abc123",
-  "serverPort": 53640
-}</div>
-      </div>
-
-      <div class="dev-api-section">
-        <h3>Game Icon Requirements</h3>
-        <p>Game icons must be 512x512 pixels PNG format. Upload via <code>/dev/assets/upload</code> and reference via <code>/dev/game/:placeId/settings</code>.</p>
-      </div>
+        <div id="engine-api-classes">
+          <% engineApi.classes.forEach(function(apiClass) { %>
+            <details class="dev-api-section engine-api-class" data-category="<%= apiClass.category %>" data-search="<%= [apiClass.name, apiClass.summary, apiClass.category, ...apiClass.members.map(function(member) { return member.name + ' ' + member.summary + ' ' + member.kind; })].join(' ').toLowerCase() %>">
+              <summary>
+                <strong><%= apiClass.name %></strong>
+                <span class="engine-api-category"><%= apiClass.category %></span>
+              </summary>
+              <% if (apiClass.summary) { %><p><%= apiClass.summary %></p><% } %>
+              <% if (apiClass.members.length) { %>
+                <ul class="engine-api-member-list">
+                  <% apiClass.members.forEach(function(member) { %>
+                    <li>
+                      <code><%= member.name %></code>
+                      <span class="engine-api-member-kind"><%= member.kind %></span>
+                      <% if (member.summary) { %><p><%= member.summary %></p><% } %>
+                    </li>
+                  <% }); %>
+                </ul>
+              <% } else { %>
+                <p>No member descriptions are included for this class in the bundled metadata.</p>
+              <% } %>
+            </details>
+          <% }); %>
+          <p id="engine-api-no-results" hidden>No matching classes or members.</p>
+        </div>
+      <% } else { %>
+        <div class="dev-api-section">
+          <h2>Engine metadata unavailable</h2>
+          <p>The selected client does not include <code>shared/ReflectionMetadata.xml</code>, so this server cannot display a matching engine reference. Select a client build that ships its reflection metadata.</p>
+        </div>
+      <% } %>
     </main>
   </div>
 <%- include('../../partials/scripts') %>
+<% if (engineApi) { %>
+<script>
+  (function () {
+    var search = document.getElementById('engine-api-search');
+    var category = document.getElementById('engine-api-category');
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.engine-api-class'));
+    var count = document.getElementById('engine-api-result-count');
+    var empty = document.getElementById('engine-api-no-results');
+
+    function filterClasses() {
+      var query = search.value.trim().toLowerCase();
+      var selectedCategory = category.value;
+      var visibleCount = 0;
+      cards.forEach(function (card) {
+        var visible = (!query || card.getAttribute('data-search').indexOf(query) !== -1)
+          && (!selectedCategory || card.getAttribute('data-category') === selectedCategory);
+        card.hidden = !visible;
+        if (visible) visibleCount += 1;
+      });
+      count.textContent = visibleCount + (visibleCount === 1 ? ' class' : ' classes');
+      empty.hidden = visibleCount !== 0;
+    }
+
+    search.addEventListener('input', filterClasses);
+    category.addEventListener('change', filterClasses);
+  }());
+</script>
+<% } %>
+<style>
+  #engine-api-search,
+  #engine-api-category {
+    display: block;
+    width: 100%;
+    max-width: 560px;
+    margin: 8px 0 16px;
+    padding: 10px 12px;
+    border: 1px solid #b8c2cc;
+    border-radius: 4px;
+    background: #fff;
+    color: #202a35;
+  }
+  .engine-api-class { margin: 8px 0; }
+  .engine-api-class > summary { cursor: pointer; }
+  .engine-api-category,
+  .engine-api-member-kind { margin-left: 8px; color: #687784; font-size: 0.9em; }
+  .engine-api-member-list { padding-left: 22px; }
+  .engine-api-member-list li { margin: 10px 0; }
+  .engine-api-member-list p { margin: 4px 0; }
+</style>
 </body>
 </html>
