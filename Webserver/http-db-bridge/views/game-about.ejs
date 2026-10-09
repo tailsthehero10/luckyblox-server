@@ -552,17 +552,16 @@
           return;
         }
 
-        // The client was found and launched.
-        if (data.nativeLaunch && data.nativeLaunch.status === 'launched') {
-          showJoinState('playing', 'LuckyBlox is opening',
-            'The LuckyBlox client was started for ' + (data.game && data.game.title || gameTitle)
-              + '. The website cannot confirm the client finished connecting. If it stays on “Joining server”, close it and try Play again.');
+        // A child process request is not proof Windows opened the client or that
+        // the client connected to an actual game server.
+        if (data.nativeLaunch && data.nativeLaunch.status === 'launch-requested') {
+          showJoinState('manual', 'Client launch requested',
+            'Windows was asked to open the LuckyBlox client for ' + (data.game && data.game.title || gameTitle)
+              + '. The website cannot confirm that it opened or connected.');
           return;
         }
 
-        // A public Linux host cannot run the Windows game server. Sending its
-        // in-process listener's port to the desktop client only leaves it waiting
-        // on a port that does not speak the game protocol; DEV-PLAY runs it locally.
+        // Public hosts cannot run a Windows client on the visitor's computer.
         if (data.client && data.client.supported === false) {
           var devPlayPlaceId = Number(data.placeId) || placeId;
           var devPlayCommand = data.devPlayURI

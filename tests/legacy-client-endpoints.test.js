@@ -6,10 +6,12 @@ const http = require('node:http');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { makeTestDir } = require('./test-paths');
+const { resolveServerBinary } = require('../server/orchestrator');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const PORT = 3991;
 const PLACE_ID = 987654321;
+const HAS_DEDICATED_SERVER = Boolean(resolveServerBinary());
 
 function request(pathName, method = 'GET', body, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
@@ -115,7 +117,14 @@ async function waitForReady(proc) {
       userId: 987,
       placeId: PLACE_ID,
     }, { cookie: `luckblox_session=${sessionId}` });
-    assert.equal(issuedTicketResponse.status, 201);
+    if (!HAS_DEDICATED_SERVER) {
+      assert.equal(issuedTicketResponse.status, 503);
+      assert.equal(JSON.parse(issuedTicketResponse.body.toString('utf8')).error, 'game-server-unavailable');
+      const unavailableJoin = await request(`/game/join?placeId=${PLACE_ID}`);
+      assert.equal(unavailableJoin.status, 503);
+      assert.equal(JSON.parse(unavailableJoin.body.toString('utf8')).error, 'game-server-unavailable');
+    } else {
+      assert.equal(issuedTicketResponse.status, 201);
     const ticketPayload = JSON.parse(issuedTicketResponse.body.toString('utf8'));
     const issuedTicket = ticketPayload.ticket;
     assert.ok(
@@ -183,6 +192,7 @@ async function waitForReady(proc) {
     const appearanceData = JSON.parse(characterAppearance.body.toString('utf8'));
     assert.equal(appearanceData.userId, 1);
     assert.equal(appearanceData.placeId, PLACE_ID);
+    }
 
     const serializedGameResponse = await request(`/api/v1/games/${PLACE_ID}`);
     assert.equal(serializedGameResponse.status, 200);

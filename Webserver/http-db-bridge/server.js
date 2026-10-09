@@ -3554,7 +3554,7 @@ function resolveRobloxPlayerBinary() {
   return clientLauncher.resolveClientBinary();
 }
 
-function launchLocalRobloxClient({ userId, placeId, port, serverJobId, ticket }) {
+async function launchLocalRobloxClient({ userId, placeId, port, serverJobId, ticket }) {
   const executablePath = resolveRobloxPlayerBinary();
   if (!executablePath) {
     // Report the real state so the caller can offer the installer instead.
@@ -3579,22 +3579,33 @@ function launchLocalRobloxClient({ userId, placeId, port, serverJobId, ticket })
       windowsHide: true,
     });
 
-    return {
-      ok: true,
-      started: true,
-      pid: child.pid,
-      exePath: executablePath,
-      authUrl,
-      joinUrl,
-      launchURI: createClientLaunchUri({
-        ticket,
-        placeId,
-        userId,
-        port,
-        jobId: serverJobId,
-        baseUrl: publicOrigin,
-      }),
-    };
+    return await new Promise((resolve) => {
+      child.once('spawn', () => {
+        resolve({
+          ok: true,
+          launchRequested: true,
+          pid: child.pid,
+          exePath: executablePath,
+          authUrl,
+          joinUrl,
+          launchURI: createClientLaunchUri({
+            ticket,
+            placeId,
+            userId,
+            port,
+            jobId: serverJobId,
+            baseUrl: publicOrigin,
+          }),
+        });
+      });
+      child.once('error', (error) => {
+        resolve({
+          ok: false,
+          error: 'roblox-client-launch-failed',
+          details: error && error.message ? error.message : String(error),
+        });
+      });
+    });
   } catch (error) {
     return {
       ok: false,
@@ -7149,7 +7160,7 @@ app.post('/v1/launch-client', (req, res) => {
       ok: true,
       clientVersion: '2021M',
       clientPath: clientExe,
-      started: true,
+      launchRequested: true,
       pid: child.pid,
       authUrl,
       joinUrl,
@@ -7389,7 +7400,7 @@ app.get('/download/client', (req, res) => {
  * Launch the installed LuckyBlox client directly, without needing a page
  * hand-off. Used by the site's Play button once it knows the client exists.
  */
-app.post('/api/client/launch', (req, res) => {
+app.post('/api/client/launch', async (req, res) => {
   const sessionUser = req.sessionUser || resolveSessionUser(req);
   if (!sessionUser) {
     return res.status(401).json({ ok: false, error: 'sign-in-required', message: 'Sign in to play.' });
@@ -7411,7 +7422,7 @@ app.post('/api/client/launch', (req, res) => {
     serverJobId: job.jobId,
     redeemable: true,
   });
-  const result = launchLocalRobloxClient({
+  const result = await launchLocalRobloxClient({
     userId,
     placeId,
     port: job.port,
@@ -7445,7 +7456,7 @@ app.post('/api/client/launch', (req, res) => {
   });
 });
 
-app.post('/api/launch-game', (req, res) => {
+app.post('/api/launch-game', async (req, res) => {
   const sessionUser = req.sessionUser || resolveSessionUser(req);
 
   // Playing requires an account. A guest must sign in first, exactly like the
@@ -7484,7 +7495,7 @@ app.post('/api/launch-game', (req, res) => {
     // Find the installed content client and launch it automatically. When the
     // client is absent (or the host cannot run it) report the download the site
     // should offer, so the Play button always leads somewhere real.
-    const launchResult = launchLocalRobloxClient({
+    const launchResult = await launchLocalRobloxClient({
       userId,
       placeId,
       port: job.port,
@@ -7513,7 +7524,7 @@ app.post('/api/launch-game', (req, res) => {
 
     return res.json({
       ok: true,
-      started: true,
+      launchRequested: Boolean(launchResult.launchRequested),
       userId: String(userId),
       placeId: Number(placeId),
       port: Number(job.port),
@@ -7544,7 +7555,7 @@ app.post('/api/launch-game', (req, res) => {
       client: clientStatus,
       nativeLaunch: launchResult.ok
         ? {
-          status: 'launched',
+          status: 'launch-requested',
           pid: launchResult.pid,
           executablePath: launchResult.exePath,
           launchURI: launchResult.launchURI,
@@ -7588,7 +7599,12 @@ app.get('/game/join', (req, res) => {
 
   let server = activeGameServers.find((candidate) => candidate.serverJobId === jobId || Number(candidate.placeId) === Number(placeId));
   if (!server) {
-    server = allocatePlayerToServer(userId, placeId);
+    try {
+      server = allocatePlayerToServer(userId, placeId);
+    } catch (error) {
+      if (respondGameServerUnavailable(res, error)) return;
+      throw error;
+    }
   }
 
   const joinPayload = {

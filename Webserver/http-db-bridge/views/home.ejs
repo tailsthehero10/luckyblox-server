@@ -204,8 +204,9 @@
           throw new Error(payload && payload.message ? payload.message : 'Unable to generate launch ticket.');
         }
 
-        // The local client was launched automatically when it is installed.
-        if (payload.nativeLaunch && payload.nativeLaunch.status === 'launched') {
+        // A process request is not proof that the OS opened the client or it
+        // connected to a game server.
+        if (payload.nativeLaunch && payload.nativeLaunch.status === 'launch-requested') {
           return payload;
         }
 

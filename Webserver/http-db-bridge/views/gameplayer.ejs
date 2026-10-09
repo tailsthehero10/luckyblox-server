@@ -40,13 +40,13 @@
               <h1 class="lb-gameplayer-title"><%= gameMetadata.title %></h1>
               <p class="roblox-description">By <strong><%= gameMetadata.creatorName || 'LuckyBlox Studio' %></strong></p>
               <p class="lb-gameplayer-note">
-                This page starts the installed 2021 client. It does not simulate the game in a web-based 3D viewer.
-                Your browser will ask before opening the desktop client.
+                This page checks for a real game server, then hands off to the installed 2021 desktop client.
+                It does not simulate the game in a web-based 3D viewer.
               </p>
               <button class="lb-btn lb-btn-primary" type="button" id="gameplayerLaunch"
                       data-place-id="<%= placeId %>">Play in the 2021 client</button>
               <p class="lb-gameplayer-status" id="gameplayerStatus" role="status" aria-live="polite">
-                Press Play to prepare a secure join ticket for <%= gameMetadata.title %>.
+                Press Play to check whether a compatible game server and client are available.
               </p>
               <div class="lb-gameplayer-actions" id="gameplayerActions" hidden></div>
               <p class="lb-gameplayer-note">
@@ -110,8 +110,8 @@
             setStatus(data.message || 'The server could not prepare this game. Please try again.');
             return;
           }
-          if (data.nativeLaunch && data.nativeLaunch.status === 'launched') {
-            setStatus('The installed client was started. If it does not appear, check whether Windows or your antivirus blocked it.');
+          if (data.nativeLaunch && data.nativeLaunch.status === 'launch-requested') {
+            setStatus('Windows was asked to open the installed client. The website cannot confirm that it appeared or connected.');
             return;
           }
           if (data.launchURI && /^luckyblox-player:/i.test(data.launchURI)) {

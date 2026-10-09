@@ -105,10 +105,17 @@ assert.match(server, /game:\s*gameMetadata/);
 assert.match(server, /gameMetadata,\s*playerMetadata,\s*\}\)/);
 assert.doesNotMatch(server, /launchURI:\s*playUrl/);
 assert.match(server, /createDevPlayLaunchUri\(\{[\s\S]{0,180}ticket:\s*ticket\.ticket,[\s\S]{0,180}placeId,[\s\S]{0,180}userId,[\s\S]{0,180}jobId:\s*job\.jobId/);
+assert.match(server, /launchRequested:\s*Boolean\(launchResult\.launchRequested\)/);
+assert.match(server, /status:\s*'launch-requested'/);
+assert.doesNotMatch(server, /nativeLaunch[\s\S]{0,80}status:\s*'launched'/);
+assert.match(server, /child\.once\('spawn'/);
+assert.match(server, /child\.once\('error'/);
+assert.match(server, /app\.get\('\/game\/join',[\s\S]{0,700}respondGameServerUnavailable/);
 
 const home = fs.readFileSync(path.join(root, 'Webserver', 'http-db-bridge', 'views', 'home.ejs'), 'utf8');
 assert.match(home, /payload\.launchURI[\s\S]{0,180}luckyblox-player:/);
 assert.match(home, /payload\.devPlayURI[\s\S]{0,100}luckyblox-devplay:/);
+assert.match(home, /nativeLaunch\.status === 'launch-requested'/);
 assert.doesNotMatch(home, /window\.location\.href\s*=\s*payload\.playUrl/);
 
 const play = fs.readFileSync(path.join(root, 'Webserver', 'http-db-bridge', 'views', 'play.ejs'), 'utf8');
@@ -125,6 +132,8 @@ assert.match(gameAbout, /By <%= creatorName/);
 assert.match(gameAbout, /new AbortController\(\)/);
 assert.match(gameAbout, /controller\.abort\(\);\s*\}, 20000/);
 assert.match(gameAbout, /spinner\.hidden = state !== 'working'/);
+assert.match(gameAbout, /nativeLaunch\.status === 'launch-requested'/);
+assert.doesNotMatch(gameAbout, /nativeLaunch\.status === 'launched'/);
 assert.match(gameAbout, /showJoinState\('manual', 'Continue in LuckyBlox'/);
 assert.match(server, /function gameCreatorMetadata\(game\)/);
 assert.match(server, /creatorName: creator\.creatorName/);
@@ -147,12 +156,14 @@ const playMarkup = fs.readFileSync(path.join(root, 'Webserver', 'http-db-bridge'
 assert.match(playMarkup, /roblox-eyebrow">Experience/);
 assert.match(playMarkup, /By <strong><%= creatorName/);
 assert.match(playMarkup, /controller\.abort\(\);\s*\}, 20000/);
+assert.match(playMarkup, /data\.launchRequested/);
 const gamePlayer = fs.readFileSync(path.join(root, 'Webserver', 'http-db-bridge', 'views', 'gameplayer.ejs'), 'utf8');
 assert.match(gamePlayer, /data-place-id="<%= placeId %>"/);
 assert.match(gamePlayer, /fetch\('\/api\/launch-game'/);
 assert.match(gamePlayer, /Use local DEV-PLAY instead/);
 assert.match(gamePlayer, /luckyblox-player:/);
 assert.match(gamePlayer, /luckyblox-devplay:/);
+assert.match(gamePlayer, /nativeLaunch\.status === 'launch-requested'/);
 assert.ok(
   gamePlayer.indexOf("if (data.launchURI && /^luckyblox-player:/i.test(data.launchURI))")
     < gamePlayer.indexOf("if (data.client && data.client.supported === false)"),

@@ -155,7 +155,10 @@
           }
 
           var data = await res.json().catch(function () { return {}; });
-          if (data && data.nativeLaunch && data.nativeLaunch.status === 'launched') return;
+          if (data && data.nativeLaunch && data.nativeLaunch.status === 'launch-requested') {
+            alert('Windows was asked to open the LuckyBlox client. The site cannot confirm that it opened or connected.');
+            return;
+          }
           alert((data && data.message) || 'The client could not be launched.');
         } catch (error) {
           alert('Could not reach the server to launch the client.');

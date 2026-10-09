@@ -124,8 +124,8 @@
             return;
           }
 
-          if (data && data.ok && data.started) {
-            say('LuckyBlox is starting. The client is connecting to your local server\u2026');
+          if (data && data.ok && data.launchRequested) {
+            say('Windows was asked to open the LuckyBlox client. The site cannot confirm that it opened or connected.');
             return;
           }
 
