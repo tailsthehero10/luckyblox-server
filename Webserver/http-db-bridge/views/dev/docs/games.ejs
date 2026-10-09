@@ -78,52 +78,68 @@
         <section class="dev-api-section" aria-labelledby="engine-api-source">
           <h2 id="engine-api-source"><%= engineApi.clientName %> · <%= engineApi.engineVersion %></h2>
           <p>
-            Source: <code><%= engineApi.sourceFile %></code> from the selected local client.
-            This bundled reflection metadata documents class names, member names, categories,
-            and available summaries; it is not a complete API dump and does not include every
-            runtime signature or security annotation.
+            <% if (engineApi.isFullDump) { %>
+              Source: <a href="<%= engineApi.sourceUrl %>" target="_blank" rel="noopener noreferrer"><code><%= engineApi.sourceFile %></code></a>,
+              archived <%= engineApi.sourceDate %> for this exact engine build.
+              This API dump includes class/member signatures, value types, security, tags, and
+              thread-safety metadata. It describes the public engine API shape; it does not
+              mean every listed member is available to ordinary scripts.
+            <% } else { %>
+              Source: selected client’s bundled <code><%= engineApi.sourceFile %></code>.
+              This reflection metadata has fewer details than a full API dump.
+            <% } %>
             <a href="https://robloxapi.github.io/ref/updates/2021.html" target="_blank" rel="noopener noreferrer">2021 API update archive</a>
           </p>
-          <p><strong><%= engineApi.classCount %></strong> classes · <strong><%= engineApi.memberCount %></strong> documented members</p>
+          <p><strong><%= engineApi.classCount %></strong> classes · <strong><%= engineApi.memberCount %></strong> members · <strong><%= engineApi.enumCount %></strong> enums</p>
         </section>
 
         <div class="dev-api-section">
           <label for="engine-api-search"><strong>Search classes and members</strong></label>
           <input id="engine-api-search" type="search" placeholder="e.g. Workspace, FindPartOnRay, CFrame" autocomplete="off" />
-          <label for="engine-api-category"><strong>Category</strong></label>
+          <label for="engine-api-category"><strong>Show</strong></label>
           <select id="engine-api-category">
-            <option value="">All categories</option>
+            <option value="">Classes and enums</option>
             <% engineApi.categories.forEach(function(category) { %>
-              <option value="<%= category %>"><%= category %></option>
+              <option value="<%= category === 'Enums only' ? 'enum' : 'class' %>"><%= category %></option>
             <% }); %>
           </select>
-          <p id="engine-api-result-count" role="status" aria-live="polite"><%= engineApi.classCount %> classes</p>
+          <p id="engine-api-result-count" role="status" aria-live="polite"><%= engineApi.classCount %> classes and <%= engineApi.enumCount %> enums</p>
         </div>
 
         <div id="engine-api-classes">
           <% engineApi.classes.forEach(function(apiClass) { %>
-            <details class="dev-api-section engine-api-class" data-category="<%= apiClass.category %>" data-search="<%= [apiClass.name, apiClass.summary, apiClass.category, ...apiClass.members.map(function(member) { return member.name + ' ' + member.summary + ' ' + member.kind; })].join(' ').toLowerCase() %>">
+            <details class="dev-api-section engine-api-class" data-kind="class" data-search="<%= [apiClass.name, apiClass.superclass, ...apiClass.tags, ...apiClass.members.map(function(member) { return [member.name, member.signature, member.kind, member.category, member.security, member.threadSafety, ...member.tags].join(' '); })].join(' ').toLowerCase() %>">
               <summary>
                 <strong><%= apiClass.name %></strong>
-                <span class="engine-api-category"><%= apiClass.category %></span>
+                <% if (apiClass.superclass) { %><span class="engine-api-category">inherits <%= apiClass.superclass %></span><% } %>
               </summary>
-              <% if (apiClass.summary) { %><p><%= apiClass.summary %></p><% } %>
+              <% if (apiClass.tags.length) { %><p class="engine-api-meta">Tags: <%= apiClass.tags.join(', ') %></p><% } %>
               <% if (apiClass.members.length) { %>
                 <ul class="engine-api-member-list">
                   <% apiClass.members.forEach(function(member) { %>
                     <li>
-                      <code><%= member.name %></code>
-                      <span class="engine-api-member-kind"><%= member.kind %></span>
-                      <% if (member.summary) { %><p><%= member.summary %></p><% } %>
+                      <code><%= member.name %><%= member.signature %></code>
+                      <span class="engine-api-member-kind"><%= member.kind %><%= member.category ? ' · ' + member.category : '' %></span>
+                      <% if (member.security) { %><span class="engine-api-member-kind">Security: <%= member.security %></span><% } %>
+                      <% if (member.threadSafety) { %><span class="engine-api-member-kind">Thread safety: <%= member.threadSafety %></span><% } %>
+                      <% if (member.tags.length) { %><p class="engine-api-meta">Tags: <%= member.tags.join(', ') %></p><% } %>
                     </li>
                   <% }); %>
                 </ul>
-              <% } else { %>
-                <p>No member descriptions are included for this class in the bundled metadata.</p>
               <% } %>
             </details>
           <% }); %>
-          <p id="engine-api-no-results" hidden>No matching classes or members.</p>
+          <% engineApi.enums.forEach(function(apiEnum) { %>
+            <details class="dev-api-section engine-api-enum" data-kind="enum" data-search="<%= [apiEnum.name, ...apiEnum.items.map(function(item) { return [item.name, item.value, ...item.tags].join(' '); })].join(' ').toLowerCase() %>">
+              <summary><strong><%= apiEnum.name %></strong><span class="engine-api-category">Enum · <%= apiEnum.items.length %> items</span></summary>
+              <ul class="engine-api-member-list">
+                <% apiEnum.items.forEach(function(item) { %>
+                  <li><code><%= item.name %> = <%= item.value %></code><% if (item.tags.length) { %><span class="engine-api-member-kind"><%= item.tags.join(', ') %></span><% } %></li>
+                <% }); %>
+              </ul>
+            </details>
+          <% }); %>
+          <p id="engine-api-no-results" hidden>No matching classes, members, or enums.</p>
         </div>
       <% } else { %>
         <div class="dev-api-section">
@@ -139,7 +155,7 @@
   (function () {
     var search = document.getElementById('engine-api-search');
     var category = document.getElementById('engine-api-category');
-    var cards = Array.prototype.slice.call(document.querySelectorAll('.engine-api-class'));
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.engine-api-class, .engine-api-enum'));
     var count = document.getElementById('engine-api-result-count');
     var empty = document.getElementById('engine-api-no-results');
 
@@ -149,11 +165,11 @@
       var visibleCount = 0;
       cards.forEach(function (card) {
         var visible = (!query || card.getAttribute('data-search').indexOf(query) !== -1)
-          && (!selectedCategory || card.getAttribute('data-category') === selectedCategory);
+          && (!selectedCategory || card.getAttribute('data-kind') === selectedCategory);
         card.hidden = !visible;
         if (visible) visibleCount += 1;
       });
-      count.textContent = visibleCount + (visibleCount === 1 ? ' class' : ' classes');
+      count.textContent = visibleCount + (visibleCount === 1 ? ' result' : ' results');
       empty.hidden = visibleCount !== 0;
     }
 
@@ -181,7 +197,8 @@
   .engine-api-member-kind { margin-left: 8px; color: #687784; font-size: 0.9em; }
   .engine-api-member-list { padding-left: 22px; }
   .engine-api-member-list li { margin: 10px 0; }
-  .engine-api-member-list p { margin: 4px 0; }
+  .engine-api-meta { margin: 4px 0; color: #687784; font-size: 0.9em; }
+  .engine-api-member-list code { overflow-wrap: anywhere; }
 </style>
 </body>
 </html>

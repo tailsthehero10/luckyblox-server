@@ -19,9 +19,95 @@ const MEMBER_GROUPS = new Map([
   ['ReflectionMetadataCallbacks', 'Callbacks'],
 ]);
 
+const ARCHIVED_2021_CLIENTS = new Set(['2021M', 'CUSTOM-2021M']);
+const API_DUMP_VERSION = '0.482.0.424268';
+let archived2021ApiCache;
+
 function itemsOf(value) {
   if (value == null) return [];
   return Array.isArray(value) ? value : [value];
+}
+
+function typeName(type) {
+  if (!type || typeof type !== 'object') return 'unknown';
+  return type.Name || 'unknown';
+}
+
+function functionSignature(member) {
+  const parameters = itemsOf(member.Parameters).map((parameter) => {
+    const defaultValue = Object.prototype.hasOwnProperty.call(parameter, 'Default')
+      ? ` = ${parameter.Default}`
+      : '';
+    return `${parameter.Name}: ${typeName(parameter.Type)}${defaultValue}`;
+  });
+  const returnType = member.ReturnType ? `: ${typeName(member.ReturnType)}` : '';
+  return `(${parameters.join(', ')})${returnType}`;
+}
+
+function parseApiDump(dump, { clientName, engineVersion, sourceFile } = {}) {
+  if (!dump || !Array.isArray(dump.Classes) || !Array.isArray(dump.Enums)) {
+    throw new Error('Engine API dump must contain class and enum arrays.');
+  }
+
+  const classes = dump.Classes.map((entry) => ({
+    name: entry.Name,
+    category: 'Class',
+    superclass: entry.Superclass || '',
+    tags: itemsOf(entry.Tags),
+    members: itemsOf(entry.Members).map((member) => {
+      const kind = member.MemberType || 'Member';
+      const signature = kind === 'Function' || kind === 'Callback' || kind === 'Event'
+        ? functionSignature(member)
+        : kind === 'Property'
+          ? `: ${typeName(member.ValueType)}`
+          : '';
+      const security = typeof member.Security === 'string'
+        ? member.Security
+        : member.Security
+          ? `Read: ${member.Security.Read || 'unknown'}, Write: ${member.Security.Write || 'unknown'}`
+          : '';
+      return {
+        name: member.Name,
+        kind,
+        signature,
+        category: member.Category || '',
+        tags: itemsOf(member.Tags),
+        security,
+        threadSafety: member.ThreadSafety || '',
+      };
+    }).filter((member) => member.name)
+      .sort((left, right) => left.name.localeCompare(right.name)),
+  })).filter((entry) => entry.name)
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  const enums = dump.Enums.map((entry) => ({
+    name: entry.Name,
+    items: itemsOf(entry.Items).map((item) => ({
+      name: item.Name,
+      value: item.Value,
+      tags: itemsOf(item.Tags),
+    })).filter((item) => item.name)
+      .sort((left, right) => Number(left.value) - Number(right.value)),
+  })).filter((entry) => entry.name)
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  if (!classes.length || !enums.length) {
+    throw new Error('Engine API dump contains no classes or enums.');
+  }
+  return {
+    clientName: clientName || 'Unknown client',
+    engineVersion: engineVersion || 'Unknown build',
+    sourceFile: sourceFile || 'API-Dump.json',
+    sourceUrl: 'https://github.com/RobloxAPI/build-archive/blob/8af1cd98d719f823f14aa09a5449c580fda71e20/data/production/builds/version-c2037653e0a446ac/API-Dump.json',
+    sourceDate: '2021-06-07',
+    classes,
+    enums,
+    classCount: classes.length,
+    memberCount: classes.reduce((count, item) => count + item.members.length, 0),
+    enumCount: enums.length,
+    categories: ['Classes only', 'Enums only'],
+    isFullDump: true,
+  };
 }
 
 function propertiesOf(item) {
@@ -68,6 +154,11 @@ function parseReflectionMetadata(xml, { clientName, engineVersion } = {}) {
             name: fields.Name,
             kind: groupName,
             summary: fields.summary || '',
+            signature: '',
+            category: '',
+            tags: [],
+            security: '',
+            threadSafety: '',
           });
         }
       }
@@ -75,6 +166,8 @@ function parseReflectionMetadata(xml, { clientName, engineVersion } = {}) {
         name: properties.Name || '',
         category: properties.ClassCategory || 'Other',
         summary: properties.summary || '',
+        superclass: '',
+        tags: [],
         members,
       };
     })
@@ -89,14 +182,38 @@ function parseReflectionMetadata(xml, { clientName, engineVersion } = {}) {
     clientName: clientName || 'Unknown client',
     engineVersion: engineVersion || 'Unknown build',
     sourceFile: 'shared/ReflectionMetadata.xml',
+    sourceUrl: null,
+    sourceDate: null,
     classes,
+    enums: [],
     classCount: classes.length,
     memberCount: classes.reduce((count, item) => count + item.members.length, 0),
-    categories: [...new Set(classes.map((item) => item.category))].sort(),
+    enumCount: 0,
+    categories: ['Classes only', 'Enums only'],
+    isFullDump: false,
   };
 }
 
 function loadClientEngineApi(releaseRoot, clientName) {
+  if (ARCHIVED_2021_CLIENTS.has(clientName)) {
+    const dumpPath = path.join(
+      __dirname,
+      'engine-api',
+      `${API_DUMP_VERSION}.json`,
+    );
+    if (fs.existsSync(dumpPath)) {
+      if (!archived2021ApiCache) {
+        const dump = JSON.parse(fs.readFileSync(dumpPath, 'utf8'));
+        archived2021ApiCache = parseApiDump(dump, {
+          clientName: '2021 API archive',
+          engineVersion: API_DUMP_VERSION,
+          sourceFile: `engine-api/${API_DUMP_VERSION}.json`,
+        });
+      }
+      return { ...archived2021ApiCache, clientName };
+    }
+  }
+
   const metadataPath = path.join(
     releaseRoot,
     'Clients',
@@ -110,4 +227,4 @@ function loadClientEngineApi(releaseRoot, clientName) {
   return parseReflectionMetadata(xml, { clientName, engineVersion });
 }
 
-module.exports = { loadClientEngineApi, parseReflectionMetadata };
+module.exports = { loadClientEngineApi, parseApiDump, parseReflectionMetadata };
