@@ -239,7 +239,9 @@
         return payload;
       } catch (error) {
         console.error('Launch failure:', error);
-        alert('LuckyBlox failed to launch the game.');
+        alert(error && error.message
+          ? error.message
+          : 'LuckyBlox failed to launch the game. Please try again.');
         return null;
       } finally {
         // Every exit path - success, sign-in redirect, download prompt, even the

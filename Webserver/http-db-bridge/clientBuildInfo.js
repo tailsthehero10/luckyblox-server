@@ -32,6 +32,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 
 const releaseRoot = path.resolve(__dirname, '..', '..');
 // runtimeConfig lives in <root>/server/, two levels up from this folder - the
@@ -47,6 +48,7 @@ const VERSIONS_DIR = 'Versions';
 // not the host platform running this Node process.
 const CLIENT_BINARY = 'RobloxPlayerBeta.exe';
 const CHANNEL = String(process.env.LUCKYBLOX_CLIENT_CHANNEL || 'production').trim() || 'production';
+const fingerprintCache = new Map();
 
 /**
  * Compare two version directory names the way a human reads them.
@@ -150,25 +152,36 @@ function resolveSourceDir() {
   return null;
 }
 
-/** A stable build id for a directory: its name when versioned, else its mtime. */
+function isImmutableVersionDirectory(name) {
+  return /^\d+(?:[._-]\d+)*$/.test(String(name || ''));
+}
+
+function binaryFingerprint(binaryPath) {
+  const stat = fs.statSync(binaryPath);
+  const cacheKey = `${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}:${stat.ino}`;
+  const cached = fingerprintCache.get(binaryPath);
+  if (cached && cached.cacheKey === cacheKey) return cached.fingerprint;
+
+  const fingerprint = crypto.createHash('sha256')
+    .update(fs.readFileSync(binaryPath))
+    .digest('hex')
+    .slice(0, 16);
+  fingerprintCache.set(binaryPath, { cacheKey, fingerprint });
+  return fingerprint;
+}
+
+/** Versioned folders are immutable; other folders use the binary content hash. */
 function buildIdFor(dir) {
   if (!dir) return null;
   const base = path.basename(dir);
-  // A Versions/<version> path already carries the version as its id.
-  if (/^\d/.test(base) || /^version-/i.test(base)) return base;
+  if (isImmutableVersionDirectory(base)) return base;
 
-  try {
-    // Use the SAME resolution the size helper uses, so a Player/-nested build
-    // (where <dir>/RobloxPlayerBeta.exe does not exist) still gets a real id
-    // instead of falling through to just the folder name.
-    const binary = resolveBinaryIn(dir);
-    if (!binary) return base || null;
-    const stat = fs.statSync(binary);
-    // Size + mtime is a cheap, stable fingerprint of a build with no manifest.
-    return `local-${stat.size}-${Math.floor(stat.mtimeMs)}`;
-  } catch (error) {
-    return base || null;
-  }
+  // Use the SAME resolution as the size helper, including Player/-nested
+  // layouts. Hashing the executable makes a replacement in a stable folder
+  // (such as Clients/2021M) produce a new installer version automatically.
+  const binary = resolveBinaryIn(dir);
+  if (!binary) return null;
+  return `${base || 'client'}-${binaryFingerprint(binary)}`;
 }
 
 /**
@@ -222,7 +235,7 @@ function getClientBuildInfo() {
   const dir = resolveSourceDir();
   const buildId = buildIdFor(dir);
   const version = String(process.env.LUCKYBLOX_CLIENT_VERSION || '').trim()
-    || (buildId && /^\d/.test(buildId) ? buildId : null)
+    || buildId
     || 'local-dev';
 
   return {
@@ -306,4 +319,5 @@ module.exports = {
   getClientUpdateManifest,
   resolveSourceDir,
   resolveBinaryIn,
+  buildIdFor,
 };

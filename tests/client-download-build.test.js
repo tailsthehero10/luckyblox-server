@@ -145,6 +145,22 @@ check('buildId and version are populated for the installer', () => {
   assert.ok(info.version, 'version must be set so the download path is meaningful');
 });
 
+check('replacing a client binary in the same folder publishes a new installer build ID', () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'luckyblox-build-fingerprint-'));
+  const buildDir = path.join(temporaryRoot, '2021M');
+  const binaryPath = path.join(buildDir, 'RobloxPlayerBeta.exe');
+  try {
+    fs.mkdirSync(buildDir, { recursive: true });
+    fs.writeFileSync(binaryPath, 'first client build');
+    const firstBuild = clientBuildInfo.buildIdFor(buildDir);
+    fs.writeFileSync(binaryPath, 'second client build with changed bytes');
+    const secondBuild = clientBuildInfo.buildIdFor(buildDir);
+    assert.notStrictEqual(secondBuild, firstBuild);
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 check('installer provisions real PlatformContent files before its up-to-date return', () => {
   const installerSource = fs.readFileSync(
     path.join(PROJECT_ROOT, 'tools', 'installer', 'LuckybloxInstaller.cs'),
@@ -193,6 +209,11 @@ check('installer provisions real PlatformContent files before its up-to-date ret
     installerSource,
     /\/PlatformContent\/" \+ escapedPath/,
     'the installer must download the shipped platform assets',
+  );
+  assert.match(
+    installerSource,
+    /string\.IsNullOrEmpty\(build\.BuildId\)\s*\?\s*build\.Version\s*:\s*build\.BuildId/,
+    'the installer must compare and install by build ID so changed binaries update even when a release label stays the same',
   );
   assert.equal(
     (installerSource.match(/PromoteFile\(temporary, destination\)/g) || []).length,

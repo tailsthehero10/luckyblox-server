@@ -504,7 +504,7 @@ namespace LuckyBlox.Installer
                 var state = InstallState.Read(_root);
                 result.Version = build.Version;
                 string versionFolder = SafeFolderName(
-                    string.IsNullOrEmpty(build.Version) ? build.BuildId : build.Version);
+                    string.IsNullOrEmpty(build.BuildId) ? build.Version : build.BuildId);
 
                 EnsurePlatformContent();
 
@@ -512,7 +512,10 @@ namespace LuckyBlox.Installer
                 // Up to date means: a player is installed AND the version we have
                 // matches the version the server publishes.
                 bool sameVersion = !string.IsNullOrEmpty(build.Version)
-                    && string.Equals(state.CurrentVersion, versionFolder, StringComparison.OrdinalIgnoreCase);
+                    && string.Equals(
+                        state.CurrentVersion,
+                        SafeFolderName(string.IsNullOrEmpty(build.BuildId) ? build.Version : build.BuildId),
+                        StringComparison.OrdinalIgnoreCase);
 
                 if (state.PlayerInstalled && sameVersion && !forceReinstall)
                 {
@@ -1353,7 +1356,10 @@ namespace LuckyBlox.Installer
             bool installed = _state != null && _state.PlayerInstalled;
             bool sameVersion = installed
                 && !string.IsNullOrEmpty(_build.Version)
-                && string.Equals(_state.CurrentVersion, Installer.SafeFolderName(_build.Version), StringComparison.OrdinalIgnoreCase);
+                && string.Equals(
+                    _state.CurrentVersion,
+                    Installer.SafeFolderName(string.IsNullOrEmpty(_build.BuildId) ? _build.Version : _build.BuildId),
+                    StringComparison.OrdinalIgnoreCase);
 
             _versionLabel.Text = "Install folder: " + InstallerConfig.InstallDir(_root)
                 + (installed

@@ -229,6 +229,11 @@ test('Create page uses truthful LuckyBlox copy and exposes creator tools and API
   assert.doesNotMatch(docs, /dev\.LuckBlox\.site\.tk/);
 });
 
+test('home Play errors show the server response instead of hiding the reason', () => {
+  const home = fs.readFileSync(path.join(viewsDir, 'home.ejs'), 'utf8');
+  assert.match(home, /alert\(error && error\.message[\s\S]{0,100}\? error\.message/);
+});
+
 test('shared header allows the selected light or dark theme to control its background', () => {
   const baseCss = fs.readFileSync(path.join(cssDir, 'roblox.css'), 'utf8');
   const headerRule = baseCss.match(/\.lb-header,\s*\.roblox-topbar\s*\{([^}]*)\}/);
