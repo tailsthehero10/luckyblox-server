@@ -42,7 +42,7 @@ local loadingImageCon = nil
 
 local COLORS = {
 	BLACK = Color3.new(0, 0, 0),
-	BACKGROUND_COLOR = Color3.new(45/255, 45/255, 45/255),
+	BACKGROUND_COLOR = Color3.new(0, 0, 0),
 	TEXT_COLOR = Color3.new(1, 1, 1),
 	WHITE = Color3.new(1, 1, 1),
 	ERROR = Color3.new(253/255,68/255,72/255)
@@ -66,7 +66,7 @@ if enableNewLoadingScreen then
 		COLORS.TEXT_COLOR = COLORS.BLACK
 		spinnerImageId = "rbxasset://textures/loading/robloxTiltRed.png"
 	else
-		COLORS.BACKGROUND_COLOR = Color3.new(45 / 255, 45 / 255, 45 / 255)
+		COLORS.BACKGROUND_COLOR = COLORS.BLACK
 		COLORS.TEXT_COLOR = COLORS.WHITE
 		spinnerImageId = "rbxasset://textures/loading/robloxTilt.png"
 	end

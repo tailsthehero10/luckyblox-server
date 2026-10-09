@@ -399,10 +399,27 @@ function serveClientAsset(subPath) {
     let file = null;
     if (own.startsWith(clientDir) && fs.existsSync(own) && fs.statSync(own).isFile()) {
       file = own;
-    } else {
+    } else if (subPath) {
+      // Fallback: if a subPath was specified and the file wasn't found there,
+      // try the root of the client folder (for files like AppSettings.xml that
+      // may live at the root instead of in the subPath).
+      const ownRoot = path.join(clientDir, relative);
+      if (ownRoot.startsWith(clientDir) && fs.existsSync(ownRoot) && fs.statSync(ownRoot).isFile()) {
+        file = ownRoot;
+      }
+    }
+
+    if (!file) {
+      // Still no file found; try the default client
       const shared = path.join(DEFAULT_CLIENT_DIR, subPath || '', relative);
       if (shared.startsWith(DEFAULT_CLIENT_DIR) && fs.existsSync(shared) && fs.statSync(shared).isFile()) {
         file = shared;
+      } else if (subPath) {
+        // Fallback for default client: try the root if subPath didn't work
+        const sharedRoot = path.join(DEFAULT_CLIENT_DIR, relative);
+        if (sharedRoot.startsWith(DEFAULT_CLIENT_DIR) && fs.existsSync(sharedRoot) && fs.statSync(sharedRoot).isFile()) {
+          file = sharedRoot;
+        }
       }
     }
 
