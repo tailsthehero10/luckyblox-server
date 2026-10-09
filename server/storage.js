@@ -30,6 +30,7 @@ const postgresStore = require('./postgresStore');
 
 const repoRoot = runtime.rootDir;
 const bundledDataDir = path.join(repoRoot, 'Webserver', 'http-db-bridge', 'data');
+const pendingPostgresWrites = new Map();
 
 function resolveDataDir() {
   const explicit = process.env.LUCKYBLOX_DATA_DIR;
@@ -81,6 +82,28 @@ function ensureDataDir() {
 }
 
 ensureDataDir();
+
+function queuePostgresWrite(fileName, data) {
+  const snapshot = JSON.parse(JSON.stringify(data));
+  const previous = pendingPostgresWrites.get(fileName) || Promise.resolve();
+  const write = previous
+    .catch(() => false)
+    .then(() => postgresStore.writeDoc(fileName, snapshot))
+    .then((ok) => {
+      if (!ok) {
+        console.error(`[luckyblox] durable save failed for ${fileName}; check the Neon DATABASE_URL and server logs.`);
+      }
+      return ok;
+    })
+    .catch((error) => {
+      console.error(`[luckyblox] durable save failed for ${fileName}: ${error.message}`);
+      return false;
+    });
+  pendingPostgresWrites.set(fileName, write);
+  write.finally(() => {
+    if (pendingPostgresWrites.get(fileName) === write) pendingPostgresWrites.delete(fileName);
+  });
+}
 
 /**
  * Absolute path for a data file. If a persistent dir is in use and the file is
@@ -140,14 +163,10 @@ function writeJson(fileName, data) {
   try {
     fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
     fs.renameSync(tmpPath, filePath);
-    // Mirror to the durable backend. Both are best-effort and debounced - a
-    // slow network write must never block or fail a request.
-    //
-    // Postgres is tried first because it is a real database (queryable, with
-    // timestamps); the GitHub/HTTP mirror stays for deployments that prefer a
-    // git history of the data instead.
+    // Persist database snapshots in order per document, so an older slow write
+    // cannot overwrite a newer save.
     if (postgresStore.ENABLED) {
-      postgresStore.writeDoc(fileName, data).catch(() => { /* logged inside */ });
+      queuePostgresWrite(fileName, data);
     } else {
       remoteStore.saveFile(fileName, data);
     }
@@ -176,7 +195,18 @@ async function restoreFromRemote() {
   // Postgres is the durable backend when configured. It is tried first, and the
   // result shape is the same so the caller does not care which is in use.
   if (postgresStore.ENABLED) {
-    return postgresStore.restoreToDir(dataDir);
+    const result = await postgresStore.restoreToDir(dataDir);
+    if (!result.ok) {
+      throw new Error(`Neon Postgres restore failed: ${result.error || 'unknown database error'}`);
+    }
+    const seeded = await postgresStore.seedMissingFromDir(dataDir);
+    if (!seeded.ok) {
+      throw new Error(`Neon Postgres bootstrap failed: ${seeded.error || 'unknown database error'}`);
+    }
+    if (seeded.seeded.length) {
+      console.log(`[luckyblox] postgres: initialized ${seeded.seeded.length} missing document(s)`);
+    }
+    return { ...result, seeded: seeded.seeded };
   }
 
   return remoteStore.loadAll(dataDir);
@@ -185,11 +215,14 @@ async function restoreFromRemote() {
 /** Push any queued writes immediately (used on shutdown). Best effort. */
 async function flushRemote() {
   if (postgresStore.ENABLED) {
-    // Everything is written on the request path already, so there is no queue to
-    // drain - just close the pool cleanly so an in-flight query can finish.
-    const pushed = await postgresStore.pushFromDir(dataDir);
+    const writes = await Promise.all([...pendingPostgresWrites.values()]);
     await postgresStore.close();
-    return { ok: true, enabled: true, pushed: pushed.pushed || [] };
+    return {
+      ok: writes.every(Boolean),
+      enabled: true,
+      pushed: [],
+      failed: writes.filter((ok) => !ok).length,
+    };
   }
   return remoteStore.flush();
 }
@@ -228,7 +261,22 @@ function deleteJson(fileName) {
     console.error(`[luckyblox] deleteJson ${fileName} failed: ${error.message}`);
   }
   if (postgresStore.ENABLED) {
-    postgresStore.deleteDoc(fileName).catch(() => { /* logged inside */ });
+    const previous = pendingPostgresWrites.get(fileName) || Promise.resolve();
+    const deletion = previous
+      .catch(() => false)
+      .then(() => postgresStore.deleteDoc(fileName))
+      .then((ok) => {
+        if (!ok) console.error(`[luckyblox] durable delete failed for ${fileName}; check the Neon DATABASE_URL and server logs.`);
+        return ok;
+      })
+      .catch((error) => {
+        console.error(`[luckyblox] durable delete failed for ${fileName}: ${error.message}`);
+        return false;
+      });
+    pendingPostgresWrites.set(fileName, deletion);
+    deletion.finally(() => {
+      if (pendingPostgresWrites.get(fileName) === deletion) pendingPostgresWrites.delete(fileName);
+    });
   } else {
     remoteStore.deleteFile(fileName);
   }
@@ -278,14 +326,14 @@ function describeStorage() {
     backend: postgresStore.ENABLED ? 'postgres' : (remote.enabled ? remote.mode : 'local-files'),
     postgres: postgresStore.describe(),
     // `persistent` is the headline "will this survive?" answer.
-    persistent: postgresStore.ENABLED || isPersistent || remote.enabled,
+    persistent: postgresStore.describe().ready || isPersistent || remote.enabled,
     localPersistent: isPersistent,
     onRender,
     viaRenderDisk,
     unbacked: unbackedOnRender,
     remote,
     note: postgresStore.ENABLED
-      ? 'Data is stored in Postgres and will survive redeploys.'
+      ? postgresStore.describe().note
       : note,
   };
 }

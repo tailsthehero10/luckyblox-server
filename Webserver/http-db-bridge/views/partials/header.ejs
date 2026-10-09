@@ -244,7 +244,7 @@ var hDark = (typeof themeOn !== 'undefined') ? !!themeOn : false;
               <span class="lb-account-switcher-badge">Active</span>
             <% } else { %>
               <a class="lb-account-switcher-action"
-                 href="/signin?username=<%= encodeURIComponent(acct.username) %>&amp;redirect=%2F"
+                 href="/account/switch?userId=<%= encodeURIComponent(acct.userId) %>"
                  title="Sign in as <%= acct.username %>">Switch</a>
               <button type="button"
                       class="lb-account-switcher-forget"

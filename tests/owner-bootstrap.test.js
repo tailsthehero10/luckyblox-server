@@ -63,6 +63,7 @@ async function boot(dataDir) {
       LUCKYBLOX_PREVIEW_MODE: 'off',
       LUCKYBLOX_OWNER_USERNAME: OWNER_USER,
       LUCKYBLOX_OWNER_PASSWORD: OWNER_PASS,
+      LUCKYBLOX_OWNER_JOIN_DATE: '2026-09-25T00:00:00.000Z',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -139,6 +140,7 @@ function check(name, fn) {
       }
       assert.strictEqual(owner.stats.friends, 0, 'counters must start at real zeros');
       assert.ok(owner.avatar && owner.avatar.bodyColors, 'no avatar block to draw');
+      assert.strictEqual(owner.joinDate, '2026-09-25T00:00:00.000Z');
     });
 
     const wrong = await req('/api/login', {
@@ -193,6 +195,7 @@ function check(name, fn) {
       assert.strictEqual(owner.robux, 4242, 'robux was reset by the owner-password step');
       assert.strictEqual(owner.friends.length, 1, 'friends were wiped by the owner-password step');
       assert.strictEqual(owner.avatar.bodyColors.headColorId, 1, 'the saved avatar was replaced');
+      assert.strictEqual(owner.joinDate, '2026-09-25T00:00:00.000Z', 'the owner join date migration was not applied');
     });
 
     check('booting twice does not duplicate or reset the owner', () => {

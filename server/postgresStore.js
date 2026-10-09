@@ -143,6 +143,7 @@ function getPool() {
 
   pool.on('error', (error) => {
     lastError = error.message;
+    ready = false;
     console.warn(`[luckyblox] postgres pool error: ${error.message}`);
   });
 
@@ -170,24 +171,35 @@ async function init() {
 /** Read one document. Returns `fallback` when the row is missing. */
 async function readDoc(name, fallback) {
   if (!ENABLED) return fallback;
+  const initialized = await init();
+  if (!initialized.ok) throw new Error(`Postgres is not ready: ${initialized.error || initialized.reason}`);
   const p = getPool();
-  if (!p) return fallback;
+  if (!p) throw new Error(lastError || 'Postgres pool is unavailable');
   try {
     const res = await p.query('SELECT data FROM blobs WHERE name = $1', [name]);
     if (res.rows.length === 0) return fallback;
     return res.rows[0].data;
   } catch (error) {
     lastError = error.message;
+    ready = false;
     console.warn(`[luckyblox] postgres read ${name} failed: ${error.message}`);
-    return fallback;
+    throw error;
   }
 }
 
 /** Write one document (insert or replace). */
 async function writeDoc(name, data) {
   if (!ENABLED) return false;
+  const initialized = await init();
+  if (!initialized.ok) {
+    console.error(`[luckyblox] postgres write ${name} not attempted: ${initialized.error || initialized.reason}`);
+    return false;
+  }
   const p = getPool();
-  if (!p) return false;
+  if (!p) {
+    console.error(`[luckyblox] postgres write ${name} not attempted: ${lastError || 'pool unavailable'}`);
+    return false;
+  }
   try {
     await p.query(
       `INSERT INTO blobs (name, data, updated_at)
@@ -198,6 +210,7 @@ async function writeDoc(name, data) {
     return true;
   } catch (error) {
     lastError = error.message;
+    ready = false;
     console.warn(`[luckyblox] postgres write ${name} failed: ${error.message}`);
     return false;
   }
@@ -206,6 +219,8 @@ async function writeDoc(name, data) {
 /** Delete one document. */
 async function deleteDoc(name) {
   if (!ENABLED) return false;
+  const initialized = await init();
+  if (!initialized.ok) return false;
   const p = getPool();
   if (!p) return false;
   try {
@@ -213,6 +228,7 @@ async function deleteDoc(name) {
     return true;
   } catch (error) {
     lastError = error.message;
+    ready = false;
     console.warn(`[luckyblox] postgres delete ${name} failed: ${error.message}`);
     return false;
   }
@@ -228,6 +244,7 @@ async function listDocs() {
     return res.rows.map((r) => r.name);
   } catch (error) {
     lastError = error.message;
+    ready = false;
     return [];
   }
 }
@@ -263,8 +280,48 @@ async function restoreToDir(dataDir) {
     return { ok: true, enabled: true, loaded };
   } catch (error) {
     lastError = error.message;
+    ready = false;
     return { ok: false, enabled: true, error: error.message, loaded };
   }
+}
+
+/**
+ * Seed only documents that are absent from Postgres. Existing database rows
+ * always win, so an old container snapshot can never replace newer Neon data.
+ */
+async function seedMissingFromDir(dataDir) {
+  if (!ENABLED) return { ok: true, enabled: false, seeded: [] };
+  const initialized = await init();
+  if (!initialized.ok) {
+    return { ok: false, enabled: true, error: initialized.error, seeded: [] };
+  }
+
+  let files;
+  try {
+    files = fs.readdirSync(dataDir).filter((name) => name.endsWith('.json'));
+  } catch (error) {
+    return { ok: false, enabled: true, error: error.message, seeded: [] };
+  }
+
+  const seeded = [];
+  for (const name of files) {
+    try {
+      const document = JSON.parse(fs.readFileSync(path.join(dataDir, name), 'utf8'));
+      const result = await getPool().query(
+        `INSERT INTO blobs (name, data, updated_at)
+         VALUES ($1, $2::jsonb, now())
+         ON CONFLICT (name) DO NOTHING`,
+        [name, JSON.stringify(document)],
+      );
+      if (result.rowCount > 0) seeded.push(name);
+    } catch (error) {
+      lastError = error.message;
+      ready = false;
+      console.error(`[luckyblox] postgres seed ${name} failed: ${error.message}`);
+      return { ok: false, enabled: true, error: error.message, seeded };
+    }
+  }
+  return { ok: true, enabled: true, seeded };
 }
 
 /**
@@ -308,7 +365,7 @@ function describe() {
     note: ENABLED
       ? (ready
         ? 'Data is stored in Postgres and survives redeploys.'
-        : 'DATABASE_URL is set; the database has not been reached yet.')
+        : `DATABASE_URL is configured, but Postgres is not currently ready${lastError ? `: ${lastError}` : '.'}`)
       : 'DATABASE_URL not set; data is in local JSON files only.',
   };
 }
@@ -330,6 +387,7 @@ module.exports = {
   deleteDoc,
   listDocs,
   restoreToDir,
+  seedMissingFromDir,
   pushFromDir,
   describe,
   close,

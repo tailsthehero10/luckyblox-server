@@ -216,6 +216,19 @@ test('sidebar uses LuckyBlox-owned icons that match each navigation destination'
   assert.match(sidebar, /label:\s*'Badges'[^}]*icon:\s*'\/icons\/star\.svg'/);
 });
 
+test('Create page uses truthful LuckyBlox copy and exposes creator tools and API docs', () => {
+  const create = fs.readFileSync(path.join(viewsDir, 'create.ejs'), 'utf8');
+  assert.match(create, /href="\/dev\/create"/);
+  assert.match(create, /href="\/develop"/);
+  assert.match(create, /href="\/dev\/assets"/);
+  assert.match(create, /href="\/dev\/docs"/);
+  assert.doesNotMatch(create, /50 million monthly players|\$2M a year|Roblox Studio is FREE/);
+
+  const docs = fs.readFileSync(path.join(viewsDir, 'dev', 'docs.ejs'), 'utf8');
+  assert.match(docs, /href="\/dev\/docs\/auth"/);
+  assert.doesNotMatch(docs, /dev\.LuckBlox\.site\.tk/);
+});
+
 test('shared header allows the selected light or dark theme to control its background', () => {
   const baseCss = fs.readFileSync(path.join(cssDir, 'roblox.css'), 'utf8');
   const headerRule = baseCss.match(/\.lb-header,\s*\.roblox-topbar\s*\{([^}]*)\}/);

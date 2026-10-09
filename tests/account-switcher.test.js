@@ -106,6 +106,15 @@ function check(name, fn) {
       method: 'POST',
       body: JSON.stringify({ username: 'tailsthehero10', password: '@pass@.lovely10' }),
     });
+    const ownerSessionCookie = String(cookieFrom(login1, 'luckblox_session').split(';')[0]);
+    const createPage = await req('/create', { headers: { Cookie: ownerSessionCookie } });
+    const creatorDocsPage = await req('/dev/docs', { headers: { Cookie: ownerSessionCookie } });
+    check('creator landing and API docs pages are reachable', () => {
+      assert.strictEqual(createPage.statusCode, 200);
+      assert.strictEqual(creatorDocsPage.statusCode, 200);
+      assert.ok(createPage.body.includes('Create on LuckyBlox'));
+      assert.ok(creatorDocsPage.body.includes('/dev/docs/auth'));
+    });
 
     const known1 = cookieFrom(login1, 'luckblox_known_accounts');
     check('signing in records the account for the switcher', () => {
@@ -181,6 +190,42 @@ function check(name, fn) {
     check('the list holds ids only, still', () => {
       const raw = decodeURIComponent(String(known2.split(';')[0]).split('=')[1]);
       assert.ok(/^[0-9,]*$/.test(raw), `the cookie contains more than ids: ${raw}`);
+    });
+
+    const secondJar = [
+      `luckblox_session=${String(cookieFrom(login2, 'luckblox_session').split(';')[0]).split('=')[1]}`,
+      `luckblox_known_accounts=${String(known2.split(';')[0]).split('=')[1]}`,
+    ].join('; ');
+    const switchAccount = await req('/account/switch?userId=1', {
+      headers: { Cookie: secondJar },
+    });
+    check('switching destroys the active session and redirects to the saved account', () => {
+      assert.strictEqual(switchAccount.statusCode, 302);
+      assert.strictEqual(
+        switchAccount.headers.location,
+        '/signin?username=tailsthehero10&redirect=%2F',
+      );
+      const cleared = switchAccount.headers['set-cookie'] || [];
+      assert.ok(cleared.some((cookie) => /^luckblox_session=;/.test(cookie)), 'active session cookie was not cleared');
+      assert.ok(cleared.some((cookie) => cookie.startsWith('.ROBLOSECURITY=;')), 'player auth cookie was not cleared');
+      assert.ok(
+        !cleared.some((cookie) => /^luckblox_known_accounts=/.test(cookie)),
+        'saved account list must survive switching',
+      );
+    });
+    const afterSwitch = await req('/api/accounts/known', {
+      headers: { Cookie: secondJar },
+    });
+    check('the previous session is no longer recognized after switching', () => {
+      const data = JSON.parse(afterSwitch.body);
+      assert.ok((data.accounts || []).every((account) => account.isCurrent === false));
+    });
+
+    const unsavedSwitch = await req('/account/switch?userId=999', {
+      headers: { Cookie: secondJar },
+    });
+    check('switching rejects an account that was not saved in this browser', () => {
+      assert.strictEqual(unsavedSwitch.statusCode, 404);
     });
 
     // --- A forged cookie cannot invent accounts ---------------------------

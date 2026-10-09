@@ -67,8 +67,11 @@ class FakePool {
       return { rows: [...rows.keys()].sort().map((name) => ({ name })) };
     }
     if (s.startsWith('INSERT INTO blobs')) {
-      rows.set(params[0], JSON.parse(params[1]));
-      return { rows: [] };
+      const existed = rows.has(params[0]);
+      if (!s.includes('DO NOTHING') || !existed) {
+        rows.set(params[0], JSON.parse(params[1]));
+      }
+      return { rows: [], rowCount: s.includes('DO NOTHING') && existed ? 0 : 1 };
     }
     if (s.startsWith('DELETE FROM blobs')) {
       rows.delete(params[0]);
@@ -169,6 +172,19 @@ const store = require('../server/postgresStore');
     assert.ok(r.pushed.includes('games.json'));
     const back = await store.readDoc('games.json', {});
     assert.equal(back['1818'].title, 'Crossroads');
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  await check('seedMissingFromDir inserts missing documents without overwriting Neon rows', async () => {
+    const dir = makeTestDir('luckyblox-pg-seed');
+    fs.writeFileSync(path.join(dir, 'games.json'), JSON.stringify({ 1818: { title: 'stale local copy' } }), 'utf8');
+    fs.writeFileSync(path.join(dir, 'new.json'), JSON.stringify({ value: 'seeded' }), 'utf8');
+    await store.writeDoc('games.json', { 1818: { title: 'saved in Neon' } });
+    const result = await store.seedMissingFromDir(dir);
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.seeded, ['new.json']);
+    assert.equal((await store.readDoc('games.json', {}))['1818'].title, 'saved in Neon');
+    assert.equal((await store.readDoc('new.json', {})).value, 'seeded');
     fs.rmSync(dir, { recursive: true, force: true });
   });
 

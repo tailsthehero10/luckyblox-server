@@ -27,6 +27,10 @@ services:
       # PORT is provided by Render; do not hardcode it here.
       - key: LUCKBLOX_SECRET
         generateValue: true
+      # Primary durable store for users, games, currency, inventory and saves.
+      # Supply the Neon connection string in the Render dashboard.
+      - key: DATABASE_URL
+        sync: false
       # Owner account (id 1). The password is hashed and applied to the owner at
       # boot, so it survives redeploys and never lives in the repo. Set the real
       # value in the Render dashboard (Environment -> Add Environment Variable)
@@ -37,20 +41,9 @@ services:
         value: tailsthehero10
       - key: LUCKYBLOX_OWNER_PASSWORD
         sync: false
-      # Accounts, sessions and currency live in a data dir. On the free plan the
-      # container filesystem is wiped on every deploy, so without a disk the owner
-      # password (and every account) resets.
-      #
-      # Option 1 (FREE, no disk): mirror the data to the private storage repo
-      # tailsthehero10/Luckyblox-Storage-1. Create a fine-grained token on this
-      # machine with Contents: Read+Write for that repo, then set in the Render
-      # dashboard:
-      #   LUCKYBLOX_SYNC=github
-      #   LUCKYBLOX_SYNC_TOKEN=<fine-grained PAT>
-      # (LUCKYBLOX_SYNC_REPO defaults to tailsthehero10/Luckyblox-Storage-1.)
-      #
-      # Option 2 (paid): attach a Render Disk and set LUCKYBLOX_DATA_DIR to its
-      # mount path. Either way, keeping LUCKYBLOX_OWNER_PASSWORD in the env var
-      # above re-applies the owner on each boot if everything else is lost.
+      - key: LUCKYBLOX_OWNER_JOIN_DATE
+        value: "2026-09-25T00:00:00.000Z"
+      # Neon Postgres (DATABASE_URL above) is the primary persistent store. Do
+      # not remove it: without it the free Render filesystem is ephemeral.
       # - key: LUCKYBLOX_DATA_DIR
       #   value: /var/data

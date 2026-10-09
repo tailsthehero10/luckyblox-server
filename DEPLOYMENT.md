@@ -56,6 +56,14 @@ placeholder page back, set `LUCKYBLOX_PREVIEW_MODE=on` in the Render dashboard.
 | `LUCKYBLOX_OWNER_ID` | `1` | Which user id is the deployment owner. |
 | `LUCKYBLOX_OWNER_USERNAME` | `tailsthehero10` | Owner username. |
 | `LUCKYBLOX_OWNER_PASSWORD` | *(unset)* | Owner password, hashed and applied to the owner at boot. Keeps the credential out of the repo and re-applied after every redeploy. |
+| `DATABASE_URL` | *(required on Render)* | Neon Postgres connection URL. This is the durable source of truth for accounts, games, currency, inventory, and DataStore JSON. |
+
+Set `DATABASE_URL` in the Render service environment to the connection string
+from `console.neon.tech` (use Neon’s pooled connection string). Keep it private.
+The bridge now refuses to serve if this is configured but cannot be reached, so
+it cannot quietly run against disposable container files or overwrite Neon with
+stale local copies. On startup, Neon rows are restored first; local JSON files
+are inserted only for names that do not yet exist in Neon.
 
 On Render these public values are auto-detected from `RENDER_EXTERNAL_URL` /
 `RENDER_EXTERNAL_HOSTNAME`, so links always point at

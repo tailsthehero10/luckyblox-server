@@ -2063,6 +2063,7 @@ function ensureSeedData() {
   // committed to the repository. Set LUCKYBLOX_OWNER_PASSWORD on the host and it
   // is hashed and applied to the owner account at boot.
   applyOwnerPasswordFromEnv();
+  applyOwnerJoinDateFromEnv();
 
   // Collapse duplicate usernames so a lookup can never land on a record without
   // a credential (see getUserByUsername).
@@ -2309,6 +2310,27 @@ function applyOwnerPasswordFromEnv() {
   users[OWNER_USER_ID] = owner;
   writeJson(usersPath, users);
   console.log(`[luckyblox] applied owner password for ${owner.username || OWNER_USER_ID} from LUCKYBLOX_OWNER_PASSWORD`);
+  return true;
+}
+
+function applyOwnerJoinDateFromEnv() {
+  const configuredDate = String(process.env.LUCKYBLOX_OWNER_JOIN_DATE || '').trim();
+  if (!configuredDate) return false;
+  const timestamp = Date.parse(configuredDate);
+  if (!Number.isFinite(timestamp)) {
+    console.error('[luckyblox] LUCKYBLOX_OWNER_JOIN_DATE is not a valid date; leaving the owner date unchanged.');
+    return false;
+  }
+
+  const users = getUsers();
+  const owner = users[OWNER_USER_ID];
+  if (!owner) return false;
+  const joinDate = new Date(timestamp).toISOString();
+  if (owner.joinDate === joinDate) return false;
+  owner.joinDate = joinDate;
+  users[OWNER_USER_ID] = owner;
+  writeJson(usersPath, users);
+  console.log(`[luckyblox] set owner account join date to ${joinDate}`);
   return true;
 }
 
@@ -3706,8 +3728,6 @@ function writeUploadedPackage(fileName, buffer, assetKind = 'rbxl') {
 
   return { fileName: safeName, filePath };
 }
-
-ensureSeedData();
 installStudioApiRoutes(app, {
   resolveUser: (userId) => getUser(userId),
   serveAssetById,
@@ -4349,6 +4369,26 @@ app.get('/signin', (req, res) => {
     // or expired", which looks exactly like a wrong password.
     csrfToken: req.csrfToken,
   });
+});
+
+app.get('/account/switch', (req, res) => {
+  const wanted = String(req.query.userId || '').trim();
+  if (!/^\d+$/.test(wanted) || !readKnownAccountIds(req).includes(wanted)) {
+    return res.status(404).send('That account is not saved in this browser.');
+  }
+
+  const target = getUsers()[wanted];
+  if (!target || !target.username) {
+    return res.status(404).send('That saved account no longer exists.');
+  }
+
+  const cookieMap = parseCookieHeader(req.headers.cookie || '');
+  destroySession(activeSessionIdFromCookies(cookieMap));
+  const secure = publicBaseUrl.startsWith('https://') || Boolean(process.env.RENDER);
+  const clearOptions = { path: '/', sameSite: 'lax', secure };
+  res.clearCookie('luckblox_session', clearOptions);
+  res.clearCookie('.ROBLOSECURITY', clearOptions);
+  return res.redirect(`/signin?username=${encodeURIComponent(target.username)}&redirect=%2F`);
 });
 
 app.get('/login', (req, res) => {
@@ -6102,9 +6142,8 @@ app.get('/games/:placeId/:slug', (req, res, next) => {
  *
  * Rebuilt against https://web.archive.org/web/20210801002543/https://www.roblox.com/create
  *
- * In 2021 /create was the Studio launch surface: a hero with the Studio mark, a
- * "Start Creating" primary action and the download/launch links. It is distinct
- * from /develop, which is the developer dashboard listing your own places.
+ * /create is the creator landing page. /develop remains the dashboard listing
+ * the signed-in account's places, while /dev/create starts the experience flow.
  */
 app.get('/create', (req, res) => {
   const user = resolveViewer(req).user;
@@ -9395,6 +9434,7 @@ app.use((req, res) => {
 // first request already sees the recovered accounts/games. Postgres is tried
 // first when DATABASE_URL is set; otherwise the LUCKYBLOX_SYNC mirror is used.
 // When neither is configured this resolves immediately.
+let persistenceStartupError = null;
 storage.restoreFromRemote()
   .then((result) => {
     if (result && result.enabled) {
@@ -9415,11 +9455,21 @@ storage.restoreFromRemote()
     if (contentResult && !contentResult.skipped && contentResult.restored) {
       console.log(`[luckyblox] remote sync: restored ${contentResult.restored} content file(s)`);
     }
+    ensureSeedData();
   })
   .catch((error) => {
     console.warn(`[luckyblox] remote sync restore failed: ${error && error.message}`);
+    if (storage.describeStorage().postgres.enabled) {
+      persistenceStartupError = error;
+    }
   })
   .finally(() => {
+    if (persistenceStartupError) {
+      console.error('[luckyblox] refusing to serve with DATABASE_URL configured but Neon unavailable; retry after fixing the database connection.');
+      process.exit(1);
+      return;
+    }
+
     const bridgeServer = app.listen(PORT, HOST, () => {
       console.log(`LuckyBlox HTTP DB bridge listening on http://${HOST}:${PORT}`);
       console.log(`LuckyBlox public base URL: ${publicBaseUrl}`);
@@ -9483,9 +9533,16 @@ let shuttingDown = false;
 function gracefulShutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
-  console.log(`[luckyblox] received ${signal}; flushing remote storage...`);
+  console.log(`[luckyblox] received ${signal}; flushing durable storage...`);
   storage.flushRemote()
-    .catch(() => { /* best effort */ })
+    .then((result) => {
+      if (result && result.ok === false) {
+        console.error(`[luckyblox] durable storage flush reported ${result.failed || 0} failed save(s).`);
+      }
+    })
+    .catch((error) => {
+      console.error(`[luckyblox] durable storage flush failed: ${error.message}`);
+    })
     .finally(() => setTimeout(() => process.exit(0), 150));
 }
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
