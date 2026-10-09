@@ -9031,7 +9031,10 @@ app.get('/dev/docs', requireDevAuth, (req, res) => {
 
 app.get('/dev/docs/games', requireDevAuth, (req, res) => {
   const user = getDevUser(req);
-  const engineApi = loadClientEngineApi(releaseRoot, selectedClientName());
+  // This page is a pinned 2021 engine reference, independent of whichever
+  // client happens to be selected for launching on this host (Render defaults
+  // to 2022M and may not ship any local ReflectionMetadata.xml files).
+  const engineApi = loadClientEngineApi(releaseRoot, 'CUSTOM-2021M');
   res.render('dev/docs/games', {
     title: 'Game Engine API - LuckyBlox Studio',
     user,
