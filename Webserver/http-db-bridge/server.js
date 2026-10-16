@@ -2160,21 +2160,41 @@ function normalizePlaceOwnership(places) {
   let changed = false;
   for (const place of Object.values(places || {})) {
     if (!place || typeof place !== 'object' || Array.isArray(place)) continue;
-    const creatorName = String(
-      place.author || place.creatorName || place.developer
-      || (Array.isArray(place.creators) && place.creators[0])
-      || GAME_OWNER_USERNAME,
-    ).trim() || GAME_OWNER_USERNAME;
-    const candidateId = Number(place.authorId || place.creatorId || place.ownerId);
-    const creatorId = Number.isSafeInteger(candidateId) && candidateId > 0 ? candidateId : GAME_OWNER_ID;
+    // The owner is the configured owner account unless the place names a real,
+    // different creator. Resolving through the SAME helper the game record uses
+    // is what keeps the place and its game from disagreeing: a stored
+    // "Old Creator" credited on the owner's id used to be kept verbatim here
+    // while the game record was rewritten to the owner, so the page showed one
+    // name and the store held another.
+    const creator = gameCreatorMetadata({
+      author: place.author,
+      authorId: place.authorId,
+      creatorName: place.creatorName,
+      creatorId: place.creatorId,
+      developer: place.developer,
+      ownerId: place.ownerId,
+      creators: place.creators,
+    });
     const ownerFields = {
-      author: creatorName,
-      authorId: creatorId,
-      creators: [creatorName],
+      author: creator.creatorName,
+      authorId: creator.creatorId,
+      creators: [creator.creatorName],
     };
     for (const [field, value] of Object.entries(ownerFields)) {
-      if (place[field] == null || place[field] === ''
-        || (field === 'creators' && (!Array.isArray(place[field]) || place[field].length === 0))) {
+      const current = place[field];
+      const empty = current == null || current === ''
+        || (field === 'creators' && (!Array.isArray(current) || current.length === 0));
+      if (empty) {
+        place[field] = value;
+        changed = true;
+      } else if (field === 'creators') {
+        // A creators list whose first entry contradicts the resolved owner is
+        // the same contradiction in list form.
+        if (current.length !== 1 || current[0] !== value) {
+          place[field] = value;
+          changed = true;
+        }
+      } else if (current !== value) {
         place[field] = value;
         changed = true;
       }
@@ -3557,20 +3577,41 @@ function gameCreatorMetadata(game) {
     .map(Number)
     .find((value) => Number.isSafeInteger(value) && value > 0);
 
-  // The name and the id must never contradict each other. A game saved before
-  // this was enforced (or imported from a map) can carry a name with no id - or
-  // an id with no name - and falling back to the owner on only ONE of the two
-  // produced a game credited to "Old Creator" but owned by the owner's id.
+  // A game belongs to the deployment owner unless its stored creator is a REAL,
+  // SELF-CONSISTENT account.
   //
-  // A game is owned by the deployment owner unless BOTH halves of a real
-  // non-owner account are present AND those halves agree with each other.
-  // Accepting a stored id on its own re-credited every built-in game (whose
-  // shipped record carried `creatorId: 2`) to "Old Creator", so the same page
-  // named a different creator than the site published. Anything short of a
-  // self-consistent non-owner pair resolves the whole record to the owner.
-  const nameIsOwner = String(storedName || '').toLowerCase() === GAME_OWNER_USERNAME.toLowerCase();
+  // Three separate contradictions all resolved to a creator that does not exist,
+  // and each one showed a name the site could not back up with an account:
+  //
+  //   1. a name with no id            -> credited a stranger
+  //   2. an id with no name           -> fell back to the owner's NAME on a
+  //                                      non-owner id
+  //   3. a name that disagrees with   -> "Old Creator" stored on id 2, which is
+  //      the account its id points to     a different account entirely
+  //
+  // (3) is the one that survived the earlier fixes: the id was valid and the
+  // name was non-empty, so the pair LOOKED consistent. It is only consistent if
+  // the named account is the account the id resolves to, so the name is checked
+  // against the stored record rather than trusted on its own.
+  const ownerNameLower = GAME_OWNER_USERNAME.toLowerCase();
+  const nameIsOwner = String(storedName || '').toLowerCase() === ownerNameLower;
   const idIsOwner = !storedId || storedId === GAME_OWNER_ID;
-  const isOwner = nameIsOwner || idIsOwner;
+
+  // First: the name or the id alone already names the owner -> owner owns it.
+  let isOwner = nameIsOwner || idIsOwner;
+  if (!isOwner) {
+    // Both halves look non-owner. Confirm they describe the SAME account; if the
+    // id names an account whose username is not the stored name, the record is
+    // not a faithful creator and the owner owns it.
+    const account = getUser(storedId);
+    const accountName = String((account && (account.username || account.displayName)) || '')
+      .trim()
+      .toLowerCase();
+    if (!accountName || accountName !== String(storedName || '').toLowerCase()) {
+      isOwner = true;
+    }
+  }
+
   const creatorName = isOwner ? GAME_OWNER_USERNAME : storedName;
   const creatorId = isOwner ? GAME_OWNER_ID : storedId;
   const creatorType = ['User', 'Group'].includes(source.creatorType)
