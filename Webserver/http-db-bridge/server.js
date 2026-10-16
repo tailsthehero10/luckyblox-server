@@ -1959,12 +1959,12 @@ function serializeGame(placeId) {
     placeId: Number(game.placeId || normalized || 1818),
     title: game.title || 'LuckyBlox Arena',
     description: game.description || 'Local LuckyBlox demo game',
-    developer: game.developer || creator.creatorName,
+    developer: creator.creatorName,
     creatorName: creator.creatorName,
     creatorId: creator.creatorId,
     creatorType: creator.creatorType,
-    author: game.author || creator.creatorName,
-    authorId: Number(game.authorId) || creator.creatorId,
+    author: creator.creatorName,
+    authorId: creator.creatorId,
     genre: game.genre || 'Adventure',
     // Which era of client this game runs on. Resolved, not raw: a game saved
     // before this field existed, or with a year whose client is no longer on
@@ -2141,6 +2141,13 @@ function normalizeGameOwnership(games) {
     };
     for (const [field, value] of Object.entries(ownerFields)) {
       if (game[field] == null || game[field] === '') {
+        game[field] = value;
+        changed = true;
+      } else if (game[field] !== value) {
+        // A stored record can hold a name and an id that contradict each other
+        // ("Old Creator" credited on the owner's id). Filling only the missing
+        // fields left that contradiction in the file and on the page. Rewriting
+        // both halves to the resolved creator is what makes name and id agree.
         game[field] = value;
         changed = true;
       }
@@ -3543,12 +3550,29 @@ function clientPlayerMetadata(userId, sessionUser) {
 
 function gameCreatorMetadata(game) {
   const source = game && typeof game === 'object' ? game : {};
-  const creatorName = [source.creatorName, source.author]
+  const storedName = [source.creatorName, source.author, source.developer]
     .map((value) => String(value || '').trim())
-    .find(Boolean) || GAME_OWNER_USERNAME;
-  const creatorId = [source.creatorId, source.authorId, source.ownerId, source.developerId]
+    .find(Boolean);
+  const storedId = [source.creatorId, source.authorId, source.ownerId, source.developerId]
     .map(Number)
-    .find((value) => Number.isSafeInteger(value) && value > 0) || GAME_OWNER_ID;
+    .find((value) => Number.isSafeInteger(value) && value > 0);
+
+  // The name and the id must never contradict each other. A game saved before
+  // this was enforced (or imported from a map) can carry a name with no id - or
+  // an id with no name - and falling back to the owner on only ONE of the two
+  // produced a game credited to "Old Creator" but owned by the owner's id.
+  //
+  // A game is owned by the deployment owner unless BOTH halves of a real
+  // non-owner account are present AND those halves agree with each other.
+  // Accepting a stored id on its own re-credited every built-in game (whose
+  // shipped record carried `creatorId: 2`) to "Old Creator", so the same page
+  // named a different creator than the site published. Anything short of a
+  // self-consistent non-owner pair resolves the whole record to the owner.
+  const nameIsOwner = String(storedName || '').toLowerCase() === GAME_OWNER_USERNAME.toLowerCase();
+  const idIsOwner = !storedId || storedId === GAME_OWNER_ID;
+  const isOwner = nameIsOwner || idIsOwner;
+  const creatorName = isOwner ? GAME_OWNER_USERNAME : storedName;
+  const creatorId = isOwner ? GAME_OWNER_ID : storedId;
   const creatorType = ['User', 'Group'].includes(source.creatorType)
     ? source.creatorType
     : ['User', 'Group'].includes(source.authorType) ? source.authorType : 'User';
