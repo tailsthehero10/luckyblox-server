@@ -136,6 +136,28 @@
           </select>
         </label>
 
+        <!--
+          The era of client this game runs on.
+
+          The options come from the client folders actually present on disk
+          (clientEras.listClientYears()), so a creator can only pick a year that
+          has a playable build. An empty list would mean no player clients are
+          installed - the select then explains that instead of rendering a
+          dropdown with no real choices.
+        -->
+        <label>
+          Client Year
+          <select name="clientYear" class="lb-select">
+            <% if ((clientYears || []).length) { %>
+              <% clientYears.forEach(function (y) { %>
+                <option value="<%= y %>" <%= Number(place.clientYear) === Number(y) ? 'selected' : '' %>><%= y %></option>
+              <% }); %>
+            <% } else { %>
+              <option value="">No client builds installed</option>
+            <% } %>
+          </select>
+        </label>
+
         <fieldset class="dev-fieldset">
           <legend>Security</legend>
           <label class="dev-check">

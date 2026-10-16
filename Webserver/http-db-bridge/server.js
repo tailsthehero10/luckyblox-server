@@ -25,6 +25,9 @@ const { installStudioApiRoutes } = require(path.join(__dirname, '..', '..', 'ser
 const { installMarketplaceRoutes } = require(path.join(__dirname, '..', '..', 'server', 'marketplace.js'));
 const { installClientApi } = require('./clientApi.js');
 const { getClientBuildInfo, getClientUpdateManifest } = require('./clientBuildInfo.js');
+// Which client eras exist on disk, so a game's "Year" is always a real, playable
+// build rather than a free-text number.
+const clientEras = require('./clientEras.js');
 const {
   createClientLaunchUri,
   createDevPlayLaunchUri,
@@ -1963,6 +1966,10 @@ function serializeGame(placeId) {
     author: game.author || creator.creatorName,
     authorId: Number(game.authorId) || creator.creatorId,
     genre: game.genre || 'Adventure',
+    // Which era of client this game runs on. Resolved, not raw: a game saved
+    // before this field existed, or with a year whose client is no longer on
+    // disk, still reports a real year instead of blank or an impossible one.
+    clientYear: clientEras.resolveClientYear(game.clientYear),
     icon: game.icon || DEFAULT_GAME_ICON,
     playerCount: liveServers.playerCount,
     likes: Number(game.likes || 0),
@@ -3029,6 +3036,9 @@ const GAME_EDITABLE_FIELDS = [
   ['coverUrl', 'cover'],
   ['playableDevices', 'playableDevices'],
   ['ageRating', 'ageRating'],
+  // The era of client this game runs on. A creator picks it in the Studio and it
+  // is shown on the game page, the profile statistics and the game cards.
+  ['clientYear', 'clientYear'],
 ];
 
 /**
@@ -4169,6 +4179,10 @@ app.get('/', (req, res) => {
       playing: Number(g.playerCount) || 0,
       favorites: Number(g.favorites) || 0,
       updatedAt: g.updatedAt || g.publishedAt || '',
+      // Carried onto the card so the tile can expose which client era the game
+      // runs on. Without this the card partial receives undefined and the year
+      // silently disappears from every listing.
+      clientYear: clientEras.resolveClientYear(g.clientYear),
     };
   };
   const cards = games.map(toCard);
@@ -4226,6 +4240,8 @@ app.get('/games', (req, res) => {
       visits: Number(g.visits) || 0,
       favorites: Number(g.favorites) || 0,
       updatedAt: g.updatedAt || g.publishedAt || '',
+      // Same reason as the home rows: the card partial needs this to show the era.
+      clientYear: clientEras.resolveClientYear(g.clientYear),
     };
   };
 
@@ -4856,6 +4872,14 @@ async function renderProfilePage2021(req, res, userId) {
     followersCount: Number((user.stats && (user.stats.followers || user.stats.following)) || 0) || 0,
     followingCount: Number((user.stats && user.stats.following) || 0) || 0,
     visitsCount: Number((user.stats && (user.stats.gameVisits || user.stats.plays)) || 0) || 0,
+    // The client eras this account's games run on, newest first. Derived from
+    // the games it actually published, so the row reflects real content rather
+    // than the list of every client installed on the host.
+    clientYears: [...new Set(
+      (publishedGames || [])
+        .map((g) => clientEras.resolveClientYear(g && g.clientYear))
+        .filter((y) => y !== null),
+    )].sort((a, b) => b - a),
     formatJoinDate,
     abbreviateCount,
   });
@@ -6111,6 +6135,9 @@ function renderGamePage2021(req, res, placeId) {
     favorites: Number(game.favorites) || 0,
     maxPlayers: Number(game.maxPlayers || place.maxPlayers || 20),
     genre: game.genre || place.genre || 'Adventure',
+    // The client era this game runs on, resolved against the builds actually on
+    // disk so the page never shows a year with no playable client behind it.
+    clientYear: clientEras.resolveClientYear(game.clientYear || place.clientYear),
     serverCount: servers.length,
     servers,
     activeTab: ['about', 'store', 'servers'].includes(String(req.query.tab || '').toLowerCase())
@@ -9264,6 +9291,9 @@ app.get('/dev/game/:placeId/settings', requireDevAuth, (req, res) => {
       allowThirdPartySales: game.allowThirdPartySales !== false,
       isFriendsOnly: Boolean(game.isFriendsOnly),
       ageRating: game.ageRating || place.ageRating || 'All Ages',
+      // Which client era the game runs on. Falls back to the newest installed
+      // era so a game created before this setting existed is still playable.
+      clientYear: clientEras.resolveClientYear(game.clientYear || place.clientYear),
       // Ownership: id 1 is the deployment owner and holds the built-in games.
       authorId: Number(game.authorId || place.authorId || OWNER_USER_ID),
       author: game.developer || place.author || 'LuckyBlox Studio',
@@ -9271,6 +9301,9 @@ app.get('/dev/game/:placeId/settings', requireDevAuth, (req, res) => {
     genres: ROBLOX_GENRES,
     deviceOptions: ROBLOX_PLAYABLE_DEVICES,
     ageRatings: ROBLOX_AGE_RATINGS,
+    // Only years that have a playable client on disk, so the picker can never
+    // offer a build this deployment cannot actually launch.
+    clientYears: clientEras.listClientYears(),
     isOwnerOfGame: isOwnerUser(user),
     currency: getCurrencyForUser(user),
     adminBadge: getAdminBadge(user),

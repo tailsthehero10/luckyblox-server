@@ -284,6 +284,14 @@
                 <span>Place Visits</span><strong><%= visitTotal %></strong>
                 <span>Created</span><strong><%= Number(s.created) || 0 %></strong>
                 <span>Badges</span><strong><%= badgeList.length %></strong>
+                <!--
+                  Which client eras this account has games for. Rendered only
+                  when the account owns games, so a new account does not show a
+                  row of nothing.
+                -->
+                <% if ((clientYears || []).length) { %>
+                  <span>Client years</span><strong><%= clientYears.join(', ') %></strong>
+                <% } %>
               </div>
             </div>
           </section>

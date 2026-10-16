@@ -42,14 +42,23 @@ var gcPlaying = Number(gc.playing != null ? gc.playing : gc.playerCount) || 0;
 var gcShowPlaying = (typeof showPlaying !== 'undefined') ? !!showPlaying : true;
 var gcSlug = gcTitle.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
 var gcHref = '/games/' + gcPlaceId + (gcSlug ? '/' + gcSlug : '');
+// The client era this game runs on.
+//
+// It is deliberately NOT a visible line on the tile. The real 2013 card carries
+// only the name, the vote percentage and the playing count - a visible year row
+// is exactly the "extra metadata" that made these cards read as not-Roblox. The
+// year is exposed as the card's title/tooltip instead, so it is present and
+// machine-readable without changing the authentic tile.
+var gcYear = (gc.clientYear != null && Number(gc.clientYear)) ? String(Number(gc.clientYear)) : '';
+var gcTitleAttr = gcYear ? (gcTitle + ' (' + gcYear + ')') : gcTitle;
 // `abbreviateCount` is the shared helper (res.locals), so every page abbreviates
 // counts the same way. The fallback keeps a caller that renders this partial
 // outside a normal request (e.g. a test) from throwing.
 var gcPlayingText = (typeof abbreviateCount === 'function') ? abbreviateCount(gcPlaying) : String(gcPlaying);
 %>
-<div class="game-item" id="game-<%= gcPlaceId %>">
+<div class="game-item" id="game-<%= gcPlaceId %>"<% if (gcYear) { %> data-client-year="<%= gcYear %>"<% } %>>
   <a class="game-item-image lb-loading-block is-loading" href="<%= gcHref %>"
-     style="--lb-loader-size:28px;" title="<%= gcTitle %>">
+     style="--lb-loader-size:28px;" title="<%= gcTitleAttr %>">
     <img src="<%= gcIcon %>" alt="<%= gcTitle %>" loading="lazy"
          onload="this.parentNode.classList.remove('is-loading');"
          onerror="this.parentNode.classList.remove('is-loading');this.style.display='none';" />
@@ -60,7 +69,7 @@ var gcPlayingText = (typeof abbreviateCount === 'function') ? abbreviateCount(gc
       <img class="ch-ico" src="/icons/play.svg" alt="" />
     </span>
   </a>
-  <a class="game-name" href="<%= gcHref %>" title="<%= gcTitle %>"><%= gcTitle %></a>
+  <a class="game-name" href="<%= gcHref %>" title="<%= gcTitleAttr %>"><%= gcTitle %></a>
   <div class="game-thumbs-up-down">
 <% if (gcVote !== null) { %>
     <span class="vote-percentage-label"><%= gcVote %>%</span>

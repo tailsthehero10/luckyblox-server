@@ -1,4 +1,11 @@
 <?php
+// Canonical redirect to the home page.
+//
+// This used to send visitors to `/LuckBlox.site/home/`, whose casing does not
+// match this directory (`LuckyBlox.site`). On a case-insensitive filesystem the
+// page still loaded, but the address bar and every link built from it disagreed
+// with the folder name. Everything else on the site uses `/LuckBlox.site/`
+// (see the path constants in api/common.php), so that is what we send here.
 header('Location: /LuckBlox.site/home/');
 exit;
 

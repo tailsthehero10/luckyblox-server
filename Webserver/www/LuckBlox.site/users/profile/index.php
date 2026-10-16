@@ -20,6 +20,11 @@
 
 require_once __DIR__ . '/../../../api/luckyblox-data.php';
 require_once __DIR__ . '/../../../api/classic-render.php';
+// The 2021 page chrome lives in the generated classic view. It was never
+// included here, so lb_classic_avatar_shell() (called below) was undefined and
+// every profile request died with a PHP fatal error - HTTP 500 on the one page
+// the client actually opens.
+require_once __DIR__ . '/../../../api/classic-profile-view.php';
 
 session_start();
 
@@ -193,18 +198,14 @@ $tabs = '<div class="profile-tabs">'
     . lb_c_creations_pane($myCreations, $activeTab !== 'creations')
     . '</div></div>';
 
-// The tab strip replaces the archived page's own tab row if it rendered one;
-// otherwise it is appended to the profile body.
-if (strpos($body, 'id="horizontal-tabs"') !== false) {
-    $body = preg_replace(
-        '#<div class="profile-tab-strip rbx-tabs-horizontal">.*?</div>#s',
-        $tabs,
-        $body,
-        1
-    );
-} else {
-    $body = lb_classic_profile_head() . $tabs . lb_classic_profile_foot();
-}
+// The classic page body is head + avatar shell + foot.
+//
+// This used to test `strpos($body, ...)` where `$body` had never been assigned,
+// so the test was always false, the `preg_replace` branch was dead, and the page
+// logged "Undefined variable: body" on every request. Building the body here is
+// what the else-branch was already doing; the undefined read is gone and the
+// archived chrome is composed explicitly.
+$body = lb_classic_profile_head() . lb_classic_avatar_shell() . lb_classic_profile_foot();
 
 $head = '<meta name="lb-user-id" content="' . (int) $userId . '" />'
     . '<meta name="lb-username" content="' . lb_c_esc($user['username']) . '" />'
