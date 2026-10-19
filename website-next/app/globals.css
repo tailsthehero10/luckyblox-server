@@ -1,0 +1,277 @@
+:root {
+  --lb-bg: #f2f4f5;
+  --lb-surface: #ffffff;
+  --lb-text: #393b3d;
+  --lb-muted: #6b7075;
+  --lb-line: #d3d7da;
+  --lb-accent: #00a2ff;
+  --lb-accent-dark: #0077b3;
+  --lb-radius: 6px;
+  --lb-max: 1180px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--lb-bg);
+  color: var(--lb-text);
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.5;
+}
+
+a { color: var(--lb-accent-dark); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.lb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 20px;
+  min-height: 64px;
+  background: #dee1e3;
+  border-bottom: 1px solid #c7cbce;
+}
+
+.lb-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--lb-text);
+  text-decoration: none;
+}
+
+.lb-brand-mark {
+  width: 22px;
+  height: 22px;
+  background: var(--lb-text);
+  border-radius: 4px;
+  /* A rotated square reads as the classic Roblox mark without copying it. */
+  transform: rotate(12deg);
+}
+
+.lb-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  font-weight: 600;
+}
+
+.lb-main {
+  max-width: var(--lb-max);
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+.lb-footer {
+  max-width: var(--lb-max);
+  margin: 0 auto;
+  padding: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--lb-muted);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--lb-line);
+}
+
+.lb-title {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+}
+
+.lb-subtitle { margin: 0 0 24px; color: var(--lb-muted); }
+
+/* Responsive grid: never fixed column counts, so every screen size works. */
+.lb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.lb-card {
+  background: var(--lb-surface);
+  border: 1px solid var(--lb-line);
+  border-radius: var(--lb-radius);
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.lb-card:hover { text-decoration: none; border-color: var(--lb-accent); }
+
+.lb-card-art {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  object-fit: contain;
+  background: #e8ebed;
+  display: block;
+}
+
+.lb-card-body { padding: 10px 12px 12px; }
+
+.lb-card-title {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--lb-muted);
+}
+
+.lb-empty {
+  background: var(--lb-surface);
+  border: 1px solid var(--lb-line);
+  border-radius: var(--lb-radius);
+  padding: 24px;
+  color: var(--lb-muted);
+}
+/* --- Panels ------------------------------------------------------------- */
+
+.lb-panel {
+  background: var(--lb-surface);
+  border: 1px solid var(--lb-line);
+  border-radius: var(--lb-radius);
+  padding: 20px;
+}
+
+.lb-muted { color: var(--lb-muted); margin: 0 0 8px; }
+
+/* --- Auth pages --------------------------------------------------------- */
+
+.lb-auth {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.lb-auth-card {
+  background: var(--lb-surface);
+  border: 1px solid var(--lb-line);
+  border-radius: var(--lb-radius);
+  padding: 28px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.lb-auth-title { margin: 0 0 6px; font-size: 1.6rem; }
+.lb-auth-sub { margin: 0 0 20px; color: var(--lb-muted); font-size: 0.92rem; }
+
+.lb-auth-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+  font-size: 0.9rem;
+}
+
+.lb-auth-discord {
+  display: block;
+  margin-top: 16px;
+  padding: 11px;
+  text-align: center;
+  border: 1px solid #5865f2;
+  border-radius: var(--lb-radius);
+  color: #5865f2;
+  font-weight: 700;
+}
+
+.lb-form { display: grid; gap: 14px; }
+
+.lb-field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.lb-field input[type="text"],
+.lb-field input[type="password"],
+.lb-field input[type="date"] {
+  font: inherit;
+  font-weight: 400;
+  padding: 10px 12px;
+  border: 1px solid var(--lb-line);
+  border-radius: var(--lb-radius);
+  background: #fff;
+  color: var(--lb-text);
+  width: 100%;
+}
+
+.lb-field input:focus {
+  outline: 2px solid var(--lb-accent);
+  outline-offset: 1px;
+}
+
+.lb-gender { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.lb-gender legend { padding: 0; margin-bottom: 6px; width: 100%; }
+.lb-gender label { display: flex; align-items: center; gap: 6px; font-weight: 400; }
+
+.lb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 18px;
+  border: 1px solid transparent;
+  border-radius: var(--lb-radius);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.lb-btn-primary { background: var(--lb-accent); color: #fff; }
+.lb-btn-primary:hover { background: var(--lb-accent-dark); text-decoration: none; }
+.lb-btn-primary:disabled { opacity: 0.6; cursor: default; }
+
+.lb-btn-secondary { background: #fff; color: var(--lb-text); border-color: var(--lb-line); }
+.lb-btn-secondary:hover { border-color: var(--lb-accent); text-decoration: none; }
+
+.lb-note {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: var(--lb-radius);
+  font-size: 0.88rem;
+}
+.lb-note-error { background: #fdecec; color: #a02525; border: 1px solid #f3c7c7; }
+.lb-note-ok { background: #eaf7ee; color: #1c6b35; border: 1px solid #c5e7d0; }
+
+/* --- Download ----------------------------------------------------------- */
+
+.lb-dl-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.lb-dl-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* --- Small screens ------------------------------------------------------ */
+
+@media (max-width: 600px) {
+  .lb-header { flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px 16px; }
+  .lb-main { padding: 16px 14px 32px; }
+  .lb-auth-card { padding: 20px; }
+  .lb-dl-actions .lb-btn { width: 100%; }
+}

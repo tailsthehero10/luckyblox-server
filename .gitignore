@@ -35,6 +35,12 @@ worktrees/
 # safe to ship. Rebuild it with tools/installer/build-installer.bat.
 *.pdb
 
+# Next.js frontend (website-next). Build output and dependencies are generated,
+# not source - committing them would add thousands of files and break the build
+# on any machine whose platform differs from the one that generated them.
+website-next/node_modules/
+website-next/.next/
+.next/
 # Local scratch.
 *.tmp
 *.tmp-*

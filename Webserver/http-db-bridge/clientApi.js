@@ -59,6 +59,16 @@ const path = require('path');
 const robloxApi = require('./robloxApi');
 
 /**
+ * The client applications clientsettings.roblox.com answers for.
+ *
+ * PCDesktopClient     - the installed Player.
+ * PCClientBootstrapper- the small downloader that fetches the Player; it asks
+ *                       for its own settings BEFORE any build exists locally,
+ *                       so rejecting it stops the client from ever starting.
+ */
+const SETTINGS_APPLICATIONS = ['PCDesktopClient', 'PCClientBootstrapper'];
+
+/**
  * @param {object} app  the Express app
  * @param {object} ctx  accessors supplied by server.js:
  *   getUser, getUsers, getAssets, getGames, getGameEntry, getPlaceSettings,
@@ -923,12 +933,30 @@ function installClientApi(app, ctx) {
 
   function serveApplicationSettings(req, res) {
     const applicationName = String(req.params.applicationName || req.query.applicationName || '').trim();
-    if (applicationName !== 'PCDesktopClient') {
-      return res.status(400).json({
-        errors: [{ code: 0, message: 'Unsupported client settings application.' }],
+
+    // No application named: answer with the list rather than silently defaulting
+    // to the player. The bare path is a directory listing in the real API, and
+    // returning 61 KB of player flags for it made a probe believe the LIST was
+    // the settings object.
+    if (!applicationName) {
+      res.set('Cache-Control', 'no-store');
+      return res.json({ applications: SETTINGS_APPLICATIONS });
+    }
+
+    // Every application Roblox's client asks for must be answered. This used to
+    // accept ONLY 'PCDesktopClient' and return HTTP 400 for everything else, so
+    // PCClientBootstrapper - which the bootstrapper asks for BEFORE it downloads
+    // anything - was rejected outright and the client could not start.
+    if (!SETTINGS_APPLICATIONS.includes(applicationName)) {
+      return res.status(404).json({
+        errors: [{ code: 404, message: `Unknown client settings application "${applicationName}".` }],
       });
     }
 
+    // The application-specific settings live in the SAME ClientAppSettings.json;
+    // the bootstrapper and the player differ in which flags they READ, not in
+    // where the file is. Serving the one file for both is what the shipped
+    // clients expect.
     const file = legacySettingsFile('clientappsettings', req);
     if (!file) {
       return res.status(404).json({
@@ -947,7 +975,20 @@ function installClientApi(app, ctx) {
     }
 
     res.set('Cache-Control', 'no-store');
-    return res.json({ applicationSettings });
+
+    // The real clientsettings.roblox.com endpoint returns the FLAGS FLAT at the
+    // top level, not nested under `applicationSettings`. Wrapping them meant a
+    // client that reads `response["FFlagSomething"]` found nothing and fell back
+    // to its defaults - the settings page appeared to work while changing
+    // nothing at all.
+    //
+    // The nested form is still returned to a caller that explicitly asks for it
+    // (`?envelope=1`), so an existing integration depending on the old shape is
+    // not broken by this correction.
+    if (String(req.query.envelope || '') === '1') {
+      return res.json({ applicationSettings });
+    }
+    return res.json(applicationSettings);
   }
 
   app.get(['/v1/settings/application', '/v2/settings/application', '/v2/settings/application/:applicationName'], serveApplicationSettings);

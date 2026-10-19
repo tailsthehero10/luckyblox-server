@@ -33,6 +33,9 @@ const {
   createDevPlayLaunchUri,
 } = require(path.join(__dirname, '..', '..', 'server', 'clientLaunchUri'));
 const datastore = require('./datastore.js');
+// clientsettings.roblox.com compatibility: the four endpoints a shipped client
+// polls for its version and app settings before it will run.
+const { installClientSettingsRoutes } = require('./clientSettingsApi.js');
 const assetFetcher = require(path.join(__dirname, '..', '..', 'server', 'assetFetcher.js'));
 const robloxAssetDelivery = require(path.join(__dirname, '..', '..', 'server', 'robloxAssetDelivery.js'));
 const { installTeamCreateRoutes } = require(path.join(__dirname, '..', '..', 'server', 'teamCreate.js'));
@@ -8138,6 +8141,11 @@ function sendDatastoreError(res, error) {
   const message = (error && error.message) || 'Datastore error';
   return sendDatastoreText(res, status, message);
 }
+
+// clientsettings.roblox.com compatibility (client version + application
+// settings). Registered alongside the datastore routes because both are called
+// by the shipped client itself rather than by the browser.
+installClientSettingsRoutes(app);
 
 app.get('/datastore/getds.php', (req, res) => {
   try {
