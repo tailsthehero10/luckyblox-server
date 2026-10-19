@@ -1,0 +1,52 @@
+{
+  "userId": "4",
+  "username": "E2EUser28484",
+  "displayName": "E2EUser28484",
+  "membership": "None",
+  "membershipStatus": "None",
+  "role": "player",
+  "isAdmin": false,
+  "studioAccess": true,
+  "authenticated": true,
+  "robloxUserId": null,
+  "robux": 0,
+  "currencies": {
+    "robux": 0,
+    "coins": 0,
+    "tickets": 0
+  },
+  "inventory": [
+    "607702162",
+    "1029025",
+    "25330901"
+  ],
+  "currentlyWearing": [
+    "607702162"
+  ],
+  "avatar": {
+    "gender": "2",
+    "playerAvatarType": "R15",
+    "scales": {
+      "height": 1,
+      "width": 1,
+      "head": 1,
+      "depth": 1,
+      "proportion": 0,
+      "bodyType": 0
+    },
+    "bodyColors": {
+      "headColorId": 1002,
+      "torsoColorId": 1002,
+      "rightArmColorId": 1002,
+      "leftArmColorId": 1002,
+      "rightLegColorId": 1002,
+      "leftLegColorId": 1002
+    },
+    "currentlyWearing": [
+      "607702162"
+    ]
+  },
+  "gender": "2",
+  "joinDate": "2026-10-19T18:49:51.098Z",
+  "updatedAt": "2026-10-19T18:49:51.112Z"
+}

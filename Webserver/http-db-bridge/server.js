@@ -6654,7 +6654,11 @@ app.post('/api/login', (req, res) => {
     serverJobId: `session-${Date.now()}`,
     redeemable: true,
   });
-  const sessionId = applySessionCookie(res, userId);
+  // applySessionCookie returns { sessionId, csrfToken }, not a bare id. Naming
+  // the whole object `sessionId` and spreading it into the response below put an
+  // OBJECT where the API documents a string, so a client reading
+  // `session.sessionId` got `{sessionId, csrfToken}` instead of an id.
+  const { sessionId } = applySessionCookie(res, userId, req);
 
   // Remember the account for the switcher, on THIS browser only.
   if (remember) {

@@ -1,7 +1,7 @@
 {
   "userId": "4",
-  "username": "nilye",
-  "displayName": "nilye",
+  "username": "E2EUser28484",
+  "displayName": "E2EUser28484",
   "membership": "None",
   "membershipStatus": "None",
   "role": "player",
@@ -18,17 +18,14 @@
   "inventory": [
     "607702162",
     "1029025",
-    "25330901",
-    "451220849"
+    "25330901"
   ],
   "currentlyWearing": [
-    "1029025",
-    "25330901",
-    "451220849"
+    "607702162"
   ],
   "avatar": {
-    "gender": "Female",
-    "playerAvatarType": "R6",
+    "gender": "2",
+    "playerAvatarType": "R15",
     "scales": {
       "height": 1,
       "width": 1,
@@ -38,20 +35,18 @@
       "bodyType": 0
     },
     "bodyColors": {
-      "headColorId": 5,
-      "torsoColorId": 194,
-      "rightArmColorId": 5,
-      "leftArmColorId": 5,
-      "rightLegColorId": 194,
-      "leftLegColorId": 194
+      "headColorId": 1002,
+      "torsoColorId": 1002,
+      "rightArmColorId": 1002,
+      "leftArmColorId": 1002,
+      "rightLegColorId": 1002,
+      "leftLegColorId": 1002
     },
     "currentlyWearing": [
-      "1029025",
-      "25330901",
-      "451220849"
+      "607702162"
     ]
   },
-  "gender": "Female",
-  "joinDate": "2026-10-04T19:49:58.915Z",
-  "updatedAt": "2026-10-04T19:52:44.722Z"
+  "gender": "2",
+  "joinDate": "2026-10-19T18:49:51.098Z",
+  "updatedAt": "2026-10-19T18:49:51.112Z"
 }
