@@ -3,7 +3,7 @@ Webserver/bin/apache/logs/authdigest_shm.*
 # Local server logs (written when running start.js on a desktop).
 server-out.log
 server-err.log
-
+ 
 # Runtime data state. These change as the app is used (accounts, sessions,
 # per-user data) and must NOT be committed here - they can hold password
 # hashes, and they are what the free remote store mirrors instead
